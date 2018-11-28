@@ -1,0 +1,17 @@
+Quetzal est une librairie python développée au sein de SYSTRA permettant
+la réalisation intégrale d’un modèle multimodal à 4 étapes, l’analyse des
+lignes de désir, la génération automatique d’indicateurs d’offre
+et de demande (fréquentation des lignes et des stations,
+report modal au niveau du zonage du modèle, comparaison des temps VP et TC)
+ainsi que la réalisation d’une analyse coût-bénéfice. Cette librairie Python,
+compatible avec nos outils Linedraft et ITSIM,
+est également adossé à un logiciel libre de SIG pour la visualisation
+des différents indicateurs. 
+
+
+.. figure:: ./pictures/quetzal/graphviz.png
+    :width: 100%
+    :alt: alternate text
+    :figclass: align-center
+
+        quetzal

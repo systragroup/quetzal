@@ -1,0 +1,15 @@
+quetzal package
+=====================
+
+.. include:: ../syspy/quetzal/description.txt
+
+Subpackages
+-----------
+
+.. toctree::
+    :maxdepth: 1
+
+    quetzal.analysis
+    quetzal.engine
+    quetzal.io
+    quetzal.stories

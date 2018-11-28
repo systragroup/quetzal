@@ -1,0 +1,14 @@
+{
+"type": "FeatureCollection",
+"features": [
+{ "type": "Feature", "properties": { "index": "FUR_CREEK_RES", "stop_name": "Furnace Creek Resort (Demo)", "stop_lat": 36.425288, "stop_lon": -117.133162 }, "geometry": { "type": "Point", "coordinates": [ -117.133162, 36.425288 ] } },
+{ "type": "Feature", "properties": { "index": "BEATTY_AIRPORT", "stop_name": "Nye County Airport (Demo)", "stop_lat": 36.868446, "stop_lon": -116.784582 }, "geometry": { "type": "Point", "coordinates": [ -116.784582, 36.868446 ] } },
+{ "type": "Feature", "properties": { "index": "BULLFROG", "stop_name": "Bullfrog (Demo)", "stop_lat": 36.88108, "stop_lon": -116.81797 }, "geometry": { "type": "Point", "coordinates": [ -116.81797, 36.88108 ] } },
+{ "type": "Feature", "properties": { "index": "STAGECOACH", "stop_name": "Stagecoach Hotel & Casino (Demo)", "stop_lat": 36.915682, "stop_lon": -116.751677 }, "geometry": { "type": "Point", "coordinates": [ -116.751677, 36.915682 ] } },
+{ "type": "Feature", "properties": { "index": "NADAV", "stop_name": "North Ave \/ D Ave N (Demo)", "stop_lat": 36.914893, "stop_lon": -116.76821 }, "geometry": { "type": "Point", "coordinates": [ -116.76821, 36.914893 ] } },
+{ "type": "Feature", "properties": { "index": "NANAA", "stop_name": "North Ave \/ N A Ave (Demo)", "stop_lat": 36.914944, "stop_lon": -116.761472 }, "geometry": { "type": "Point", "coordinates": [ -116.761472, 36.914944 ] } },
+{ "type": "Feature", "properties": { "index": "DADAN", "stop_name": "Doing Ave \/ D Ave N (Demo)", "stop_lat": 36.909489, "stop_lon": -116.768242 }, "geometry": { "type": "Point", "coordinates": [ -116.768242, 36.909489 ] } },
+{ "type": "Feature", "properties": { "index": "EMSI", "stop_name": "E Main St \/ S Irving St (Demo)", "stop_lat": 36.905697, "stop_lon": -116.76218 }, "geometry": { "type": "Point", "coordinates": [ -116.76218, 36.905697 ] } },
+{ "type": "Feature", "properties": { "index": "AMV", "stop_name": "Amargosa Valley (Demo)", "stop_lat": 36.641496, "stop_lon": -116.40094 }, "geometry": { "type": "Point", "coordinates": [ -116.40094, 36.641496 ] } }
+]
+}

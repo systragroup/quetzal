@@ -1,0 +1,14 @@
+{
+"type": "FeatureCollection",
+"features": [
+{ "type": "Feature", "properties": { "index": "zone_0", "emp": 1, "pop": 1, "emission": 1, "attraction": 1.0, "emission_rate": 0.5, "weight": 2.0 }, "geometry": { "type": "Point", "coordinates": [ -117.008219410085161, 36.520732061318995 ] } },
+{ "type": "Feature", "properties": { "index": "zone_1", "emp": 1, "pop": 1, "emission": 1, "attraction": 1.0, "emission_rate": 0.5, "weight": 2.0 }, "geometry": { "type": "Point", "coordinates": [ -116.502414125023435, 36.609377818527889 ] } },
+{ "type": "Feature", "properties": { "index": "zone_2", "emp": 1, "pop": 1, "emission": 1, "attraction": 1.0, "emission_rate": 0.5, "weight": 2.0 }, "geometry": { "type": "Point", "coordinates": [ -116.606318578467878, 36.900788120245544 ] } },
+{ "type": "Feature", "properties": { "index": "zone_3", "emp": 1, "pop": 1, "emission": 1, "attraction": 1.0, "emission_rate": 0.5, "weight": 2.0 }, "geometry": { "type": "Point", "coordinates": [ -116.991899369597547, 36.833465595595513 ] } },
+{ "type": "Feature", "properties": { "index": "zone_4", "emp": 1, "pop": 1, "emission": 1, "attraction": 1.0, "emission_rate": 0.5, "weight": 2.0 }, "geometry": { "type": "Point", "coordinates": [ -116.754424779437059, 36.694477962421857 ] } },
+{ "type": "Feature", "properties": { "index": "zone_5", "emp": 1, "pop": 1, "emission": 1, "attraction": 1.0, "emission_rate": 0.5, "weight": 2.0 }, "geometry": { "type": "Point", "coordinates": [ -116.782658429892734, 36.90350702201232 ] } },
+{ "type": "Feature", "properties": { "index": "zone_6", "emp": 1, "pop": 1, "emission": 1, "attraction": 1.0, "emission_rate": 0.5, "weight": 2.0 }, "geometry": { "type": "Point", "coordinates": [ -116.739823711156845, 36.878430187917687 ] } },
+{ "type": "Feature", "properties": { "index": "zone_7", "emp": 1, "pop": 1, "emission": 1, "attraction": 1.0, "emission_rate": 0.5, "weight": 2.0 }, "geometry": { "type": "Point", "coordinates": [ -116.761680016038881, 36.939212979303335 ] } },
+{ "type": "Feature", "properties": { "index": "zone_8", "emp": 1, "pop": 1, "emission": 1, "attraction": 1.0, "emission_rate": 0.5, "weight": 2.0 }, "geometry": { "type": "Point", "coordinates": [ -116.795984409301923, 36.947733090457625 ] } }
+]
+}

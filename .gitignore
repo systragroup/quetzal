@@ -1,0 +1,6 @@
+**__pycache__**
+*.pyc
+doc/
+**.cache**
+quetzal/tests/data/out/
+tests/data/out/
