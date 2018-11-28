@@ -4,7 +4,7 @@
 ## Copyright 
 (c) SYSTRA
 ## License
-[CeCILL-B](LICENSE)
+[CeCILL-B](LICENSE.md)
 ## Documentation
 The official documentation is hosted on: https://quetzal.readthedocs.io
 ## Installation from sources
