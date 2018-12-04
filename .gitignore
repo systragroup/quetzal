@@ -3,4 +3,5 @@
 doc/
 **.cache**
 quetzal/tests/data/out/
+docs/build/
 tests/data/out/
