@@ -12,7 +12,6 @@ from syspy.spatial.geometries import line_list_to_polyline
 
 from syspy.paths import gis_resources
 
-# gis_resources = r'G:\PLT\L-Lignes Produit\0. Dev\python\modules\pandasshp\gis_resources/'
 
 epsg4326 = gis_resources + r'projections/epsg4326.prj'
 epsg4326_string = pandasshp.read_prj(gis_resources + 'projections/epsg4326.prj')
@@ -187,8 +186,7 @@ def loaded_links_to_shp(
     epsg=None,
     projection_file=None,
     name='loaded_links.shp',
-    create_legend=False,
-    **legend_kwargs
+    create_legend=False
 ):
     if epsg is None and projection_file is None:
         print('No projection defined --> considered as EPSG:4326')
@@ -222,7 +220,6 @@ def loaded_links_to_shp(
     # Legend
     if create_legend==True:
         create_load_legend(
-            **legend_kwargs,
             legend_file_path=gis_path + name.split('.shp')[0] + '_legend.shp',
             outer_average_width=outer_average_width,
             epsg=epsg,
