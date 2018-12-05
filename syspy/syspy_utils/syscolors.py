@@ -59,7 +59,7 @@ def clear(rgb, x=50):
     _b = round(((100 - x) * b + x * 255) / 100)
     return (_r, _g, _b)
 
-def clear_shades()
+def clear_shades():
     return [triplet(clear(rgb(shade))) for shade in rainbow_shades]
 
 
