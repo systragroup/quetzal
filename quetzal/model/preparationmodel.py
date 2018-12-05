@@ -198,7 +198,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         try :
             dump = self.road_links[weight] + 1
         except TypeError:
-            raise TypeError(f'{weight} should be an int or a float')
+            raise TypeError(str(weight) + ' should be an int or a float')
  
         if dumb_cast:
             nc = NetworkCaster(
