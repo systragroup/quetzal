@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 def node_path(path):
     return {
         int(p.split('node_')[1])

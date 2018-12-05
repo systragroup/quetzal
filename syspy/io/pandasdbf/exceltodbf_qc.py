@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from syspy.io.pandasdbf import dbf_qc as dbf
 import xlrd
 import tkinter as Tkinter

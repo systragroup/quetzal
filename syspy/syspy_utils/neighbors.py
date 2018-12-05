@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 
 **This Neighborhood class builds a standalone affectation model on top of a zoning and an origin-destination volume matrix**

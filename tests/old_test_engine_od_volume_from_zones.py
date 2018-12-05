@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from unittest import TestCase
 from unittest.mock import patch, ANY
 import pandas as pd

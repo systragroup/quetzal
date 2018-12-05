@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+
+# -*- coding: utf-8 -*-
 #
 #  Adapted and simplified from https://github.com/GeographicaGS/GeoSmoothing
 

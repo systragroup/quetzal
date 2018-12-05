@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # module level doc-string
 __doc__ = """
 This module provides tools for network processing.

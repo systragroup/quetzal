@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 def head_string(links, trip_id):
     return  'LINE NAME="%s", ONEWAY=T, ' % trip_id
 

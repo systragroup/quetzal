@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 This module provides tools for network processing.
 It processes geometries more than abstract graphs.

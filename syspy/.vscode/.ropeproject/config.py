@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # The default ``config.py``
 # flake8: noqa
 

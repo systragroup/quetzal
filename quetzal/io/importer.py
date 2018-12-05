@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from syspy.spatial import spatial
 from syspy.syspy_utils.syscolors import rainbow_shades, linedraft_shades
 import pandas as pd

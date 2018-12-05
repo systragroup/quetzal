@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 
 This modules provides tools for manipulating gtfs files

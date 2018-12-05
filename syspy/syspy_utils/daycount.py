@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 def count_by_weekday(start_date, end_date):
 
     """
