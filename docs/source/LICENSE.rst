@@ -1,5 +1,4 @@
-﻿
-CeCILL-B FREE SOFTWARE LICENSE AGREEMENT
+﻿CeCILL-B FREE SOFTWARE LICENSE AGREEMENT
 ========================================
 
 Copyright (c) SYSTRA

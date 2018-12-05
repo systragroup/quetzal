@@ -1,0 +1,382 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>quetzal.model.analysismodel &mdash; quetzal  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="quetzal  documentation" href="../../../index.html"/>
+        <link rel="up" title="Module code" href="../../index.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> quetzal
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.engine.html">quetzal.engine package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.html">quetzal.model package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.io.html">quetzal.io package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.analysis.html">quetzal.analysis package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">quetzal</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+    <li>quetzal.model.analysismodel</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for quetzal.model.analysismodel</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">quetzal.analysis</span> <span class="k">import</span> <span class="n">analysis</span>
+<span class="kn">from</span> <span class="nn">quetzal.engine</span> <span class="k">import</span> <span class="n">engine</span><span class="p">,</span> <span class="n">linearsolver_utils</span>
+<span class="kn">from</span> <span class="nn">quetzal.model</span> <span class="k">import</span> <span class="n">model</span><span class="p">,</span> <span class="n">transportmodel</span>
+<span class="kn">from</span> <span class="nn">quetzal.io</span> <span class="k">import</span> <span class="n">export</span>
+
+<span class="kn">from</span> <span class="nn">syspy.syspy_utils</span> <span class="k">import</span> <span class="n">neighbors</span>
+
+
+<div class="viewcode-block" id="read_hdf"><a class="viewcode-back" href="../../../quetzal.model.analysismodel.html#quetzal.model.analysismodel.read_hdf">[docs]</a><span class="k">def</span> <span class="nf">read_hdf</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">AnalysisModel</span><span class="p">()</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">read_hdf</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">m</span></div>
+
+
+<div class="viewcode-block" id="read_json"><a class="viewcode-back" href="../../../quetzal.model.analysismodel.html#quetzal.model.analysismodel.read_json">[docs]</a><span class="k">def</span> <span class="nf">read_json</span><span class="p">(</span><span class="n">folder</span><span class="p">):</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">AnalysisModel</span><span class="p">()</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">read_json</span><span class="p">(</span><span class="n">folder</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">m</span></div>
+
+
+<span class="n">track_args</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">track_args</span>
+<span class="n">log</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">log</span>
+
+
+<div class="viewcode-block" id="AnalysisModel"><a class="viewcode-back" href="../../../quetzal.model.analysismodel.html#quetzal.model.analysismodel.AnalysisModel">[docs]</a><span class="k">class</span> <span class="nc">AnalysisModel</span><span class="p">(</span><span class="n">transportmodel</span><span class="o">.</span><span class="n">TransportModel</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">_aggregate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nb_clusters</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Aggregates a model (in order to perform optimization)</span>
+<span class="sd">            * requires: nb_clusters, cluster_series, od_stack, indicator</span>
+<span class="sd">            * builds: cluster_series, aggregated model, reduced indicator</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agg</span><span class="o">.</span><span class="n">renumber</span><span class="p">(</span><span class="n">nb_clusters</span><span class="p">,</span> <span class="n">is_od_stack</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cluster_series</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agg</span><span class="o">.</span><span class="n">cluster_series</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agg</span><span class="o">.</span><span class="n">indicator</span> <span class="o">=</span> <span class="n">linearsolver_utils</span><span class="o">.</span><span class="n">reduce_indicator</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">indicator</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cluster_series</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">od_stack</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_disaggregate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pivot_stack_matrix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">od_stack</span> <span class="o">=</span> <span class="n">linearsolver_utils</span><span class="o">.</span><span class="n">extrapolate</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">agg</span><span class="o">.</span><span class="n">pivot_stack_matrix</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">od_stack</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cluster_series</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_build_pivot_stack_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">constrained_links</span><span class="p">,</span> <span class="n">linprog_kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Builds the pivot_stack_matrix. Performs the optimization.</span>
+<span class="sd">            * requires: constrained_links, od_stack, indicator</span>
+<span class="sd">            * builds: pivot_stack_matrix</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pivot_stack_matrix</span> <span class="o">=</span> <span class="n">linearsolver_utils</span><span class="o">.</span><span class="n">linearsolver</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">indicator</span><span class="p">,</span>
+            <span class="n">constrained_links</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">od_stack</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">linprog_kwargs</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="AnalysisModel.analysis_linear_solver"><a class="viewcode-back" href="../../../quetzal.model.analysismodel.html#quetzal.model.analysismodel.AnalysisModel.analysis_linear_solver">[docs]</a>    <span class="k">def</span> <span class="nf">analysis_linear_solver</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">constrained_links</span><span class="p">,</span>
+        <span class="n">nb_clusters</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+        <span class="n">linprog_kwargs</span><span class="o">=</span><span class="p">{</span>
+            <span class="s1">&#39;bounds_A&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.75</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">],</span>
+            <span class="s1">&#39;bounds_emissions&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.8</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">],</span>
+            <span class="s1">&#39;bounds_tot_emissions&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.95</span><span class="p">,</span> <span class="mf">1.05</span><span class="p">],</span>
+            <span class="s1">&#39;pas_distance&#39;</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span>
+            <span class="s1">&#39;maxiter&#39;</span><span class="p">:</span> <span class="mi">3000</span><span class="p">,</span>
+            <span class="s1">&#39;tolerance&#39;</span><span class="p">:</span> <span class="mf">1e-5</span>
+        <span class="p">}</span>
+        <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        To perform the optimization on a model object once it is built and run,</span>
+<span class="sd">        in order to match the observed volumes.</span>
+<span class="sd">            * requires: od_stack, constrained_links</span>
+<span class="sd">            * builds: aggregated model, pivot_stack_matrix</span>
+<span class="sd">        Le but de linear_solver est de modifier la matrice des volumes par OD</span>
+<span class="sd">        en la multipliant par un pivot, afin de coller aux observations</span>
+<span class="sd">        recueillies sur certains nœuds/liens du réseau.</span>
+<span class="sd">        Etapes:</span>
+<span class="sd">        0. Construction de l&#39;indicatrice (matrice qui indique la présence des</span>
+<span class="sd">            liens contraints dans chaque OD)</span>
+<span class="sd">        1. Agrégation du modèle.</span>
+<span class="sd">        2. Résolution du problème d&#39;optimisation linéaire pour construire</span>
+<span class="sd">            pivot_stack_matrix (mztrice pivot). Plus de détails dans</span>
+<span class="sd">            linersolver_utils</span>
+<span class="sd">        3. Désagrégation de la matrice pivot pour revenir au modèle de base.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">indicator</span> <span class="o">=</span> <span class="n">linearsolver_utils</span><span class="o">.</span><span class="n">build_indicator</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">od_stack</span><span class="p">,</span>
+            <span class="n">constrained_links</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">zones</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">nb_clusters</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_build_pivot_stack_matrix</span><span class="p">(</span><span class="n">constrained_links</span><span class="p">,</span> <span class="n">linprog_kwargs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_aggregate</span><span class="p">(</span><span class="n">nb_clusters</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">agg</span><span class="o">.</span><span class="n">_build_pivot_stack_matrix</span><span class="p">(</span><span class="n">constrained_links</span><span class="p">,</span> <span class="n">linprog_kwargs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_disaggregate</span><span class="p">()</span></div>
+
+    <span class="nd">@track_args</span>
+<div class="viewcode-block" id="AnalysisModel.analysis_summary"><a class="viewcode-back" href="../../../quetzal.model.analysismodel.html#quetzal.model.analysismodel.AnalysisModel.analysis_summary">[docs]</a>    <span class="k">def</span> <span class="nf">analysis_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        To perform on a model object once it is built and run,</span>
+<span class="sd">        aggregate and analyses results.</span>
+<span class="sd">            * requires: shared, zones, loaded_links, od_stack</span>
+<span class="sd">            * builds: aggregated_shares, lines, economic_series</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">aggregated_shares</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">aggregate_shares</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">shared</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">zones</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span> 
+            <span class="k">pass</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lines</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">tp_summary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loaded_links</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">od_stack</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lines</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">analysis_tp_summary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">economic_series</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">economic_series</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">od_stack</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">)</span></div>
+
+    <span class="nd">@track_args</span>
+<div class="viewcode-block" id="AnalysisModel.analysis_desire"><a class="viewcode-back" href="../../../quetzal.model.analysismodel.html#quetzal.model.analysismodel.AnalysisModel.analysis_desire">[docs]</a>    <span class="k">def</span> <span class="nf">analysis_desire</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">store_shp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">to_shp_kwarg</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Builds the desire matrix</span>
+<span class="sd">            * requires: zones, shares</span>
+<span class="sd">            * builds: neighborhood, macro_neighborhood</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">neighborhood</span> <span class="o">=</span> <span class="n">neighbors</span><span class="o">.</span><span class="n">Neighborhood</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">zones</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">volumes</span><span class="p">,</span>
+            <span class="n">volume_columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">],</span>
+            <span class="n">display_progress</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+        <span class="n">zones</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">zones</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">g</span><span class="p">:</span> <span class="n">g</span><span class="o">.</span><span class="n">buffer</span><span class="p">(</span><span class="mf">1e-9</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">macro_neighborhood</span> <span class="o">=</span> <span class="n">neighbors</span><span class="o">.</span><span class="n">Neighborhood</span><span class="p">(</span>
+            <span class="n">zones</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">volumes</span><span class="p">,</span>
+            <span class="n">volume_columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">],</span>
+            <span class="n">display_progress</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">n_clusters</span><span class="o">=</span><span class="nb">min</span><span class="p">(</span><span class="mi">25</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">zones</span><span class="p">)),</span>
+            <span class="n">od_geometry</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">store_shp</span><span class="p">:</span>
+            <span class="n">columns_to_keep</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">,</span> <span class="s1">&#39;volume&#39;</span><span class="p">,</span> <span class="s1">&#39;volume_transit&#39;</span><span class="p">,</span> <span class="s1">&#39;geometry&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">desire_lines</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">neighborhood</span><span class="o">.</span><span class="n">volume</span><span class="p">[</span><span class="n">columns_to_keep</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">])</span></div>
+
+    <span class="nd">@track_args</span>
+<div class="viewcode-block" id="AnalysisModel.analysis_checkpoints"><a class="viewcode-back" href="../../../quetzal.model.analysismodel.html#quetzal.model.analysismodel.AnalysisModel.analysis_checkpoints">[docs]</a>    <span class="k">def</span> <span class="nf">analysis_checkpoints</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">link_checkpoints</span><span class="o">=</span><span class="p">(),</span>
+        <span class="n">node_checkpoints</span><span class="o">=</span><span class="p">(),</span>
+        <span class="o">**</span><span class="n">loaded_links_and_nodes_kwargs</span>
+        <span class="p">):</span>
+
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        tree analysis (arborescences)</span>
+<span class="sd">        :param link_checkpoints: mandatory transit links collection (set)</span>
+<span class="sd">        :param nodes_checkpoints: mandatory transit nodes</span>
+<span class="sd">        :param volume column: column of self.od_stack to assign</span>
+<span class="sd">        :loaded_links_and_nodes_kwargs: ...</span>
+
+<span class="sd">        example:</span>
+<span class="sd">        ::</span>
+<span class="sd">            sm.checkpoints(link_checkpoints = {}, node_checkpoints={41})</span>
+<span class="sd">            export.assigned_links_nodes_to_shp(</span>
+<span class="sd">                sm.checkpoint_links,</span>
+<span class="sd">                sm.checkpoint_nodes,</span>
+<span class="sd">                gis_path=gis_path,</span>
+<span class="sd">                link_name=&#39;links_test.shp&#39;,</span>
+<span class="sd">                node_name=&#39;nodes_test.shp&#39;</span>
+<span class="sd">        )</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">selected</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">loaded_links_and_nodes</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">,</span>
+            <span class="n">volumes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">volumes</span><span class="p">,</span>
+            <span class="n">path_finder_stack</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pt_los</span><span class="p">,</span>
+            <span class="n">link_checkpoints</span><span class="o">=</span><span class="nb">set</span><span class="p">(</span><span class="n">link_checkpoints</span><span class="p">),</span>
+            <span class="n">node_checkpoints</span><span class="o">=</span><span class="nb">set</span><span class="p">(</span><span class="n">node_checkpoints</span><span class="p">),</span>
+            <span class="o">**</span><span class="n">loaded_links_and_nodes_kwargs</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_links</span> <span class="o">=</span> <span class="n">selected</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_nodes</span> <span class="o">=</span> <span class="n">selected</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="AnalysisModel.analysis_lines"><a class="viewcode-back" href="../../../quetzal.model.analysismodel.html#quetzal.model.analysismodel.AnalysisModel.analysis_lines">[docs]</a>    <span class="k">def</span> <span class="nf">analysis_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">line_columns</span><span class="o">=</span><span class="s1">&#39;all&#39;</span><span class="p">,</span> <span class="n">group_id</span><span class="o">=</span><span class="s1">&#39;trip_id&#39;</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lines</span> <span class="o">=</span> <span class="n">export</span><span class="o">.</span><span class="n">build_lines</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">,</span> 
+            <span class="n">line_columns</span><span class="o">=</span><span class="n">line_columns</span><span class="p">,</span> 
+            <span class="n">group_id</span><span class="o">=</span><span class="n">group_id</span><span class="p">,</span>
+            <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+        <span class="p">)</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Systra.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

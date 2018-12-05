@@ -2,7 +2,6 @@ Quetzal Overview
 ================
 quetzal is a Python package providing flexible models for transport planning and traffic forecasting.
 
-
 Packages
 ========
 
@@ -18,4 +17,6 @@ Indices and tables
 ==================
 
 * :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
 
