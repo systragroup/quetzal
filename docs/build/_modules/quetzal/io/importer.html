@@ -1,0 +1,314 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>quetzal.io.importer &mdash; quetzal  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="quetzal  documentation" href="../../../index.html"/>
+        <link rel="up" title="Module code" href="../../index.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> quetzal
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.engine.html">quetzal.engine package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.html">quetzal.model package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.io.html">quetzal.io package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.analysis.html">quetzal.analysis package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">quetzal</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+    <li>quetzal.io.importer</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for quetzal.io.importer</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+
+<span class="kn">from</span> <span class="nn">syspy.spatial</span> <span class="k">import</span> <span class="n">spatial</span>
+<span class="kn">from</span> <span class="nn">syspy.syspy_utils.syscolors</span> <span class="k">import</span> <span class="n">rainbow_shades</span><span class="p">,</span> <span class="n">linedraft_shades</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">shapely</span>
+
+<div class="viewcode-block" id="from_linedraft"><a class="viewcode-back" href="../../../quetzal.io.importer.html#quetzal.io.importer.from_linedraft">[docs]</a><span class="k">def</span> <span class="nf">from_linedraft</span><span class="p">(</span>
+    <span class="n">links</span><span class="p">,</span>
+    <span class="n">nodes</span><span class="p">,</span>
+    <span class="n">zones</span><span class="p">,</span>
+    <span class="n">recolor</span><span class="p">,</span>
+    <span class="n">cut_buffer</span><span class="p">,</span>
+    <span class="n">set_emission</span>
+<span class="p">):</span>
+    <span class="n">links</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">nodes</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="c1"># tous les identifiants de noeuds sont des str !</span>
+    <span class="n">nodes</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">nodes</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
+    <span class="c1"># la fonction d&#39;export de linedraft utilise le champ color,</span>
+    <span class="c1"># quetzal fonctionne avec le champ line_color</span>
+    <span class="n">links</span><span class="p">[</span><span class="s1">&#39;line_color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">recolor</span><span class="p">:</span>
+        <span class="n">colordict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="nb">zip</span><span class="p">(</span><span class="n">linedraft_shades</span><span class="p">,</span> <span class="n">rainbow_shades</span><span class="p">[:</span> <span class="nb">len</span><span class="p">(</span><span class="n">linedraft_shades</span><span class="p">)]))</span>
+        <span class="n">links</span><span class="p">[</span><span class="s1">&#39;line_color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;line_color&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">c</span><span class="p">:</span> <span class="n">colordict</span><span class="p">[</span><span class="n">c</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">cut_buffer</span><span class="p">:</span>
+        <span class="n">zones</span> <span class="o">=</span> <span class="n">spatial</span><span class="o">.</span><span class="n">zones_in_influence_area</span><span class="p">(</span>
+            <span class="n">zones</span><span class="p">,</span>
+            <span class="n">area</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">links</span><span class="o">=</span><span class="n">links</span><span class="p">,</span>
+            <span class="n">cut_buffer</span><span class="o">=</span><span class="n">cut_buffer</span>
+        <span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># cross fillna are made in order to avoid zero values</span>
+        <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;emission&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;pop&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="n">zones</span><span class="p">[</span><span class="s1">&#39;emp&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;attraction&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;emp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="n">zones</span><span class="p">[</span><span class="s1">&#39;pop&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">100</span><span class="p">)</span>
+
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>  <span class="c1"># pop and emp are not in columns</span>
+        <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;emission&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;attraction&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="n">scale</span> <span class="o">=</span> <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;emission&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;attraction&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;attraction&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;attraction&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">scale</span>
+
+    <span class="k">if</span> <span class="n">set_emission</span><span class="p">:</span>
+        <span class="n">grow</span> <span class="o">=</span> <span class="n">set_emission</span> <span class="o">/</span> <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;emission&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">zones</span><span class="p">[[</span><span class="s1">&#39;emission&#39;</span><span class="p">,</span> <span class="s1">&#39;attraction&#39;</span><span class="p">]]</span> <span class="o">*=</span> <span class="n">grow</span>
+
+    <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;emission_rate&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;emission&#39;</span><span class="p">]</span> \
+        <span class="o">/</span> <span class="p">(</span><span class="n">zones</span><span class="p">[</span><span class="s1">&#39;emission&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;attraction&#39;</span><span class="p">])</span>
+    <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;weight&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;emission&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;attraction&#39;</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">links</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">zones</span></div>
+
+
+<div class="viewcode-block" id="links_and_nodes"><a class="viewcode-back" href="../../../quetzal.io.importer.html#quetzal.io.importer.links_and_nodes">[docs]</a><span class="k">def</span> <span class="nf">links_and_nodes</span><span class="p">(</span><span class="n">linestring</span><span class="p">,</span> <span class="n">node_index</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    
+    <span class="n">nodes</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">linestring</span><span class="o">.</span><span class="n">coords</span><span class="p">:</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">shapely</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">Point</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+        <span class="n">nodes</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">node_index</span><span class="p">,</span> <span class="n">g</span><span class="p">))</span>
+        <span class="n">node_index</span> <span class="o">+=</span> <span class="mi">1</span> 
+
+
+    <span class="n">links</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">sequence</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">node_index_a</span><span class="p">,</span> <span class="n">node_a</span> <span class="o">=</span> <span class="n">nodes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">node_index_b</span><span class="p">,</span> <span class="n">node_b</span> <span class="ow">in</span> <span class="n">nodes</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">shapely</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">LineString</span><span class="p">([</span><span class="n">node_a</span><span class="p">,</span> <span class="n">node_b</span><span class="p">])</span>
+        <span class="n">links</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">node_index_a</span><span class="p">,</span> <span class="n">node_index_b</span><span class="p">,</span> <span class="n">sequence</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">g</span><span class="p">))</span>
+        <span class="n">node_index_a</span> <span class="o">=</span> <span class="n">node_index_b</span> 
+        <span class="n">node_a</span> <span class="o">=</span> <span class="n">node_b</span>
+        <span class="n">sequence</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="n">nodes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">nodes</span><span class="p">))</span>
+    <span class="n">sequence</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">node_index_a</span><span class="p">,</span> <span class="n">node_a</span> <span class="o">=</span> <span class="n">nodes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">node_index_b</span><span class="p">,</span> <span class="n">node_b</span> <span class="ow">in</span> <span class="n">nodes</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">shapely</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">LineString</span><span class="p">([</span><span class="n">node_a</span><span class="p">,</span> <span class="n">node_b</span><span class="p">])</span>
+        <span class="n">links</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">node_index_a</span><span class="p">,</span> <span class="n">node_index_b</span><span class="p">,</span> <span class="n">sequence</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span>  <span class="n">g</span><span class="p">))</span>
+        <span class="n">node_index_a</span> <span class="o">=</span> <span class="n">node_index_b</span> 
+        <span class="n">node_a</span> <span class="o">=</span> <span class="n">node_b</span>
+        <span class="n">sequence</span> <span class="o">+=</span> <span class="mi">1</span>
+        
+    <span class="n">nodes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">nodes</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;n&#39;</span><span class="p">,</span> <span class="s1">&#39;geometry&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;n&#39;</span><span class="p">)</span>
+    <span class="n">links</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="n">links</span><span class="p">,</span> 
+        <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;link_sequence&#39;</span><span class="p">,</span> <span class="s1">&#39;direction_id&#39;</span> <span class="p">,</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">links</span><span class="p">,</span> <span class="n">nodes</span></div>
+
+<div class="viewcode-block" id="from_lines"><a class="viewcode-back" href="../../../quetzal.io.importer.html#quetzal.io.importer.from_lines">[docs]</a><span class="k">def</span> <span class="nf">from_lines</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">node_index</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">add_return</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    lines index is used, links and nodes are returned</span>
+<span class="sd">    if add_return = True, return lines are created</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">lines</span> <span class="o">=</span> <span class="n">lines</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">lines</span><span class="p">[</span><span class="s1">&#39;temp_index&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lines</span><span class="o">.</span><span class="n">index</span>
+    <span class="n">to_concat_links</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">to_concat_nodes</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">line</span><span class="p">,</span> <span class="n">geometry</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[[</span><span class="s1">&#39;temp_index&#39;</span><span class="p">,</span> <span class="s1">&#39;geometry&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="p">:</span>
+        <span class="n">links</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">links_and_nodes</span><span class="p">(</span><span class="n">geometry</span><span class="p">,</span> <span class="n">node_index</span><span class="o">=</span><span class="n">node_index</span><span class="p">)</span>
+        <span class="n">node_index</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">nodes</span><span class="p">)</span>
+        <span class="n">links</span><span class="p">[</span><span class="s1">&#39;line&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">line</span>
+        <span class="n">links</span><span class="p">[</span><span class="s1">&#39;trip_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="n">links</span><span class="p">[</span><span class="s1">&#39;route_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">add_return</span><span class="p">:</span>
+            <span class="n">links</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="n">links</span><span class="p">[</span><span class="s1">&#39;direction_id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+
+            <span class="n">links</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">links</span><span class="p">[</span><span class="s1">&#39;direction_id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;trip_id&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="s1">&#39;_bis&#39;</span>
+
+        <span class="n">to_concat_nodes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nodes</span><span class="p">)</span>
+        <span class="n">to_concat_links</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">links</span><span class="p">)</span>
+
+    <span class="n">links</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">to_concat_links</span><span class="p">)</span>
+    <span class="n">nodes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">to_concat_nodes</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">links</span><span class="p">,</span> <span class="n">nodes</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Systra.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

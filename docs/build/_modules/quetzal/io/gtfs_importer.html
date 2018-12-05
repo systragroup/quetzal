@@ -1,0 +1,327 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>quetzal.io.gtfs_importer &mdash; quetzal  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="quetzal  documentation" href="../../../index.html"/>
+        <link rel="up" title="Module code" href="../../index.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> quetzal
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.engine.html">quetzal.engine package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.html">quetzal.model package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.io.html">quetzal.io package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.analysis.html">quetzal.analysis package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">quetzal</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+    <li>quetzal.io.gtfs_importer</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for quetzal.io.gtfs_importer</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">shapely.geometry</span> <span class="k">import</span> <span class="n">Point</span><span class="p">,</span> <span class="n">LineString</span>
+
+<span class="kn">from</span> <span class="nn">syspy.spatial</span> <span class="k">import</span> <span class="n">spatial</span><span class="p">,</span> <span class="n">zoning</span>
+<span class="kn">from</span> <span class="nn">syspy.transitfeed</span> <span class="k">import</span> <span class="n">feed_links</span>
+
+
+<span class="c1"># seconds</span>
+
+<div class="viewcode-block" id="to_seconds"><a class="viewcode-back" href="../../../quetzal.io.gtfs_importer.html#quetzal.io.gtfs_importer.to_seconds">[docs]</a><span class="k">def</span> <span class="nf">to_seconds</span><span class="p">(</span><span class="n">time_string</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_timedelta</span><span class="p">(</span><span class="n">time_string</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="point_geometry"><a class="viewcode-back" href="../../../quetzal.io.gtfs_importer.html#quetzal.io.gtfs_importer.point_geometry">[docs]</a><span class="k">def</span> <span class="nf">point_geometry</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">Point</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;stop_lon&#39;</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;stop_lat&#39;</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="linestring_geometry"><a class="viewcode-back" href="../../../quetzal.io.gtfs_importer.html#quetzal.io.gtfs_importer.linestring_geometry">[docs]</a><span class="k">def</span> <span class="nf">linestring_geometry</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">point_dict</span><span class="p">,</span> <span class="n">from_point</span><span class="p">,</span> <span class="n">to_point</span><span class="p">):</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    
+    <span class="k">def</span> <span class="nf">geometry</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">LineString</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">point_dict</span><span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="n">from_point</span><span class="p">]],</span> <span class="n">point_dict</span><span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="n">to_point</span><span class="p">]]))</span>
+    <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">geometry</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BaseGtfsImporter"><a class="viewcode-back" href="../../../quetzal.io.gtfs_importer.html#quetzal.io.gtfs_importer.BaseGtfsImporter">[docs]</a><span class="k">class</span> <span class="nc">BaseGtfsImporter</span><span class="p">():</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    importer = BaseGtfsImporter(gtfs_path)</span>
+
+<span class="sd">    importer.read()</span>
+<span class="sd">    importer.build()</span>
+
+<span class="sd">    sm = stepmodel.StepModel()</span>
+
+<span class="sd">    sm.links = importer.links</span>
+<span class="sd">    sm.nodes = importer.stops</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gtfs_path</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gtfs_path</span> <span class="o">=</span> <span class="n">gtfs_path</span>
+
+<div class="viewcode-block" id="BaseGtfsImporter.read"><a class="viewcode-back" href="../../../quetzal.io.gtfs_importer.html#quetzal.io.gtfs_importer.BaseGtfsImporter.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop_times</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gtfs_path</span> <span class="o">+</span> <span class="s1">&#39;stop_times.txt&#39;</span><span class="p">,</span> 
+            <span class="n">encoding</span><span class="o">=</span><span class="n">encoding</span><span class="p">,</span> 
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">trips</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gtfs_path</span> <span class="o">+</span> <span class="s1">&#39;trips.txt&#39;</span><span class="p">,</span> 
+            <span class="n">encoding</span><span class="o">=</span><span class="n">encoding</span><span class="p">,</span> 
+            <span class="n">low_memory</span><span class="o">=</span><span class="kc">False</span>  <span class="c1"># mixed types</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">routes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gtfs_path</span> <span class="o">+</span> <span class="s1">&#39;routes.txt&#39;</span><span class="p">,</span> 
+            <span class="n">encoding</span><span class="o">=</span><span class="n">encoding</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">stops</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gtfs_path</span> <span class="o">+</span> <span class="s1">&#39;stops.txt&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="n">encoding</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BaseGtfsImporter.pick_trips"><a class="viewcode-back" href="../../../quetzal.io.gtfs_importer.html#quetzal.io.gtfs_importer.BaseGtfsImporter.pick_trips">[docs]</a>    <span class="k">def</span> <span class="nf">pick_trips</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># one trip by direction</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trips</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trips</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">routes</span><span class="p">[[</span><span class="s1">&#39;route_id&#39;</span><span class="p">]])</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">trips</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trips</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span>
+            <span class="p">[</span><span class="s1">&#39;route_id&#39;</span><span class="p">,</span> <span class="s1">&#39;direction_id&#39;</span><span class="p">],</span>
+            <span class="n">as_index</span><span class="o">=</span><span class="kc">False</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop_times</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stop_times</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">trips</span><span class="p">[[</span><span class="s1">&#39;trip_id&#39;</span><span class="p">]])</span>
+        
+        <span class="n">stop_id_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stop_times</span><span class="p">[</span><span class="s1">&#39;stop_id&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stops</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stops</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">stops</span><span class="p">[</span><span class="s1">&#39;stop_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">stop_id_set</span><span class="p">)]</span></div>
+
+<div class="viewcode-block" id="BaseGtfsImporter.to_seconds"><a class="viewcode-back" href="../../../quetzal.io.gtfs_importer.html#quetzal.io.gtfs_importer.BaseGtfsImporter.to_seconds">[docs]</a>    <span class="k">def</span> <span class="nf">to_seconds</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">time_columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;arrival_time&#39;</span><span class="p">,</span> <span class="s1">&#39;departure_time&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop_times</span><span class="p">[</span><span class="n">time_columns</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stop_times</span><span class="p">[</span>
+            <span class="n">time_columns</span><span class="p">]</span><span class="o">.</span><span class="n">applymap</span><span class="p">(</span><span class="n">to_seconds</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BaseGtfsImporter.build_links"><a class="viewcode-back" href="../../../quetzal.io.gtfs_importer.html#quetzal.io.gtfs_importer.BaseGtfsImporter.build_links">[docs]</a>    <span class="k">def</span> <span class="nf">build_links</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">links</span> <span class="o">=</span> <span class="n">feed_links</span><span class="o">.</span><span class="n">link_from_stop_times</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stop_times</span><span class="p">,</span>
+            <span class="n">max_shortcut</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">stop_id</span><span class="o">=</span><span class="s1">&#39;stop_id&#39;</span><span class="p">,</span>
+            <span class="n">keep_origin_columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;departure_time&#39;</span><span class="p">],</span>
+            <span class="n">keep_destination_columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;arrival_time&#39;</span><span class="p">],</span>
+            <span class="n">stop_id_origin</span> <span class="o">=</span> <span class="s1">&#39;origin&#39;</span><span class="p">,</span>
+            <span class="n">stop_id_destination</span> <span class="o">=</span> <span class="s1">&#39;destination&#39;</span><span class="p">,</span>
+            <span class="n">out_sequence</span><span class="o">=</span><span class="s1">&#39;link_sequence&#39;</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="n">links</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;arrival_time&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;departure_time&#39;</span><span class="p">]</span>
+        <span class="n">links</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+            <span class="n">columns</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;origin&#39;</span><span class="p">:</span> <span class="s1">&#39;a&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;destination&#39;</span><span class="p">:</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">links</span> <span class="o">=</span> <span class="n">links</span></div>
+
+<div class="viewcode-block" id="BaseGtfsImporter.merge_tables"><a class="viewcode-back" href="../../../quetzal.io.gtfs_importer.html#quetzal.io.gtfs_importer.BaseGtfsImporter.merge_tables">[docs]</a>    <span class="k">def</span> <span class="nf">merge_tables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># merge</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trips</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trips</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">routes</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="s1">&#39;route_id&#39;</span><span class="p">)</span>
+        <span class="c1"># [[&#39;trip_id&#39;, &#39;route_id&#39;, &#39;direction_id&#39;]]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">links</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">trips</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span><span class="s1">&#39;trip_id&#39;</span><span class="p">)</span> </div>
+
+
+<div class="viewcode-block" id="BaseGtfsImporter.build_geometries"><a class="viewcode-back" href="../../../quetzal.io.gtfs_importer.html#quetzal.io.gtfs_importer.BaseGtfsImporter.build_geometries">[docs]</a>    <span class="k">def</span> <span class="nf">build_geometries</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stops</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stops</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">point_geometry</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">linestring_geometry</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">,</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">stops</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;stop_id&#39;</span><span class="p">)[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span> 
+            <span class="s1">&#39;a&#39;</span><span class="p">,</span> 
+            <span class="s1">&#39;b&#39;</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="BaseGtfsImporter.cast_columns_to_string"><a class="viewcode-back" href="../../../quetzal.io.gtfs_importer.html#quetzal.io.gtfs_importer.BaseGtfsImporter.cast_columns_to_string">[docs]</a>    <span class="k">def</span> <span class="nf">cast_columns_to_string</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> 
+        <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;trip_id&#39;</span><span class="p">,</span> <span class="s1">&#39;route_id&#39;</span><span class="p">,</span> <span class="s1">&#39;stop_id&#39;</span><span class="p">]</span>
+    <span class="p">)</span> <span class="p">:</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">attr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">cols</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">attr</span><span class="o">.</span><span class="n">columns</span> <span class="p">:</span>
+                    <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
+                        <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+                        <span class="n">attr</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">attr</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="s1">&#39;converted to string&#39;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>  <span class="c1"># &#39;str&#39; object has no attribute &#39;columns&#39;</span>
+                <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="BaseGtfsImporter.build"><a class="viewcode-back" href="../../../quetzal.io.gtfs_importer.html#quetzal.io.gtfs_importer.BaseGtfsImporter.build">[docs]</a>    <span class="k">def</span> <span class="nf">build</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pick_trips</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">to_seconds</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">build_links</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">merge_tables</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">build_geometries</span><span class="p">()</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Systra.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
