@@ -13,6 +13,10 @@ Packages
    quetzal.model
    quetzal.io
    quetzal.analysis
+
+Free software
+=============
+Join us on GitHub https://github.com/systragroup/quetzal
    
 Indices and tables
 ==================
