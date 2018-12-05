@@ -1,0 +1,811 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>quetzal.io.export &mdash; quetzal  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="quetzal  documentation" href="../../../index.html"/>
+        <link rel="up" title="Module code" href="../../index.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> quetzal
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.engine.html">quetzal.engine package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.html">quetzal.model package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.io.html">quetzal.io package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.analysis.html">quetzal.analysis package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">quetzal</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+    <li>quetzal.io.export</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for quetzal.io.export</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">shapely</span> <span class="k">import</span> <span class="n">geometry</span><span class="p">,</span> <span class="n">ops</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">from</span> <span class="nn">syspy.io.pandasshp</span> <span class="k">import</span> <span class="n">pandasshp</span>
+<span class="kn">from</span> <span class="nn">syspy.syspy_utils</span> <span class="k">import</span> <span class="n">data_visualization</span> <span class="k">as</span> <span class="n">visual</span>
+<span class="kn">from</span> <span class="nn">syspy.spatial.geometries</span> <span class="k">import</span> <span class="n">line_list_to_polyline</span>
+
+<span class="kn">from</span> <span class="nn">syspy.paths</span> <span class="k">import</span> <span class="n">gis_resources</span>
+
+
+<span class="n">epsg4326</span> <span class="o">=</span> <span class="n">gis_resources</span> <span class="o">+</span> <span class="sa">r</span><span class="s1">&#39;projections/epsg4326.prj&#39;</span>
+<span class="n">epsg4326_string</span> <span class="o">=</span> <span class="n">pandasshp</span><span class="o">.</span><span class="n">read_prj</span><span class="p">(</span><span class="n">gis_resources</span> <span class="o">+</span> <span class="s1">&#39;projections/epsg4326.prj&#39;</span><span class="p">)</span>
+<span class="c1"># todo use path to local ressources</span>
+
+<span class="n">bordered_line_style</span> <span class="o">=</span> <span class="n">gis_resources</span> <span class="o">+</span> <span class="s1">&#39;styles/bordered_line.qml&#39;</span>
+<span class="n">line_style</span> <span class="o">=</span> <span class="n">gis_resources</span> <span class="o">+</span> <span class="s1">&#39;styles/line.qml&#39;</span>
+<span class="n">point_style</span> <span class="o">=</span> <span class="n">gis_resources</span> <span class="o">+</span> <span class="s1">&#39;styles/point.qml&#39;</span>
+<span class="n">polygon_style</span> <span class="o">=</span> <span class="n">gis_resources</span> <span class="o">+</span> <span class="s1">&#39;styles/polygon.qml&#39;</span>
+
+<span class="n">RdYlGn</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">&#39;#a50026&#39;</span><span class="p">,</span> <span class="s1">&#39;#d73027&#39;</span><span class="p">,</span> <span class="s1">&#39;#f46d43&#39;</span><span class="p">,</span> <span class="s1">&#39;#fdae61&#39;</span><span class="p">,</span> <span class="s1">&#39;#fee08b&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;#d9ef8b&#39;</span><span class="p">,</span> <span class="s1">&#39;#a6d96a&#39;</span><span class="p">,</span> <span class="s1">&#39;#66bd63&#39;</span><span class="p">,</span> <span class="s1">&#39;#1a9850&#39;</span><span class="p">,</span> <span class="s1">&#39;#006837&#39;</span><span class="p">]</span>
+
+
+
+<div class="viewcode-block" id="shares_to_shp"><a class="viewcode-back" href="../../../quetzal.io.export.html#quetzal.io.export.shares_to_shp">[docs]</a><span class="k">def</span> <span class="nf">shares_to_shp</span><span class="p">(</span>
+    <span class="n">aggregated_shares</span><span class="p">,</span>
+    <span class="n">zones</span><span class="p">,</span>
+    <span class="n">gis_path</span><span class="p">,</span>
+    <span class="n">epsg</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">projection_file</span><span class="o">=</span><span class="kc">None</span>
+<span class="p">):</span>
+    <span class="k">if</span> <span class="n">epsg</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">projection_file</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No projection defined --&gt; considered as EPSG:4326&#39;</span><span class="p">)</span>
+        <span class="n">projection_file</span> <span class="o">=</span> <span class="n">epsg4326</span>
+
+    <span class="n">as_attraction</span> <span class="o">=</span> <span class="n">aggregated_shares</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">as_attraction</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">color_series</span><span class="p">(</span>
+        <span class="n">as_attraction</span><span class="p">[</span><span class="s1">&#39;pt_share_attraction&#39;</span><span class="p">],</span>
+        <span class="n">colors</span><span class="o">=</span><span class="n">RdYlGn</span><span class="p">,</span>
+        <span class="n">method</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span>
+        <span class="n">reversed_colors</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">as_emission</span> <span class="o">=</span> <span class="n">aggregated_shares</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">as_emission</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">color_series</span><span class="p">(</span>
+        <span class="n">as_emission</span><span class="p">[</span><span class="s1">&#39;pt_share_emission&#39;</span><span class="p">],</span>
+        <span class="n">colors</span><span class="o">=</span><span class="n">RdYlGn</span><span class="p">,</span>
+        <span class="n">method</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span>
+        <span class="n">reversed_colors</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="s1">&#39;share_attraction.shp&#39;</span><span class="p">,</span>
+        <span class="n">as_attraction</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">polygon_style</span><span class="p">)</span>
+
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="s1">&#39;share_emission.shp&#39;</span><span class="p">,</span>
+        <span class="n">as_emission</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">polygon_style</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="assigned_nodes_to_shp"><a class="viewcode-back" href="../../../quetzal.io.export.html#quetzal.io.export.assigned_nodes_to_shp">[docs]</a><span class="k">def</span> <span class="nf">assigned_nodes_to_shp</span><span class="p">(</span>
+    <span class="n">nodes</span><span class="p">,</span>
+    <span class="n">gis_path</span><span class="p">,</span>
+    <span class="n">load_column</span><span class="o">=</span><span class="s1">&#39;load&#39;</span><span class="p">,</span>
+    <span class="n">max_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">outer_average_width</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="n">method</span><span class="o">=</span><span class="s1">&#39;surface&#39;</span><span class="p">,</span>
+    <span class="n">projection_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">epsg</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">color</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">nodes_name</span><span class="o">=</span><span class="s1">&#39;loaded_nodes.shp&#39;</span>
+<span class="p">):</span>
+    <span class="k">if</span> <span class="n">epsg</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">projection_file</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No projection defined --&gt; considered as EPSG:4326&#39;</span><span class="p">)</span>
+        <span class="n">projection_file</span> <span class="o">=</span> <span class="n">epsg4326</span>
+
+    <span class="n">nodes</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="c1"># Add width</span>
+    <span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;width&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">width_series</span><span class="p">(</span>
+        <span class="n">nodes</span><span class="p">[</span><span class="n">load_column</span><span class="p">],</span>
+        <span class="n">max_value</span><span class="o">=</span><span class="n">max_value</span><span class="p">,</span>
+        <span class="n">outer_average_width</span><span class="o">=</span><span class="n">outer_average_width</span><span class="p">,</span>
+        <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Add color</span>
+    <span class="k">if</span> <span class="n">color</span><span class="p">:</span>
+        <span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">color_series</span><span class="p">(</span>
+            <span class="n">nodes</span><span class="p">[</span><span class="n">load_column</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+            <span class="n">max_value</span><span class="o">=</span><span class="n">max_value</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Export</span>
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="n">nodes_name</span><span class="p">,</span>
+        <span class="n">nodes</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">point_style</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span>
+    <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="assigned_links_nodes_to_shp"><a class="viewcode-back" href="../../../quetzal.io.export.html#quetzal.io.export.assigned_links_nodes_to_shp">[docs]</a><span class="k">def</span> <span class="nf">assigned_links_nodes_to_shp</span><span class="p">(</span>
+    <span class="n">links</span><span class="p">,</span>
+    <span class="n">nodes</span><span class="p">,</span>
+    <span class="n">gis_path</span><span class="p">,</span>
+    <span class="n">epsg</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">projection_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">link_name</span><span class="o">=</span><span class="s1">&#39;loaded_links.shp&#39;</span><span class="p">,</span>
+    <span class="n">node_name</span><span class="o">=</span><span class="s1">&#39;loaded_nodes.shp&#39;</span>
+<span class="p">):</span>
+    <span class="k">if</span> <span class="n">epsg</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">projection_file</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No projection defined --&gt; considered as EPSG:4326&#39;</span><span class="p">)</span>
+        <span class="n">projection_file</span> <span class="o">=</span> <span class="n">epsg4326</span>
+
+    <span class="n">links</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">nodes</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">links</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;line_color&#39;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="n">links</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;line_color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;gray&#39;</span>
+
+    <span class="n">links</span><span class="p">[</span><span class="s1">&#39;width&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;gray&#39;</span>
+    <span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;width&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span>
+
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="s1">&#39;nodes_linedraft.shp&#39;</span><span class="p">,</span>
+        <span class="n">nodes</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">point_style</span><span class="p">)</span>
+
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="s1">&#39;links_linedraft.shp&#39;</span><span class="p">,</span>
+        <span class="n">links</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">bordered_line_style</span>
+    <span class="p">)</span>
+
+    <span class="n">links</span><span class="p">[</span><span class="s1">&#39;width&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">width_series</span><span class="p">(</span><span class="n">links</span><span class="p">[</span><span class="s1">&#39;load&#39;</span><span class="p">],</span> <span class="n">outer_average_width</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+    <span class="n">links</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;line_color&#39;</span><span class="p">]</span>
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="s1">&#39;loaded_links_linedraft_color.shp&#39;</span><span class="p">,</span>
+        <span class="n">links</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">line_style</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span>
+    <span class="p">)</span>
+
+    <span class="n">links</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">color_series</span><span class="p">(</span><span class="n">links</span><span class="p">[</span><span class="s1">&#39;load&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="n">link_name</span><span class="p">,</span> <span class="n">links</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">line_style</span><span class="p">,</span> <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span> <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span><span class="p">)</span>
+
+    <span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;width&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">width_series</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;load&#39;</span><span class="p">],</span> <span class="n">outer_average_width</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">color_series</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;load&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="n">node_name</span><span class="p">,</span>
+        <span class="n">nodes</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">point_style</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span>
+    <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="loaded_links_to_shp"><a class="viewcode-back" href="../../../quetzal.io.export.html#quetzal.io.export.loaded_links_to_shp">[docs]</a><span class="k">def</span> <span class="nf">loaded_links_to_shp</span><span class="p">(</span>
+    <span class="n">loaded_links</span><span class="p">,</span>
+    <span class="n">gis_path</span><span class="p">,</span>
+    <span class="n">load_column</span><span class="o">=</span><span class="s1">&#39;load&#39;</span><span class="p">,</span>
+    <span class="n">max_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">outer_average_width</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+    <span class="n">color</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">epsg</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">projection_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;loaded_links.shp&#39;</span><span class="p">,</span>
+    <span class="n">create_legend</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span>
+<span class="p">):</span>
+    <span class="k">if</span> <span class="n">epsg</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">projection_file</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No projection defined --&gt; considered as EPSG:4326&#39;</span><span class="p">)</span>
+        <span class="n">projection_file</span> <span class="o">=</span> <span class="n">epsg4326</span>
+
+    <span class="n">loaded_links</span> <span class="o">=</span> <span class="n">loaded_links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="c1"># Add colors</span>
+    <span class="k">if</span> <span class="n">color</span><span class="p">:</span>
+        <span class="n">loaded_links</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">color_series</span><span class="p">(</span>
+            <span class="n">loaded_links</span><span class="p">[</span><span class="n">load_column</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+            <span class="n">max_value</span><span class="o">=</span><span class="n">max_value</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Add width</span>
+    <span class="n">loaded_links</span><span class="p">[</span><span class="s1">&#39;width&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">width_series</span><span class="p">(</span>
+        <span class="n">loaded_links</span><span class="p">[</span><span class="n">load_column</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+        <span class="n">max_value</span><span class="o">=</span><span class="n">max_value</span><span class="p">,</span>
+        <span class="n">outer_average_width</span><span class="o">=</span><span class="n">outer_average_width</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Export</span>
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="n">name</span><span class="p">,</span>
+        <span class="n">loaded_links</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">line_style</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Legend</span>
+    <span class="k">if</span> <span class="n">create_legend</span><span class="o">==</span><span class="kc">True</span><span class="p">:</span>
+        <span class="n">create_load_legend</span><span class="p">(</span>
+            <span class="n">legend_file_path</span><span class="o">=</span><span class="n">gis_path</span> <span class="o">+</span> <span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.shp&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;_legend.shp&#39;</span><span class="p">,</span>
+            <span class="n">outer_average_width</span><span class="o">=</span><span class="n">outer_average_width</span><span class="p">,</span>
+            <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+            <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span><span class="p">,</span>
+            <span class="n">max_value</span><span class="o">=</span><span class="n">max_value</span><span class="p">,</span>
+            <span class="n">legend_type</span><span class="o">=</span><span class="s1">&#39;LineString&#39;</span><span class="p">,</span>
+            <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span>
+            <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ntlegs_centroids_to_shp"><a class="viewcode-back" href="../../../quetzal.io.export.html#quetzal.io.export.ntlegs_centroids_to_shp">[docs]</a><span class="k">def</span> <span class="nf">ntlegs_centroids_to_shp</span><span class="p">(</span>
+    <span class="n">ntlegs</span><span class="p">,</span>
+    <span class="n">centroids</span><span class="p">,</span>
+    <span class="n">gis_path</span><span class="p">,</span>
+    <span class="n">epsg</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">projection_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">weighted</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">):</span>
+    <span class="k">if</span> <span class="n">epsg</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">projection_file</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No projection defined --&gt; considered as EPSG:4326&#39;</span><span class="p">)</span>
+        <span class="n">projection_file</span> <span class="o">=</span> <span class="n">epsg4326</span>
+
+    <span class="n">ntlegs</span><span class="p">[</span><span class="s1">&#39;width&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">ntlegs</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;gray&#39;</span>
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="s1">&#39;ntlegs.shp&#39;</span><span class="p">,</span>
+        <span class="n">ntlegs</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">line_style</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">centroids</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">color_series</span><span class="p">(</span>
+            <span class="n">centroids</span><span class="p">[</span><span class="s1">&#39;emission_rate&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="s1">&#39;centroids.shp&#39;</span><span class="p">,</span>
+        <span class="n">centroids</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">weighted</span><span class="p">:</span>
+        <span class="n">centroids</span><span class="p">[</span><span class="s1">&#39;width&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">width_series</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">centroids</span><span class="p">[</span><span class="s1">&#39;weight&#39;</span><span class="p">]),</span> <span class="n">outer_average_width</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+        <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+            <span class="n">gis_path</span> <span class="o">+</span> <span class="s1">&#39;weighted_centroids.shp&#39;</span><span class="p">,</span>
+            <span class="n">centroids</span><span class="p">,</span>
+            <span class="n">style_file</span><span class="o">=</span><span class="n">point_style</span><span class="p">,</span>
+            <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+            <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="build_lines"><a class="viewcode-back" href="../../../quetzal.io.export.html#quetzal.io.export.build_lines">[docs]</a><span class="k">def</span> <span class="nf">build_lines</span><span class="p">(</span><span class="n">links</span><span class="p">,</span> <span class="n">line_columns</span><span class="o">=</span><span class="s1">&#39;all&#39;</span><span class="p">,</span> <span class="n">group_id</span><span class="o">=</span><span class="s1">&#39;trip_id&#39;</span><span class="p">,</span> <span class="n">sum_columns</span><span class="o">=</span><span class="p">[],</span> <span class="n">mean_columns</span><span class="o">=</span><span class="p">[]):</span>
+
+    <span class="k">if</span> <span class="n">line_columns</span> <span class="ow">is</span> <span class="s1">&#39;all&#39;</span><span class="p">:</span>
+        <span class="c1"># all the columns that are shared by all the links of the group are listed</span>
+        <span class="n">variability</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">group_id</span><span class="p">)</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">nunique</span><span class="p">())</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="n">line_columns</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">variability</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">variability</span> <span class="o">==</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+    <span class="n">lines</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">group_id</span><span class="p">)[</span><span class="n">line_columns</span><span class="p">]</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sum_columns</span><span class="p">):</span>
+        <span class="n">lines</span><span class="p">[</span><span class="n">sum_columns</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">group_id</span><span class="p">)[</span><span class="n">sum_columns</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">mean_columns</span><span class="p">):</span>
+        <span class="n">lines</span><span class="p">[</span><span class="n">mean_columns</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">group_id</span><span class="p">)[</span><span class="n">mean_columns</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+
+    <span class="n">links</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="o">~</span><span class="n">links</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">g</span><span class="p">:</span> <span class="n">g</span><span class="o">.</span><span class="n">is_empty</span><span class="p">)]</span>
+    <span class="n">lines</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">group_id</span><span class="p">)[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span>
+        <span class="n">ops</span><span class="o">.</span><span class="n">linemerge</span><span class="p">)</span>
+
+    <span class="n">lines</span> <span class="o">=</span> <span class="n">lines</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span> <span class="o">=</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">])</span>
+    <span class="n">iloc</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">g</span><span class="p">:</span> <span class="n">g</span><span class="o">.</span><span class="n">geom_type</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;MultiLineString&#39;</span>
+    <span class="n">loc</span> <span class="o">=</span> <span class="n">iloc</span><span class="p">,</span> <span class="s1">&#39;geometry&#39;</span>
+
+    <span class="n">lines</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">loc</span><span class="p">]</span> <span class="o">=</span> <span class="n">lines</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">loc</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">line_list_to_polyline</span><span class="p">)</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="n">lines</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="o">~</span><span class="n">lines</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">g</span><span class="p">:</span> <span class="n">g</span><span class="o">.</span><span class="n">is_empty</span><span class="p">)]</span>
+    
+    <span class="k">return</span> <span class="n">lines</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="lines_to_shp"><a class="viewcode-back" href="../../../quetzal.io.export.html#quetzal.io.export.lines_to_shp">[docs]</a><span class="k">def</span> <span class="nf">lines_to_shp</span><span class="p">(</span>
+    <span class="n">links</span><span class="p">,</span>
+    <span class="n">gis_path</span><span class="p">,</span>
+    <span class="n">group_id</span><span class="o">=</span><span class="s1">&#39;trip_id&#39;</span><span class="p">,</span>
+    <span class="n">color_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">colors</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;green&#39;</span><span class="p">],</span>
+    <span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">epsg</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">projection_file</span><span class="o">=</span><span class="kc">None</span>
+<span class="p">):</span>
+    <span class="k">if</span> <span class="n">epsg</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">projection_file</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No projection defined --&gt; considered as EPSG:4326&#39;</span><span class="p">)</span>
+        <span class="n">projection_file</span> <span class="o">=</span> <span class="n">epsg4326</span>
+
+    <span class="k">if</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="n">to_concat</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">links</span><span class="p">[</span><span class="n">group_id</span><span class="p">]):</span>
+            <span class="n">sample</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="n">links</span><span class="p">[</span><span class="n">group_id</span><span class="p">]</span> <span class="o">==</span> <span class="n">line</span><span class="p">]</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="n">sample</span><span class="p">[</span><span class="n">color_id</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">color_id</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="n">l</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">sample</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">])</span>
+
+            <span class="n">to_concat</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">line</span><span class="p">,</span> <span class="n">color</span><span class="p">,</span> <span class="n">ops</span><span class="o">.</span><span class="n">linemerge</span><span class="p">(</span><span class="n">l</span><span class="p">)))</span>
+        
+
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">to_concat</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="n">group_id</span><span class="p">,</span><span class="s1">&#39;color&#39;</span> <span class="p">,</span><span class="s1">&#39;geometry&#39;</span><span class="p">])</span>
+
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">build_lines</span><span class="p">(</span><span class="n">links</span><span class="p">,</span> <span class="p">[</span><span class="n">color_id</span><span class="p">]</span> <span class="k">if</span> <span class="n">color_id</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">color_id</span><span class="p">:</span>
+        <span class="n">df</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">colors</span> <span class="o">*</span> <span class="mi">10000</span><span class="p">)</span>
+    
+    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;width&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">width</span>
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="s1">&#39;lines.shp&#39;</span><span class="p">,</span>
+        <span class="n">df</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">bordered_line_style</span>
+    <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="save_boardings_by_length_by_line"><a class="viewcode-back" href="../../../quetzal.io.export.html#quetzal.io.export.save_boardings_by_length_by_line">[docs]</a><span class="k">def</span> <span class="nf">save_boardings_by_length_by_line</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+    <span class="n">fig</span> <span class="o">=</span> <span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="s1">&#39;boardings&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">lines</span><span class="p">[</span><span class="s1">&#39;length&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+        <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;bar&#39;</span><span class="p">,</span> <span class="n">colors</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]))</span><span class="o">.</span><span class="n">get_figure</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Boardings by km of line&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;line&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;passenger by km of line&#39;</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">path</span> <span class="o">+</span> <span class="s1">&#39;boardings_by_length_by_line.png&#39;</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="save_boardings_by_line"><a class="viewcode-back" href="../../../quetzal.io.export.html#quetzal.io.export.save_boardings_by_line">[docs]</a><span class="k">def</span> <span class="nf">save_boardings_by_line</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="s1">&#39;boardings&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+        <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;bar&#39;</span><span class="p">,</span> <span class="n">colors</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]))</span><span class="o">.</span><span class="n">get_figure</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Boardings&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;line&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;boardings&#39;</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">path</span> <span class="o">+</span> <span class="s1">&#39;boardings_by_line.png&#39;</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="save_passenger_km_by_line"><a class="viewcode-back" href="../../../quetzal.io.export.html#quetzal.io.export.save_passenger_km_by_line">[docs]</a><span class="k">def</span> <span class="nf">save_passenger_km_by_line</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="s1">&#39;passenger_km&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+        <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;bar&#39;</span><span class="p">,</span> <span class="n">colors</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]))</span><span class="o">.</span><span class="n">get_figure</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Passenger * km by line&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;line&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;passenger * km&#39;</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">path</span> <span class="o">+</span> <span class="s1">&#39;passenger_km_by_line.png&#39;</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="save_line_length"><a class="viewcode-back" href="../../../quetzal.io.export.html#quetzal.io.export.save_line_length">[docs]</a><span class="k">def</span> <span class="nf">save_line_length</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+    <span class="n">fig</span> <span class="o">=</span> <span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="s1">&#39;length&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+        <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;bar&#39;</span><span class="p">,</span> <span class="n">colors</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]))</span><span class="o">.</span><span class="n">get_figure</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Line length&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;line&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;length (km)&#39;</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">path</span> <span class="o">+</span> <span class="s1">&#39;line_length.png&#39;</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="save_line_travel_time"><a class="viewcode-back" href="../../../quetzal.io.export.html#quetzal.io.export.save_line_travel_time">[docs]</a><span class="k">def</span> <span class="nf">save_line_travel_time</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+    <span class="n">fig</span> <span class="o">=</span> <span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">60</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+        <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;bar&#39;</span><span class="p">,</span> <span class="n">colors</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]))</span><span class="o">.</span><span class="n">get_figure</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Travel time&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;line&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;travel time (min)&#39;</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">path</span> <span class="o">+</span> <span class="s1">&#39;line_travel_time.png&#39;</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="save_line_transfer"><a class="viewcode-back" href="../../../quetzal.io.export.html#quetzal.io.export.save_line_transfer">[docs]</a><span class="k">def</span> <span class="nf">save_line_transfer</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+    <span class="n">fig</span> <span class="o">=</span> <span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="s1">&#39;transfer&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+        <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;bar&#39;</span><span class="p">,</span> <span class="n">colors</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]))</span><span class="o">.</span><span class="n">get_figure</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Average number of transfers&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;line&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;number of transfers&#39;</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">path</span> <span class="o">+</span> <span class="s1">&#39;line_transfer.png&#39;</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="save_line_headway"><a class="viewcode-back" href="../../../quetzal.io.export.html#quetzal.io.export.save_line_headway">[docs]</a><span class="k">def</span> <span class="nf">save_line_headway</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+    <span class="n">fig</span> <span class="o">=</span> <span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="s1">&#39;headway&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+        <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;bar&#39;</span><span class="p">,</span> <span class="n">colors</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]))</span><span class="o">.</span><span class="n">get_figure</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Headway&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;line&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;headway (seconds)&#39;</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">path</span> <span class="o">+</span> <span class="s1">&#39;line_headway.png&#39;</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="save_line_load"><a class="viewcode-back" href="../../../quetzal.io.export.html#quetzal.io.export.save_line_load">[docs]</a><span class="k">def</span> <span class="nf">save_line_load</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="s1">&#39;max_load&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+        <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;bar&#39;</span><span class="p">,</span> <span class="n">colors</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]))</span><span class="o">.</span><span class="n">get_figure</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Passengers on the most loaded link during the modeling period&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;line&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;passengers&#39;</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">path</span> <span class="o">+</span> <span class="s1">&#39;line_max_load.png&#39;</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="save_line_plots"><a class="viewcode-back" href="../../../quetzal.io.export.html#quetzal.io.export.save_line_plots">[docs]</a><span class="k">def</span> <span class="nf">save_line_plots</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+
+    <span class="n">mean_lines</span> <span class="o">=</span> <span class="n">lines</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;name&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">mean_lines</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lines</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+    <span class="n">sum_lines</span> <span class="o">=</span> <span class="n">lines</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;name&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">sum_lines</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lines</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+
+    <span class="n">save_boardings_by_length_by_line</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+    <span class="n">save_passenger_km_by_line</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+    <span class="n">save_boardings_by_line</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+
+    <span class="n">save_line_length</span><span class="p">(</span><span class="n">mean_lines</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+    <span class="n">save_line_travel_time</span><span class="p">(</span><span class="n">mean_lines</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+    <span class="n">save_line_transfer</span><span class="p">(</span><span class="n">mean_lines</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+    <span class="n">save_line_headway</span><span class="p">(</span><span class="n">mean_lines</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+
+    <span class="n">save_line_load</span><span class="p">(</span><span class="n">sum_lines</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="aggregation_summary"><a class="viewcode-back" href="../../../quetzal.io.export.html#quetzal.io.export.aggregation_summary">[docs]</a><span class="k">def</span> <span class="nf">aggregation_summary</span><span class="p">(</span><span class="n">micro_zones</span><span class="p">,</span> <span class="n">macro_zones</span><span class="p">,</span> <span class="n">cluster_series</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+
+    <span class="n">macro_centroids_dict</span> <span class="o">=</span> <span class="n">macro_zones</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+        <span class="k">lambda</span> <span class="n">g</span><span class="p">:</span> <span class="n">g</span><span class="o">.</span><span class="n">centroid</span><span class="p">)</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+    <span class="n">micro_centroids_dict</span> <span class="o">=</span> <span class="n">micro_zones</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+        <span class="k">lambda</span> <span class="n">g</span><span class="p">:</span> <span class="n">g</span><span class="o">.</span><span class="n">centroid</span><span class="p">)</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+
+    <span class="n">centroid_link_list</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">geometry</span><span class="o">.</span><span class="n">linestring</span><span class="o">.</span><span class="n">LineString</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">micro_centroids_dict</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">macro_centroids_dict</span><span class="p">[</span><span class="n">value</span><span class="p">]]</span>
+        <span class="p">)</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">cluster_series</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+    <span class="p">]</span>
+
+    <span class="n">centroid_links</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">centroid_link_list</span><span class="p">),</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">])</span>
+    <span class="n">macro_centroids</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">macro_centroids_dict</span><span class="p">),</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">])</span>
+    <span class="n">micro_centroids</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">micro_centroids_dict</span><span class="p">),</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">])</span>
+
+    <span class="n">centroid_links</span><span class="p">[</span><span class="s1">&#39;width&#39;</span><span class="p">],</span> <span class="n">centroid_links</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">size</span><span class="p">,</span> <span class="s1">&#39;gray&#39;</span>
+    <span class="n">macro_centroids</span><span class="p">[</span><span class="s1">&#39;width&#39;</span><span class="p">],</span> <span class="n">macro_centroids</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.5</span><span class="o">*</span><span class="n">size</span><span class="p">,</span> <span class="s1">&#39;gray&#39;</span>
+    <span class="n">micro_centroids</span><span class="p">[</span><span class="s1">&#39;width&#39;</span><span class="p">],</span> <span class="n">micro_centroids</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">size</span><span class="p">,</span> <span class="s1">&#39;gray&#39;</span>
+
+    <span class="k">return</span> <span class="n">micro_centroids</span><span class="p">,</span> <span class="n">macro_centroids</span><span class="p">,</span> <span class="n">centroid_links</span></div>
+
+
+<div class="viewcode-block" id="three_level_aggregation_summary_to_shp"><a class="viewcode-back" href="../../../quetzal.io.export.html#quetzal.io.export.three_level_aggregation_summary_to_shp">[docs]</a><span class="k">def</span> <span class="nf">three_level_aggregation_summary_to_shp</span><span class="p">(</span>
+    <span class="n">micro_zones</span><span class="p">,</span>
+    <span class="n">meso_zones</span><span class="p">,</span>
+    <span class="n">macro_zones</span><span class="p">,</span>
+    <span class="n">micro_meso_cluster_series</span><span class="p">,</span>
+    <span class="n">meso_macro_cluster_series</span><span class="p">,</span>
+    <span class="n">gis_path</span><span class="p">,</span>
+    <span class="n">epsg</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">projection_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="k">if</span> <span class="n">epsg</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">projection_file</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No projection defined --&gt; considered as EPSG:4326&#39;</span><span class="p">)</span>
+        <span class="n">projection_file</span> <span class="o">=</span> <span class="n">epsg4326</span>
+
+    <span class="n">micro_centroids</span><span class="p">,</span> <span class="n">meso_centroids</span><span class="p">,</span> <span class="n">centroid_links</span> <span class="o">=</span> <span class="n">aggregation_summary</span><span class="p">(</span>
+        <span class="n">micro_zones</span><span class="p">,</span> <span class="n">meso_zones</span><span class="p">,</span> <span class="n">micro_meso_cluster_series</span><span class="p">)</span>
+
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="s1">&#39;micro_centroids.shp&#39;</span><span class="p">,</span>
+        <span class="n">micro_centroids</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">point_style</span><span class="p">)</span>
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="s1">&#39;meso_centroids.shp&#39;</span><span class="p">,</span>
+        <span class="n">meso_centroids</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">point_style</span><span class="p">)</span>
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="s1">&#39;centroid_links.shp&#39;</span><span class="p">,</span>
+        <span class="n">centroid_links</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">line_style</span><span class="p">)</span>
+
+    <span class="n">meso_centroids</span><span class="p">,</span> <span class="n">macro_centroids</span><span class="p">,</span> <span class="n">macro_centroid_links</span> <span class="o">=</span> <span class="n">aggregation_summary</span><span class="p">(</span>
+        <span class="n">meso_zones</span><span class="p">,</span> <span class="n">macro_zones</span><span class="p">,</span> <span class="n">meso_macro_cluster_series</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="s1">&#39;meso_centroids.shp&#39;</span><span class="p">,</span>
+        <span class="n">meso_centroids</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">point_style</span><span class="p">)</span>
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="s1">&#39;macro_centroids.shp&#39;</span><span class="p">,</span>
+        <span class="n">macro_centroids</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">point_style</span><span class="p">)</span>
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="s1">&#39;macro_centroid_links.shp&#39;</span><span class="p">,</span>
+        <span class="n">macro_centroid_links</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">line_style</span><span class="p">)</span>
+
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="s1">&#39;micro_zones.shp&#39;</span><span class="p">,</span>
+        <span class="n">micro_zones</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">polygon_style</span><span class="p">)</span>
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="s1">&#39;meso_zones.shp&#39;</span><span class="p">,</span>
+        <span class="n">meso_zones</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">polygon_style</span><span class="p">)</span>
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">gis_path</span> <span class="o">+</span> <span class="s1">&#39;macro_zones.shp&#39;</span><span class="p">,</span>
+        <span class="n">macro_zones</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">polygon_style</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="create_load_legend"><a class="viewcode-back" href="../../../quetzal.io.export.html#quetzal.io.export.create_load_legend">[docs]</a><span class="k">def</span> <span class="nf">create_load_legend</span><span class="p">(</span><span class="n">legend_file_path</span><span class="p">,</span> <span class="n">coordinates</span><span class="p">,</span> <span class="n">legend_type</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="n">style_file</span><span class="o">=</span><span class="n">line_style</span><span class="p">,</span>
+                       <span class="n">categories</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outer_average_width</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">colors</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">delta</span><span class="o">=</span><span class="p">[</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">1500</span><span class="p">],</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span>
+                       <span class="n">epsg</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">projection_file</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create a georeferenced legend in shp format for loaded links or points.</span>
+<span class="sd">    Args:</span>
+<span class="sd">        legend_file_path: name and path of the legend shp file</span>
+<span class="sd">        style_file: path to the style file to use</span>
+<span class="sd">        coordinates: coordinates of the georeferenced legend</span>
+<span class="sd">        type: Point or LineString</span>
+<span class="sd">        values: list of values to include in the legend</span>
+<span class="sd">        max_value: max value to calibrate the legend</span>
+<span class="sd">        categories: categories associated with the values</span>
+<span class="sd">        outer_average_width: width</span>
+<span class="sd">        delta: legend spacing (one value for Point legend, two values for Linestring)        </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">coordinates</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">coordinates</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">legend_type</span> <span class="o">==</span> <span class="s1">&#39;Point&#39;</span><span class="p">:</span>
+        <span class="n">delta_y</span> <span class="o">=</span> <span class="n">delta</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">delta</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="k">else</span> <span class="n">delta</span>
+        <span class="n">legend_geometries</span> <span class="o">=</span> <span class="p">[</span><span class="n">geometry</span><span class="o">.</span><span class="n">Point</span><span class="p">([(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)])]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">legend_geometries</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">geometry</span><span class="o">.</span><span class="n">Point</span><span class="p">([(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">+</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">delta_y</span><span class="p">)]))</span>
+    <span class="k">elif</span> <span class="n">legend_type</span> <span class="o">==</span> <span class="s1">&#39;LineString&#39;</span><span class="p">:</span>
+        <span class="n">delta_x</span> <span class="o">=</span> <span class="n">delta</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">delta_y</span> <span class="o">=</span> <span class="n">delta</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">legend_geometries</span> <span class="o">=</span> <span class="p">[</span><span class="n">geometry</span><span class="o">.</span><span class="n">LineString</span><span class="p">(</span>
+            <span class="p">[(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">),</span> <span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">delta_x</span><span class="p">,</span> <span class="n">y</span><span class="p">)])]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">legend_geometries</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">geometry</span><span class="o">.</span><span class="n">LineString</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">delta_x</span><span class="p">,</span> <span class="n">y</span> <span class="p">),</span>
+                        <span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">delta_x</span><span class="p">,</span> <span class="n">y</span> <span class="p">)</span>
+                    <span class="p">]</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Not implemented&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Create legend df</span>
+    <span class="n">legend_scale</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+        <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">values</span><span class="p">,</span>
+        <span class="s1">&#39;category&#39;</span><span class="p">:</span> <span class="n">categories</span> <span class="k">if</span> <span class="n">categories</span> <span class="k">else</span> <span class="n">values</span><span class="p">,</span>
+        <span class="s1">&#39;geometry&#39;</span><span class="p">:</span> <span class="n">legend_geometries</span>
+
+    <span class="p">}</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">colors</span><span class="p">:</span>
+        <span class="n">legend_scale</span><span class="p">[</span><span class="s1">&#39;color&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">color_series</span><span class="p">(</span>
+            <span class="n">legend_scale</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">],</span> <span class="n">max_value</span><span class="o">=</span><span class="n">max_value</span><span class="p">)</span>
+
+    <span class="n">legend_scale</span><span class="p">[</span><span class="s1">&#39;width&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">visual</span><span class="o">.</span><span class="n">width_series</span><span class="p">(</span>
+        <span class="n">legend_scale</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">],</span>
+        <span class="n">outer_average_width</span><span class="o">=</span><span class="n">outer_average_width</span><span class="p">,</span>
+        <span class="n">max_value</span><span class="o">=</span><span class="n">max_value</span><span class="p">,</span>
+        <span class="n">method</span><span class="o">=</span><span class="n">method</span>
+    <span class="p">)</span>
+    <span class="n">legend_scale</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">legend_scale</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">]</span>
+
+    <span class="c1"># Write shp legend file</span>
+    <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
+        <span class="n">legend_file_path</span><span class="p">,</span>
+        <span class="n">legend_scale</span><span class="p">,</span>
+        <span class="n">style_file</span><span class="o">=</span><span class="n">style_file</span><span class="p">,</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">,</span>
+        <span class="n">projection_file</span><span class="o">=</span><span class="n">projection_file</span>
+        <span class="p">)</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Systra.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

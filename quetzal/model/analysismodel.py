@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from quetzal.analysis import analysis
 from quetzal.engine import engine, linearsolver_utils
 from quetzal.model import model, transportmodel

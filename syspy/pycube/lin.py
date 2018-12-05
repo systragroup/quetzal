@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 
 **This package provides tools for editing and analysing CUBE .LIN files**

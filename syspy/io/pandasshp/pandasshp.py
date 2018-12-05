@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """ pandashp: read/write shapefiles to/from special DataFrames
 Offers two functions read_shp and write_shp that convert ESRI shapefiles to
 pandas DataFrames that can be manipulated at will and then written back to

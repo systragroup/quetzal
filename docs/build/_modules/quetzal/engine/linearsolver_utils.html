@@ -1,0 +1,445 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>quetzal.engine.linearsolver_utils &mdash; quetzal  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="quetzal  documentation" href="../../../index.html"/>
+        <link rel="up" title="Module code" href="../../index.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> quetzal
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.engine.html">quetzal.engine package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.html">quetzal.model package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.io.html">quetzal.io package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.analysis.html">quetzal.analysis package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">quetzal</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+    <li>quetzal.engine.linearsolver_utils</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for quetzal.engine.linearsolver_utils</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy.optimize</span> <span class="k">import</span> <span class="n">linprog</span>
+
+
+<div class="viewcode-block" id="linearsolver"><a class="viewcode-back" href="../../../quetzal.engine.linearsolver_utils.html#quetzal.engine.linearsolver_utils.linearsolver">[docs]</a><span class="k">def</span> <span class="nf">linearsolver</span><span class="p">(</span>
+    <span class="n">indicator</span><span class="p">,</span>
+    <span class="n">constrained_links</span><span class="p">,</span>
+    <span class="n">od_stack</span><span class="p">,</span>
+    <span class="n">bounds_A</span><span class="p">,</span>
+    <span class="n">bounds_emissions</span><span class="p">,</span>
+    <span class="n">bounds_tot_emissions</span><span class="p">,</span>
+    <span class="n">pas_distance</span><span class="p">,</span>
+    <span class="n">maxiter</span><span class="p">,</span>
+    <span class="n">tolerance</span>
+<span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Cette fonction est le coeur de la méthode linear_solver.</span>
+<span class="sd">    - Elle construit les contraintes et l&#39;objectif dans build_constraints</span>
+<span class="sd">    - Elle résoud le problème d&#39;optimisation linéaire ainsi formé, avec les</span>
+<span class="sd">    bonnes contraintes et paramètres.</span>
+
+<span class="sd">    :param indicator (pd.DataFrame): indicator of the model</span>
+<span class="sd">    :param constrained_links (dict): dict of constrained links with volumes</span>
+<span class="sd">    :param od_stack (pd.DataFrame): od_stack of the model</span>
+<span class="sd">    :param bounds_A, bounds_emissions, bounds_tot_emissions, pas_distance:</span>
+<span class="sd">        parameters for building constraints</span>
+<span class="sd">    :param maxiter, tolerance (int): maximum iterations and tolerance on</span>
+<span class="sd">        objective for the linprog function</span>
+<span class="sd">    :returns pivot_stack_matrix (pd.DataFrame): elements of pivot_stack_matrix.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">constrained_zip</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">constrained_links</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+    <span class="n">keys</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">constrained_zip</span><span class="p">)</span>
+    <span class="n">obj</span><span class="p">,</span> <span class="n">A_ub</span><span class="p">,</span> <span class="n">b_ub</span><span class="p">,</span> <span class="n">bound_ub</span> <span class="o">=</span> <span class="n">build_constraints</span><span class="p">(</span>
+        <span class="n">indicator</span><span class="p">,</span>
+        <span class="n">values</span><span class="p">,</span>
+        <span class="n">od_stack</span><span class="p">,</span>
+        <span class="n">bounds_A</span><span class="p">,</span>
+        <span class="n">bounds_emissions</span><span class="p">,</span>
+        <span class="n">bounds_tot_emissions</span><span class="p">,</span>
+        <span class="n">pas_distance</span>
+    <span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="n">linprog</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">A_ub</span><span class="o">=</span><span class="n">A_ub</span><span class="p">,</span> <span class="n">b_ub</span><span class="o">=</span><span class="n">b_ub</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="n">bound_ub</span><span class="p">,</span>
+                    <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;maxiter&#39;</span><span class="p">:</span> <span class="n">maxiter</span><span class="p">,</span> <span class="s1">&#39;bland&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s1">&#39;tol&#39;</span><span class="p">:</span> <span class="n">tolerance</span><span class="p">})</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">l</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="nb">len</span><span class="p">(</span><span class="n">indicator</span><span class="p">)]</span>
+        <span class="n">pivot_stack_matrix</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+            <span class="n">od_stack</span><span class="p">[[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">]],</span>
+            <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;pivot&#39;</span><span class="p">]),</span>
+            <span class="n">left_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">right_index</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">pivot_stack_matrix</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="build_indicator"><a class="viewcode-back" href="../../../quetzal.engine.linearsolver_utils.html#quetzal.engine.linearsolver_utils.build_indicator">[docs]</a><span class="k">def</span> <span class="nf">build_indicator</span><span class="p">(</span><span class="n">od_stack</span><span class="p">,</span> <span class="n">constrained_links</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    :param od_stack (pd.DataFrame): od_stack of the model</span>
+<span class="sd">    :param constrained_links (dict): constrained links and their volumes</span>
+<span class="sd">    :returns indicator (DataFrame):  indicator for the model</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">constrained_zip</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">constrained_links</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+    <span class="n">keys</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">constrained_zip</span><span class="p">)</span>
+    <span class="n">paths</span> <span class="o">=</span> <span class="n">od_stack</span><span class="p">[</span><span class="s1">&#39;path&#39;</span><span class="p">]</span>
+    <span class="n">indicator</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([</span>
+        <span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span> <span class="ow">in</span> <span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">paths</span>
+    <span class="p">])</span>
+    <span class="k">return</span> <span class="n">indicator</span></div>
+
+
+<div class="viewcode-block" id="reduce_indicator"><a class="viewcode-back" href="../../../quetzal.engine.linearsolver_utils.html#quetzal.engine.linearsolver_utils.reduce_indicator">[docs]</a><span class="k">def</span> <span class="nf">reduce_indicator</span><span class="p">(</span><span class="n">big_indicator</span><span class="p">,</span> <span class="n">cluster_series</span><span class="p">,</span> <span class="n">volumes</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    :param big_indicator (pd.DataFrame): indicator of the entire model</span>
+<span class="sd">    :param cluster_series (pd.Serie): correspondance between zones and clusters</span>
+<span class="sd">    :param volumes (pd.DataFrame): od_stack of the model</span>
+<span class="sd">    :returns indicator (DataFrame): reduced indicator for the aggregated model</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">nb_keys</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">big_indicator</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+    <span class="n">table</span> <span class="o">=</span> <span class="n">volumes</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">big_indicator</span><span class="p">,</span> <span class="n">left_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">right_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">proto</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">cluster_series</span><span class="p">),</span>
+                     <span class="n">left_on</span><span class="o">=</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="n">right_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">proto</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">proto</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">cluster_series</span><span class="p">),</span> <span class="n">left_on</span><span class="o">=</span><span class="s1">&#39;destination&#39;</span><span class="p">,</span>
+                     <span class="n">right_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">suffixes</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;_origin&#39;</span><span class="p">,</span> <span class="s1">&#39;_destination&#39;</span><span class="p">])</span>
+    <span class="n">grouped</span> <span class="o">=</span> <span class="n">proto</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span>
+        <span class="p">[</span><span class="s1">&#39;cluster_origin&#39;</span><span class="p">,</span> <span class="s1">&#39;cluster_destination&#39;</span><span class="p">])[</span>
+            <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_keys</span><span class="p">)]]</span>
+
+    <span class="n">indicator</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([</span>
+        <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">table</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">weights</span><span class="o">=</span><span class="n">table</span><span class="p">[</span><span class="s1">&#39;volume_pt&#39;</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_keys</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">couple</span><span class="p">,</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">grouped</span>
+        <span class="p">])</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">indicator</span></div>
+
+
+<div class="viewcode-block" id="extrapolate"><a class="viewcode-back" href="../../../quetzal.engine.linearsolver_utils.html#quetzal.engine.linearsolver_utils.extrapolate">[docs]</a><span class="k">def</span> <span class="nf">extrapolate</span><span class="p">(</span><span class="n">agg_pivot_stack_matrix</span><span class="p">,</span> <span class="n">od_stack</span><span class="p">,</span> <span class="n">cluster_series</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Extrapolates the model.</span>
+<span class="sd">    Given the aggregated model and its pivot_stack_matrix, we build the</span>
+<span class="sd">    pivot_stack_matrix for the whole model.</span>
+
+<span class="sd">    :param agg_pivot_stack_matrix: agg_pivot_stack_matrix of the aggregated model</span>
+<span class="sd">    :param od_stack (pd.DataFrame): od_stack of the entire model</span>
+<span class="sd">    :param cluster_series (pd.Series)</span>
+<span class="sd">    :return grouped (pd.DataFrame): pivot_stack_matrix of the whole model</span>
+<span class="sd">    :return od_stack: od_stack of the whole model, with pivot column updated</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">proto</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+        <span class="n">od_stack</span><span class="p">[[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">]],</span>
+        <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">cluster_series</span><span class="p">),</span> <span class="n">left_on</span><span class="o">=</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="n">right_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">proto</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+        <span class="n">proto</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">cluster_series</span><span class="p">),</span> <span class="n">left_on</span><span class="o">=</span><span class="s1">&#39;destination&#39;</span><span class="p">,</span>
+        <span class="n">right_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">suffixes</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;_origin&#39;</span><span class="p">,</span> <span class="s1">&#39;_destination&#39;</span><span class="p">])</span>
+    <span class="n">agg_pivot_stack_matrix</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;cluster_origin&#39;</span><span class="p">,</span> <span class="s1">&#39;cluster_destination&#39;</span><span class="p">,</span> <span class="s1">&#39;pivot&#39;</span><span class="p">]</span>
+    <span class="n">grouped</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+        <span class="n">proto</span><span class="p">,</span> <span class="n">agg_pivot_stack_matrix</span><span class="p">,</span>
+        <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;cluster_origin&#39;</span><span class="p">,</span> <span class="s1">&#39;cluster_destination&#39;</span><span class="p">])</span>
+    <span class="n">grouped</span> <span class="o">=</span> <span class="n">grouped</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">])</span>
+    <span class="n">grouped</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">grouped</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span>
+        <span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="s1">&#39;cluster_origin&#39;</span><span class="p">,</span> <span class="s1">&#39;cluster_destination&#39;</span><span class="p">],</span>
+        <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># putting the pivot in od_stack matrix</span>
+    <span class="n">od_stack</span><span class="p">[</span><span class="s1">&#39;pivot&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">grouped</span><span class="p">[</span><span class="s1">&#39;pivot&#39;</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">grouped</span><span class="p">,</span> <span class="n">od_stack</span></div>
+
+
+<div class="viewcode-block" id="build_constraints"><a class="viewcode-back" href="../../../quetzal.engine.linearsolver_utils.html#quetzal.engine.linearsolver_utils.build_constraints">[docs]</a><span class="k">def</span> <span class="nf">build_constraints</span><span class="p">(</span>
+    <span class="n">indicator</span><span class="p">,</span>
+    <span class="n">values_links</span><span class="p">,</span>
+    <span class="n">od_stack</span><span class="p">,</span>
+    <span class="n">bounds_A</span><span class="p">,</span>
+    <span class="n">bounds_emissions</span><span class="p">,</span>
+    <span class="n">bounds_tot_emissions</span><span class="p">,</span>
+    <span class="n">pas_distance</span>
+<span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Ici on construit l&#39;objectif et les contraintes du problème d&#39;optimisation</span>
+<span class="sd">    suivant:</span>
+<span class="sd">    variable: pivot A</span>
+<span class="sd">    min_A ||Rc - Rm|| = ||indic*volumes*A - constrained values||</span>
+<span class="sd">    sous contraintes:</span>
+<span class="sd">        * - Pg &lt; volumes*A - e/a &lt; Pg ((C1): émissions et attractions par zone conservées)</span>
+<span class="sd">        * - Pg&#39; &lt; sum(volumes*A) - e/a_tot &lt; Pg&#39; ((C2) émissions et attractions totales conservées)</span>
+<span class="sd">        * - Pd &lt; &lt;D,X&gt; - distance_moyenne &lt; Pd ((C3) distance moyenne conservée)</span>
+<span class="sd">        * bound_A_min &lt; A(i) &lt; bound_A_max ((B) bornes du problème) forall i</span>
+
+<span class="sd">    Comme l&#39;objectif n&#39;est pas linéaire, on décide d&#39;utiliser la norme 1 et de</span>
+<span class="sd">    linéariser la valeur absolue en ajoutant une nouvelle variable y:</span>
+<span class="sd">        (~~ y(i) = |indic*volumes*A - constrained values|(i))</span>
+<span class="sd">    Le problème devient alors:</span>
+<span class="sd">        min y</span>
+<span class="sd">    sous contraintes</span>
+<span class="sd">        * y(i) &gt;= (indic*volumes*A - constrained values)(i)   forall i (C4)</span>
+<span class="sd">        * y(i) &gt;= - (indic*volumes*A - constrained values)(i)   forall i (C5)</span>
+<span class="sd">        * (mêmes contraintes que précedemment en plus)</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    :param indicator: indicator of the model</span>
+<span class="sd">    :param values_links (tuple): values of constrained links</span>
+<span class="sd">    :param od_stack (pd.DataFrame): od_stack of the model</span>
+<span class="sd">    :param bounds_A (list): upper and lower bound of coefficients of the pivot</span>
+<span class="sd">    :param bounds_emissions (list): upper and lower bound of the multiplicative</span>
+<span class="sd">        coefficient on emissions and attractions per cluster</span>
+<span class="sd">    :param bounds_tot_emissions (list): idem but for emisisons and attractions</span>
+<span class="sd">        of the entire model</span>
+<span class="sd">    :param pas_distance (int): additive pas on the mean distance</span>
+<span class="sd">    :return objectif: objective of the function</span>
+<span class="sd">    :return A_ub: matrix of inequality constraint (left side)</span>
+<span class="sd">    :return b_ub: vector of inequality constraint (right side)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">od_stack</span> <span class="o">=</span> <span class="n">od_stack</span><span class="o">.</span><span class="n">sort_values</span><span class="p">([</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">])</span>
+    <span class="n">volumes</span> <span class="o">=</span> <span class="n">od_stack</span><span class="p">[</span><span class="s1">&#39;volume_pt&#39;</span><span class="p">]</span>
+    <span class="n">zone_list</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">od_stack</span><span class="p">[</span><span class="s1">&#39;origin&#39;</span><span class="p">])</span>
+
+    <span class="n">I</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">indicator</span><span class="p">)</span>
+    <span class="n">V</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">volumes</span><span class="p">)</span>
+    <span class="c1"># df est en fait l&#39;application linéaire</span>
+    <span class="c1"># à appliquer aux paramètres d&#39;ajustement</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">I</span><span class="o">.</span><span class="n">transpose</span><span class="p">()</span><span class="o">*</span><span class="n">V</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">volumes</span><span class="p">)</span>
+
+    <span class="c1"># dimension du probleme: 2* nb_od</span>
+    <span class="c1"># Objectif: min y</span>
+    <span class="n">nb_od</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">V</span><span class="p">)</span>  <span class="c1"># taille de A</span>
+    <span class="n">nb_zones</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">volumes</span><span class="p">)</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">values_links</span><span class="p">)</span>  <span class="c1"># taille de y</span>
+    <span class="n">objectif</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_od</span><span class="p">)]</span> <span class="o">+</span> <span class="p">[</span><span class="mi">1</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">)])</span>
+
+    <span class="c1"># Constraintes de linéarisation (C4) et (C5)</span>
+    <span class="n">gr</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">k</span><span class="p">))</span>
+    <span class="n">A_pos</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">df</span><span class="p">,</span> <span class="n">gr</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># (C4)</span>
+    <span class="n">A_neg</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="o">-</span><span class="n">df</span><span class="p">,</span> <span class="n">gr</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># (C5)</span>
+    <span class="n">b_sum</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">values_links</span><span class="p">))</span>
+
+    <span class="c1"># constraints on attraction and emission per cluster (C1)</span>
+    <span class="c1"># marche seulement si l&#39;index des zones est un range</span>
+    <span class="n">A_emission</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">zone_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="n">od_stack</span><span class="p">[</span><span class="s1">&#39;origin&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">])</span> <span class="o">*</span> <span class="n">X</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_od</span><span class="p">)]</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_zones</span><span class="p">)]</span>
+    <span class="p">)</span>
+    <span class="n">A_attraction</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">zone_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="n">od_stack</span><span class="p">[</span><span class="s1">&#39;destination&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">])</span> <span class="o">*</span> <span class="n">X</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_od</span><span class="p">)]</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_zones</span><span class="p">)]</span>
+    <span class="p">)</span>
+    <span class="n">A_e</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+        <span class="p">[</span><span class="n">A_emission</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([[</span><span class="mi">0</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">)]</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_zones</span><span class="p">)])],</span>
+        <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+    <span class="p">)</span>
+    <span class="n">A_a</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+        <span class="p">[</span><span class="n">A_attraction</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([[</span><span class="mi">0</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">)]</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_zones</span><span class="p">)])],</span>
+        <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+    <span class="p">)</span>
+    <span class="n">b_e_pos</span> <span class="o">=</span> <span class="n">bounds_emissions</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">A_emission</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">b_a_pos</span> <span class="o">=</span> <span class="n">bounds_emissions</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">A_attraction</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">b_e_neg</span> <span class="o">=</span> <span class="o">-</span> <span class="n">bounds_emissions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">A_emission</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">b_a_neg</span> <span class="o">=</span> <span class="o">-</span> <span class="n">bounds_emissions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">A_attraction</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># constraints on total emission and attranction (C2)</span>
+    <span class="n">A_tot_em</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+        <span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([</span><span class="n">X</span><span class="p">]),</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([[</span><span class="mi">0</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">)]])],</span>
+        <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+    <span class="p">)</span>
+    <span class="n">tot_em_pos</span> <span class="o">=</span> <span class="n">bounds_tot_emissions</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">X</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">tot_em_neg</span> <span class="o">=</span> <span class="o">-</span> <span class="n">bounds_tot_emissions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">X</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">b_tot_em</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([</span><span class="n">tot_em_pos</span><span class="p">,</span> <span class="n">tot_em_neg</span><span class="p">])</span>
+
+    <span class="c1"># constraints on distance (C3)</span>
+    <span class="n">vect_dist</span> <span class="o">=</span> <span class="n">od_stack</span><span class="p">[</span><span class="s1">&#39;euclidean_distance&#39;</span><span class="p">]</span>
+    <span class="n">dist_moy</span> <span class="o">=</span> <span class="p">(</span><span class="n">vect_dist</span><span class="o">.</span><span class="n">values</span><span class="o">*</span><span class="n">X</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">/</span><span class="n">X</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">G1</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([[</span><span class="n">X</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="n">vect_dist</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">dist_moy</span> <span class="o">-</span> <span class="n">pas_distance</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_od</span><span class="p">)]])</span>
+    <span class="n">G2</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([[</span><span class="n">X</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="o">-</span><span class="n">vect_dist</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">dist_moy</span> <span class="o">-</span> <span class="n">pas_distance</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_od</span><span class="p">)]])</span>
+    <span class="n">G_y</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([[</span><span class="mi">0</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">)]])</span>
+    <span class="n">G_sup</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">G1</span><span class="p">,</span> <span class="n">G_y</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">G_inf</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">G2</span><span class="p">,</span> <span class="n">G_y</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">A_ub</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+        <span class="p">[</span><span class="n">A_pos</span><span class="p">,</span> <span class="n">A_neg</span><span class="p">,</span> <span class="n">A_e</span><span class="p">,</span> <span class="n">A_a</span><span class="p">,</span> <span class="o">-</span><span class="n">A_e</span><span class="p">,</span> <span class="o">-</span><span class="n">A_a</span><span class="p">,</span> <span class="n">A_tot_em</span><span class="p">,</span> <span class="o">-</span><span class="n">A_tot_em</span><span class="p">,</span> <span class="n">G_sup</span><span class="p">,</span> <span class="n">G_inf</span><span class="p">]</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">b_ub</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+        <span class="p">[</span><span class="n">b_sum</span><span class="p">,</span> <span class="o">-</span><span class="n">b_sum</span><span class="p">,</span> <span class="n">b_e_pos</span><span class="p">,</span> <span class="n">b_a_pos</span><span class="p">,</span> <span class="n">b_e_neg</span><span class="p">,</span> <span class="n">b_a_neg</span><span class="p">,</span> <span class="n">b_tot_em</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">])]</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">values</span>
+
+    <span class="c1"># bounds (B)</span>
+    <span class="n">bounds</span> <span class="o">=</span> <span class="p">[</span><span class="n">bounds_A</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_od</span><span class="p">)]</span> <span class="o">+</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">)]</span>
+
+    <span class="k">return</span> <span class="n">objectif</span><span class="p">,</span> <span class="n">A_ub</span><span class="p">,</span> <span class="n">b_ub</span><span class="p">,</span> <span class="n">bounds</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Systra.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

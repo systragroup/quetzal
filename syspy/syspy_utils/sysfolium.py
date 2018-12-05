@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 
 This modules provides tools for creating folium map object from pandas.DataFrames and save them as .png

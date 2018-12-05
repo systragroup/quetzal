@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import shapely
 
 from syspy.graph import nearest_path

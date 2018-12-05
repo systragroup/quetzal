@@ -1,0 +1,320 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>quetzal.io.export module &mdash; quetzal  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="quetzal  documentation" href="index.html"/>
+        <link rel="up" title="quetzal.io package" href="quetzal.io.html"/>
+        <link rel="next" title="quetzal.io.export_utils module" href="quetzal.io.export_utils.html"/>
+        <link rel="prev" title="quetzal.io.display module" href="quetzal.io.display.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> quetzal
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quetzal.engine.html">quetzal.engine package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.html">quetzal.model package</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="quetzal.io.html">quetzal.io package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="quetzal.io.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="quetzal.io.display.html">quetzal.io.display module</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">quetzal.io.export module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quetzal.io.export_utils.html">quetzal.io.export_utils module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quetzal.io.gtfs_importer.html">quetzal.io.gtfs_importer module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quetzal.io.importer.html">quetzal.io.importer module</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="quetzal.io.html#module-quetzal.io">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.analysis.html">quetzal.analysis package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">quetzal</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="quetzal.io.html">quetzal.io package</a> &raquo;</li>
+      
+    <li>quetzal.io.export module</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/quetzal.io.export.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-quetzal.io.export">
+<span id="quetzal-io-export-module"></span><h1>quetzal.io.export module<a class="headerlink" href="#module-quetzal.io.export" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="quetzal.io.export.aggregation_summary">
+<code class="descclassname">quetzal.io.export.</code><code class="descname">aggregation_summary</code><span class="sig-paren">(</span><em>micro_zones</em>, <em>macro_zones</em>, <em>cluster_series</em>, <em>size=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export.html#aggregation_summary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.io.export.aggregation_summary" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.io.export.assigned_links_nodes_to_shp">
+<code class="descclassname">quetzal.io.export.</code><code class="descname">assigned_links_nodes_to_shp</code><span class="sig-paren">(</span><em>links</em>, <em>nodes</em>, <em>gis_path</em>, <em>epsg=None</em>, <em>projection_file=None</em>, <em>link_name='loaded_links.shp'</em>, <em>node_name='loaded_nodes.shp'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export.html#assigned_links_nodes_to_shp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.io.export.assigned_links_nodes_to_shp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.io.export.assigned_nodes_to_shp">
+<code class="descclassname">quetzal.io.export.</code><code class="descname">assigned_nodes_to_shp</code><span class="sig-paren">(</span><em>nodes</em>, <em>gis_path</em>, <em>load_column='load'</em>, <em>max_value=None</em>, <em>outer_average_width=10</em>, <em>method='surface'</em>, <em>projection_file=None</em>, <em>epsg=None</em>, <em>color=True</em>, <em>nodes_name='loaded_nodes.shp'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export.html#assigned_nodes_to_shp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.io.export.assigned_nodes_to_shp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.io.export.build_lines">
+<code class="descclassname">quetzal.io.export.</code><code class="descname">build_lines</code><span class="sig-paren">(</span><em>links</em>, <em>line_columns='all'</em>, <em>group_id='trip_id'</em>, <em>sum_columns=[]</em>, <em>mean_columns=[]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export.html#build_lines"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.io.export.build_lines" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.io.export.create_load_legend">
+<code class="descclassname">quetzal.io.export.</code><code class="descname">create_load_legend</code><span class="sig-paren">(</span><em>legend_file_path, coordinates, legend_type, values, max_value=None, style_file='C:\\Users\\qchasserieau\\dev\\gitstuff\\quetzal\\syspy/io/pandasshp\\gis_resources/styles/line.qml', categories=None, outer_average_width=20, colors=True, delta=[1000, 1500], method='linear', epsg=None, projection_file=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export.html#create_load_legend"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.io.export.create_load_legend" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a georeferenced legend in shp format for loaded links or points.
+:param legend_file_path: name and path of the legend shp file
+:param style_file: path to the style file to use
+:param coordinates: coordinates of the georeferenced legend
+:param type: Point or LineString
+:param values: list of values to include in the legend
+:param max_value: max value to calibrate the legend
+:param categories: categories associated with the values
+:param outer_average_width: width
+:param delta: legend spacing (one value for Point legend, two values for Linestring)</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="quetzal.io.export.lines_to_shp">
+<code class="descclassname">quetzal.io.export.</code><code class="descname">lines_to_shp</code><span class="sig-paren">(</span><em>links, gis_path, group_id='trip_id', color_id=None, colors=['green'], width=1, epsg=None, projection_file=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export.html#lines_to_shp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.io.export.lines_to_shp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.io.export.loaded_links_to_shp">
+<code class="descclassname">quetzal.io.export.</code><code class="descname">loaded_links_to_shp</code><span class="sig-paren">(</span><em>loaded_links</em>, <em>gis_path</em>, <em>load_column='load'</em>, <em>max_value=None</em>, <em>outer_average_width=20</em>, <em>color=True</em>, <em>epsg=None</em>, <em>projection_file=None</em>, <em>name='loaded_links.shp'</em>, <em>create_legend=False</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export.html#loaded_links_to_shp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.io.export.loaded_links_to_shp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.io.export.ntlegs_centroids_to_shp">
+<code class="descclassname">quetzal.io.export.</code><code class="descname">ntlegs_centroids_to_shp</code><span class="sig-paren">(</span><em>ntlegs</em>, <em>centroids</em>, <em>gis_path</em>, <em>epsg=None</em>, <em>projection_file=None</em>, <em>weighted=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export.html#ntlegs_centroids_to_shp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.io.export.ntlegs_centroids_to_shp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.io.export.save_boardings_by_length_by_line">
+<code class="descclassname">quetzal.io.export.</code><code class="descname">save_boardings_by_length_by_line</code><span class="sig-paren">(</span><em>lines</em>, <em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export.html#save_boardings_by_length_by_line"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.io.export.save_boardings_by_length_by_line" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.io.export.save_boardings_by_line">
+<code class="descclassname">quetzal.io.export.</code><code class="descname">save_boardings_by_line</code><span class="sig-paren">(</span><em>lines</em>, <em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export.html#save_boardings_by_line"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.io.export.save_boardings_by_line" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.io.export.save_line_headway">
+<code class="descclassname">quetzal.io.export.</code><code class="descname">save_line_headway</code><span class="sig-paren">(</span><em>lines</em>, <em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export.html#save_line_headway"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.io.export.save_line_headway" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.io.export.save_line_length">
+<code class="descclassname">quetzal.io.export.</code><code class="descname">save_line_length</code><span class="sig-paren">(</span><em>lines</em>, <em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export.html#save_line_length"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.io.export.save_line_length" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.io.export.save_line_load">
+<code class="descclassname">quetzal.io.export.</code><code class="descname">save_line_load</code><span class="sig-paren">(</span><em>lines</em>, <em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export.html#save_line_load"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.io.export.save_line_load" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.io.export.save_line_plots">
+<code class="descclassname">quetzal.io.export.</code><code class="descname">save_line_plots</code><span class="sig-paren">(</span><em>lines</em>, <em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export.html#save_line_plots"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.io.export.save_line_plots" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.io.export.save_line_transfer">
+<code class="descclassname">quetzal.io.export.</code><code class="descname">save_line_transfer</code><span class="sig-paren">(</span><em>lines</em>, <em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export.html#save_line_transfer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.io.export.save_line_transfer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.io.export.save_line_travel_time">
+<code class="descclassname">quetzal.io.export.</code><code class="descname">save_line_travel_time</code><span class="sig-paren">(</span><em>lines</em>, <em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export.html#save_line_travel_time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.io.export.save_line_travel_time" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.io.export.save_passenger_km_by_line">
+<code class="descclassname">quetzal.io.export.</code><code class="descname">save_passenger_km_by_line</code><span class="sig-paren">(</span><em>lines</em>, <em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export.html#save_passenger_km_by_line"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.io.export.save_passenger_km_by_line" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.io.export.shares_to_shp">
+<code class="descclassname">quetzal.io.export.</code><code class="descname">shares_to_shp</code><span class="sig-paren">(</span><em>aggregated_shares</em>, <em>zones</em>, <em>gis_path</em>, <em>epsg=None</em>, <em>projection_file=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export.html#shares_to_shp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.io.export.shares_to_shp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.io.export.three_level_aggregation_summary_to_shp">
+<code class="descclassname">quetzal.io.export.</code><code class="descname">three_level_aggregation_summary_to_shp</code><span class="sig-paren">(</span><em>micro_zones</em>, <em>meso_zones</em>, <em>macro_zones</em>, <em>micro_meso_cluster_series</em>, <em>meso_macro_cluster_series</em>, <em>gis_path</em>, <em>epsg=None</em>, <em>projection_file=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export.html#three_level_aggregation_summary_to_shp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.io.export.three_level_aggregation_summary_to_shp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="quetzal.io.export_utils.html" class="btn btn-neutral float-right" title="quetzal.io.export_utils module" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="quetzal.io.display.html" class="btn btn-neutral" title="quetzal.io.display module" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Systra.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

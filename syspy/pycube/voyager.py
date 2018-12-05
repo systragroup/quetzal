@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 
 **The Voyager class takes advantage from the executable file voyager.exe to launch CUBE scripts using command lines.**

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import pandas as pd
 
 from quetzal.engine import engine,  connectivity
@@ -31,7 +33,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         json_folder=None,
         hdf_database=None,
         *args,
-        **kwargs,
+        **kwargs
     ):
 
         """
@@ -196,7 +198,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         try :
             dump = self.road_links[weight] + 1
         except TypeError:
-            raise TypeError(f'{weight} should be an int or a float')
+            raise TypeError(str(weight) + ' should be an int or a float')
  
         if dumb_cast:
             nc = NetworkCaster(

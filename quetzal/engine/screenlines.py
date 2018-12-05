@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from syspy.spatial.geometries import  b_crosses_a_to_the_left
 import pandas as pd
 from syspy.spatial import spatial

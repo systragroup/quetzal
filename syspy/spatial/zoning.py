@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import shapely
 import pandas as pd
 import networkx as nx

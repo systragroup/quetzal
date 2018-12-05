@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from quetzal.model import analysismodel, docmodel
 
 import warnings

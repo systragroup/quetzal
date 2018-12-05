@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 __author__ = 'qchasserieau'
 import shapely
 from syspy.spatial import spatial

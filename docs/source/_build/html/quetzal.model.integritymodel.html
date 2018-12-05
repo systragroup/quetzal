@@ -1,0 +1,374 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>quetzal.model.integritymodel module &mdash; quetzal  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="quetzal  documentation" href="index.html"/>
+        <link rel="up" title="quetzal.model package" href="quetzal.model.html"/>
+        <link rel="next" title="quetzal.model.model module" href="quetzal.model.model.html"/>
+        <link rel="prev" title="quetzal.model.docmodel module" href="quetzal.model.docmodel.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> quetzal
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quetzal.engine.html">quetzal.engine package</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="quetzal.model.html">quetzal.model package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="quetzal.model.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="quetzal.model.analysismodel.html">quetzal.model.analysismodel module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quetzal.model.cubemodel.html">quetzal.model.cubemodel module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quetzal.model.docmodel.html">quetzal.model.docmodel module</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">quetzal.model.integritymodel module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quetzal.model.model.html">quetzal.model.model module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quetzal.model.preparationmodel.html">quetzal.model.preparationmodel module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quetzal.model.stepmodel.html">quetzal.model.stepmodel module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quetzal.model.transportmodel.html">quetzal.model.transportmodel module</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="quetzal.model.html#module-quetzal.model">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.io.html">quetzal.io package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.analysis.html">quetzal.analysis package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">quetzal</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="quetzal.model.html">quetzal.model package</a> &raquo;</li>
+      
+    <li>quetzal.model.integritymodel module</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/quetzal.model.integritymodel.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-quetzal.model.integritymodel">
+<span id="quetzal-model-integritymodel-module"></span><h1>quetzal.model.integritymodel module<a class="headerlink" href="#module-quetzal.model.integritymodel" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="quetzal.model.integritymodel.IntegrityModel">
+<em class="property">class </em><code class="descclassname">quetzal.model.integritymodel.</code><code class="descname">IntegrityModel</code><span class="sig-paren">(</span><em>debug=False</em>, <em>walk_on_road=False</em>, <em>epsg=None</em>, <em>coordinates_unit=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_circular_lines">
+<code class="descname">integrity_fix_circular_lines</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_circular_lines"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_circular_lines" title="Permalink to this definition">¶</a></dt>
+<dd><ul class="simple">
+<li>requires: links</li>
+<li>builds: links</li>
+</ul>
+</dd></dl>
+
+<dl class="method">
+<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_collision">
+<code class="descname">integrity_fix_collision</code><span class="sig-paren">(</span><em>prefixes={'nodes': 'node_'</em>, <em>'links': 'link_'</em>, <em>'zones': 'zone_'}</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_collision"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_collision" title="Permalink to this definition">¶</a></dt>
+<dd><ul class="simple">
+<li>requires: links, nodes, zones</li>
+<li>builds: links, nodes, zones</li>
+</ul>
+</dd></dl>
+
+<dl class="method">
+<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_nodeset_consistency">
+<code class="descname">integrity_fix_nodeset_consistency</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_nodeset_consistency"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_nodeset_consistency" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_road_network">
+<code class="descname">integrity_fix_road_network</code><span class="sig-paren">(</span><em>cutoff=10</em>, <em>recursive_depth=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_road_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_road_network" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>clean road_network</dt>
+<dd><ul class="first last simple">
+<li>requires: road_links, road_nodes</li>
+<li>builds: road_links, road_nodes</li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_sequences">
+<code class="descname">integrity_fix_sequences</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_sequences"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_sequences" title="Permalink to this definition">¶</a></dt>
+<dd><ul class="simple">
+<li>requires: links</li>
+<li>builds: links</li>
+</ul>
+</dd></dl>
+
+<dl class="method">
+<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_test_all">
+<code class="descname">integrity_test_all</code><span class="sig-paren">(</span><em>errors='raise'</em>, <em>verbose=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_all"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_all" title="Permalink to this definition">¶</a></dt>
+<dd><p>errors=&#8217;ignore&#8217; can be passed</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_test_circular_lines">
+<code class="descname">integrity_test_circular_lines</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_circular_lines"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_circular_lines" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>The model does not work with circular lines</dt>
+<dd><ul class="first last simple">
+<li>requires: links</li>
+<li>builds: circular_lines</li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_test_collision">
+<code class="descname">integrity_test_collision</code><span class="sig-paren">(</span><em>sets=('links'</em>, <em>'nodes'</em>, <em>'zones')</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_collision"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_collision" title="Permalink to this definition">¶</a></dt>
+<dd><ul class="simple">
+<li>requires: links, nodes, zones</li>
+</ul>
+</dd></dl>
+
+<dl class="method">
+<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_test_dead_ends">
+<code class="descname">integrity_test_dead_ends</code><span class="sig-paren">(</span><em>cutoff=5</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_dead_ends"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_dead_ends" title="Permalink to this definition">¶</a></dt>
+<dd><p>look for dead-ends in the road network
+only the dead-ends with a dead-rank lower than the cutoff
+will be identified</p>
+<blockquote>
+<div><ul class="simple">
+<li>requires: road_links</li>
+</ul>
+</div></blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_test_isolated_roads">
+<code class="descname">integrity_test_isolated_roads</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_isolated_roads"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_isolated_roads" title="Permalink to this definition">¶</a></dt>
+<dd><ul class="simple">
+<li>requires: road_links</li>
+</ul>
+</dd></dl>
+
+<dl class="method">
+<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_test_nodeset_consistency">
+<code class="descname">integrity_test_nodeset_consistency</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_nodeset_consistency"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_nodeset_consistency" title="Permalink to this definition">¶</a></dt>
+<dd><ul class="simple">
+<li>requires: nodes, links</li>
+</ul>
+</dd></dl>
+
+<dl class="method">
+<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_test_road_network">
+<code class="descname">integrity_test_road_network</code><span class="sig-paren">(</span><em>cutoff=10</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_road_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_road_network" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_test_sequences">
+<code class="descname">integrity_test_sequences</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_sequences"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_sequences" title="Permalink to this definition">¶</a></dt>
+<dd><ul class="simple">
+<li>requires: links</li>
+<li>builds: broken_sequences</li>
+</ul>
+</dd></dl>
+
+<dl class="method">
+<dt id="quetzal.model.integritymodel.IntegrityModel.link_nodeset">
+<code class="descname">link_nodeset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.link_nodeset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.link_nodeset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="quetzal.model.integritymodel.IntegrityModel.nodeset">
+<code class="descname">nodeset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.nodeset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.nodeset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="quetzal.model.integritymodel.IntegrityModel.road_link_nodeset">
+<code class="descname">road_link_nodeset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.road_link_nodeset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.road_link_nodeset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="quetzal.model.integritymodel.IntegrityModel.road_nodeset">
+<code class="descname">road_nodeset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.road_nodeset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.road_nodeset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="quetzal.model.integritymodel.geodataframe_place_holder">
+<code class="descclassname">quetzal.model.integritymodel.</code><code class="descname">geodataframe_place_holder</code><span class="sig-paren">(</span><em>geom_type</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#geodataframe_place_holder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.geodataframe_place_holder" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.model.integritymodel.label_links">
+<code class="descclassname">quetzal.model.integritymodel.</code><code class="descname">label_links</code><span class="sig-paren">(</span><em>links</em>, <em>node_prefixe</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#label_links"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.label_links" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.model.integritymodel.list_duplicates">
+<code class="descclassname">quetzal.model.integritymodel.</code><code class="descname">list_duplicates</code><span class="sig-paren">(</span><em>l</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#list_duplicates"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.integritymodel.list_duplicates" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="quetzal.model.model.html" class="btn btn-neutral float-right" title="quetzal.model.model module" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="quetzal.model.docmodel.html" class="btn btn-neutral" title="quetzal.model.docmodel module" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Systra.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 
 **data_visualization provides tool for easily manipulate color scales and plot linear regressions**

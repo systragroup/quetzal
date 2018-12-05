@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from syspy.spatial.graph import network
 from syspy.spatial.geometries import reversed_polyline, simplify
 import pandas as pd

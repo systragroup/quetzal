@@ -1,0 +1,471 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>quetzal.engine.engine module &mdash; quetzal  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="quetzal  documentation" href="index.html"/>
+        <link rel="up" title="quetzal.engine package" href="quetzal.engine.html"/>
+        <link rel="next" title="quetzal.engine.linearsolver_utils module" href="quetzal.engine.linearsolver_utils.html"/>
+        <link rel="prev" title="quetzal.engine.connectivity module" href="quetzal.engine.connectivity.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> quetzal
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="quetzal.engine.html">quetzal.engine package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="quetzal.engine.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="quetzal.engine.add_network.html">quetzal.engine.add_network module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quetzal.engine.connectivity.html">quetzal.engine.connectivity module</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">quetzal.engine.engine module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quetzal.engine.linearsolver_utils.html">quetzal.engine.linearsolver_utils module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quetzal.engine.pathfinder.html">quetzal.engine.pathfinder module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quetzal.engine.screenlines.html">quetzal.engine.screenlines module</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="quetzal.engine.html#module-quetzal.engine">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.html">quetzal.model package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.io.html">quetzal.io package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.analysis.html">quetzal.analysis package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">quetzal</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="quetzal.engine.html">quetzal.engine package</a> &raquo;</li>
+      
+    <li>quetzal.engine.engine module</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/quetzal.engine.engine.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-quetzal.engine.engine">
+<span id="quetzal-engine-engine-module"></span><h1>quetzal.engine.engine module<a class="headerlink" href="#module-quetzal.engine.engine" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="quetzal.engine.engine.aggregate_shares">
+<code class="descclassname">quetzal.engine.engine.</code><code class="descname">aggregate_shares</code><span class="sig-paren">(</span><em>shared</em>, <em>zones</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/engine.html#aggregate_shares"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.engine.aggregate_shares" title="Permalink to this definition">¶</a></dt>
+<dd><p>Aggregates modal shares by zone. Weights the share by the demand;
+:param shared: straight output from the modal split;
+:param zones: zoning GeoDataFrame
+:return: aggregated_shares, the zoning augmented with the modal shares as columns;</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="quetzal.engine.engine.attraction_share_pt">
+<code class="descclassname">quetzal.engine.engine.</code><code class="descname">attraction_share_pt</code><span class="sig-paren">(</span><em>shared</em>, <em>destination</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/engine.html#attraction_share_pt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.engine.attraction_share_pt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.engine.engine.emission_share_pt">
+<code class="descclassname">quetzal.engine.engine.</code><code class="descname">emission_share_pt</code><span class="sig-paren">(</span><em>shared</em>, <em>origin</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/engine.html#emission_share_pt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.engine.emission_share_pt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.engine.engine.graph_links">
+<code class="descclassname">quetzal.engine.engine.</code><code class="descname">graph_links</code><span class="sig-paren">(</span><em>links</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/engine.html#graph_links"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.engine.graph_links" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decorates a link dataframe so it can be used as a basis for building a graph;
+It is meant to be used on a LineDraft export link DataFrame;
+:param links: LineDraft link DataFrame;
+:return: Basically the same as links but with different names and trivial columns;</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="quetzal.engine.engine.loaded_links_and_nodes">
+<code class="descclassname">quetzal.engine.engine.</code><code class="descname">loaded_links_and_nodes</code><span class="sig-paren">(</span><em>links</em>, <em>nodes</em>, <em>volumes=None</em>, <em>path_finder_stack=None</em>, <em>volume_column='volume'</em>, <em>path_column='path'</em>, <em>pivot_column=None</em>, <em>boardings=False</em>, <em>alightings=False</em>, <em>transfers=False</em>, <em>link_checkpoints=set()</em>, <em>node_checkpoints=set()</em>, <em>checkpoints_how='all'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/engine.html#loaded_links_and_nodes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.engine.loaded_links_and_nodes" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>The assignment function. The last step of modelling the demand.</dt>
+<dd><ul class="first last simple">
+<li>the shortest path are known in the public transport graph;</li>
+<li>the demand by mode is known;</li>
+<li>we want to assign the demand to the edges and nodes of the shortest path for every OD</li>
+</ul>
+</dd>
+</dl>
+<p>example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">links</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">loaded_links_and_nodes</span><span class="p">(</span>
+<span class="n">links</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">shared</span><span class="p">,</span> <span class="n">path_finder_stack</span><span class="p">,</span> <span class="s1">&#39;volume_pt&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>links</strong> &#8211; links DataFrame to be loaded</li>
+<li><strong>nodes</strong> &#8211; nodes DataFrame to be loaded</li>
+<li><strong>volumes</strong> &#8211; demand stack matrix by mode</li>
+<li><strong>path_finder_stack</strong> &#8211; paths stack matrix (pathfinder output)</li>
+<li><strong>od_stack</strong> &#8211; path / demand merged stack matrix</li>
+<li><strong>volume_column</strong> &#8211; name of the column from &#8216;volumes&#8217; to use in
+order to load the links and nodes</li>
+<li><strong>pivot_column</strong> &#8211; name of the column from od_stack to multiply with
+volumes. Default None</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">(links, nodes) a tuple containing the loaded DataFrames</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="quetzal.engine.engine.modal_split_from_volumes_and_los">
+<code class="descclassname">quetzal.engine.engine.</code><code class="descname">modal_split_from_volumes_and_los</code><span class="sig-paren">(</span><em>volumes</em>, <em>los</em>, <em>time_scale=0.0002777777777777778</em>, <em>alpha_car=2</em>, <em>beta_car=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/engine.html#modal_split_from_volumes_and_los"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.engine.modal_split_from_volumes_and_los" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is a modal split wrapper essentially based on duration and modal penalties.
+Based on all modes demand and levels of services, it returns the volume by mode.</p>
+<p class="rubric">example</p>
+<dl class="docutils">
+<dt>los = pd.merge(</dt>
+<dd>car_skims,
+path_finder_stack,
+on=[&#8216;origin&#8217;, &#8216;destination&#8217;],
+suffixes=[&#8216;_car&#8217;, &#8216;_pt&#8217;]</dd>
+</dl>
+<p>)
+shared = engine.modal_split_from_volumes_and_los(</p>
+<blockquote>
+<div>volumes,
+los,
+time_scale=1/1800
+alpha_cal=2,
+beta_car=600</div></blockquote>
+<p>)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>volumes</strong> &#8211; all mode, origin-&gt;destination demand matrix;</li>
+<li><strong>los</strong> &#8211; levels of service. An od stack matrix with:
+&#8216;duration_pt&#8217;, &#8216;duration_car&#8217;</li>
+<li><strong>time_scale</strong> &#8211; time scale of the logistic regression that compares
+&#8216;duration_pt&#8217; to alpha_car * &#8216;duration_car&#8217; + beta_car</li>
+<li><strong>alpha_car</strong> &#8211; multiplicative penalty on &#8216;duration_car&#8217; for the calculation
+of &#8216;utility_car&#8217;</li>
+<li><strong>beta_car</strong> &#8211; additive penalty on &#8216;duration_car&#8217; for the calculation
+of &#8216;utility_car&#8217;</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="quetzal.engine.engine.multimodal_graph">
+<code class="descclassname">quetzal.engine.engine.</code><code class="descname">multimodal_graph</code><span class="sig-paren">(</span><em>links</em>, <em>ntlegs</em>, <em>pole_set</em>, <em>boarding_cost=300</em>, <em>footpaths=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/engine.html#multimodal_graph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.engine.multimodal_graph" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="quetzal.engine.engine.ntlegs_from_centroids_and_nodes">
+<code class="descclassname">quetzal.engine.engine.</code><code class="descname">ntlegs_from_centroids_and_nodes</code><span class="sig-paren">(</span><em>centroids</em>, <em>nodes</em>, <em>short_leg_speed=3</em>, <em>long_leg_speed=15</em>, <em>threshold=500</em>, <em>n_neighbors=5</em>, <em>coordinates_unit='degree'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/engine.html#ntlegs_from_centroids_and_nodes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.engine.ntlegs_from_centroids_and_nodes" title="Permalink to this definition">¶</a></dt>
+<dd><p>From a given zoning an a given set of nodes, links the nearest nodes to each
+centroid of the zoning.</p>
+<p>example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">centroids</span> <span class="o">=</span> <span class="n">zones</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="n">centroids</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">centroids</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">g</span><span class="p">:</span> <span class="n">g</span><span class="o">.</span><span class="n">centroid</span><span class="p">)</span>
+<span class="n">ntlegs</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">ntlegs_from_centroids_and_nodes</span><span class="p">(</span>
+    <span class="n">centroids</span><span class="p">,</span>
+    <span class="n">nodes</span><span class="p">,</span>
+    <span class="n">ntleg_speed</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+    <span class="n">n_neighbors</span><span class="o">=</span><span class="mi">6</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>centroids</strong> &#8211; a point GeoDataFrame indexed by a numeric index;</li>
+<li><strong>nodes</strong> &#8211; a point GeoDataFrame indexed by a numeric index;</li>
+<li><strong>ntleg_speed</strong> &#8211; speed, as a crow flies, along the ntlegs km/h;</li>
+<li><strong>n_neighbors</strong> &#8211; number of ntleg of each centroid;</li>
+<li><strong>coordinates_unit</strong> &#8211; degree or meter</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">ntlegs, a line GeoDataFrame containing the ids of the
+the centroid and the node, the distance and the proximity rank;</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>:rtype : line GeoDataFrame</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="quetzal.engine.engine.od_volume_from_zones">
+<code class="descclassname">quetzal.engine.engine.</code><code class="descname">od_volume_from_zones</code><span class="sig-paren">(</span><em>zones</em>, <em>impedance_matrix=None</em>, <em>power=2</em>, <em>coordinates_unit='degree'</em>, <em>intrazonal=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/engine.html#od_volume_from_zones"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.engine.od_volume_from_zones" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>Use this function to build an Origin -&gt; Destination demand matrix.</dt>
+<dd><ul class="first last simple">
+<li><dl class="first docutils">
+<dt>an impedance matrix can be provided, if not:</dt>
+<dd><ul class="first last">
+<li>The euclidean distance matrix will be calculated automatically.</li>
+<li><dl class="first docutils">
+<dt>The friction matrix will be calculated from the distance matrix</dt>
+<dd>(elevated to a given power)</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>A doubly constrained distribution will be performed in the end,</dt>
+<dd>it is based on zones[&#8216;emission&#8217;] and zones[&#8216;attraction&#8217;]</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+<p>examples:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">volumes</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">od_volume_from_zones</span><span class="p">(</span><span class="n">zones</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">volumes</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">od_volume_from_zones</span><span class="p">(</span><span class="n">zones</span><span class="p">,</span> <span class="n">friction_matrix</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>zones</strong> &#8211; zoning GeoDataFrame, indexed by the zones numeric
+contains a geometry column named &#8216;geometry&#8217;, productions and attractions</li>
+<li><strong>impedance_matrix</strong> &#8211; Default None. The impedance matrix used to compute
+the distribution. If not provided, an impedance matrix will automatically
+be computed from the euclidean distance elevated to a given power.</li>
+<li><strong>power</strong> &#8211; the friction curve used in the gravity model is equal to
+the euclidean distance to the power of this exponent</li>
+<li><strong>intrazonal</strong> &#8211; (bool) if True, computes intrazonal volumes using a
+zone characteristic distance. Default False.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">volumes, a DataFrame with the following columns
+[&#8216;origin&#8217;, &#8216;destination&#8217;, &#8216;volume&#8217;]</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="quetzal.engine.engine.path_and_duration_from_links_and_ntlegs">
+<code class="descclassname">quetzal.engine.engine.</code><code class="descname">path_and_duration_from_links_and_ntlegs</code><span class="sig-paren">(</span><em>links</em>, <em>ntlegs</em>, <em>pole_set</em>, <em>footpaths=None</em>, <em>boarding_cost=300</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/engine.html#path_and_duration_from_links_and_ntlegs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.engine.path_and_duration_from_links_and_ntlegs" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>This is a graph builder and a pathfinder wrapper</dt>
+<dd><ul class="first last simple">
+<li>Builds a public transport frequency graph from links;</li>
+<li>Adds access and eggress to the graph (accegg) using the ntlegs;</li>
+<li>Search for shortest paths in the time graph;</li>
+<li>Returns an Origin-&gt;Destination stack matrix with path and duration;</li>
+</ul>
+</dd>
+</dl>
+<p>example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">links</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">graph_links</span><span class="p">(</span><span class="n">links</span><span class="p">)</span> <span class="c1"># links is a LineDraft export</span>
+<span class="n">path_finder_stack</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">path_and_duration_from_links_and_ntlegs</span><span class="p">(</span>
+    <span class="n">links</span><span class="p">,</span>
+    <span class="n">ntlegs</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>links</strong> &#8211; link DataFrame, built with graph_links;</li>
+<li><strong>ntlegs</strong> &#8211; ntlegs DataFrame built;</li>
+<li><strong>boarding_cost</strong> &#8211; an artificial cost to add the boarding edges
+of the frequency graph (seconds);</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Origin-&gt;Destination stack matrix with path and duration;</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="quetzal.engine.linearsolver_utils.html" class="btn btn-neutral float-right" title="quetzal.engine.linearsolver_utils module" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="quetzal.engine.connectivity.html" class="btn btn-neutral" title="quetzal.engine.connectivity module" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Systra.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

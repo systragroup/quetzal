@@ -1,0 +1,561 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>quetzal.engine.add_network &mdash; quetzal  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="quetzal  documentation" href="../../../index.html"/>
+        <link rel="up" title="Module code" href="../../index.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> quetzal
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.engine.html">quetzal.engine package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.html">quetzal.model package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.io.html">quetzal.io package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.analysis.html">quetzal.analysis package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">quetzal</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+    <li>quetzal.engine.add_network</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for quetzal.engine.add_network</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+
+<span class="kn">import</span> <span class="nn">shapely</span>
+
+<span class="kn">from</span> <span class="nn">syspy.graph</span> <span class="k">import</span> <span class="n">nearest_path</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="k">import</span> <span class="n">tqdm</span>
+<span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
+<span class="kn">from</span> <span class="nn">syspy.spatial.geometries</span> <span class="k">import</span> <span class="n">line_list_to_polyline</span>
+<span class="kn">from</span> <span class="nn">syspy.spatial.spatial</span> <span class="k">import</span> <span class="n">nearest_geometry</span>
+<span class="kn">from</span> <span class="nn">syspy.skims</span> <span class="k">import</span> <span class="n">skims</span>
+<span class="kn">from</span> <span class="nn">syspy.spatial.graph</span> <span class="k">import</span> <span class="n">network</span>
+
+<span class="kn">from</span> <span class="nn">shapely</span> <span class="k">import</span> <span class="n">geometry</span>
+
+
+<div class="viewcode-block" id="NetworkCaster"><a class="viewcode-back" href="../../../quetzal.engine.add_network.html#quetzal.engine.add_network.NetworkCaster">[docs]</a><span class="k">class</span> <span class="nc">NetworkCaster</span><span class="p">:</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">links</span><span class="p">,</span> <span class="n">road_nodes</span><span class="p">,</span> <span class="n">road_links</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="s1">&#39;length&#39;</span><span class="p">):</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="o">=</span> <span class="n">nodes</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">road_nodes</span> <span class="o">=</span> <span class="n">road_nodes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">links</span> <span class="o">=</span> <span class="n">links</span>
+        
+        <span class="k">if</span> <span class="n">road_links</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">road_links</span> <span class="o">=</span> <span class="n">road_links</span>
+            <span class="n">road_graph</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">()</span>
+            <span class="n">road_graph</span><span class="o">.</span><span class="n">add_weighted_edges_from</span><span class="p">(</span>
+                <span class="n">road_links</span><span class="p">[[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="n">weight</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+            <span class="p">)</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">road_graph</span> <span class="o">=</span> <span class="n">road_graph</span>
+
+
+
+
+<div class="viewcode-block" id="NetworkCaster.dumb_cast"><a class="viewcode-back" href="../../../quetzal.engine.add_network.html#quetzal.engine.add_network.NetworkCaster.dumb_cast">[docs]</a>    <span class="k">def</span> <span class="nf">dumb_cast</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">replace_geometry</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="n">links</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="n">links</span><span class="p">[</span><span class="s1">&#39;road_node_list&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[[]]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">links</span><span class="p">)</span>
+        <span class="n">links</span><span class="p">[</span><span class="s1">&#39;road_link_list&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[[]]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">links</span><span class="p">)</span>
+        
+        <span class="n">nearest</span> <span class="o">=</span> <span class="n">nearest_geometry</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">road_nodes</span><span class="p">)</span>
+        <span class="n">nearest_node</span> <span class="o">=</span> <span class="n">nearest</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;ix_one&#39;</span><span class="p">)[</span><span class="s1">&#39;ix_many&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+        <span class="n">reindex_node</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">n</span><span class="p">:</span> <span class="n">nearest_node</span><span class="p">[</span><span class="n">n</span><span class="p">]</span>
+        <span class="n">links</span><span class="p">[</span><span class="s1">&#39;road_a&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">reindex_node</span><span class="p">)</span>
+        <span class="n">links</span><span class="p">[</span><span class="s1">&#39;road_b&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;b&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">reindex_node</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">links</span> <span class="o">=</span> <span class="n">links</span>
+
+        <span class="k">def</span> <span class="nf">ab_geometry</span><span class="p">(</span><span class="n">link</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="s1">&#39;b&#39;</span><span class="p">):</span>
+            <span class="n">node_a</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">link</span><span class="p">[</span><span class="n">a</span><span class="p">]][</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span>
+            <span class="n">node_b</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">link</span><span class="p">[</span><span class="n">b</span><span class="p">]][</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">shapely</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">LineString</span><span class="p">([</span><span class="n">node_a</span><span class="p">,</span> <span class="n">node_b</span><span class="p">])</span>
+
+        <span class="n">links</span><span class="p">[</span><span class="s1">&#39;road_geometry&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+            <span class="n">ab_geometry</span><span class="p">,</span> 
+            <span class="n">nodes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">road_nodes</span><span class="p">,</span> 
+            <span class="n">a</span><span class="o">=</span><span class="s1">&#39;road_a&#39;</span><span class="p">,</span> 
+            <span class="n">b</span><span class="o">=</span><span class="s1">&#39;road_b&#39;</span><span class="p">,</span> 
+            <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">replace_geometry</span><span class="p">:</span>
+            <span class="n">links</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">links</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;road_geometry&#39;</span><span class="p">:</span> <span class="s1">&#39;geometry&#39;</span><span class="p">},</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">links</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">])</span>
+            <span class="n">node_geo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">road_nodes</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+            <span class="k">def</span> <span class="nf">roada_to_geometry</span><span class="p">(</span><span class="n">key</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">geometry</span><span class="o">.</span><span class="n">LineString</span><span class="p">([</span><span class="n">node_geo</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">node_geo</span><span class="p">[</span><span class="n">key</span><span class="p">]])</span>
+            <span class="n">loc</span> <span class="o">=</span> <span class="n">links</span><span class="p">[(</span><span class="n">links</span><span class="p">[</span><span class="s1">&#39;road_a&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;road_b&#39;</span><span class="p">])]</span><span class="o">.</span><span class="n">index</span>
+            <span class="n">null_geometry</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;road_a&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">roada_to_geometry</span><span class="p">)</span>
+            <span class="n">links</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">loc</span><span class="p">,</span> <span class="s1">&#39;geometry&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">null_geometry</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">loc</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="NetworkCaster.build_nearest_neighbors"><a class="viewcode-back" href="../../../quetzal.engine.add_network.html#quetzal.engine.add_network.NetworkCaster.build_nearest_neighbors">[docs]</a>    <span class="k">def</span> <span class="nf">build_nearest_neighbors</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> 
+        <span class="n">nearest_method</span><span class="o">=</span><span class="s1">&#39;nodes&#39;</span><span class="p">,</span> 
+        <span class="n">coordinates_unit</span><span class="o">=</span><span class="s1">&#39;degree&#39;</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">nearest_geometry_kwargs</span>
+    <span class="p">):</span>
+        
+        <span class="k">if</span> <span class="n">nearest_method</span> <span class="o">==</span> <span class="s1">&#39;nodes&#39;</span><span class="p">:</span>
+            <span class="n">nearest_neighbors</span> <span class="o">=</span> <span class="n">nearest_geometry</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">,</span> 
+                <span class="bp">self</span><span class="o">.</span><span class="n">road_nodes</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">nearest_geometry_kwargs</span>
+            <span class="p">)</span>
+            <span class="n">neighbors</span><span class="o">=</span><span class="n">nearest_neighbors</span>
+
+        <span class="k">elif</span> <span class="n">nearest_method</span> <span class="o">==</span> <span class="s1">&#39;links&#39;</span><span class="p">:</span>
+            <span class="n">nearest_links</span> <span class="o">=</span> <span class="n">nearest_geometry</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">,</span> 
+                <span class="bp">self</span><span class="o">.</span><span class="n">road_links</span><span class="p">,</span> 
+                <span class="o">**</span><span class="n">nearest_geometry_kwargs</span>
+            <span class="p">)</span>
+            <span class="c1"># focus on b</span>
+
+            <span class="n">right</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">road_links</span><span class="p">[[</span><span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;a&#39;</span><span class="p">]]</span>
+            <span class="n">nearest_links</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+                <span class="n">nearest_links</span><span class="p">,</span> 
+                <span class="n">right</span> <span class="p">,</span> 
+                <span class="n">left_on</span><span class="o">=</span><span class="s1">&#39;ix_many&#39;</span><span class="p">,</span> 
+                <span class="n">right_index</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+            <span class="n">nearest_links</span><span class="p">[</span><span class="s1">&#39;rank&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nearest_links</span><span class="p">[</span><span class="s1">&#39;actual_rank&#39;</span><span class="p">]</span>
+            <span class="n">nearest_links</span><span class="p">[</span><span class="s1">&#39;distance&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nearest_links</span><span class="p">[</span><span class="s1">&#39;actual_distance&#39;</span><span class="p">]</span>
+
+            <span class="c1"># we want to offer a and b as a possible node</span>
+            <span class="n">b_neighbors</span> <span class="o">=</span> <span class="n">nearest_links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">a_neighbors</span> <span class="o">=</span> <span class="n">nearest_links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+            <span class="n">b_neighbors</span><span class="p">[</span><span class="s1">&#39;ix_many&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nearest_links</span><span class="p">[</span><span class="s1">&#39;b&#39;</span><span class="p">]</span>
+            <span class="n">a_neighbors</span><span class="p">[</span><span class="s1">&#39;ix_many&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nearest_links</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">]</span>
+
+            <span class="n">nearest_links</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">a_neighbors</span><span class="p">,</span> <span class="n">b_neighbors</span><span class="p">])</span>
+            <span class="n">neighbors</span> <span class="o">=</span> <span class="n">nearest_links</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;ix_one&#39;</span><span class="p">,</span> <span class="s1">&#39;ix_many&#39;</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">coordinates_unit</span> <span class="o">==</span> <span class="s1">&#39;degree&#39;</span><span class="p">:</span>
+            <span class="n">neighbors</span><span class="p">[</span><span class="s1">&#39;length&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">skims</span><span class="o">.</span><span class="n">distance_from_geometry</span><span class="p">(</span>
+                <span class="n">neighbors</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">],</span>
+                <span class="n">method</span><span class="o">=</span><span class="s1">&#39;numpy&#39;</span>
+            <span class="p">)</span> 
+        <span class="k">elif</span> <span class="n">coordinates_unit</span> <span class="o">==</span> <span class="s1">&#39;meter&#39;</span><span class="p">:</span>
+            <span class="n">neighbors</span><span class="p">[</span><span class="s1">&#39;length&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">neighbors</span><span class="p">[</span><span class="s1">&#39;distance&#39;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">neighbors</span> <span class="o">=</span> <span class="n">neighbors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nearest_neighbors</span> <span class="o">=</span> <span class="n">neighbors</span><span class="p">[</span><span class="n">neighbors</span><span class="p">[</span><span class="s1">&#39;rank&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="NetworkCaster.build"><a class="viewcode-back" href="../../../quetzal.engine.add_network.html#quetzal.engine.add_network.NetworkCaster.build">[docs]</a>    <span class="k">def</span> <span class="nf">build</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">penalty_factor</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">build_nearest_neighbors</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">neighbors</span><span class="p">[</span><span class="s1">&#39;penalty&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">neighbors</span><span class="p">[</span><span class="s1">&#39;length&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">penalty_factor</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">p_series</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">neighbors</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span>
+            <span class="p">[</span><span class="s1">&#39;ix_one&#39;</span><span class="p">,</span> <span class="s1">&#39;ix_many&#39;</span><span class="p">])[</span><span class="s1">&#39;penalty&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">penalties</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_series</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span> 
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_road_nodes</span><span class="p">(</span><span class="n">penalties</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">penalties</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">build_road_dataframe</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">build_road_access</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="NetworkCaster.add_road_nodes"><a class="viewcode-back" href="../../../quetzal.engine.add_network.html#quetzal.engine.add_network.NetworkCaster.add_road_nodes">[docs]</a>    <span class="k">def</span> <span class="nf">add_road_nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">penalties</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">[[</span><span class="s1">&#39;road_a&#39;</span><span class="p">,</span> <span class="s1">&#39;road_b&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">link_road_nodes</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">,</span>
+            <span class="n">road_graph</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">road_graph</span><span class="p">,</span>
+            <span class="n">nearest_neighbors</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">neighbors</span><span class="p">,</span>
+            <span class="n">penalties</span><span class="o">=</span><span class="n">penalties</span><span class="p">,</span>
+            <span class="n">group</span><span class="o">=</span><span class="s1">&#39;trip_id&#39;</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="NetworkCaster.build_road_dataframe"><a class="viewcode-back" href="../../../quetzal.engine.add_network.html#quetzal.engine.add_network.NetworkCaster.build_road_dataframe">[docs]</a>    <span class="k">def</span> <span class="nf">build_road_dataframe</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> 
+        <span class="n">merge_on_links</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
+        <span class="n">replace_geometry</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">road_dataframe</span> <span class="o">=</span> <span class="n">road_dataframe</span><span class="p">(</span>
+            <span class="n">links</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">,</span> 
+            <span class="n">road_links</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">road_links</span><span class="p">,</span>
+            <span class="n">road_graph</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">road_graph</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">merge_on_links</span><span class="p">:</span>
+            <span class="c1"># we want to be sure we are not going to create duplicated columns</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">road_dataframe</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> 
+                <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> 
+                <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
+                <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span>
+            <span class="p">)</span> 
+            <span class="n">links</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">road_dataframe</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">replace_geometry</span><span class="p">:</span>
+                <span class="n">links</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">links</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;road_geometry&#39;</span><span class="p">:</span> <span class="s1">&#39;geometry&#39;</span><span class="p">},</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">links</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">])</span>
+                <span class="n">node_geo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">road_nodes</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+                <span class="k">def</span> <span class="nf">roada_to_geometry</span><span class="p">(</span><span class="n">key</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="n">geometry</span><span class="o">.</span><span class="n">LineString</span><span class="p">([</span><span class="n">node_geo</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">node_geo</span><span class="p">[</span><span class="n">key</span><span class="p">]])</span>
+                <span class="n">loc</span> <span class="o">=</span> <span class="n">links</span><span class="p">[(</span><span class="n">links</span><span class="p">[</span><span class="s1">&#39;road_a&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;road_b&#39;</span><span class="p">])]</span><span class="o">.</span><span class="n">index</span>
+                <span class="n">null_geometry</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;road_a&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">roada_to_geometry</span><span class="p">)</span>
+                <span class="n">links</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">loc</span><span class="p">,</span> <span class="s1">&#39;geometry&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">null_geometry</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">loc</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">links</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+
+    
+<div class="viewcode-block" id="NetworkCaster.build_road_access"><a class="viewcode-back" href="../../../quetzal.engine.add_network.html#quetzal.engine.add_network.NetworkCaster.build_road_access">[docs]</a>    <span class="k">def</span> <span class="nf">build_road_access</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">l</span><span class="p">)</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">[[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;road_a&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()]</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">l</span><span class="p">)</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">[[</span><span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;road_b&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()]</span>
+        <span class="n">road_access</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">neighbors</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span>
+            <span class="p">[</span><span class="s1">&#39;ix_one&#39;</span><span class="p">,</span> <span class="s1">&#39;ix_many&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">))]</span>
+        <span class="n">road_access</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;node&#39;</span><span class="p">,</span> <span class="s1">&#39;road_node&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">road_access</span> <span class="o">=</span> <span class="n">road_access</span></div></div>
+ 
+
+<div class="viewcode-block" id="find_node_path"><a class="viewcode-back" href="../../../quetzal.engine.add_network.html#quetzal.engine.add_network.find_node_path">[docs]</a><span class="k">def</span> <span class="nf">find_node_path</span><span class="p">(</span><span class="n">links</span><span class="p">,</span> <span class="n">line</span><span class="p">):</span>
+    <span class="n">line_links</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="n">links</span><span class="p">[</span><span class="s1">&#39;trip_id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">line</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">line_links</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;link_sequence&#39;</span><span class="p">)</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">line_links</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">])</span>
+    <span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">line_links</span><span class="p">[</span><span class="s1">&#39;b&#39;</span><span class="p">])[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">path</span></div>
+
+<div class="viewcode-block" id="node_join_dataframe"><a class="viewcode-back" href="../../../quetzal.engine.add_network.html#quetzal.engine.add_network.node_join_dataframe">[docs]</a><span class="k">def</span> <span class="nf">node_join_dataframe</span><span class="p">(</span>
+    <span class="n">node_path</span><span class="p">,</span> 
+    <span class="n">road_graph</span><span class="p">,</span> 
+    <span class="n">nearest_neighbors</span><span class="p">,</span> 
+    <span class="n">penalties</span><span class="o">=</span><span class="kc">None</span>
+<span class="p">):</span>
+    <span class="n">options</span> <span class="o">=</span> <span class="n">nearest_path</span><span class="o">.</span><span class="n">find_road_node_options</span><span class="p">(</span>
+        <span class="n">node_path</span><span class="p">,</span> 
+        <span class="n">nearest_neighbors</span><span class="o">=</span><span class="n">nearest_neighbors</span>
+    <span class="p">)</span>
+    <span class="n">shortcut_graph</span> <span class="o">=</span> <span class="n">nearest_path</span><span class="o">.</span><span class="n">build_shortcut_ghaph</span><span class="p">(</span>
+        <span class="n">node_path</span><span class="p">,</span>
+        <span class="n">options</span><span class="p">,</span>
+        <span class="n">road_graph</span><span class="o">=</span><span class="n">road_graph</span><span class="p">,</span>
+        <span class="n">penalties</span><span class="o">=</span><span class="n">penalties</span>
+    <span class="p">)</span>
+    <span class="n">road_node_path</span> <span class="o">=</span> <span class="n">nearest_path</span><span class="o">.</span><span class="n">find_road_node_path</span><span class="p">(</span><span class="n">shortcut_graph</span><span class="p">)</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s1">&#39;node&#39;</span><span class="p">:</span> <span class="n">node_path</span><span class="p">,</span> 
+            <span class="s1">&#39;road_node&#39;</span><span class="p">:</span> <span class="n">road_node_path</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">df</span></div>
+
+<div class="viewcode-block" id="build_node_dict"><a class="viewcode-back" href="../../../quetzal.engine.add_network.html#quetzal.engine.add_network.build_node_dict">[docs]</a><span class="k">def</span> <span class="nf">build_node_dict</span><span class="p">(</span>
+    <span class="n">links</span><span class="p">,</span>
+    <span class="n">road_graph</span><span class="p">,</span>
+    <span class="n">nearest_neighbors</span><span class="p">,</span>
+    <span class="n">penalties</span><span class="p">,</span>
+    <span class="n">group</span><span class="o">=</span><span class="s1">&#39;trip_id&#39;</span>
+<span class="p">):</span>
+    
+    <span class="n">links</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="n">to_concat</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">links</span><span class="p">[</span><span class="n">group</span><span class="p">])</span>
+
+    <span class="n">iterator</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">iterator</span><span class="p">:</span>
+        <span class="n">iterator</span><span class="o">.</span><span class="n">desc</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+        <span class="n">node_path</span> <span class="o">=</span> <span class="n">find_node_path</span><span class="p">(</span><span class="n">links</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+
+        <span class="n">df</span> <span class="o">=</span> <span class="n">node_join_dataframe</span><span class="p">(</span>
+            <span class="n">node_path</span><span class="o">=</span><span class="n">node_path</span><span class="p">,</span> 
+            <span class="n">road_graph</span><span class="o">=</span><span class="n">road_graph</span><span class="p">,</span> 
+            <span class="n">nearest_neighbors</span><span class="o">=</span><span class="n">nearest_neighbors</span><span class="p">,</span> 
+            <span class="n">penalties</span><span class="o">=</span><span class="n">penalties</span>
+        <span class="p">)</span>
+
+        <span class="n">df</span><span class="p">[</span><span class="n">group</span><span class="p">]</span> <span class="o">=</span> <span class="n">line</span>
+        <span class="n">to_concat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+
+        <span class="n">concatenated</span> <span class="o">=</span>  <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">to_concat</span><span class="p">)</span>
+        
+    <span class="n">node_dict</span> <span class="o">=</span> <span class="n">concatenated</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span>
+        <span class="p">[</span><span class="n">group</span><span class="p">,</span> <span class="s1">&#39;node&#39;</span><span class="p">]</span>
+    <span class="p">)[</span><span class="s1">&#39;road_node&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">node_dict</span><span class="p">,</span> <span class="n">concatenated</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">iterator</span></div>
+    
+
+<div class="viewcode-block" id="link_road_nodes"><a class="viewcode-back" href="../../../quetzal.engine.add_network.html#quetzal.engine.add_network.link_road_nodes">[docs]</a><span class="k">def</span> <span class="nf">link_road_nodes</span><span class="p">(</span>
+    <span class="n">links</span><span class="p">,</span>
+    <span class="n">road_graph</span><span class="p">,</span>
+    <span class="n">nearest_neighbors</span><span class="p">,</span>
+    <span class="n">penalties</span><span class="p">,</span>
+    <span class="n">group</span><span class="o">=</span><span class="s1">&#39;trip_id&#39;</span>
+<span class="p">):</span>
+    
+    <span class="n">links</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="n">to_concat</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">links</span><span class="p">[</span><span class="n">group</span><span class="p">])</span>
+
+    <span class="n">iterator</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">iterator</span><span class="p">:</span>
+        <span class="n">iterator</span><span class="o">.</span><span class="n">desc</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+        <span class="n">node_path</span> <span class="o">=</span> <span class="n">find_node_path</span><span class="p">(</span><span class="n">links</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+
+        <span class="n">df</span> <span class="o">=</span> <span class="n">node_join_dataframe</span><span class="p">(</span>
+            <span class="n">node_path</span><span class="o">=</span><span class="n">node_path</span><span class="p">,</span> 
+            <span class="n">road_graph</span><span class="o">=</span><span class="n">road_graph</span><span class="p">,</span> 
+            <span class="n">nearest_neighbors</span><span class="o">=</span><span class="n">nearest_neighbors</span><span class="p">,</span> 
+            <span class="n">penalties</span><span class="o">=</span><span class="n">penalties</span>
+        <span class="p">)</span>
+
+        <span class="n">df</span><span class="p">[</span><span class="n">group</span><span class="p">]</span> <span class="o">=</span> <span class="n">line</span>
+        <span class="n">to_concat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+
+        <span class="n">concatenated</span> <span class="o">=</span>  <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">to_concat</span><span class="p">)</span>
+        
+    <span class="n">node_dict</span> <span class="o">=</span> <span class="n">concatenated</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span>
+        <span class="p">[</span><span class="n">group</span><span class="p">,</span> <span class="s1">&#39;node&#39;</span><span class="p">]</span>
+    <span class="p">)[</span><span class="s1">&#39;road_node&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+    
+
+    <span class="k">def</span> <span class="nf">road_a_road_b</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
+        <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="n">node_dict</span><span class="p">[(</span><span class="n">row</span><span class="p">[</span><span class="n">group</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">]</span> <span class="p">)]</span>
+            <span class="n">b</span> <span class="o">=</span> <span class="n">node_dict</span><span class="p">[(</span><span class="n">row</span><span class="p">[</span><span class="n">group</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;b&#39;</span><span class="p">]</span> <span class="p">)]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span> <span class="c1"># ((&#39;D10-42_bis&#39;, &#39;LSEAD&#39;), &#39;occurred at index link_293&#39;)</span>
+            <span class="k">pass</span>
+        
+
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">])</span>
+    
+    <span class="k">return</span> <span class="n">links</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">road_a_road_b</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="road_dataframe"><a class="viewcode-back" href="../../../quetzal.engine.add_network.html#quetzal.engine.add_network.road_dataframe">[docs]</a><span class="k">def</span> <span class="nf">road_dataframe</span><span class="p">(</span><span class="n">links</span><span class="p">,</span> <span class="n">road_links</span><span class="p">,</span> <span class="n">road_graph</span><span class="p">):</span>
+
+    <span class="c1"># index link data in order to improve performances of road_series</span>
+    <span class="n">road_links</span> <span class="o">=</span> <span class="n">road_links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">road_links</span><span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">road_links</span><span class="o">.</span><span class="n">index</span>
+    <span class="n">indexed</span> <span class="o">=</span> <span class="n">road_links</span><span class="o">.</span><span class="n">set_index</span><span class="p">([</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">sort_index</span><span class="p">()</span>
+    <span class="n">ab_indexed_dict</span> <span class="o">=</span> <span class="n">indexed</span><span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+    <span class="n">indexed</span> <span class="o">=</span> <span class="n">road_links</span><span class="o">.</span><span class="n">set_index</span><span class="p">([</span><span class="s1">&#39;index&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">sort_index</span><span class="p">()</span>
+    <span class="n">indexed_geometries</span> <span class="o">=</span> <span class="n">indexed</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">road_series</span><span class="p">(</span><span class="n">link</span><span class="p">,</span> <span class="n">road_graph</span><span class="p">):</span>
+
+        <span class="k">try</span><span class="p">:</span> 
+
+            <span class="n">a</span> <span class="o">=</span> <span class="n">link</span><span class="p">[</span><span class="s1">&#39;road_a&#39;</span><span class="p">]</span>
+            <span class="n">b</span> <span class="o">=</span> <span class="n">link</span><span class="p">[</span><span class="s1">&#39;road_b&#39;</span><span class="p">]</span>
+
+            <span class="n">road_distance</span><span class="p">,</span> <span class="n">road_node_list</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">bidirectional_dijkstra</span><span class="p">(</span>
+                <span class="n">road_graph</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span>
+            <span class="p">)</span>
+
+            <span class="n">tuples</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="p">(</span><span class="n">road_node_list</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">road_node_list</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span> 
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">road_node_list</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="p">]</span>
+
+            <span class="n">road_link_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">ab_indexed_dict</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tuples</span><span class="p">]</span>
+            <span class="n">line_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">indexed_geometries</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">road_link_list</span><span class="p">])</span>
+            <span class="n">road_geometry</span> <span class="o">=</span> <span class="n">line_list_to_polyline</span><span class="p">(</span><span class="n">line_list</span><span class="p">)</span>
+
+            <span class="n">values</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">road_node_list</span><span class="p">,</span>
+                <span class="n">road_link_list</span><span class="p">,</span>
+                <span class="n">road_distance</span><span class="p">,</span>
+                <span class="n">road_geometry</span>
+            <span class="p">]</span>
+        <span class="k">except</span> <span class="n">nx</span><span class="o">.</span><span class="n">NodeNotFound</span><span class="p">:</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+
+
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+
+    <span class="c1"># apply road_series to build a dataframe containing all the </span>
+    <span class="c1"># columns related to the road network</span>
+    <span class="n">tqdm</span><span class="o">.</span><span class="n">pandas</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s1">&#39;road_paths &#39;</span><span class="p">)</span>
+    <span class="n">road_df</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">progress_apply</span><span class="p">(</span>
+        <span class="k">lambda</span> <span class="n">l</span><span class="p">:</span> <span class="n">road_series</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="n">road_graph</span><span class="p">),</span>
+        <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+    <span class="p">)</span>
+
+    <span class="n">road_df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s1">&#39;road_node_list&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;road_link_list&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;road_length&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;road_geometry&#39;</span>
+    <span class="p">]</span>
+    
+    <span class="k">return</span> <span class="n">road_df</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Systra.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
