@@ -33,7 +33,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         json_folder=None,
         hdf_database=None,
         *args,
-        **kwargs,
+        **kwargs
     ):
 
         """

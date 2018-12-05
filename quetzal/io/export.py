@@ -186,7 +186,9 @@ def loaded_links_to_shp(
     epsg=None,
     projection_file=None,
     name='loaded_links.shp',
-    create_legend=False
+    create_legend=False,
+    *args,
+    **kwargs
 ):
     if epsg is None and projection_file is None:
         print('No projection defined --> considered as EPSG:4326')
@@ -225,7 +227,9 @@ def loaded_links_to_shp(
             epsg=epsg,
             projection_file=projection_file,
             max_value=max_value,
-            legend_type='LineString'
+            legend_type='LineString',
+            *args,
+            **kwargs
             )
 
 
