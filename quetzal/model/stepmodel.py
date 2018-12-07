@@ -4,6 +4,8 @@ from quetzal.model import analysismodel, docmodel
 
 import warnings
 from functools import wraps
+import shutil
+import ntpath
 
 
 def deprecated_method(method):
@@ -23,6 +25,14 @@ def deprecated_method(method):
 
 def read_hdf(filepath):
     m = StepModel(hdf_database=filepath)
+    return m
+
+def read_zip(filepath):
+    filedir = ntpath.dirname(filepath)
+    tempdir = filedir + '/quetzal_temp'
+    shutil.unpack_archive(filepath, tempdir)
+    m = read_hdf(tempdir + r'/model.hdf')
+    shutil.rmtree(tempdir)
     return m
 
 

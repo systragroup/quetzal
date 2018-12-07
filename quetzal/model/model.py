@@ -9,6 +9,8 @@ import pandas as pd
 from copy import deepcopy
 from functools import wraps
 from tqdm import tqdm
+import shutil
+import ntpath
 
 from quetzal.model.integritymodel import IntegrityModel
 
@@ -188,8 +190,17 @@ class Model(IntegrityModel):
         # mode=a : we do not want to overwrite the file !
         json_series.to_hdf(filepath, 'jsons', mode='a')
 
+    def to_zip(self, filepath):
+        filedir = ntpath.dirname(filepath)
+        tempdir = filedir + '/quetzal_temp'
+        os.mkdir(tempdir)
+        hdf_path = tempdir+ r'/model.hdf'
+        self.to_hdf(hdf_path)
+        shutil.make_archive(filepath.split('.zip')[0], 'zip', tempdir)
+        shutil.rmtree(tempdir)
+
     @track_args
-    def to_json(self, folder, omitted_attributes=()):
+    def to_json(self, folder, omitted_attributes=(), only_attributes=None):
         
         """
         export the full model to a hdf database
@@ -206,6 +217,8 @@ class Model(IntegrityModel):
         attributeerrors = []
         for key, attribute in iterator:
             if key in omitted_attributes:
+                continue
+            if only_attributes is not None and key not in only_attributes:
                 continue
 
             root_name = folder + '/' + key
