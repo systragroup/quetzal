@@ -139,6 +139,10 @@ def merge(
 
 class Model(IntegrityModel):
 
+    def plot(self, attribute, *args, **kwargs):
+        gdf = gpd.GeoDataFrame(self.__dict__[attribute])
+        return gdf.plot(*args, **kwargs)
+
     def read_hdf(self, filepath):
         with pd.HDFStore(filepath) as hdf:
             keys = [k.split('/')[1] for k in hdf.keys()]

@@ -25,7 +25,7 @@ log = model.log
 
 
 class AnalysisModel(transportmodel.TransportModel):
-
+    
     def _aggregate(self, nb_clusters):
         """
         Aggregates a model (in order to perform optimization)
