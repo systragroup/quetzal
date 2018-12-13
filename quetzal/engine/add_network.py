@@ -22,7 +22,6 @@ class NetworkCaster:
         
         self.road_nodes = road_nodes
         self.links = links
-        print(len(self.links))
         
         if road_links is not None:
             self.road_links = road_links
@@ -139,14 +138,15 @@ class NetworkCaster:
         self.build_road_dataframe()
         self.build_road_access()
 
-    def add_road_nodes(self, penalties=None):
-        self.tuple = build_node_dict(
-            self.links,
-            road_graph=self.road_graph,
-            nearest_neighbors=self.neighbors,
-            penalties=penalties,
-            group='trip_id'
-        )
+    def add_road_nodes(self, penalties=None, debug=False):
+        if debug:
+            self.tuple = build_node_dict(
+                self.links,
+                road_graph=self.road_graph,
+                nearest_neighbors=self.neighbors,
+                penalties=penalties,
+                group='trip_id'
+            )
         self.links[['road_a', 'road_b']] = link_road_nodes(
             self.links,
             road_graph=self.road_graph,

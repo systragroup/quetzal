@@ -5,11 +5,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from shapely import geometry, ops
 import os
-
+import geopandas as gpd
 from syspy.io.pandasshp import pandasshp
 from syspy.syspy_utils import data_visualization as visual
 from syspy.spatial.geometries import line_list_to_polyline
-
+from syspy.spatial import spatial, geometries
+from tqdm import tqdm
 from syspy.paths import gis_resources
 
 
@@ -26,7 +27,111 @@ RdYlGn = [
     '#a50026', '#d73027', '#f46d43', '#fdae61', '#fee08b',
     '#d9ef8b', '#a6d96a', '#66bd63', '#1a9850', '#006837']
 
+def get_road_links(self, trip_id='trip_id'):
+    l = self.links.copy()
+    flat = []
+    for key, links in l['road_link_list'].to_dict().items():
+        flat += [(key, link) for link in links]
 
+    core = pd.DataFrame(flat, columns=['transit', 'road'])
+
+    merged = pd.merge(self.links, core, left_index=True, right_on='transit')
+    merged = pd.merge(merged, self.road_links, left_on='road', right_index=True, suffixes=['_transit', ''])
+    return merged[['a', 'b', 'transit', 'geometry', 'road', trip_id]]
+
+def connected_geometries(sorted_edges):
+    edges = sorted_edges.copy()
+    a = list(edges.index)
+    #a = [i for i in a if i in edges.index]
+    b = [edges.loc[a[i], 'b'] == edges.loc[a[i+1], 'a'] for i in range(len(a) - 1)]
+
+    s = [0] + [i+1 for i in range(len(b) - 1) if not b[i]] + [len(a)]
+    slices = [(s[i], s[i+1]) for i in range(len(s) - 1)]
+
+    geometry_list = []
+    for s in slices:
+        line_series = edges.loc[a].iloc[s[0]: s[1]]['geometry']
+        geometry = geometries.line_list_to_polyline(list(line_series))
+        geometry_list.append(geometry)
+    return geometry_list
+
+def line_tuple_geometry(self, line_tuple, edges):
+    
+    sorted_road_links = []
+    selected = self.links.loc[self.links['trip_id'] == line_tuple[0]]
+    for road_link_list in selected.sort_values('link_sequence')['road_link_list']:
+        for road_link in road_link_list:
+            sorted_road_links.append(road_link)
+            
+    sorted_edges = edges.loc[sorted_road_links].dropna(subset=['a', 'b'])
+    return connected_geometries(sorted_edges)
+
+def geometries_with_side(
+    tuple_indexed_geometry_lists, 
+    width=1
+    ):
+    tigl = tuple_indexed_geometry_lists
+    
+    # explode geometry lists
+    tuples = []
+    for index_tuple,  geometry_list in tigl.items():
+        for geometry in geometry_list:
+            tuples.append([index_tuple , geometry])
+            
+    tuple_geometries = pd.DataFrame(tuples, columns=['index_tuple', 'geometry'])
+
+    # explode line tuples
+    tuples = []
+    for index_tuple in tigl.keys():
+        for item in index_tuple:
+            tuples.append([item, index_tuple])
+
+    df = pd.DataFrame(tuples, columns=['id', 'index_tuple'])
+    df = pd.merge(tuple_geometries, df, on='index_tuple').dropna()
+    
+    df['geometry_string'] = df['geometry'].astype(str)
+    l = df.copy()
+    groupby_columns = ['geometry_string']
+    l.sort_values(groupby_columns + ['id'], inplace=True)
+
+    l['index'] = 0
+    sides = []
+    for n in list(l.groupby(groupby_columns)['index'].count()):
+        sides += list(range(n))
+
+    l['side'] = sides
+    l['width'] = width
+    l['offset'] =  l['width'] *( l['side'] + 0.5)
+
+    return gpd.GeoDataFrame(l[['geometry', 'width', 'side', 'offset', 'id']])
+
+def get_lines_with_offset(self, width=1, trip_id='trip_id'):
+    # get road_links
+    l = get_road_links(self)
+    l['ab'] = l.apply(lambda r: tuple(sorted([r['a'], r['b']])), axis=1)
+
+    # line_tuples geometry
+    line_tuples = l.groupby(['road'])[trip_id].agg(lambda s: tuple(sorted(tuple(s))))
+    road_links = gpd.GeoDataFrame(self.road_links)
+    road_links['line_tuple'] = line_tuples
+    road_links = road_links.dropna(subset=['line_tuple']).copy()
+
+    line_tuples = list(set(line_tuples))
+    line_tuple_geometries = dict()
+    for line_tuple in tqdm(line_tuples):
+        
+        # build sorted_edges
+        edges = road_links.loc[road_links['line_tuple'] == line_tuple]
+        sorted_road_links = []
+        selected = self.links.loc[self.links['trip_id'] == line_tuple[0]]
+        for road_link_list in selected.sort_values('link_sequence')['road_link_list']:
+            for road_link in road_link_list:
+                sorted_road_links.append(road_link)
+        sorted_edges = edges.loc[sorted_road_links].dropna(subset=['a', 'b'])
+        
+        line_tuple_geometries[line_tuple] = connected_geometries(sorted_edges)
+    
+    return geometries_with_side(line_tuple_geometries, width=width)
 
 def shares_to_shp(
     aggregated_shares,
