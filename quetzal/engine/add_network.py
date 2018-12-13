@@ -358,7 +358,8 @@ def road_dataframe(links, road_links, road_graph):
                 road_distance,
                 road_geometry
             ]
-        except nx.NodeNotFound:
+        except (nx.NodeNotFound, nx.NetworkXNoPath) as e:
+            print(e)
 
             values = [None, None, None, None]
 

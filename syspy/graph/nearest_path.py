@@ -94,7 +94,6 @@ def build_shortcut_ghaph(
         )
         weighted_edges.append(weighted_edge)
             
-
     origin_options = road_node_options[node_path[0]]
     destination_options = road_node_options[node_path[-1]]
 
