@@ -196,21 +196,21 @@ def clean_geometries(links, nodes):
     def return_directed(row):
         return list(ng[row['a']].coords)[0] == list(row['geometry'].coords)[-1]
 
-    tqdm.pandas('directed')
+    #tqdm.pandas('directed')
     
-    reverse = links.progress_apply(
+    reverse = links.apply(
         return_directed,
         axis=1
     )
     
-    direct = links.progress_apply(
+    direct = links.apply(
         directed,
         axis=1
     )
     
     loc = (reverse == True, 'geometry')
 
-    links.loc[loc] = links.loc[loc].progress_apply(
+    links.loc[loc] = links.loc[loc].apply(
         reversed_polyline
     )
     assert (reverse | direct).mean() == 1

@@ -368,8 +368,8 @@ def road_dataframe(links, road_links, road_graph):
 
     # apply road_series to build a dataframe containing all the 
     # columns related to the road network
-    tqdm.pandas(desc='road_paths ')
-    road_df = links.progress_apply(
+    #tqdm.pandas(desc='road_paths ')
+    road_df = links.apply(
         lambda l: road_series(l, road_graph),
         axis=1
     )
