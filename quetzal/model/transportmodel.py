@@ -5,6 +5,7 @@ import pandas as pd
 from quetzal.analysis import analysis
 from quetzal.engine import engine
 from quetzal.engine.pathfinder import PublicPathFinder
+from quetzal.engine.road_pathfinder import RoadPathFinder
 from quetzal.model import model, preparationmodel
 
 from syspy.assignment import raw as raw_assignment
@@ -24,10 +25,8 @@ def read_json(folder):
     m.read_json(folder)
     return m
 
-
 track_args = model.track_args
 log = model.log
-
 
 class TransportModel(preparationmodel.PreparationModel):
 
@@ -100,54 +99,15 @@ class TransportModel(preparationmodel.PreparationModel):
             )
   
     @track_args
-    def step_road_pathfinder(self, **kwargs):
+    def step_road_pathfinder(self, maxiters=1, *args, **kwargs):
         """
         * requires: zones, road_links, zone_to_road
         * builds: road_paths
         """
-        print('FutureWarning: ça va changer')
-        road_links = self.road_links
-        road_links['index'] = road_links.index
-        indexed = road_links.set_index(['a', 'b']).sort_index()
-        ab_indexed_dict = indexed['index'].to_dict()
-
-        def node_path_to_link_path(road_node_list, ab_indexed_dict):
-            tuples = [
-                (road_node_list[i], road_node_list[i+1]) 
-                for i in range(len(road_node_list)-1)
-            ]
-            road_link_list = [ab_indexed_dict[t] for t in tuples]
-            return road_link_list
-
-        road_graph = nx.DiGraph()
-        road_graph.add_weighted_edges_from(
-            self.road_links[['a', 'b', 'time']].values.tolist()
-        )
-        road_graph.add_weighted_edges_from(
-            self.zone_to_road[['a', 'b', 'time']].values.tolist()
-        )
-
-        l = []
-        for origin in tqdm(list(self.zones.index)):
-            lengths, paths = nx.single_source_dijkstra(road_graph, origin)
-            for destination in list(self.zones.index):
-                try:
-                    length = lengths[destination]
-                    path = paths[destination]
-                    node_path = path[1:-1]
-                    link_path = node_path_to_link_path(node_path, ab_indexed_dict)
-                    try:
-                        ntlegs = [(path[0], path[1]), (path[-2], path[-1])]
-                    except IndexError:
-                        ntlegs = []
-                    l.append( [origin, destination, path, node_path, link_path, ntlegs, length])
-                except KeyError:
-                    l.append( [origin, destination, path, node_path, link_path, ntlegs, length])
-                    
-        self.car_los = pd.DataFrame(
-            l, 
-            columns=['origin', 'destination', 'path','node_path', 'link_path', 'ntlegs', 'time']
-        )
+        roadpathfinder = RoadPathFinder(self)
+        roadpathfinder.frank_wolfe(maxiters=maxiters, *args, **kwargs)
+        self.car_los = roadpathfinder.car_los
+        self.road_links = roadpathfinder.road_links
 
     @track_args
     def step_pt_pathfinder(self, **kwargs):
