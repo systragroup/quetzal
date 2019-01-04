@@ -180,7 +180,7 @@ def linear_plot(
 
     pool['distance'] = color_series(
         np.absolute((pool[y_column]-pool[x_column])/(pool[y_column]+pool[x_column])).fillna(0),
-        colors=[clear_shades[1], clear_shades[0]],
+        colors=[clear_shades()[1], clear_shades()[0]],
     )
     pool['size'] = width_series(np.absolute(np.power(np.maximum(pool[y_column],pool[x_column]), 0.3)), box_size)
 
@@ -199,7 +199,7 @@ def linear_plot(
         ):
 
             d = d if dynamic_size else box_size
-            c = c if dynamic_color else clear_shades[1]
+            c = c if dynamic_color else clear_shades()[1]
             plt.annotate(
                 label,
                 xy=(x, y), xytext = (-10, 10),

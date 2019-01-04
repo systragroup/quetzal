@@ -12,6 +12,7 @@ import json
 from math import pi
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 
 def reversed_polyline(polyline):
     coords = list(polyline.coords)

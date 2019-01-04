@@ -45,7 +45,11 @@ class RoadPathFinder:
         self.zones = model.zones.copy()
         self.road_links = model.road_links.copy()
         self.zone_to_road = model.zone_to_road.copy()
-        self.volumes = model.volumes.copy()
+        try :
+            self.volumes = model.volumes.copy()
+        except AttributeError:
+            pass
+        
 
     def aon_road_pathfinder(self, time='time', **kwargs):
         """
@@ -95,7 +99,13 @@ class RoadPathFinder:
             columns=['origin', 'destination', 'path','node_path', 'link_path', 'ntlegs', 'time']
         )
 
-    def frank_wolfe_step(self, iteration=0, log=False, speedup=True):
+    def frank_wolfe_step(
+        self, 
+        iteration=0, 
+        log=False, 
+        speedup=True, 
+        volume_column='volume_car'
+    ):
         links = self.road_links # not a copy
         
         # a 
@@ -110,7 +120,7 @@ class RoadPathFinder:
             on=['origin', 'destination']
         )
         auxiliary_flows = raw_assignment.assign(
-            merged['volume_car'], 
+            merged[volume_column], 
             merged['link_path']
         )
         
@@ -190,19 +200,23 @@ class RoadPathFinder:
         min_time = los.groupby(['origin', 'destination' ], as_index=False)['actual_time'].min()
         los = pd.merge(los, min_time , on=['origin', 'destination'], suffixes=['',  '_minimum'])
         los['delta'] = los['actual_time'] - los['actual_time_minimum']
-        gap = (los['delta']* los['weight'] * los['volume_pt']).sum()
-        total_time = (los['actual_time_minimum'] * los['weight'] * los['volume_pt']).sum()
+        gap = (los['delta']* los['weight'] * los['volume_car']).sum()
+        total_time = (los['actual_time_minimum'] * los['weight'] * los['volume_car']).sum()
         return gap / total_time
 
     def frank_wolfe(
         self, 
+        all_or_nothing=False,
         reset_jam_time=True, 
         maxiters=20, 
         tolerance=0.01,
         *args, 
         **kwargs
     ):
-
+        if all_or_nothing:
+            self.aon_road_pathfinder(*args, **kwargs)
+            return 
+            
         if reset_jam_time:
             self.road_links['flow'] = 0
             self.road_links['jam_time'] = self.road_links['time']
@@ -216,8 +230,9 @@ class RoadPathFinder:
             los = self.process_car_los(car_los_list)
             relgap = self.get_relgap(los)
             print('relgap = %.1f %%' % (relgap * 100))
-            if done or relgap < tolerance and i > 0 :
-                break
+            if i > 0:
+                if done or relgap < tolerance:
+                    break
 
             
         
