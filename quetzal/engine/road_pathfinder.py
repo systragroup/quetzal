@@ -210,6 +210,7 @@ class RoadPathFinder:
         reset_jam_time=True, 
         maxiters=20, 
         tolerance=0.01,
+        log=False,
         *args, 
         **kwargs
     ):
@@ -223,13 +224,14 @@ class RoadPathFinder:
             
         car_los_list = []
         for i in range(maxiters):
-            done = self.frank_wolfe_step(iteration=i, *args, **kwargs)
+            done = self.frank_wolfe_step(iteration=i, log=log,*args, **kwargs)
             c = self.car_los
             car_los_list.append(c)
 
             los = self.process_car_los(car_los_list)
             relgap = self.get_relgap(los)
-            print('relgap = %.1f %%' % (relgap * 100))
+            if log:
+                print('relgap = %.1f %%' % (relgap * 100))
             if i > 0:
                 if done or relgap < tolerance:
                     break

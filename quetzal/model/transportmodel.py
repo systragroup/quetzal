@@ -110,14 +110,28 @@ class TransportModel(preparationmodel.PreparationModel):
         self.road_links = roadpathfinder.road_links
 
     @track_args
-    def step_pt_pathfinder(self, **kwargs):
+    def step_pt_pathfinder(
+        self,
+        broken_routes=True, 
+        broken_modes=True, 
+        route_column='route_id',
+        mode_column='route_type',
+        speedup=False, 
+        **kwargs):
         """
         * requires: zones, links, footpaths, zone_to_road, zone_to_transit
         * builds: pt_paths
         """
         self.links = engine.graph_links(self.links)
         publicpathfinder = PublicPathFinder(self)
-        publicpathfinder.find_best_paths(**kwargs)
+        publicpathfinder.find_best_paths(
+            broken_routes=broken_routes, 
+            broken_modes=broken_modes, 
+            route_column=route_column,
+            mode_column=mode_column,
+            speedup=speedup,
+            **kwargs
+        )
         self.pt_los = publicpathfinder.paths.copy()
         self.pt_los = analysis.path_analysis_od_matrix(
             od_matrix=self.pt_los,
