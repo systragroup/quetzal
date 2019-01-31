@@ -42,6 +42,7 @@ def od_volume_from_zones(zones, impedance_matrix=None, power=2,
         ['origin', 'destination', 'volume']
     """
     if impedance_matrix is None:
+        print('test')
         euclidean = skims.euclidean(zones, coordinates_unit=coordinates_unit, intrazonal=intrazonal)
         distance = euclidean.set_index(
             ['origin', 'destination'])['euclidean_distance'].unstack('destination')
