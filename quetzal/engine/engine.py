@@ -380,6 +380,7 @@ def loaded_links_and_nodes(
     volume_column='volume',
     path_column='path',
     pivot_column=None,
+    path_pivot_column=None,
     boardings=False,
     alightings=False,
     transfers=False,
@@ -422,13 +423,19 @@ def loaded_links_and_nodes(
     # 
     analysis_col = ['transfers', 'boardings', 'alightings', 'alighting_links', 'boarding_links']
 
+    # use it in order to add probability to paths
+    path_finder_stack['pivot'] = 1
+    if path_pivot_column:
+        path_finder_stack['pivot'] = path_finder_stack[path_pivot_column]
+
     # we don't want name collision
     merged = pd.merge(
         volumes[['origin', 'destination', volume_column]],
-        path_finder_stack[['origin', 'destination', path_column] + analysis_col],
+        path_finder_stack[['origin', 'destination', 'pivot', path_column, ] + analysis_col],
         on=['origin', 'destination'])
 
 
+    merged[volume_column] = merged[volume_column] * merged['pivot']
     volume_array = merged[volume_column].values
     paths = merged[path_column].values
 

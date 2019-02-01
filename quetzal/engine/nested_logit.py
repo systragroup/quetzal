@@ -106,9 +106,7 @@ def nested_logit_from_paths(paths, mode_nests=None, phi=None, verbose=False):
         ['route_type','origin', 'destination', 'rank']
         )['utility'].sort_index()
     rank_utilities= stack.unstack(['route_type',  'rank']).T.sort_index().T
-
-
-
+    rank_utilities.fillna(-np.inf, inplace=True)
     mode_utilities = pd.DataFrame(index=rank_utilities.index)
     mode_utilities.columns.name = 'route_type'
 
