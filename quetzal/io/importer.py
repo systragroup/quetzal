@@ -122,4 +122,4 @@ def from_lines(lines, node_index=0, add_return=True):
 
     links = pd.concat(to_concat_links)
     nodes = pd.concat(to_concat_nodes)
-    return links.reset_index(drop=True), nodes.reset_index(drop=True)
+    return links.reset_index(drop=True), nodes
