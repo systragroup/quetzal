@@ -23,15 +23,15 @@ def deprecated_method(method):
     return decorated
 
 
-def read_hdf(filepath):
-    m = StepModel(hdf_database=filepath)
+def read_hdf(filepath, *args, **kwargs):
+    m = StepModel(hdf_database=filepath, *args, **kwargs)
     return m
 
-def read_zip(filepath):
+def read_zip(filepath, *args, **kwargs):
     filedir = ntpath.dirname(filepath)
     tempdir = filedir + '/quetzal_temp'
     shutil.unpack_archive(filepath, tempdir)
-    m = read_hdf(tempdir + r'/model.hdf')
+    m = read_hdf(tempdir + r'/model.hdf', *args, **kwargs)
     shutil.rmtree(tempdir)
     return m
 

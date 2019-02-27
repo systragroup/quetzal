@@ -2,6 +2,8 @@ import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
 import pandas as pd
+from tqdm import tqdm
+
 def rank_paths(paths, by='utility'):
     columns = ['origin', 'destination', 'route_type']
     sorted_paths = paths.sort_values(by=columns + [by], ascending=True)
@@ -184,11 +186,13 @@ def nested_logit_from_paths(paths, mode_nests=None, phi=None, verbose=False):
     merged['probability'] = merged['assignment_share'] * merged['modal_split_share']
     
     merge_columns = ['origin', 'destination', 'route_type', 'rank']
+
+    paths['index'] = paths.index
     paths = pd.merge(
         paths.drop('probability', axis=1, errors='ignore'), 
         merged[merge_columns + ['probability']], 
         on=merge_columns, 
         suffixes=['_old',  ''],
         how='left'
-    )
+    ).set_index('index')
     return paths,  mode_utilities.reset_index(), mode_probabilities.reset_index()

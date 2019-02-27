@@ -206,7 +206,7 @@ def path_and_duration_from_links_and_ntlegs(
     ntlegs,
     pole_set,
     footpaths=None,
-    boarding_cost=300
+    boarding_cost=300,
 ):
 
     """
@@ -253,6 +253,7 @@ def path_and_duration_from_links_and_ntlegs(
     allpaths = {}
     alllengths = {}
     iterator = tqdm(list(pole_set))
+    
     for pole in iterator:
         iterator.desc = str(pole) + ' '
         

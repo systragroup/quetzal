@@ -103,6 +103,82 @@ class AnalysisModel(transportmodel.TransportModel):
             self.agg._build_pivot_stack_matrix(constrained_links, linprog_kwargs)
             self._disaggregate()
 
+    def analysis_pt_route_type(self, hierarchy):
+        route_type_dict = self.links['route_type'].to_dict()
+        self.pt_los['route_types'] = self.pt_los['link_path'].apply(
+            lambda p: tuple({route_type_dict[l] for l in p})
+        )
+
+        def higher_route_type(route_types):
+            for mode in hierarchy:
+                if mode in route_types:
+                    return mode
+            return hierarchy[-1]
+
+        self.pt_los['route_type'] = self.pt_los['route_types'].apply(higher_route_type)
+
+    def analysis_car_route_type(self):
+        self.car_los['route_types'] = [tuple(['car']) for i in self.car_los.index]
+        self.car_los['route_type'] = 'car'
+
+
+    def analysis_pt_time(self, boarding_time=0):
+
+        d = self.zone_to_transit.set_index(['a', 'b'])['time'].to_dict()
+        self.pt_los['access_time'] = self.pt_los['ntlegs'].apply(
+            lambda l: sum([d[t] for t in l]))
+        d = self.footpaths.set_index(['a', 'b'])['time'].to_dict()
+        self.pt_los['footpath_time'] = self.pt_los['footpaths'].apply(
+            lambda l: sum([d[t] for t in l]))
+        d = self.links['time'].to_dict()
+        self.pt_los['in_vehicle_time'] = self.pt_los['link_path'].apply(
+            lambda l: sum([d[t] / 2 for t in l]))
+        d = self.links['headway'].to_dict()
+        self.pt_los['waiting_time'] = self.pt_los['boarding_links'].apply(
+            lambda l: sum([d[t] / 2 for t in l]))
+        self.pt_los['boarding_time'] = self.pt_los['boarding_links'].apply(
+            lambda t: len(t)*boarding_time)
+
+    def analysis_car_time(self):
+        d = self.zone_to_road.set_index(['a', 'b'])['time'].to_dict()
+        self.car_los['access_time'] = self.car_los['ntlegs'].apply(
+            lambda l: sum([d[t] for t in l]))
+        
+        d = self.road_links['time'].to_dict()
+        self.car_los['time_link_path'] = self.car_los['link_path'].apply(
+            lambda l: sum([d[t] for t in l]))
+
+
+    def analysis_pt_fare(self):
+    
+        # fare_rules 
+        route_dict = self.links['route_id'].to_dict()
+        fare_dict = self.fare_rules.set_index('route_id')['fare_id'].to_dict()
+        def fare_id_list(path):
+            return [fare_dict[route] for route in {route_dict[link] for link in path}]
+
+        # fare_attributes
+        transfers = self.fare_attributes.set_index('fare_id')['transfers'].to_dict()
+        price = self.fare_attributes.set_index('fare_id')['price'].to_dict()
+
+        def fare(count, allowed_transfers, price):
+            return max(count/ (allowed_transfers+ 1), 1) * price
+
+        def fare_sum(fare_id_list):
+            return sum(
+                fare(
+                    count=fare_id_list.count(f),
+                    allowed_transfers=transfers[f],
+                    price=price[f]
+                )
+                for f in set(fare_id_list)
+            )
+        
+        fare_id_list_series= self.pt_los['link_path'].apply(fare_id_list)
+        self.pt_los['fare_id_list'] = fare_id_list()
+        self.pt_los['price'] = fare_id_list_series.apply(fare_sum)
+
+
     @track_args
     def analysis_summary(self):
         """

@@ -139,16 +139,67 @@ def merge(
 
 class Model(IntegrityModel):
 
+    def __init__(
+        self,
+        json_database=None,
+        json_folder=None,
+        hdf_database=None,
+        omitted_attributes=(),
+        only_attributes=None,
+        *args,
+        **kwargs
+    ):
+
+        """
+        Initialization function, either from a json folder or a json_database representation.
+
+        Args:
+            json_database (json): a json_database representation of the model. Default None.
+            json_folder (json): a json folder representation of the model. Default None.
+
+        Examples:
+        >>> sm = stepmodel.Model(json_database=json_database_object)
+        >>> sm = stepmodel.Model(json_folder=folder_path)
+        """
+        super().__init__(*args, **kwargs)
+
+        if json_database and json_folder:
+            raise Exception('Only one argument should be given to the init function.')
+        elif json_database:
+            self.read_json_database(json_database)
+        elif json_folder:
+            self.read_json(json_folder)
+        elif hdf_database:
+            self.read_hdf(
+                hdf_database, 
+                omitted_attributes=omitted_attributes,
+                only_attributes=only_attributes
+            )
+
+        self.debug = True
+
+        # Add default coordinates unit and epsg
+        if self.epsg is None:
+            print('Model epsg not defined: setting epsg to default one: 4326')
+            self.epsg = 4326
+        if self.coordinates_unit is None:
+            print('Model coordinates_unit not defined: setting coordinates_unit to default one: degree')
+            self.coordinates_unit = 'degree'
+
     def plot(self, attribute, *args, **kwargs):
         gdf = gpd.GeoDataFrame(self.__dict__[attribute])
         return gdf.plot(*args, **kwargs)
 
-    def read_hdf(self, filepath):
+    def read_hdf(self, filepath, omitted_attributes=(), only_attributes=None):
         with pd.HDFStore(filepath) as hdf:
             keys = [k.split('/')[1] for k in hdf.keys()]
 
         iterator = tqdm(keys, desc='read_hdf: ')
         for key in iterator:
+            if key in omitted_attributes:
+                continue
+            if only_attributes is not None and key not in only_attributes:
+                continue
             value = pd.read_hdf(filepath, key)
             self.__setattr__(key, value)
 
@@ -158,10 +209,10 @@ class Model(IntegrityModel):
             for key, value in json_dict.items():
                 self.__setattr__(key, json.loads(value))
         except AttributeError:
-            print('error')
+            print('coul not read json attributes')
 
     @track_args
-    def to_hdf(self, filepath):
+    def to_hdf(self, filepath, omitted_attributes=(), only_attributes=None):
         """
         export the full model to a hdf database
         """
@@ -175,6 +226,11 @@ class Model(IntegrityModel):
 
         attributeerrors = []
         for key, attribute in iterator:
+            if key in omitted_attributes:
+                continue
+            if only_attributes is not None and key not in only_attributes:
+                continue
+
             if isinstance(attribute, gpd.GeoDataFrame):
                 pd.DataFrame(attribute).to_hdf(filepath, key=key, mode='a')
             elif isinstance(attribute, gpd.GeoSeries):
@@ -194,12 +250,12 @@ class Model(IntegrityModel):
         # mode=a : we do not want to overwrite the file !
         json_series.to_hdf(filepath, 'jsons', mode='a')
 
-    def to_zip(self, filepath):
+    def to_zip(self, filepath, *args, **kwargs):
         filedir = ntpath.dirname(filepath)
         tempdir = filedir + '/quetzal_temp'
         os.mkdir(tempdir)
         hdf_path = tempdir+ r'/model.hdf'
-        self.to_hdf(hdf_path)
+        self.to_hdf(hdf_path, *args, **kwargs)
         shutil.make_archive(filepath.split('.zip')[0], 'zip', tempdir)
         shutil.rmtree(tempdir)
 

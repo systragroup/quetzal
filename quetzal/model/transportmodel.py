@@ -68,6 +68,8 @@ class TransportModel(preparationmodel.PreparationModel):
         * builds: pt_los
         """
 
+        assert self.links['time'].isnull().sum() == 0
+
         self.links = engine.graph_links(self.links)
         self.walk_on_road = walk_on_road
 
@@ -133,6 +135,7 @@ class TransportModel(preparationmodel.PreparationModel):
             **kwargs
         )
         self.pt_los = publicpathfinder.paths.copy()
+        
         self.pt_los = analysis.path_analysis_od_matrix(
             od_matrix=self.pt_los,
             links=self.links,
