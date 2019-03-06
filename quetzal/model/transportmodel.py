@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import pandas as pd
-
+import numpy as np
 from quetzal.analysis import analysis
 from quetzal.engine import engine
 from quetzal.engine.pathfinder import PublicPathFinder
 from quetzal.engine.road_pathfinder import RoadPathFinder
+from quetzal.engine import nested_logit
 from quetzal.model import model, preparationmodel
 
 from syspy.assignment import raw as raw_assignment
@@ -218,7 +219,7 @@ class TransportModel(preparationmodel.PreparationModel):
         self.shared = shared
 
     @track_args
-    def step_assignment(
+    def step_pt_assignment(
         self,
         volume_column='volume_pt',
         road=False,
@@ -259,4 +260,135 @@ class TransportModel(preparationmodel.PreparationModel):
             # todo remove 'load' from analysis module: 
             self.road_links['load'] = self.road_links[volume_column]
 
+    #TODO move all utility features to another object / file
+    def build_logit_parameters(
+        self, 
+        mode=1, 
+        pt_mode=1, 
+        pt_path=1, 
+        segments=[],
+        time=-1,
+        price=-1,
+        transfers=-1
+    ):
+        
+        # utility values
+        self.utility_values = pd.DataFrame(
+            {'root': pd.Series( {'time':time,'price':price,'ntransfers':transfers,'mode_utility':1})}
+        )
+        self.utility_values.index.name = 'value'
+        self.utility_values.columns.name = 'segment'
 
+
+        route_types = set(self.links['route_type'].unique()).union({'car', 'walk', 'root'})
+
+        # mode_utility
+        self.mode_utility = pd.DataFrame(
+            {'root': pd.Series({rt: 0 for rt in route_types})}
+        )
+
+        self.mode_utility.index.name = 'route_type'
+        self.mode_utility.columns.name = 'segment'
+
+
+        # mode nests
+        self.mode_nests =  pd.DataFrame(
+            {'root': pd.Series({rt: 'pt' for rt in route_types})}
+        )
+
+        self.mode_nests.loc['pt', 'root'] = 'root'
+        self.mode_nests.loc[['car', 'walk'], 'root'] = 'root'
+        self.mode_nests.loc[['root'], 'root'] = np.nan
+        self.mode_nests.index.name = 'route_type'
+        self.mode_nests.columns.name = 'segment'
+
+        # logit_scales
+        self.logit_scales = self.mode_nests.copy()
+        self.logit_scales['root'] = pt_path
+        self.logit_scales.loc[['car', 'walk'], 'root'] = 0.01
+        self.logit_scales.loc[['pt'], 'root'] = pt_mode
+        self.logit_scales.loc[['root'], 'root'] = mode
+
+        for segment in segments:
+            for df in (self.mode_utility, self.mode_nests, self.logit_scales, self.utility_values):
+                df[segment] = df['root']
+
+    def analysis_mode_utility(self, how='min', segment='root'):
+        mode_utility = self.mode_utility[segment].to_dict()
+        route_types = self.los['route_types'].unique()
+        route_types = pd.DataFrame(route_types, columns=['route_types'])
+        route_types['mode_utility'] = route_types['route_types'].apply(
+            get_combined_mode_utility, how=how, mode_utility=mode_utility)
+        
+        los = self.los.copy()
+        los['index'] = los.index
+        merged = pd.merge(
+            los, 
+            route_types, 
+            on=['route_types'], 
+        ).set_index('index')
+        
+        los['mode_utility'] = merged['mode_utility']
+        
+        utility_values = self.utility_values[segment].to_dict()
+        u = 0
+        for key, value in utility_values.items():
+            u += value * los[key]
+            
+        self.los[(segment, 'utility')] = u
+        
+    def analysis_utility(self, segment='root'):
+        utility_values = self.utility_values[segment].to_dict()
+        u = 0
+        for key, value in utility_values.items():
+            u += value * self.los[key]
+        self.los[(segment, 'utility')] = u
+
+    def initialize_logit(self):
+        od = pd.DataFrame(
+            index=self.volumes.set_index(['origin', 'destination']).index
+        )
+        self.od_probabilities = od.copy()
+        self.od_utilities = od.copy()
+
+    def step_logit(self, segment='root', *args, **kwargs):
+        
+        mode_nests = self.mode_nests.reset_index().groupby(segment)['route_type'].agg(
+            lambda s: list(s)).to_dict()
+        nls = self.logit_scales[segment].to_dict()
+        
+        paths = self.los.copy()
+        paths['utility'] = paths[(segment, 'utility')]
+        
+        l, u, p = nested_logit.nested_logit_from_paths(
+            paths, 
+            mode_nests=mode_nests,
+            phi=nls,
+            *args,
+            **kwargs
+        )
+        
+        l = l[['utility', 'probability']]
+        u = u.set_index(['origin', 'destination'])
+        p = p.set_index(['origin', 'destination'])
+        
+        for df in l, u, p:
+            df.columns = [(segment, c) for c in df.columns]
+        
+        self.los[l.columns] = l 
+        self.od_utilities[u.columns] = u
+        self.od_probabilities[p.columns] = p
+
+
+def get_combined_mode_utility(route_types, mode_utility,  how='min',):
+    utilities = [mode_utility[mode] for mode in route_types]
+    if not len(utilities):
+        return 0
+    if how=='min': # worse mode
+        return min(utilities)
+    elif how=='max': # best mode
+        max(utilities)
+    elif how=='sum':
+        sum(utilities)
+    elif how=='mean':
+        sum(utilities) / len(utilities)

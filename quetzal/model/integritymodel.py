@@ -66,6 +66,12 @@ class IntegrityModel:
         self.micro_zones = geodataframe_place_holder('Polygon')
         self.zones = geodataframe_place_holder('Polygon')
         self.node_clusters = geodataframe_place_holder('Polygon')
+
+        self.fare_rules = pd.DataFrame()
+        self.fare_attributes = pd.DataFrame()
+        self.mode_nests = pd.DataFrame()
+        self.logit_scales = pd.DataFrame()
+        self.utility_values = pd.DataFrame()
         
 
     def integrity_test_collision(self, sets=('links', 'nodes', 'zones')):

@@ -10,6 +10,7 @@ import pandas as pd
 from tqdm import tqdm
 import geopandas as gpd
 from syspy.spatial import spatial, geometries
+from quetzal.engine import nested_logit
 
 def read_hdf(filepath):
     m = AnalysisModel()
@@ -132,25 +133,53 @@ class AnalysisModel(transportmodel.TransportModel):
             lambda l: sum([d[t] for t in l]))
         d = self.links['time'].to_dict()
         self.pt_los['in_vehicle_time'] = self.pt_los['link_path'].apply(
-            lambda l: sum([d[t] / 2 for t in l]))
+            lambda l: sum([d[t] for t in l]))
         d = self.links['headway'].to_dict()
         self.pt_los['waiting_time'] = self.pt_los['boarding_links'].apply(
             lambda l: sum([d[t] / 2 for t in l]))
         self.pt_los['boarding_time'] = self.pt_los['boarding_links'].apply(
             lambda t: len(t)*boarding_time)
+        self.pt_los['time'] = self.pt_los[
+            ['access_time', 'footpath_time', 'waiting_time', 'boarding_time', 'in_vehicle_time']
+        ].T.sum()
+
+    def analysis_pt_length(self):
+        d = self.zone_to_transit.set_index(['a', 'b'])['distance'].to_dict()
+        self.pt_los['access_length'] = self.pt_los['ntlegs'].apply(
+            lambda l: sum([d[t] for t in l]))
+        d = self.footpaths.set_index(['a', 'b'])['length'].to_dict()
+        self.pt_los['footpath_length'] = self.pt_los['footpaths'].apply(
+            lambda l: sum([d[t] for t in l]))
+        d = self.links['length'].to_dict()
+        self.pt_los['in_vehicle_length'] = self.pt_los['link_path'].apply(
+            lambda l: sum([d[t] for t in l]))
+        self.pt_los['length'] = self.pt_los[
+            ['access_length', 'footpath_length',  'in_vehicle_length']
+        ].T.sum()
 
     def analysis_car_time(self):
         d = self.zone_to_road.set_index(['a', 'b'])['time'].to_dict()
         self.car_los['access_time'] = self.car_los['ntlegs'].apply(
+            lambda l: sum([d[t] for t in l]))   
+        d = self.road_links['time'].to_dict()
+        self.car_los['in_vehicle_time'] = self.car_los['link_path'].apply(
+            lambda l: sum([d[t] for t in l]))
+        self.car_los['time'] = self.car_los[
+            ['access_time', 'in_vehicle_time']
+        ].T.sum()
+    
+    def analysis_car_length(self):
+        d = self.zone_to_road.set_index(['a', 'b'])['distance'].to_dict()
+        self.car_los['access_length'] = self.car_los['ntlegs'].apply(
             lambda l: sum([d[t] for t in l]))
         
-        d = self.road_links['time'].to_dict()
-        self.car_los['time_link_path'] = self.car_los['link_path'].apply(
+        d = self.road_links['length'].to_dict()
+        self.car_los['in_vehicle_length'] = self.car_los['link_path'].apply(
             lambda l: sum([d[t] for t in l]))
 
 
     def analysis_pt_fare(self):
-    
+
         # fare_rules 
         route_dict = self.links['route_id'].to_dict()
         fare_dict = self.fare_rules.set_index('route_id')['fare_id'].to_dict()
@@ -164,19 +193,20 @@ class AnalysisModel(transportmodel.TransportModel):
         def fare(count, allowed_transfers, price):
             return max(count/ (allowed_transfers+ 1), 1) * price
 
-        def fare_sum(fare_id_list):
-            return sum(
-                fare(
+        def price_breakdown(fare_id_list):
+            return {
+                f: fare(
                     count=fare_id_list.count(f),
                     allowed_transfers=transfers[f],
                     price=price[f]
                 )
                 for f in set(fare_id_list)
-            )
-        
+            }
+
         fare_id_list_series= self.pt_los['link_path'].apply(fare_id_list)
-        self.pt_los['fare_id_list'] = fare_id_list()
-        self.pt_los['price'] = fare_id_list_series.apply(fare_sum)
+        self.pt_los['fare_id_list'] = fare_id_list_series
+        self.pt_los['price_breakdown'] = fare_id_list_series.apply(price_breakdown)
+        self.pt_los['price'] = self.pt_los['price_breakdown'].apply(lambda d: sum(d.values()))
 
 
     @track_args
