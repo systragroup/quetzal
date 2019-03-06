@@ -39,6 +39,7 @@ from syspy.skims import skims
 
 import itertools
 import shutil
+import json
 
 from syspy.io.pandasshp import pandasshp
 from syspy.spatial import spatial
@@ -128,7 +129,8 @@ class Neighborhood:
         build_sparse=False,
         n_clusters=False,
         compute_centroids=True,
-        display_progress=True
+        display_progress=True,
+        buffer=0.001
     ):
 
         progress = FloatProgress(
@@ -173,7 +175,7 @@ class Neighborhood:
         else:
             self.zones = processed_zones
         self.z = len(self.zones) + 1
-        self.zones['geometry'] = self.zones['geometry'].apply(lambda g: g.buffer(0.001))
+        self.zones['geometry'] = self.zones['geometry'].apply(lambda g: g.buffer(buffer))
 
         progress.value += 1
         self.edges = neighborhood_dataframe(self.zones, additional_links)  #: the edges link together the centroids of the zones that touche each other
@@ -292,17 +294,17 @@ class Neighborhood:
     def columns(self, l):
         return [self._link_index_dict[k] for k in l]
 
-    def to_shp(
+    def export(
         self,
         volume_column,
-        file,
+        file=None,
         affected=False,
         outer_average_width=15,
         max_value=None,
         projection_string=None,
         style_file=line_style,
         epsg=None,
-        color=None,
+        color=None
     ):
         if projection_string==None and epsg==None:
             print('No projection defined --> considered as EPSG:4326')
@@ -323,8 +325,21 @@ class Neighborhood:
             to_shape[volume_column],
             outer_average_width=outer_average_width,
             max_value=max_value)
-
-        pandasshp.write_shp(file, to_shape, projection_string=projection_string, style_file=style_file, epsg=epsg)
+        if not file:
+            return to_shape
+        else:
+            extension = file.split('.')[-1]
+            if extension == 'shp':
+                pandasshp.write_shp(file, to_shape, projection_string=projection_string, style_file=style_file, epsg=epsg)
+            elif extension == 'geojson':
+                gpd.GeoDataFrame(to_shape).to_file(file, driver='GeoJSON')
+                if epsg:
+                    with open(file, 'r') as infile:
+                        data = json.load(infile)  
+                        infile.close()
+                    with open(file, 'w') as outfile:
+                        data['crs'] = {"type": "name", "properties": {"name": "urn:ogc:def:crs:EPSG::{}".format(epsg)}}
+                        json.dump(data, outfile)
 
 
 def link_vector_from_link_list(link_list, index_dict):
