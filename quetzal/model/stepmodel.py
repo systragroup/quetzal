@@ -6,6 +6,7 @@ import warnings
 from functools import wraps
 import shutil
 import ntpath
+import uuid
 
 
 def deprecated_method(method):
@@ -29,7 +30,7 @@ def read_hdf(filepath, *args, **kwargs):
 
 def read_zip(filepath, *args, **kwargs):
     filedir = ntpath.dirname(filepath)
-    tempdir = filedir + '/quetzal_temp'
+    tempdir = filedir + '/quetzal_temp' + '-' + str(uuid.uuid4())
     shutil.unpack_archive(filepath, tempdir)
     m = read_hdf(tempdir + r'/model.hdf', *args, **kwargs)
     shutil.rmtree(tempdir)
