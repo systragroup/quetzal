@@ -10,6 +10,7 @@ from copy import deepcopy
 from functools import wraps
 from tqdm import tqdm
 import shutil
+import uuid
 import ntpath
 
 from quetzal.model.integritymodel import IntegrityModel
@@ -252,7 +253,7 @@ class Model(IntegrityModel):
 
     def to_zip(self, filepath, *args, **kwargs):
         filedir = ntpath.dirname(filepath)
-        tempdir = filedir + '/quetzal_temp'
+        tempdir = filedir + '/quetzal_temp' + '-' + str(uuid.uuid4())
         os.mkdir(tempdir)
         hdf_path = tempdir+ r'/model.hdf'
         self.to_hdf(hdf_path, *args, **kwargs)
