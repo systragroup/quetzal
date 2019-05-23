@@ -222,11 +222,20 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             self.road_to_transit = concatenated.reindex().reset_index(drop=True)
 
     @track_args
+    def preparation_logit(self):
+        """
+        preparation
+        * requires:
+        * builds: mode_utility, mode_nests, logit_scales, utility_values
+        """
+        pass
+
+    @track_args
     def preparation_clusterize_zones(self, max_zones=500, cluster_column=None, is_od_stack=False):
         """
         clusterize zones
             * requires: zones, volumes
-            * builds: zones, volumes, (cluster_series)
+            * builds: zones, volumes, cluster_series
         """
         zones = self.zones
         zones['geometry'] = zones['geometry'].apply(lambda g: g.buffer(1e-9))

@@ -43,7 +43,6 @@ class DocModel:
         pass
 
     def io_from_method(self, name):
-        print(name)
         method = self.__getattribute__(name)
         doc = method.__doc__
         return io_from_doc(doc)
@@ -56,7 +55,7 @@ class DocModel:
 
         header = """
         ratio = fill; 
-        node [style=filled, fontname = "calibri", fontsize=24, color="#AACDDA"];
+        node [style=filled, fontname = "calibri", fontsize=24, color="#C8D2B3"];
         edge[ fontname = "calibri", fontsize=24];
         ranksep = "0.5";
         rankdir="HR";
@@ -71,9 +70,9 @@ class DocModel:
         g.add_edges_from(edges)
 
         # colors
-        color = "#C8D2B3"
+        color = "#AACDDA"
         input_color = "#EEC880"
-        output_color = "#AACDDA"
+        output_color = "#C8D2B3"
 
         reversed_g = g.reverse()
 

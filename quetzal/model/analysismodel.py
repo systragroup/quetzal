@@ -2,7 +2,7 @@
 
 from quetzal.analysis import analysis
 from quetzal.engine import engine, linearsolver_utils
-from quetzal.model import model, transportmodel
+from quetzal.model import model, transportmodel, summarymodel
 from quetzal.io import export
 from syspy.syspy_utils import neighbors
 
@@ -27,7 +27,7 @@ def read_json(folder):
 track_args = model.track_args
 log = model.log
 
-class AnalysisModel(transportmodel.TransportModel):
+class AnalysisModel(summarymodel.SummaryModel):
     
     def _aggregate(self, nb_clusters):
         """

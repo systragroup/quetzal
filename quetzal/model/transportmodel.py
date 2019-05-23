@@ -105,7 +105,7 @@ class TransportModel(preparationmodel.PreparationModel):
     def step_road_pathfinder(self, maxiters=1, *args, **kwargs):
         """
         * requires: zones, road_links, zone_to_road
-        * builds: road_paths
+        * builds: car_los, road_links
         """
         roadpathfinder = RoadPathFinder(self)
         roadpathfinder.frank_wolfe(maxiters=maxiters, *args, **kwargs)
@@ -123,7 +123,7 @@ class TransportModel(preparationmodel.PreparationModel):
         **kwargs):
         """
         * requires: zones, links, footpaths, zone_to_road, zone_to_transit
-        * builds: pt_paths
+        * builds: pt_los
         """
         self.links = engine.graph_links(self.links)
         publicpathfinder = PublicPathFinder(self)
@@ -145,12 +145,11 @@ class TransportModel(preparationmodel.PreparationModel):
         )
 
     @track_args
-    def step_evaluation(self, **kwargs):
+    def step_concatenate_los(self):
         """
-        * requires: pt_paths, road_paths, volumes
-        * builds: shares
+        * requires: pt_los, car_los
+        * builds: los
         """
-        pass
 
     @track_args
     def step_build_los(
@@ -161,7 +160,7 @@ class TransportModel(preparationmodel.PreparationModel):
          skim_matrix_kwargs={}
         ):
         """
-        * requires: pt_los
+        * requires: pt_los, car_los
         * builds: los
 
         :param build_car_skims: if True, the car_los matrix is build using
@@ -227,7 +226,7 @@ class TransportModel(preparationmodel.PreparationModel):
         ):
         """
         Assignment step
-            * requires: links, pt_paths, road_links, road_paths, shares, nodes
+            * requires: links, nodes, pt_los, road_links, volumes, path_probabilities
             * builds: loaded_links, loaded_nodes, loaded_road_links
 
         :param loaded_links_and_nodes_kwargs: kwargs of engine.loaded_links_and_nodes
@@ -271,6 +270,12 @@ class TransportModel(preparationmodel.PreparationModel):
         price=-1,
         transfers=-1
     ):
+        """
+        * requires: 
+        * builds: mode_utility, mode_nests, logit_scales, utility_values
+        
+        """
+        #TODO : move to preparation
         
         # utility values
         self.utility_values = pd.DataFrame(
@@ -314,6 +319,10 @@ class TransportModel(preparationmodel.PreparationModel):
                 df[segment] = df['root']
 
     def analysis_mode_utility(self, how='min', segment='root'):
+        """
+        * requires: mode_utility, los, utility_values
+        * builds: los
+        """
         mode_utility = self.mode_utility[segment].to_dict()
         route_types = self.los['route_types'].unique()
         route_types = pd.DataFrame(route_types, columns=['route_types'])
@@ -352,6 +361,10 @@ class TransportModel(preparationmodel.PreparationModel):
         self.od_utilities = od.copy()
 
     def step_logit(self, segment='root', *args, **kwargs):
+        """
+        * requires: mode_nests, logit_scales, los
+        * builds: los, od_utilities, od_probabilities, path_utilities, path_probabilities
+        """
         
         mode_nests = self.mode_nests.reset_index().groupby(segment)['route_type'].agg(
             lambda s: list(s)).to_dict()
