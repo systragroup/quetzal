@@ -5,7 +5,7 @@ from quetzal.engine import engine, linearsolver_utils
 from quetzal.model import model, transportmodel, summarymodel
 from quetzal.io import export
 from syspy.syspy_utils import neighbors
-
+import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import geopandas as gpd
@@ -123,14 +123,26 @@ class AnalysisModel(summarymodel.SummaryModel):
         self.car_los['route_type'] = 'car'
 
 
-    def analysis_pt_time(self, boarding_time=0):
+    def analysis_pt_time(self, boarding_time=0, walk_on_road=False):
+        footpaths = self.footpaths
+        access = self.zone_to_transit
 
-        d = self.zone_to_transit.set_index(['a', 'b'])['time'].to_dict()
+        if walk_on_road:
+            road_links = self.road_links.copy()
+            road_links['time'] = road_links['walk_time']
+            road_to_transit = self.road_to_transit.copy()
+            road_to_transit['length'] = road_to_transit['distance']
+            footpaths = pd.concat([road_links, road_to_transit])
+            access = self.zone_to_road
+
+        d = access.set_index(['a', 'b'])['time'].to_dict()
         self.pt_los['access_time'] = self.pt_los['ntlegs'].apply(
             lambda l: sum([d[t] for t in l]))
-        d = self.footpaths.set_index(['a', 'b'])['time'].to_dict()
+
+        d = footpaths.set_index(['a', 'b'])['time'].to_dict()
         self.pt_los['footpath_time'] = self.pt_los['footpaths'].apply(
             lambda l: sum([d[t] for t in l]))
+
         d = self.links['time'].to_dict()
         self.pt_los['in_vehicle_time'] = self.pt_los['link_path'].apply(
             lambda l: sum([d[t] for t in l]))
@@ -143,11 +155,23 @@ class AnalysisModel(summarymodel.SummaryModel):
             ['access_time', 'footpath_time', 'waiting_time', 'boarding_time', 'in_vehicle_time']
         ].T.sum()
 
-    def analysis_pt_length(self):
-        d = self.zone_to_transit.set_index(['a', 'b'])['distance'].to_dict()
+    def analysis_pt_length(self, walk_on_road=False):
+
+        footpaths = self.footpaths
+        access = self.zone_to_transit
+
+        if walk_on_road:
+            road_links = self.road_links.copy()
+            road_links['time'] = road_links['walk_time']
+            road_to_transit = self.road_to_transit.copy()
+            road_to_transit['length'] = road_to_transit['distance']
+            footpaths = pd.concat([road_links, road_to_transit])
+            access = self.zone_to_road
+
+        d = access.set_index(['a', 'b'])['distance'].to_dict()
         self.pt_los['access_length'] = self.pt_los['ntlegs'].apply(
             lambda l: sum([d[t] for t in l]))
-        d = self.footpaths.set_index(['a', 'b'])['length'].to_dict()
+        d = footpaths.set_index(['a', 'b'])['length'].to_dict()
         self.pt_los['footpath_length'] = self.pt_los['footpaths'].apply(
             lambda l: sum([d[t] for t in l]))
         d = self.links['length'].to_dict()
@@ -191,7 +215,7 @@ class AnalysisModel(summarymodel.SummaryModel):
         price = self.fare_attributes.set_index('fare_id')['price'].to_dict()
 
         def fare(count, allowed_transfers, price):
-            return max(count/ (allowed_transfers+ 1), 1) * price
+            return max(np.ceil(count / (allowed_transfers + 1))  , 1) * price
 
         def price_breakdown(fare_id_list):
             return {

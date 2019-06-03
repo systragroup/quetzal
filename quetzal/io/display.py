@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-
+import pandas as pd
 import folium
 import shapely
 from tqdm import tqdm
@@ -213,8 +213,13 @@ def all_pt_paths(
 def one_pt_path(self, row, m=None, color_column=None, group_name='trip_id'):
 
     if self.walk_on_road:
-        footpaths = self.road_links.copy()
-        ntlegs = self.zone_to_road 
+        road_links = self.road_links.copy()
+        road_links['time'] = road_links['walk_time']
+        road_to_transit = self.road_to_transit.copy()
+        road_to_transit['length'] = road_to_transit['distance']
+        footpaths = pd.concat([road_links, road_to_transit])
+        ntlegs = self.zone_to_road
+
     else: 
         footpaths = self.footpaths
         ntlegs = self.zone_to_transit

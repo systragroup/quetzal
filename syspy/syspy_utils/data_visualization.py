@@ -33,6 +33,10 @@ from sklearn import linear_model
 import matplotlib.pyplot as plt
 import branca.colormap as cm
 
+import geopandas as gpd
+import numpy as np
+from tqdm import tqdm
+
 # -*- coding: utf-8 -*-
 
 
@@ -362,3 +366,59 @@ def render_mpl_table(
         else:
             cell.set_facecolor(row_colors[k[0]%len(row_colors) ])
     return ax
+
+
+spectral = list(reversed(['#9e0142','#d53e4f','#f46d43','#fdae61','#fee08b','#e6f598','#abdda4','#66c2a5','#3288bd','#5e4fa2']))
+
+from shapely import geometry
+def bandwidth(df, value, power=1, scale=1, legend_values=None, cmap=spectral, n_category=10, *args, **kwargs):
+
+    if legend_values is None:
+        s = df[value].copy()
+        r = int(np.log10(s.mean())) 
+        legend_values = [np.round(s.quantile(i/5), -r) for i in range(6)]
+    
+    df = df[[value, 'geometry']].copy().fillna(0)
+    df = df.loc[df[value] > 0]
+    mls = geometry.MultiPoint(list(df['geometry'].apply(lambda g: g.centroid)))
+
+    b = mls.bounds
+    delta = b[2] - b[0]
+    rank = 0
+    dx = delta /3 / len(legend_values)
+    data = []
+    for v in reversed(legend_values):
+        g = geometry.LineString([
+            ( b[2] - rank * dx, (b[1] + b[1]) / 2),
+            ( b[2] - (rank + 1)*dx, (b[1] + b[1]) / 2)]
+        )
+        rank += 1
+        data.append([v, g, str(v)])
+        to_concat = pd.DataFrame(data, columns=[value, 'geometry', 'label'])
+    df = pd.concat([df, to_concat])
+    
+    df = df.loc[df[value] > 0]
+    plot = gpd.GeoDataFrame(df).plot(linewidth=0.1, color='grey', *args, **kwargs)
+    
+    power_series = (np.power(df[value], power))
+    max_value = power_series.max()
+    
+
+    ratio = n_category / power_series.max()
+    df['cat'] = np.round(power_series * ratio).fillna(0) - 1
+    df = df.loc[df['cat']> 0]
+
+    plot.set_yticks([])
+    plot.set_xticks([])
+    
+    color_dict = color_series(pd.Series(range(n_category)), cmap).to_dict()
+    for cat in tqdm(set(df['cat'])):
+        pool = df.loc[df['cat'] == cat]
+        plot = gpd.GeoDataFrame(pool).plot(linewidth=cat*scale, ax=plot, color=color_dict[int(cat)])
+
+    to_concat.apply(
+        lambda x: plot.annotate(
+            s=x[value], xy=x.geometry.centroid.coords[0], ha='center', va='bottom'
+        ),axis=1
+    )
+    return plot

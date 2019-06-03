@@ -119,14 +119,17 @@ class TransportModel(preparationmodel.PreparationModel):
         broken_modes=True, 
         route_column='route_id',
         mode_column='route_type',
-        speedup=False, 
+        speedup=False,
+        walk_on_road=False, 
         **kwargs):
         """
         * requires: zones, links, footpaths, zone_to_road, zone_to_transit
         * builds: pt_los
         """
         self.links = engine.graph_links(self.links)
-        publicpathfinder = PublicPathFinder(self)
+
+        publicpathfinder = PublicPathFinder(self, walk_on_road=walk_on_road)
+
         publicpathfinder.find_best_paths(
             broken_routes=broken_routes, 
             broken_modes=broken_modes, 
@@ -137,10 +140,11 @@ class TransportModel(preparationmodel.PreparationModel):
         )
         self.pt_los = publicpathfinder.paths.copy()
         
+        analysis_nodes = pd.concat([self.nodes, self.road_nodes]) if walk_on_road else self.nodes
         self.pt_los = analysis.path_analysis_od_matrix(
             od_matrix=self.pt_los,
             links=self.links,
-            nodes=self.nodes,
+            nodes=analysis_nodes,
             centroids=self.centroids,
         )
 
@@ -260,63 +264,6 @@ class TransportModel(preparationmodel.PreparationModel):
             self.road_links['load'] = self.road_links[volume_column]
 
     #TODO move all utility features to another object / file
-    def build_logit_parameters(
-        self, 
-        mode=1, 
-        pt_mode=1, 
-        pt_path=1, 
-        segments=[],
-        time=-1,
-        price=-1,
-        transfers=-1
-    ):
-        """
-        * requires: 
-        * builds: mode_utility, mode_nests, logit_scales, utility_values
-        
-        """
-        #TODO : move to preparation
-        
-        # utility values
-        self.utility_values = pd.DataFrame(
-            {'root': pd.Series( {'time':time,'price':price,'ntransfers':transfers,'mode_utility':1})}
-        )
-        self.utility_values.index.name = 'value'
-        self.utility_values.columns.name = 'segment'
-
-
-        route_types = set(self.links['route_type'].unique()).union({'car', 'walk', 'root'})
-
-        # mode_utility
-        self.mode_utility = pd.DataFrame(
-            {'root': pd.Series({rt: 0 for rt in route_types})}
-        )
-
-        self.mode_utility.index.name = 'route_type'
-        self.mode_utility.columns.name = 'segment'
-
-
-        # mode nests
-        self.mode_nests =  pd.DataFrame(
-            {'root': pd.Series({rt: 'pt' for rt in route_types})}
-        )
-
-        self.mode_nests.loc['pt', 'root'] = 'root'
-        self.mode_nests.loc[['car', 'walk'], 'root'] = 'root'
-        self.mode_nests.loc[['root'], 'root'] = np.nan
-        self.mode_nests.index.name = 'route_type'
-        self.mode_nests.columns.name = 'segment'
-
-        # logit_scales
-        self.logit_scales = self.mode_nests.copy()
-        self.logit_scales['root'] = pt_path
-        self.logit_scales.loc[['car', 'walk'], 'root'] = 0.01
-        self.logit_scales.loc[['pt'], 'root'] = pt_mode
-        self.logit_scales.loc[['root'], 'root'] = mode
-
-        for segment in segments:
-            for df in (self.mode_utility, self.mode_nests, self.logit_scales, self.utility_values):
-                df[segment] = df['root']
 
     def analysis_mode_utility(self, how='min', segment='root'):
         """

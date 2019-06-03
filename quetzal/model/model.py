@@ -187,9 +187,14 @@ class Model(IntegrityModel):
             print('Model coordinates_unit not defined: setting coordinates_unit to default one: degree')
             self.coordinates_unit = 'degree'
 
-    def plot(self, attribute, *args, **kwargs):
+    def plot(self, attribute, ticks=False, *args, **kwargs):
         gdf = gpd.GeoDataFrame(self.__dict__[attribute])
-        return gdf.plot(*args, **kwargs)
+        plot = gdf.plot(*args, **kwargs)
+        if ticks == False:
+            plot.set_xticks([])
+            plot.set_yticks([])
+
+        return plot
 
     def read_hdf(self, filepath, omitted_attributes=(), only_attributes=None):
         with pd.HDFStore(filepath) as hdf:

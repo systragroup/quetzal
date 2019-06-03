@@ -47,8 +47,6 @@ def path_and_duration_from_graph(
     reversed_nx_graph=None,
     reverse=False
 ):
-
-    
         
     allpaths = {}
     alllengths = {}
@@ -99,11 +97,17 @@ def path_and_duration_from_graph(
 
 
 class PublicPathFinder:
-    def __init__(self, model):
+    def __init__(self, model, walk_on_road=False):
         self.zones = model.zones.copy()
         self.links = engine.graph_links(model.links.copy())
-        self.footpaths = model.footpaths.copy()
-        self.ntlegs = model.zone_to_transit.copy()
+
+        if walk_on_road:
+            self.footpaths = model.road_links.copy()
+            self.footpaths['time'] = self.footpaths['walk_time']
+            self.ntlegs = pd.concat([model.zone_to_road, model.road_to_transit])
+        else:
+            self.footpaths = model.footpaths.copy()
+            self.ntlegs = model.zone_to_transit.copy()
 
         try :
             self.centroids = model.centroids.copy()
@@ -135,7 +139,6 @@ class PublicPathFinder:
         for n in reversed(path):
             if n in self.links.index:
                 return n
-
 
     def build_route_zones(self, route_column):
         """
