@@ -283,7 +283,7 @@
         <span class="n">route_zone_sets</span> <span class="o">=</span> <span class="n">zone_route</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;route&#39;</span><span class="p">)[</span><span class="s1">&#39;zone&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="nb">set</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">route_zones</span> <span class="o">=</span> <span class="n">route_zone_sets</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="PublicPathFinder.build_route_braker"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.PublicPathFinder.build_route_braker">[docs]</a>    <span class="k">def</span> <span class="nf">build_route_braker</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route_column</span><span class="o">=</span><span class="s1">&#39;route_id&#39;</span><span class="p">):</span>
+<div class="viewcode-block" id="PublicPathFinder.build_route_breaker"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.PublicPathFinder.build_route_breaker">[docs]</a>    <span class="k">def</span> <span class="nf">build_route_breaker</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route_column</span><span class="o">=</span><span class="s1">&#39;route_id&#39;</span><span class="p">):</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">build_route_zones</span><span class="p">(</span><span class="n">route_column</span><span class="o">=</span><span class="n">route_column</span><span class="p">)</span>
 
@@ -349,14 +349,14 @@
             
         <span class="n">to_concat</span> <span class="o">=</span> <span class="p">[]</span> 
         <span class="k">for</span> <span class="n">route</span><span class="p">,</span> <span class="n">los</span> <span class="ow">in</span> <span class="n">los_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">los</span><span class="p">[</span><span class="s1">&#39;pathfinder_session&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;route_braker&#39;</span> 
+            <span class="n">los</span><span class="p">[</span><span class="s1">&#39;pathfinder_session&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;route_breaker&#39;</span> 
             <span class="n">los</span><span class="p">[</span><span class="s1">&#39;broken_route&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">route</span>
             <span class="n">to_concat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">los</span><span class="p">)</span>
             
         <span class="bp">self</span><span class="o">.</span><span class="n">broken_route_paths</span> <span class="o">=</span>  <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">to_concat</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="PublicPathFinder.build_mode_braker"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.PublicPathFinder.build_mode_braker">[docs]</a>    <span class="k">def</span> <span class="nf">build_mode_braker</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode_column</span><span class="o">=</span><span class="s1">&#39;route_type&#39;</span><span class="p">):</span>
+<div class="viewcode-block" id="PublicPathFinder.build_mode_breaker"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.PublicPathFinder.build_mode_breaker">[docs]</a>    <span class="k">def</span> <span class="nf">build_mode_breaker</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode_column</span><span class="o">=</span><span class="s1">&#39;route_type&#39;</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">build_mode_combinations</span><span class="p">(</span><span class="n">mode_column</span><span class="o">=</span><span class="s1">&#39;route_type&#39;</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="PublicPathFinder.build_mode_combinations"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.PublicPathFinder.build_mode_combinations">[docs]</a>    <span class="k">def</span> <span class="nf">build_mode_combinations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode_column</span><span class="o">=</span><span class="s1">&#39;route_type&#39;</span><span class="p">):</span>
@@ -423,7 +423,7 @@
             
         <span class="n">to_concat</span> <span class="o">=</span> <span class="p">[]</span> 
         <span class="k">for</span> <span class="n">combination</span><span class="p">,</span> <span class="n">los</span> <span class="ow">in</span> <span class="n">los_tuples</span><span class="p">:</span>
-            <span class="n">los</span><span class="p">[</span><span class="s1">&#39;pathfinder_session&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;mode_braker&#39;</span> 
+            <span class="n">los</span><span class="p">[</span><span class="s1">&#39;pathfinder_session&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;mode_breaker&#39;</span> 
             <span class="n">los</span><span class="p">[</span><span class="s1">&#39;broken_modes&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">combination</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">los</span><span class="p">))]</span>
             <span class="n">to_concat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">los</span><span class="p">)</span>
             
@@ -444,7 +444,7 @@
         <span class="n">to_concat</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">best_paths</span><span class="p">]</span>
 
         <span class="k">if</span> <span class="n">broken_routes</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">build_route_braker</span><span class="p">(</span><span class="n">route_column</span><span class="o">=</span><span class="n">route_column</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">build_route_breaker</span><span class="p">(</span><span class="n">route_column</span><span class="o">=</span><span class="n">route_column</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">find_broken_route_paths</span><span class="p">()</span>
             <span class="n">to_concat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broken_route_paths</span><span class="p">)</span>
 

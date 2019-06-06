@@ -102,9 +102,12 @@ class PublicPathFinder:
         self.links = engine.graph_links(model.links.copy())
 
         if walk_on_road:
-            self.footpaths = model.road_links.copy()
-            self.footpaths['time'] = self.footpaths['walk_time']
-            self.ntlegs = pd.concat([model.zone_to_road, model.road_to_transit])
+            road_links = model.road_links.copy()
+            road_links['time'] = road_links['walk_time']
+            self.footpaths = pd.concat([model.footpaths, road_links])
+            self.ntlegs = pd.concat(
+                [model.zone_to_road, model.road_to_transit, model.zone_to_transit]
+            )
         else:
             self.footpaths = model.footpaths.copy()
             self.ntlegs = model.zone_to_transit.copy()
@@ -164,7 +167,7 @@ class PublicPathFinder:
         route_zone_sets = zone_route.groupby('route')['zone'].apply(set)
         self.route_zones = route_zone_sets.to_dict()
 
-    def build_route_braker(self, route_column='route_id'):
+    def build_route_breaker(self, route_column='route_id'):
 
         self.build_route_zones(route_column=route_column)
 
@@ -234,14 +237,14 @@ class PublicPathFinder:
             
         to_concat = [] 
         for route, los in los_dict.items():
-            los['pathfinder_session'] = 'route_braker' 
+            los['pathfinder_session'] = 'route_breaker' 
             los['broken_route'] = route
             to_concat.append(los)
             
         self.broken_route_paths =  pd.concat(to_concat)
 
 
-    def build_mode_braker(self, mode_column='route_type'):
+    def build_mode_breaker(self, mode_column='route_type'):
         self.build_mode_combinations(mode_column='route_type')
 
     def build_mode_combinations(self, mode_column='route_type'):
@@ -308,7 +311,7 @@ class PublicPathFinder:
             
         to_concat = [] 
         for combination, los in los_tuples:
-            los['pathfinder_session'] = 'mode_braker' 
+            los['pathfinder_session'] = 'mode_breaker' 
             los['broken_modes'] = [combination for i in range(len(los))]
             to_concat.append(los)
             
@@ -330,7 +333,7 @@ class PublicPathFinder:
         to_concat = [self.best_paths]
 
         if broken_routes:
-            self.build_route_braker(
+            self.build_route_breaker(
                 route_column=route_column
             )
             self.find_broken_route_paths(speedup=speedup)

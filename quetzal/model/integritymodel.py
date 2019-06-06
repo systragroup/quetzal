@@ -44,6 +44,7 @@ class IntegrityModel:
         self.walk_on_road=walk_on_road
         self.coordinates_unit = coordinates_unit
         self.epsg=epsg
+        self.segments = ['all']
 
         self.checkpoint_links = geodataframe_place_holder('LineString')
         self.loaded_links = geodataframe_place_holder('LineString')
@@ -283,11 +284,22 @@ class IntegrityModel:
             self.missing_nodes = missing_nodes
             assert len(missing_nodes) == 0, msg
 
+            orphan_nodes = self.nodeset() - self.link_nodeset()
+            msg = 'some nodes are referenced in nodes but not in links \n'
+
+            # [:1000] we do not want to raise a heavy error (huge string)
+            msg += 'orphan nodes: ' + str(orphan_nodes)[:1000]
+
+            self.orphan_nodes = orphan_nodes
+            assert len(orphan_nodes) == 0, msg
+
         except AttributeError:  # no links or nodes
+            print('no links or nodes')
             pass
 
         try:
             missing_road_nodes = self.road_link_nodeset() - self.road_nodeset()
+            
 
             msg = 'some nodes are referenced in links but not in nodes \n'
             msg += 'missing road_nodes' + str(missing_road_nodes)[:1000]
@@ -295,7 +307,17 @@ class IntegrityModel:
             self.missing_road_nodes = missing_road_nodes
             assert len(missing_road_nodes) == 0, msg
 
+            orphan_road_nodes = self.road_nodeset() - self.road_link_nodeset()
+            msg = 'some nodes are referenced in nodes but not in links \n'
+
+            # [:1000] we do not want to raise a heavy error (huge string)
+            msg += 'orphan road_nodes: ' + str(orphan_road_nodes)[:1000]
+
+            self.orphan_nodes = orphan_nodes
+            assert len(orphan_nodes) == 0, msg
+
         except AttributeError:  # no road_links or road_nodes
+            print('no road_links or road_nodes')
             pass
 
     def integrity_test_road_nodeset_consistency(self):

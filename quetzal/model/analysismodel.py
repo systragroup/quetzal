@@ -133,8 +133,8 @@ class AnalysisModel(summarymodel.SummaryModel):
             road_links['time'] = road_links['walk_time']
             road_to_transit = self.road_to_transit.copy()
             road_to_transit['length'] = road_to_transit['distance']
-            footpaths = pd.concat([road_links, road_to_transit])
-            access = self.zone_to_road
+            footpaths = pd.concat([road_links, road_to_transit, self.footpaths])
+            access = pd.concat([self.zone_to_road, self.zone_to_transit])
 
         d = access.set_index(['a', 'b'])['time'].to_dict()
         self.pt_los['access_time'] = self.pt_los['ntlegs'].apply(
@@ -157,7 +157,6 @@ class AnalysisModel(summarymodel.SummaryModel):
         ].T.sum()
 
     def analysis_pt_length(self, walk_on_road=False):
-
         footpaths = self.footpaths
         access = self.zone_to_transit
 
@@ -166,8 +165,8 @@ class AnalysisModel(summarymodel.SummaryModel):
             road_links['time'] = road_links['walk_time']
             road_to_transit = self.road_to_transit.copy()
             road_to_transit['length'] = road_to_transit['distance']
-            footpaths = pd.concat([road_links, road_to_transit])
-            access = self.zone_to_road
+            footpaths = pd.concat([road_links, road_to_transit, self.footpaths])
+            access = pd.concat([self.zone_to_road, self.zone_to_transit])
 
         d = access.set_index(['a', 'b'])['distance'].to_dict()
         self.pt_los['access_length'] = self.pt_los['ntlegs'].apply(
