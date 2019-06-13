@@ -107,7 +107,7 @@ def build_ntlinks(ntlegs):
 
 def build_edges(links, ntlegs):
     links = label_links(links)
-    ntlegs = label_ntlegs(ntlegs)
+    #ntlegs = label_ntlegs(ntlegs)
     ntlinks = build_ntlinks(ntlegs)
     return pd.concat([links, ntlinks])[['a', 'b', 'time']].reset_index(drop=True)
 

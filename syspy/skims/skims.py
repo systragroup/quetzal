@@ -400,7 +400,6 @@ def drop_coordinates(dataframe):
 
 
 def distance_from_geometry(geometry_series, projection=wgs84, method='numpy'):
-    tqdm.pandas(desc='distance: ')
     df = pd.DataFrame(geometry_series)
     df.columns = ['geometry']
     df = add_coordinates(df)
@@ -408,7 +407,7 @@ def distance_from_geometry(geometry_series, projection=wgs84, method='numpy'):
         cols = ['x_origin', 'y_origin', 'x_destination', 'y_destination']
         df['distance'] = get_distance_from_lon_lat_in_m(*[df[s] for s in cols])
     else:
-        df['distance'] = df.progress_apply(dist_from_row, axis=1)
+        df['distance'] = df.apply(dist_from_row, axis=1)
     return df['distance']
 
 

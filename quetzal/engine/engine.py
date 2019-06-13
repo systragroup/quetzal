@@ -42,6 +42,7 @@ def od_volume_from_zones(zones, impedance_matrix=None, power=2,
         ['origin', 'destination', 'volume']
     """
     if impedance_matrix is None:
+        print('test')
         euclidean = skims.euclidean(zones, coordinates_unit=coordinates_unit, intrazonal=intrazonal)
         distance = euclidean.set_index(
             ['origin', 'destination'])['euclidean_distance'].unstack('destination')
@@ -205,7 +206,7 @@ def path_and_duration_from_links_and_ntlegs(
     ntlegs,
     pole_set,
     footpaths=None,
-    boarding_cost=300
+    boarding_cost=300,
 ):
 
     """
@@ -252,6 +253,7 @@ def path_and_duration_from_links_and_ntlegs(
     allpaths = {}
     alllengths = {}
     iterator = tqdm(list(pole_set))
+    
     for pole in iterator:
         iterator.desc = str(pole) + ' '
         
@@ -379,6 +381,7 @@ def loaded_links_and_nodes(
     volume_column='volume',
     path_column='path',
     pivot_column=None,
+    path_pivot_column=None,
     boardings=False,
     alightings=False,
     transfers=False,
@@ -421,13 +424,19 @@ def loaded_links_and_nodes(
     # 
     analysis_col = ['transfers', 'boardings', 'alightings', 'alighting_links', 'boarding_links']
 
+    # use it in order to add probability to paths
+    path_finder_stack['pivot'] = 1
+    if path_pivot_column:
+        path_finder_stack['pivot'] = path_finder_stack[path_pivot_column]
+
     # we don't want name collision
     merged = pd.merge(
         volumes[['origin', 'destination', volume_column]],
-        path_finder_stack[['origin', 'destination', path_column] + analysis_col],
+        path_finder_stack[['origin', 'destination', 'pivot', path_column, ] + analysis_col],
         on=['origin', 'destination'])
 
 
+    merged[volume_column] = merged[volume_column] * merged['pivot']
     volume_array = merged[volume_column].values
     paths = merged[path_column].values
 

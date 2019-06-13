@@ -83,7 +83,7 @@ def CalcSinglyConstrained(ProdA, AttrA, F):
     SumAjFij[SumAjFij==0]=0.0001
     return ProdA*(AttrA*F).transpose()/SumAjFij
 
-def CalcDoublyConstrained(ProdA, AttrA, F, maxIter = 10):
+def CalcDoublyConstrained(ProdA, AttrA, F, maxIter = 10, verbose=False):
     '''Calculates doubly constrained trip distribution for a given friction factor matrix
     ProdA = Production array
     AttrA = Attraction array
@@ -95,18 +95,22 @@ def CalcDoublyConstrained(ProdA, AttrA, F, maxIter = 10):
     F = F / worse
 
     Trips1 = numpy.zeros((len(ProdA),len(ProdA)))
-    print('Checking production, attraction balancing:')
+    if verbose:
+        print('Checking production, attraction balancing:')
     sumP = sum(ProdA)
     sumA = sum(AttrA)
-    print('Production: ', sumP)
-    print('Attraction: ', sumA)
+    if verbose:
+        print('Production: ', sumP)
+        print('Attraction: ', sumA)
     if sumP != sumA:
-        print('Productions and attractions do not balance, attractions will be scaled to productions!')
+        if verbose:
+            print('Productions and attractions do not balance, attractions will be scaled to productions!')
         AttrA = AttrA*(sumP/sumA)
         AttrT = AttrA.copy()
         ProdT = ProdA.copy()
     else:
-        print('Production, attraction balancing OK.')
+        if verbose:
+            print('Production, attraction balancing OK.')
         AttrT = AttrA.copy()
         ProdT = ProdA.copy()
 

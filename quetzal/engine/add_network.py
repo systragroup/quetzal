@@ -33,8 +33,6 @@ class NetworkCaster:
             self.road_graph = road_graph
 
 
-
-
     def dumb_cast(self, replace_geometry=True):
         links = self.links.copy()
 
@@ -136,10 +134,19 @@ class NetworkCaster:
             ['ix_one', 'ix_many'])['penalty']
         self.penalties = self.p_series.to_dict() 
         self.add_road_nodes(penalties=self.penalties)
+        self.t = self.links.copy()
         self.build_road_dataframe()
         self.build_road_access()
 
-    def add_road_nodes(self, penalties=None):
+    def add_road_nodes(self, penalties=None, debug=False):
+        if debug:
+            self.tuple = build_node_dict(
+                self.links,
+                road_graph=self.road_graph,
+                nearest_neighbors=self.neighbors,
+                penalties=penalties,
+                group='trip_id'
+            )
         self.links[['road_a', 'road_b']] = link_road_nodes(
             self.links,
             road_graph=self.road_graph,
@@ -192,8 +199,10 @@ class NetworkCaster:
  
 
 def find_node_path(links, line):
+    
     line_links = links[links['trip_id'] == line].copy()
-    line_links.sort_values('link_sequence')
+    line_links.sort_values('link_sequence', inplace=True)
+
     path = list(line_links['a'])
     path.append(list(line_links['b'])[-1])
     return path
@@ -303,7 +312,9 @@ def link_road_nodes(
         try:
             a = node_dict[(row[group], row['a'] )]
             b = node_dict[(row[group], row['b'] )]
-        except KeyError: # (('D10-42_bis', 'LSEAD'), 'occurred at index link_293')
+        except KeyError as e: 
+            print(e)
+            # (('D10-42_bis', 'LSEAD'), 'occurred at index link_293')
             pass
         
 
@@ -334,7 +345,7 @@ def road_dataframe(links, road_links, road_graph):
 
             tuples = [
                 (road_node_list[i], road_node_list[i+1]) 
-                for i in range(len(road_node_list)-1)
+                for i in range(len(road_node_list)-1) 
             ]
 
             road_link_list = [ab_indexed_dict[t] for t in tuples]
@@ -347,7 +358,9 @@ def road_dataframe(links, road_links, road_graph):
                 road_distance,
                 road_geometry
             ]
-        except nx.NodeNotFound:
+        except (nx.NodeNotFound, nx.NetworkXNoPath) as e:
+            print(e)
+
             values = [None, None, None, None]
 
 
@@ -355,8 +368,7 @@ def road_dataframe(links, road_links, road_graph):
 
     # apply road_series to build a dataframe containing all the 
     # columns related to the road network
-    tqdm.pandas(desc='road_paths ')
-    road_df = links.progress_apply(
+    road_df = links.apply(
         lambda l: road_series(l, road_graph),
         axis=1
     )

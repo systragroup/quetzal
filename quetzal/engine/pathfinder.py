@@ -138,6 +138,10 @@ class PublicPathFinder:
 
 
     def build_route_zones(self, route_column):
+        """
+        find origin zones that are likely to be affected by the removal 
+        each one of the routes
+        """
 
         los = self.best_paths.copy()
         los['first_link'] = los['path'].apply(self.first_link)
@@ -164,9 +168,10 @@ class PublicPathFinder:
         self.reversed_nx_graph = self.nx_graph.reverse()
 
         links = self.links.copy()
+        links.drop('index', axis=1, inplace=True, errors='ignore')
         links.index.name = 'index'
 
-        self.route_links = self.links.reset_index().groupby(
+        self.route_links = links.reset_index().groupby(
             [route_column]
         )['index'].apply(lambda s: set(s)).to_dict()
     
@@ -203,11 +208,14 @@ class PublicPathFinder:
         reversed_broken.remove_edges_from(reversed_ebunch)
         return broken, reversed_broken
 
-    def find_broken_route_paths(self):
+    def find_broken_route_paths(self, speedup=False):
         los_dict = {}
         
         iterator =  tqdm(self.route_zones.items())
         for route, zones in iterator:
+            if not speedup:
+                zones = set(self.zones.index).intersection(set(self.ntlegs['a']))
+
             iterator.desc = 'breaking route: ' + str(route) + ' '
             
             broken, reversed_broken = self.broken_route_graphs(route)
@@ -311,6 +319,7 @@ class PublicPathFinder:
         broken_routes=False,
         broken_modes=False,
         drop_duplicates=True,
+        speedup=False,
         **kwargs
     ):
 
@@ -318,8 +327,10 @@ class PublicPathFinder:
         to_concat = [self.best_paths]
 
         if broken_routes:
-            self.build_route_braker(route_column=route_column)
-            self.find_broken_route_paths()
+            self.build_route_braker(
+                route_column=route_column
+            )
+            self.find_broken_route_paths(speedup=speedup)
             to_concat.append(self.broken_route_paths)
 
         if broken_modes:

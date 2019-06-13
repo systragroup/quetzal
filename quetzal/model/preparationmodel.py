@@ -27,46 +27,11 @@ log = model.log
 
 class PreparationModel(model.Model, cubemodel.cubeModel):
 
-    def __init__(
-        self,
-        json_database=None,
-        json_folder=None,
-        hdf_database=None,
-        *args,
-        **kwargs
-    ):
-
-        """
-        Initialization function, either from a json folder or a json_database representation.
-
-        Args:
-            json_database (json): a json_database representation of the model. Default None.
-            json_folder (json): a json folder representation of the model. Default None.
-
-        Examples:
-        >>> sm = stepmodel.Model(json_database=json_database_object)
-        >>> sm = stepmodel.Model(json_folder=folder_path)
-        """
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+ 
 
-        if json_database and json_folder:
-            raise Exception('Only one argument should be given to the init function.')
-        elif json_database:
-            self.read_json_database(json_database)
-        elif json_folder:
-            self.read_json(json_folder)
-        elif hdf_database:
-            self.read_hdf(hdf_database)
 
-        self.debug = True
-
-        # Add default coordinates unit and epsg
-        if self.epsg is None:
-            print('Model epsg not defined: setting epsg to default one: 4326')
-            self.epsg = 4326
-        if self.coordinates_unit is None:
-            print('Model coordinates_unit not defined: setting coordinates_unit to default one: degree')
-            self.coordinates_unit = 'degree'
 
     @track_args
     def preparation_footpaths(
@@ -257,11 +222,20 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             self.road_to_transit = concatenated.reindex().reset_index(drop=True)
 
     @track_args
+    def preparation_logit(self):
+        """
+        preparation
+        * requires:
+        * builds: mode_utility, mode_nests, logit_scales, utility_values
+        """
+        pass
+
+    @track_args
     def preparation_clusterize_zones(self, max_zones=500, cluster_column=None, is_od_stack=False):
         """
         clusterize zones
             * requires: zones, volumes
-            * builds: zones, volumes, (cluster_series)
+            * builds: zones, volumes, cluster_series
         """
         zones = self.zones
         zones['geometry'] = zones['geometry'].apply(lambda g: g.buffer(1e-9))

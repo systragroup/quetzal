@@ -22,7 +22,8 @@ def car_path(self, origin, destination, m=None):
 
     ntlegs = self.zone_to_road
 
-    row = self.car_los.set_index(['origin', 'destination']).loc[( origin, destination)]
+    first = self.car_los.groupby(['origin', 'destination'], as_index=False).first()
+    row = first.set_index(['origin', 'destination']).loc[( origin, destination)]
     o = self.centroids['geometry'].loc[origin]
     d = self.centroids['geometry'].loc[destination]
     location = longlat(shapely.geometry.MultiPoint([o, d]).centroid.coords[0])
@@ -36,6 +37,58 @@ def car_path(self, origin, destination, m=None):
     coordinates = [longlat(coords) for coords in list(polyline.coords)]
     my_PolyLine=folium.PolyLine(locations=coordinates, weight=5,  popup=str(name))
     m.add_children(my_PolyLine)
+    
+    for name, node, color in [(origin, o, 'green'), (destination, d, 'red')]:
+        m.add_children(
+            folium.CircleMarker(
+                longlat(list(node.coords)[0]),
+                fill=True,
+                color=color,
+                fill_opacity=1,
+                radius=5,
+                popup=str(name)
+                )
+        )
+    
+    return m
+
+def all_car_paths(self, origin, destination, m=None):
+
+    ntlegs = self.zone_to_road
+    
+    o = self.centroids['geometry'].loc[origin]
+    d = self.centroids['geometry'].loc[destination]
+    location = longlat(shapely.geometry.MultiPoint([o, d]).centroid.coords[0])
+
+    od_paths = self.car_los.set_index(
+        ['origin', 'destination']
+    ).sort_values('time').loc[(origin, destination)]
+    
+    polyline_list = []
+    i = 0
+    for name, row in tqdm(list(od_paths.iterrows())):
+        path_links = self.road_links.loc[row['link_path']]
+        polylines = path_links['geometry']
+        polyline = geometries.line_list_to_polyline(list(polylines))
+        try:
+            weight = row['weight']
+        except KeyError:
+            weight = 1
+        coordinates = [longlat(coords) for coords in list(polyline.coords)]
+        my_PolyLine=folium.PolyLine(
+            locations=coordinates, 
+            weight=weight,  
+            popup=str(weight),
+            opacity=1
+        )
+        i += 1
+        polyline_list.append(my_PolyLine)
+
+    if m is None:
+        m = folium.Map(location=location, zoom_start=13)
+        
+    for my_PolyLine in polyline_list:
+        m.add_children(my_PolyLine)
     
     for name, node, color in [(origin, o, 'green'), (destination, d, 'red')]:
         m.add_children(
@@ -138,7 +191,6 @@ def all_pt_paths(
     if verbose :
         print(len(od_paths), 'paths')
 
-    first = True
     i = 0
     for name, row in tqdm(list(od_paths.iterrows())):
         m = one_pt_path(
