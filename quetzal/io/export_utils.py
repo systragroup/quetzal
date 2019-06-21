@@ -12,8 +12,8 @@ def clean_seq(x, col):
 
 
 def save_line_load_graph(
-        load_fwd, load_bwd, image_name='line_load.png', yticks=None,
-        title='Line load', legend=True, save_fig=True, clean_sequence=False
+        load_fwd, load_bwd, load_column='volume_pt', image_name='line_load.png', yticks=None,
+        title='Line load', legend=True, save_fig=True, clean_sequence=False, *args, **kwargs
         ):
     """
     Export load graph for the specified line.
@@ -29,15 +29,15 @@ def save_line_load_graph(
     # Clean link sequence if required
     if clean_sequence:
         load_fwd = clean_seq(load_fwd, 'link_sequence')
-        load_bwd = clean_seq(load_bwd, 'link_sequence') 
+        load_bwd = clean_seq(load_bwd, 'link_sequence')
 
     # Creat figure
-    fig, ax = plt.subplots(1, 1)
+    fig, ax = plt.subplots(1, 1, **kwargs)
 
     # forward load
     ax.bar(
         load_fwd['link_sequence'].values,
-        load_fwd['volume_pt'].values,
+        load_fwd[load_column].values,
         facecolor=syscolors.red_shades[3],
         # edgecolor=syscolors.red_shades[2],
         width=1,
@@ -49,8 +49,8 @@ def save_line_load_graph(
 
     # backward load
     ax.bar(
-        (len(load_bwd) - load_bwd['link_sequence']).values,
-        -load_bwd['volume_pt'].values,
+        (1+len(load_bwd) - load_bwd['link_sequence']).values,
+        -load_bwd[load_column].values,
         facecolor=syscolors.red_shades[2],
         # edgecolor=syscolors.red_shades[1],
         width=1,
@@ -79,9 +79,9 @@ def save_line_load_graph(
     plt.ylabel('Number of passengers')
 
     if yticks is None:
-        rounding = int(np.floor(max(load_bwd['volume_pt'].max(), load_fwd['volume_pt'].max()) ** (1/10)))
+        rounding = int(np.floor(max(load_bwd[load_column].max(), load_fwd[load_column].max()) ** (1/10)))
         max_value = round(
-            max(load_bwd['volume_pt'].max(), load_fwd['volume_pt'].max()), -rounding)
+            max(load_bwd[load_column].max(), load_fwd[load_column].max()), -rounding)
         yticks = np.arange(-max_value, max_value, round(max_value // 5, -rounding))
 
     plt.yticks(yticks, [int(y) for y in abs(yticks)])
