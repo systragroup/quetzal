@@ -371,54 +371,109 @@ def render_mpl_table(
 spectral = list(reversed(['#9e0142','#d53e4f','#f46d43','#fdae61','#fee08b','#e6f598','#abdda4','#66c2a5','#3288bd','#5e4fa2']))
 
 from shapely import geometry
-def bandwidth(df, value, power=1, scale=1, legend_values=None, cmap=spectral, n_category=10, *args, **kwargs):
+def bandwidth(
+    df, value, label=None, max_value=None, power=1, scale=1, legend_values=None, legend_length=1/3, cmap=spectral,\
+    n_category=10, geographical_bounds=None, *args, **kwargs):
+    # TODO: find a way to plot the two direction in one plot. This requires to add an offset of half the linewidth to each line
+            
+        # Extract data to plot from DataFrame
+        cols = [value, 'geometry'] if not label else [value, label, 'geometry']
+        df = df[cols].copy()
+        if label:
+            df.rename(columns={label: 'label'}, inplace=True)
+        df[value] = df[value].fillna(0)
+        df = df.loc[df[value] > 0]
+        
+        # Geographical bounds
+        if geographical_bounds:
+            b = geographical_bounds
+        else:
+            mls = geometry.MultiPoint(list(df['geometry'].apply(lambda g: g.centroid)))
+            b = mls.bounds
 
-    if legend_values is None:
-        s = df[value].copy()
-        r = int(np.log10(s.mean())) 
-        legend_values = [np.round(s.quantile(i/5), -r) for i in range(6)]
-    
-    df = df[[value, 'geometry']].copy().fillna(0)
-    df = df.loc[df[value] > 0]
-    mls = geometry.MultiPoint(list(df['geometry'].apply(lambda g: g.centroid)))
+        # Create legend
+        if legend_values is None:
+            s = df[value].copy()
+            r = int(np.log10(s.mean())) 
+            legend_values = [np.round(s.quantile(i/5), -r) for i in range(6)]
+        
+        # Place legend
+        delta = b[2] - b[0]
+        rank = 0
+        dx = delta * legend_length / len(legend_values)
+        data = []
+        for v in reversed(legend_values):
+            g = geometry.LineString([
+                ( b[2] - (rank + 1)*dx, (b[1] + b[1]) / 2),
+                ( b[2] - rank * dx, (b[1] + b[1]) / 2)]
+            )
+            rank += 1
+            data.append([v, g, str(v)])
+            legend_df = pd.DataFrame(data, columns=[value, 'geometry', 'label'])
+        df = pd.concat([df, legend_df])
+        #df = df.loc[df[value] > 0]
+        
+        # Plot geometry
+        plot = gpd.GeoDataFrame(df).plot(linewidth=0.1, color='grey', *args, **kwargs)
+        
+        # Power scale
+        power_series = (np.power(df[value], power))
+        
+        # Categories
+        max_value = np.power(max_value, power) if max_value else power_series.max()
+        ratio = n_category / max_value
+        df['cat'] = np.floor(power_series * ratio).fillna(0).apply(lambda x: min(x, n_category - 1))
+        df = df.loc[df['cat']> 0]
+        # colors
+        color_dict = color_series(pd.Series(range(n_category)), cmap).to_dict()
+        
+        for cat in tqdm(set(df['cat'])):
+            pool = df.loc[df['cat'] == cat]
+            plot = gpd.GeoDataFrame(pool).plot(linewidth=cat*scale, ax=plot, color=color_dict[int(cat)])
 
-    b = mls.bounds
-    delta = b[2] - b[0]
-    rank = 0
-    dx = delta /3 / len(legend_values)
-    data = []
-    for v in reversed(legend_values):
-        g = geometry.LineString([
-            ( b[2] - rank * dx, (b[1] + b[1]) / 2),
-            ( b[2] - (rank + 1)*dx, (b[1] + b[1]) / 2)]
+        # Add label
+        df['label'] = df['label'].fillna('')
+        def get_normal(linestring):
+            c = linestring.coords[:]
+            v = (-(c[1][1] - c[0][1]), c[1][0] - c[0][0])
+            return v / np.sqrt(v[1]*v[1] + v[0]*v[0])
+        def get_label_angle(linestring):
+            x = linestring.coords[:]
+            return -np.arccos((x[1][0] - x[0][0])/linestring.length) * 180/3.14
+        
+        df['normal'] = df.geometry.apply(get_normal)
+        df['label_offset'] = df['normal'] * df['cat'] / 2
+        df['label_angle'] = df.geometry.apply(get_label_angle)
+        df.apply(
+            lambda x: plot.annotate(
+                s=x['label'],
+                xy=x.geometry.centroid.coords[0],
+                xytext=x['label_offset'],
+                textcoords='offset pixels',
+                rotation=x['label_angle'],
+                rotation_mode='anchor',
+                ha='center',va='bottom',
+                size=12
+            ),
+            axis=1
         )
-        rank += 1
-        data.append([v, g, str(v)])
-        to_concat = pd.DataFrame(data, columns=[value, 'geometry', 'label'])
-    df = pd.concat([df, to_concat])
-    
-    df = df.loc[df[value] > 0]
-    plot = gpd.GeoDataFrame(df).plot(linewidth=0.1, color='grey', *args, **kwargs)
-    
-    power_series = (np.power(df[value], power))
-    max_value = power_series.max()
-    
+        
+        # Set plot bounds
+        if geographical_bounds:
+            x_offset= (b[2] - b[0]) * 1/100
+            y_offset= (b[3] - b[1]) * 1/100
+            plot.set_xlim(b[0] - x_offset, b[2] + x_offset)
+            plot.set_ylim(b[1] - y_offset, b[3] + y_offset)
 
-    ratio = n_category / power_series.max()
-    df['cat'] = np.round(power_series * ratio).fillna(0) - 1
-    df = df.loc[df['cat']> 0]
+        plot.set_yticks([])
+        plot.set_xticks([])
+        
+        return plot
 
-    plot.set_yticks([])
-    plot.set_xticks([])
-    
-    color_dict = color_series(pd.Series(range(n_category)), cmap).to_dict()
-    for cat in tqdm(set(df['cat'])):
-        pool = df.loc[df['cat'] == cat]
-        plot = gpd.GeoDataFrame(pool).plot(linewidth=cat*scale, ax=plot, color=color_dict[int(cat)])
-
-    to_concat.apply(
-        lambda x: plot.annotate(
-            s=x[value], xy=x.geometry.centroid.coords[0], ha='center', va='bottom'
-        ),axis=1
-    )
-    return plot
+import contextily as ctx
+def add_basemap(ax, zoom=13, url=ctx.sources.ST_TONER_LITE,  **kwargs):
+    xmin, xmax, ymin, ymax = ax.axis()
+    basemap, extent = ctx.bounds2img(xmin, ymin, xmax, ymax, zoom=zoom, url=url)
+    ax.imshow(basemap, extent=extent, interpolation='bilinear', alpha=0.5, **kwargs)
+    # restore original x/y limits
+    ax.axis((xmin, xmax, ymin, ymax))
