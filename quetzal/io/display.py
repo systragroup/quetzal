@@ -212,17 +212,14 @@ def all_pt_paths(
 
 def one_pt_path(self, row, m=None, color_column=None, group_name='trip_id'):
 
-    if self.walk_on_road:
-        road_links = self.road_links.copy()
-        road_links['time'] = road_links['walk_time']
-        road_to_transit = self.road_to_transit.copy()
-        road_to_transit['length'] = road_to_transit['distance']
-        footpaths = pd.concat([road_links, road_to_transit])
-        ntlegs = self.zone_to_road
-
-    else: 
-        footpaths = self.footpaths
-        ntlegs = self.zone_to_transit
+    def add_polylines_to_map(m, polylines, **kwargs):
+        for polyline in polylines:
+            try:
+                coordinates = [longlat(coords) for coords in list(polyline.coords)]
+                my_PolyLine=folium.PolyLine(locations=coordinates, **kwargs)
+                m.add_children(my_PolyLine)
+            except AttributeError:
+                pass
 
     row_path = row['path']
     origin = row_path[0]
@@ -237,6 +234,7 @@ def one_pt_path(self, row, m=None, color_column=None, group_name='trip_id'):
 
     path_links = self.links.loc[row['link_path']].copy()
     path_links['color'] = 'blue' if color_column is None else path_links[color_column]
+    # Plot links
     polylines = path_links.groupby(
         [group_name, 'color']
     )['geometry'].agg(geometries.line_list_to_polyline)
@@ -245,17 +243,32 @@ def one_pt_path(self, row, m=None, color_column=None, group_name='trip_id'):
         my_PolyLine=folium.PolyLine(locations=coordinates, weight=5, color=color,  popup=name)
         m.add_children(my_PolyLine)
 
-    polylines = footpaths.set_index(['a','b']).loc[row['footpaths']]['geometry']
-    for polyline in polylines:
-        coordinates = [longlat(coords) for coords in list(polyline.coords)]
-        my_PolyLine=folium.PolyLine(locations=coordinates, weight=3, color='gray')
-        m.add_children(my_PolyLine)
+    # Plot footpaths
+    ## PT footpaths-- black
+    if len(self.footpaths) > 1:
+        polylines = self.footpaths.set_index(['a','b']).loc[row['footpaths']]['geometry']
+        add_polylines_to_map(m, polylines, weight=4, color='black')
 
-    polylines = ntlegs.set_index(['a','b']).loc[row['ntlegs']]['geometry']
-    for polyline in polylines:
-        coordinates = [longlat(coords) for coords in list(polyline.coords)]
-        my_PolyLine=folium.PolyLine(locations=coordinates, weight=3, color='black')
-        m.add_children(my_PolyLine)
+    ## Road_to_transit - gray
+    if len(self.road_to_transit) > 1:
+        polylines = self.road_to_transit.set_index(['a','b']).loc[row['footpaths']]['geometry']
+        add_polylines_to_map(m, polylines, weight=4, color='gray')
+
+    ## Road_links - gray
+    if len(self.road_links) > 1:
+        polylines = self.road_links.set_index(['a','b']).loc[row['footpaths']]['geometry']
+        add_polylines_to_map(m, polylines, weight=2, color='gray')
+
+    # Plot ntlegs
+    ## zone_to_road - gray - dashed
+    if len(self.zone_to_road) > 1:
+        polylines = self.zone_to_road.set_index(['a','b']).loc[row['ntlegs']]['geometry']
+        add_polylines_to_map(m, polylines, weight=3, color='gray', dash_array= ('5, 5'))
+
+    ## zone_to_transit - black - dashed
+    if len(self.zone_to_transit) > 1:
+        polylines = self.zone_to_transit.set_index(['a','b']).loc[row['ntlegs']]['geometry']
+        add_polylines_to_map(m, polylines, weight=3, color='black', dash_array= ('5, 5'))
         
     
     transit_node_path = [
