@@ -35,6 +35,19 @@ def authorized_column(
     delta = type_set - set(authorized_types)
     return delta == set()
 
+# basemap
+def add_basemap(ax, zoom, url='http://tile.stamen.com/terrain-background/tileZ/tileX/tileY.png'):
+    #TODO : move to another file
+    try:
+        import contextily as ctx
+        xmin, xmax, ymin, ymax = ax.axis()
+        basemap, extent = ctx.bounds2img(xmin, ymin, xmax, ymax, zoom=zoom, url=url)
+        ax.imshow(basemap, extent=extent, interpolation='bilinear')
+        # restore original x/y limits
+        ax.axis((xmin, xmax, ymin, ymax))
+    except ImportError as e:
+        print('could not add basemap:', e)
+
 def track_args(method):
 
     # wraps changes decorated attributes for method attributes
@@ -187,12 +200,27 @@ class Model(IntegrityModel):
             print('Model coordinates_unit not defined: setting coordinates_unit to default one: degree')
             self.coordinates_unit = 'degree'
 
-    def plot(self, attribute, ticks=False, *args, **kwargs):
+    def plot(
+        self, attribute, add_basemap, ticks=False, 
+         basemap_url=None, zoom=12, 
+        title=None, fontsize=24,
+        fname=None,  
+        *args, **kwargs
+    ):
         gdf = gpd.GeoDataFrame(self.__dict__[attribute])
         plot = gdf.plot(*args, **kwargs)
         if ticks == False:
             plot.set_xticks([])
             plot.set_yticks([])
+
+        if title: 
+            plot.set_title(title, fontsize=fontsize)
+        if fname:
+            fig = plot.get_figure()
+            fig.savefig(fname, bbox_inches='tight')
+        if add_basemap:
+            assert self.epsg == 4327
+            add_basemap(plot, zoom=zoom, url=basemap_url)
 
         return plot
 
@@ -266,7 +294,7 @@ class Model(IntegrityModel):
         shutil.rmtree(tempdir)
 
     @track_args
-    def to_json(self, folder, omitted_attributes=(), only_attributes=None):
+    def to_json(self, folder, omitted_attributes=(), only_attributes=None, verbose=False):
         
         """
         export the full model to a hdf database
@@ -305,7 +333,8 @@ class Model(IntegrityModel):
                 attribute.drop('index', axis=1, errors='ignore', inplace=True)
                 attribute.index.name = 'index'
                 attribute = attribute.reset_index()  # loss of index name
-                
+                attribute.rename(columns={x: str(x) for x in attribute.columns}, inplace=True)
+
                 df = attribute
                 geojson_columns = [c for c in df.columns 
                     if authorized_column(df, c) 
@@ -319,10 +348,14 @@ class Model(IntegrityModel):
                     )
                     if len(json_columns):
                         attribute[json_columns + ['index']].to_json(root_name + '_quetzaldata.json')
-                except (AttributeError, KeyError, ): # "['geometry'] not in index"
+                except (AttributeError, KeyError, ) as e: # "['geometry'] not in index"
+                    if verbose:
+                        print(e)
                     df = pd.DataFrame(attribute).drop('geometry', axis=1, errors='ignore')
                     df.to_json(root_name + '.json')       
-                except ValueError: 
+                except ValueError as e: 
+                    if verbose:
+                        print(e)
                     # Geometry column cannot contain mutiple geometry types when writing to file.
                     print('could not save geometry from table ' + key)
                     df = pd.DataFrame(attribute).drop('geometry', axis=1, errors='ignore')
