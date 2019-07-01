@@ -373,8 +373,8 @@ spectral = list(reversed(['#9e0142','#d53e4f','#f46d43','#fdae61','#fee08b','#e6
 from shapely import geometry
 def bandwidth(
     df, value, label=None, max_value=None, power=1, scale=1, legend_values=None, legend_length=1/3, cmap=spectral,\
-    n_category=10, geographical_bounds=None, *args, **kwargs):
-    # TODO: find a way to plot the two direction in one plot. This requires to add an offset of half the linewidth to each line
+    n_category=10, geographical_bounds=None, label_kwargs={'size':12}, *args, **kwargs):
+    # TODO: find a way to plot the two directions in one plot. This requires to add an offset of half the linewidth to each line
             
         # Extract data to plot from DataFrame
         cols = [value, 'geometry'] if not label else [value, label, 'geometry']
@@ -437,13 +437,16 @@ def bandwidth(
             c = linestring.coords[:]
             v = (-(c[1][1] - c[0][1]), c[1][0] - c[0][0])
             return v / np.sqrt(v[1]*v[1] + v[0]*v[0])
-        def get_label_angle(linestring):
-            x = linestring.coords[:]
-            return -np.arccos((x[1][0] - x[0][0])/linestring.length) * 180/3.14
+        def get_label_angle_alignment_offset(row):
+            x = row.geometry.coords[:]
+            angle = (np.arccos((x[1][0] - x[0][0])/row.geometry.length) * 180/3.14)
+            angle *= np.sign(x[1][1] - x[0][1])
+            va = 'bottom'
+            label_offset = 0.6
+            return pd.Series({'va': va, 'label_angle': angle, 'label_offset':label_offset * row['cat'] * row['normal']})
         
         df['normal'] = df.geometry.apply(get_normal)
-        df['label_offset'] = df['normal'] * df['cat'] / 2
-        df['label_angle'] = df.geometry.apply(get_label_angle)
+        df[['label_angle',  'label_offset', 'va']] = df.apply(get_label_angle_alignment_offset, 1)
         df.apply(
             lambda x: plot.annotate(
                 s=x['label'],
@@ -452,8 +455,8 @@ def bandwidth(
                 textcoords='offset pixels',
                 rotation=x['label_angle'],
                 rotation_mode='anchor',
-                ha='center',va='bottom',
-                size=12
+                ha='center',va=x['va'],
+                **label_kwargs
             ),
             axis=1
         )
