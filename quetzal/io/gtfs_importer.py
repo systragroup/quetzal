@@ -5,7 +5,7 @@ from shapely.geometry import Point, LineString
 
 from syspy.spatial import spatial, zoning
 from syspy.transitfeed import feed_links
-
+from syspy.syspy_utils import headway_utils
 
 # seconds
 
@@ -58,7 +58,16 @@ class BaseGtfsImporter():
             encoding=encoding
         )
 
-        self.stops = pd.read_csv(self.gtfs_path + 'stops.txt', encoding=encoding)
+        self.stops = pd.read_csv(
+            self.gtfs_path + 'stops.txt',
+            encoding=encoding
+        )
+
+        self.frequencies = pd.read_csv(
+            self.gtfs_path + 'frequencies.txt',
+            encoding=encoding
+        )
+
 
     def pick_trips(self):
         # one trip by direction
@@ -136,3 +145,20 @@ class BaseGtfsImporter():
         self.build_links()
         self.merge_tables()
         self.build_geometries()
+
+    def build_headways(self, timerange, service_ids=None):
+        GTFSFrequencies = headway_utils.GTFS_frequencies_utils(self.frequencies, self.trips)
+        timerange_sec = [
+            headway_utils.hhmmss_to_seconds_since_midnight(x) for x in timerange
+        ]
+        self.trips['headway'] = self.trips.apply(
+            lambda x: GTFSFrequencies.compute_average_headway(
+                [x['trip_id']],
+                timerange_sec,
+                service_ids
+            ),
+            1
+        )
+        self.links = self.links.merge(
+            self.trips[['trip_id', 'headway']],
+        )
