@@ -5,6 +5,9 @@ import pandas as pd
 from tqdm import tqdm
 
 def rank_paths(paths, by='utility'):
+
+    assert paths[by].isnull().sum() == 0
+
     columns = ['origin', 'destination', 'route_type']
     sorted_paths = paths.sort_values(by=columns + [by], ascending=True)
 

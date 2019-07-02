@@ -6,6 +6,10 @@ from tqdm import tqdm
 
 
 def remove_overlaps(geometries):
+    """
+    Run through the list of geometries. Each geometry is cropped by
+    the union of previously tackled geometries.
+    """
     crop = shapely.geometry.polygon.Polygon()
     cropped = []
     for g in tqdm(geometries, desc='remove_overlaps'):
@@ -27,10 +31,10 @@ def fill_gaps_with_buffer(geometries, fill_buffer=1e-6):
     return polygons
 
 
-def interstitial_polygons(geometries, buffer=1e-9):
+def interstitial_polygons(geometries, buffer=1e-9, hull_buffer=1):
     multi = shapely.geometry.MultiPolygon(geometries).buffer(buffer)
     convex_hull = multi.convex_hull
-    convex_hull_buffer = convex_hull.buffer(1)
+    convex_hull_buffer = convex_hull.buffer(hull_buffer)
     voids = convex_hull_buffer.difference(multi)
     voids = [v for v in voids if convex_hull.contains(v)]
     return voids
@@ -52,7 +56,7 @@ def border_length_matrix(x_geometries, y_geometries, buffer=1e-9):
     for g in tqdm(x_geometries, desc=str(len(y_geometries))):
         array.append(
             [
-                border_length(y_geometries[i], g)
+                border_length(y_geometries[i], g, buffer=buffer)
                 for i in range(len(y_geometries))
             ]
         )
@@ -65,11 +69,11 @@ def gap_nearest_polygon_index(gap_idex, length_matrix):
     return polygon_index
 
 
-def unite_gaps_to_polygons(gaps, polygons):
+def unite_gaps_to_polygons(gaps, polygons, buffer=1e-4):
 
     geometries = [p for p in polygons]
 
-    array = border_length_matrix(polygons, gaps)
+    array = border_length_matrix(polygons, gaps,  buffer=buffer)
     df = pd.DataFrame(array)
 
     for gap_index in range(len(gaps)):
@@ -106,13 +110,34 @@ def biggest_polygons(multipolygons):
 
 def clean_zoning(
     zones,
-    buffer=1e-4,
-    fill_buffer=1e-4,
+    coordinates='degree', # or meter
+    buffer=None,
+    fill_buffer=None,
+    hull_buffer=None,
+    mini_buffer=None,
     fill_gaps=True,
     unite_gaps=True,
     **kwargs
 ):
-
+    # Default values if not given
+    if coordinates=='degree':
+        if buffer is None:
+            buffer = 1e-4
+        if fill_buffer is None:
+            fill_buffer = 1e-4
+        if hull_buffer is None:
+            hull_buffer = 1
+        if mini_buffer is None:
+            mini_buffer = 1e-9
+    elif coordinates=='meter':
+        if buffer is None:
+            buffer = 10
+        if fill_buffer is None:
+            fill_buffer = 10
+        if hull_buffer is None:
+            hull_buffer = 10000
+        if mini_buffer is None:
+            mini_buffer = 1
     polygons = [g.buffer(buffer, **kwargs) for g in zones]
     polygons = [g.simplify(buffer) for g in polygons]
 
@@ -124,8 +149,8 @@ def clean_zoning(
 
     if unite_gaps:
 
-        voids = interstitial_polygons(polygons)
-        polygons = unite_gaps_to_polygons(voids, polygons)
+        voids = interstitial_polygons(polygons, buffer=mini_buffer, hull_buffer=hull_buffer)
+        polygons = unite_gaps_to_polygons(voids, polygons, buffer=mini_buffer)
         polygons = [buffer_if_not_polygon(g, buffer) for g in polygons]
 
     polygons = remove_overlaps(polygons)

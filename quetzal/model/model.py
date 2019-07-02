@@ -215,6 +215,7 @@ class Model(IntegrityModel):
 
         if title: 
             plot.set_title(title, fontsize=fontsize)
+
         if basemap_url is not None:
             assert self.epsg == 3857
             add_basemap(plot, zoom=zoom, url=basemap_url)

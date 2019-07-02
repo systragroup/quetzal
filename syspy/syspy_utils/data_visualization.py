@@ -439,30 +439,28 @@ def bandwidth(
             return v / np.sqrt(v[1]*v[1] + v[0]*v[0])
         def get_label_angle_alignment_offset(row):
             x = row.geometry.coords[:]
-            angle = -np.arccos((x[1][0] - x[0][0])/row.geometry.length) * 180/3.14
+
+            angle = (np.arccos((x[1][0] - x[0][0])/row.geometry.length) * 180/3.14)
+            angle *= np.sign(x[1][1] - x[0][1])
             va = 'bottom'
             label_offset = 0.6
-            # if angle < -100: # Reverse
-            #     print(angle)
-            #     angle += 180
-            #     va = 'top'
-            #     label_offset = 0.75
             return pd.Series({'va': va, 'label_angle': angle, 'label_offset':label_offset * row['cat'] * row['normal']})
         
         df['normal'] = df.geometry.apply(get_normal)
-        # df['label_offset'] = df['normal'] * df['cat']
         columns = ['label_angle',  'label_offset', 'va']
         df[columns] = df.apply(get_label_angle_alignment_offset, 1)[columns]
+
         df.apply(
             lambda x: plot.annotate(
                 s=x['label'],
                 xy=x.geometry.centroid.coords[0],
-                #xytext=x['label_offset'],
-                #textcoords='offset pixels',
-                #rotation=x['label_angle'],
-                #rotation_mode='anchor',
-                ha='center',
-                va=x['va'],
+
+                xytext=x['label_offset'],
+                textcoords='offset pixels',
+                rotation=x['label_angle'],
+                rotation_mode='anchor',
+                ha='center',va=x['va'],
+
                 **label_kwargs
             ),
             axis=1
@@ -480,6 +478,7 @@ def bandwidth(
         
         return plot
 
+
 def add_basemap(ax, zoom, url='http://tile.stamen.com/terrain-background/tileZ/tileX/tileY.png'):
     try:
         import contextily as ctx
@@ -490,3 +489,4 @@ def add_basemap(ax, zoom, url='http://tile.stamen.com/terrain-background/tileZ/t
         ax.axis((xmin, xmax, ymin, ymax))
     except ImportError as e:
         print('could not add basemap:', e)
+

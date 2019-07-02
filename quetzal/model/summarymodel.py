@@ -15,36 +15,59 @@ def densify(series):
 
 class SummaryModel(transportmodel.TransportModel):
 
-    def summary_earning(self, segments=('root',), inplace=False, dense=False):
+    def summary_earning(self, inplace=False, dense=False):
         """
         summarize earnings by fare_id and by segment
         """
+        segments = self.segments
         df = pd.merge(self.volumes[['origin', 'destination'] + list(segments)], self.pt_los)
-        
+
         for segment in segments:
             df[segment] =  df[segment] * df[(segment, 'probability')]
 
-        
         df = df.dropna(subset=['price_breakdown'])
-        df['fare_id_tuple'] = df['fare_id_list'].apply(tuple)
+        df['fare_id_tuple'] = df['route_fares'].apply(
+            lambda d: tuple(d.items())
+        ) + df['od_fares'].apply(
+            lambda d: tuple(d.items())
+        )
         agg_dict = {segment: 'sum' for segment in segments}
-        agg_dict['price_breakdown'] = 'first'
+        
+        agg_dict['route_fares'] = 'first'
+        agg_dict['od_fares'] = 'first'
+        
         temp = df.groupby('fare_id_tuple').agg(agg_dict)
-        fare_id_set = set.union(*[set(t) for t in temp.index])
-        revenue_dict = {
+        
+        fare_id_set = set(self.fare_rules['fare_id'])
+        fare_revenue_dict = {
             segment :{f:0 for f in fare_id_set}
             for segment in segments
         }
+        
+        agency_id_set = set(self.fare_attributes['agency_id'])
+        agency_revenue_dict = {
+            segment :{f:0 for f in agency_id_set}
+            for segment in segments
+        }
+        
+        agency_dict = self.fare_attributes.set_index(['fare_id'])['agency_id']
 
         def row_revenue(row, segment):
-            for key, value in row['price_breakdown'].items():
-                revenue_dict[segment][key] += value * row[segment]
+            for key, value in row['route_fares'].items():
+                fare_revenue_dict[segment][key] += value * row[segment]
+                agency_revenue_dict[segment][agency_dict[key]] += value * row[segment]
+            for key, value in row['od_fares'].items():
+                agency_revenue_dict[segment][key] += value * row[segment]
 
-        
+
         for segment in segments:
             _ = temp.apply(row_revenue, axis=1, segment=segment)
-            
-        stack = pd.DataFrame(revenue_dict).stack()
+
+
+
+        fare_stack = pd.DataFrame(fare_revenue_dict).stack()
+        agency_stack = pd.DataFrame(agency_revenue_dict).stack()
+        stack = pd.concat([fare_stack, agency_stack])
         stack.index.names = ['fare_id', 'segment']
         stack.name = 'sum'
         stack = densify(stack) if dense else stack
@@ -53,7 +76,7 @@ class SummaryModel(transportmodel.TransportModel):
         else:
             return stack
 
-    def summary_path_sum(self, segments=('root',), inplace=False, dense=False):
+    def summary_path_sum(self, inplace=False, dense=False):
 
         """
         focuses on user perception
@@ -61,8 +84,16 @@ class SummaryModel(transportmodel.TransportModel):
         summarize 'time', 'in_vehicle_time', 'in_vehicle_length', 
         'count', 'price', 'ntransfers' by segment and route_type
         """
+        segments = self.segments
 
-        left = pd.concat([self.car_los, self.pt_los])
+        try:
+            left = pd.concat([self.car_los, self.pt_los])
+        except AttributeError:
+            try:
+                left =self.pt_los
+            except AttributeError:
+                left =self.car_los
+            
         right = self.volumes[['origin', 'destination'] + list(segments)]
         df = pd.merge(left, right, on=['origin', 'destination'])
         
@@ -97,7 +128,7 @@ class SummaryModel(transportmodel.TransportModel):
         else:
             return stack
 
-    def summary_link_sum(self, segments=('root',), inplace=False, dense=False):
+    def summary_link_sum(self, inplace=False, dense=False):
 
         """
         focuses on network use
@@ -105,6 +136,7 @@ class SummaryModel(transportmodel.TransportModel):
         summarize 'boardings' and 'length' 
         by segment, route_type, route_id and trip_id
         """
+        segments = self.segments
     
         df = self.loaded_links.copy()
         columns = []
@@ -141,6 +173,7 @@ class SummaryModel(transportmodel.TransportModel):
         calculate maximum demand
         by segment, route_type, route_id and trip_id
         """
+        segments = list(self.segments)
         df = self.loaded_links
         stack = df[
             ['route_type', 'route_id','trip_id'] + segments
@@ -153,8 +186,9 @@ class SummaryModel(transportmodel.TransportModel):
         else:
             return stack
     
-    def summary_path_average(self, segments=('root',), inplace=False, dense=False, complete=True):
-        s = self.summary_path_sum(segments=segments) if complete else self.stack_path_sum
+    def summary_path_average(self, inplace=False, dense=False, complete=True):
+        segments = self.segments
+        s = self.summary_path_sum() if complete else self.stack_path_sum
         us = s.unstack('indicator')
         us = us.apply(lambda c: c/us['count'])
         stack = us.fillna(0).stack()
@@ -165,14 +199,13 @@ class SummaryModel(transportmodel.TransportModel):
         else:
             return stack
 
-    def summary_aggregated_path_average(
-        self, segments=('root',), inplace=False, dense=False,  pt_route_types=set(), complete=True):
+    def summary_aggregated_path_average(self, inplace=False, dense=False,  pt_route_types=set(),complete=True):
         """
         focuses on user perception
         by route_type
         """
-
-        stack = self.summary_path_sum(segments=segments) if complete else self.stack_path_sum
+        segments = self.segments
+        stack = self.summary_path_sum() if complete else self.stack_path_sum
         stack = stack.reset_index()
         stack['route_type'] = stack['route_type'].apply(
             lambda rt: 'pt' if rt in pt_route_types else rt)
@@ -192,5 +225,62 @@ class SummaryModel(transportmodel.TransportModel):
             self.stack_aggregated_path_average = stack
         else:
             return stack
+
+    def summary_od(
+        self, 
+        costs=['price', 'time', 'in_vehicle_time', 'in_vehicle_length', 'ntransfers'],
+        pt_route_types=set(), 
+        inplace=False
+    ):
+        segments = self.segments
+        try:
+            left = pd.concat([self.car_los, self.pt_los])
+        except AttributeError:
+            try:
+                left =self.pt_los
+            except AttributeError:
+                left =self.car_los
+
+        right = self.volumes[['origin', 'destination'] + list(segments)]
+        los = pd.merge(left, right, on=['origin', 'destination'], suffixes=['_old', ''])
+        columns = []
+        los['mode'] = los['route_type']
+        los.loc[los['route_type'].isin(pt_route_types), 'mode'] = 'pt'
+        
+
+        for segment in segments:
+            los[(segment, 'volume')] = los[(segment, 'probability')] * los[segment]
+
+
+        for segment in segments:
+            columns.append((segment, 'volume'))
+            for service in costs:
+                column = (segment, service)
+                columns.append(column)
+                los[column] = los[(segment, 'probability')] * los[service]
+
+        df = los.groupby(['origin', 'destination', 'mode'])[columns].sum()      
+        df.columns = pd.MultiIndex.from_tuples(df.columns)
+
+        # add root (weighted mean of segments)
+
+        df[('root', 'volume')] = sum([df[(segment, 'volume')].fillna(0) for segment in segments])
+
+        weighted_sum = sum(
+            [
+                df[segment][costs].apply(lambda s: s * df[(segment, 'volume')]).fillna(0)
+                for segment in segments
+            ]      
+        )
+
+        for c in costs: 
+            df[('root', c)] = (weighted_sum[c] / df[('root', 'volume')]).fillna(0)
+
+        df.columns.names = 'segment', 'sum'
+
+        if inplace:
+            self.od_los = df
+        else:
+            return df
 
 

@@ -207,6 +207,7 @@ def path_and_duration_from_links_and_ntlegs(
     pole_set,
     footpaths=None,
     boarding_cost=300,
+    ntlegs_penalty=1e9
 ):
 
     """
@@ -228,6 +229,8 @@ def path_and_duration_from_links_and_ntlegs(
     :param ntlegs: ntlegs DataFrame built;
     :param boarding_cost: an artificial cost to add the boarding edges
         of the frequency graph (seconds);
+    :param ntlegs_penalty: (default 1e9) high time penalty in seconds to ensure
+        ntlegs are used only once for access and once for eggress;
     :return: Origin->Destination stack matrix with path and duration;
     """
     pole_set = pole_set.intersection(set(ntlegs['a']))
@@ -241,7 +244,7 @@ def path_and_duration_from_links_and_ntlegs(
         include_igraph=False,
         boarding_cost=boarding_cost
     )
-
+    ntlegs['time'] += ntlegs_penalty
     nx_graph.add_weighted_edges_from(ntlegs[['a', 'b', 'time']].values.tolist())
 
     if footpaths is not None:
@@ -262,11 +265,14 @@ def path_and_duration_from_links_and_ntlegs(
 
     duration_stack = assignment_raw.nested_dict_to_stack_matrix(
         alllengths, pole_set, name='gtime')
+    # Remove access and egress ntlegs penalty
+    duration_stack['gtime'] -= 2*ntlegs_penalty
+
     path_stack = assignment_raw.nested_dict_to_stack_matrix(
         allpaths, pole_set, name='path')
 
     los = pd.merge(duration_stack, path_stack, on=['origin', 'destination'])
-
+    
     return los, nx_graph
 
 
