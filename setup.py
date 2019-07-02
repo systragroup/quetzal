@@ -19,6 +19,9 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
+with open('requirements.txt') as reqs:
+    install_requires = [req.strip() for req in reqs if req and req[0] != '#']
+
 setup(
     name='quetzal',
 
@@ -79,40 +82,7 @@ setup(
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=[
-        'alabaster>=0.7.8',
-        'aniso8601>=1.1.0',
-        'argcomplete>=0.8.1',
-        'astropy>=0.4.2',
-        'Babel>=2.3.4',
-        'backports-abc>=0.4',
-        'beautifulsoup4>=4.3.2',
-        'bitarray>=0.8.1',
-        'branca',
-        'DateTime',
-        'dbf',
-        'descartes',
-        'folium',
-        'geopandas',
-        'geopy',
-        'ipywidgets',
-        'kml2geojson',
-        'networkx',
-        'numpy',
-        'pandas',
-        'pyPdf',
-        'pyproj',
-        'requests',
-        'scikit-learn',
-        'scipy',
-        'selenium',
-        'shapely',
-        'simpledbf',
-        'Sphinx>=1.4.5',
-        'sphinx-rtd-theme>=0.1.9',
-        'xlrd>=1.0.0',
-        'tables>=3.4.2',
-        'tqdm'],
+    install_requires=install_requires,
     setup_requires=['pytest-runner'],
     tests_require=['pytests>=3'],
 

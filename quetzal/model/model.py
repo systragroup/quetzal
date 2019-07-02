@@ -201,8 +201,8 @@ class Model(IntegrityModel):
             self.coordinates_unit = 'degree'
 
     def plot(
-        self, attribute, add_basemap, ticks=False, 
-         basemap_url=None, zoom=12, 
+        self, attribute, ticks=False, 
+        basemap_url=None, zoom=12, 
         title=None, fontsize=24,
         fname=None,  
         *args, **kwargs
@@ -215,12 +215,13 @@ class Model(IntegrityModel):
 
         if title: 
             plot.set_title(title, fontsize=fontsize)
+
+        if basemap_url is not None:
+            assert self.epsg == 3857
+            add_basemap(plot, zoom=zoom, url=basemap_url)
         if fname:
             fig = plot.get_figure()
             fig.savefig(fname, bbox_inches='tight')
-        if add_basemap:
-            assert self.epsg == 4327
-            add_basemap(plot, zoom=zoom, url=basemap_url)
 
         return plot
 
