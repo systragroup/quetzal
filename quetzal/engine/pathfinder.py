@@ -56,11 +56,15 @@ def path_and_duration_from_graph(
     
     # sources
 
-    
+    allpaths = {}
+    alllengths = {}  
+
     iterator = set(sources).intersection(list(pole_set))
     for pole in iterator:
-        alllengths[pole], allpaths[pole] = nx.single_source_dijkstra(
-            nx_graph, source=pole)
+        olengths, opaths  = nx.single_source_dijkstra(nx_graph, pole)
+        opaths = {target: p for target, p in opaths.items() if target in pole_set}
+        olengths = {target: p for target, p in olengths.items() if target in pole_set}
+        alllengths[pole], allpaths[pole] = olengths, opaths
 
     duration_stack = assignment_raw.nested_dict_to_stack_matrix(
         alllengths, pole_set, name='gtime')
@@ -297,6 +301,8 @@ class PublicPathFinder:
         
         iterator =  tqdm(self.mode_combinations)
         for combination in iterator:
+            if len(combination) == 0:
+                continue # their is no broken mode
             iterator.desc = 'breaking modes: ' + str(combination) + ' '
             
             broken = self.broken_mode_graph(combination)
@@ -306,7 +312,7 @@ class PublicPathFinder:
                 reversed_nx_graph=None,
                 pole_set=set(self.zones.index).intersection(set(self.ntlegs['a'])),
             )
-            
+
             los_tuples.append([combination, los])
             
         to_concat = [] 
