@@ -13,6 +13,8 @@ import shutil
 import uuid
 import ntpath
 
+from syspy.syspy_utils.data_visualization import add_basemap
+
 from quetzal.model.integritymodel import IntegrityModel
 
 
@@ -34,19 +36,6 @@ def authorized_column(
     type_set = set(df[column].dropna().apply(type))
     delta = type_set - set(authorized_types)
     return delta == set()
-
-# basemap
-def add_basemap(ax, zoom, url='http://tile.stamen.com/terrain-background/tileZ/tileX/tileY.png'):
-    #TODO : move to another file
-    try:
-        import contextily as ctx
-        xmin, xmax, ymin, ymax = ax.axis()
-        basemap, extent = ctx.bounds2img(xmin, ymin, xmax, ymax, zoom=zoom, url=url)
-        ax.imshow(basemap, extent=extent, interpolation='bilinear')
-        # restore original x/y limits
-        ax.axis((xmin, xmax, ymin, ymax))
-    except ImportError as e:
-        print('could not add basemap:', e)
 
 def track_args(method):
 
