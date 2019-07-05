@@ -259,9 +259,10 @@ def path_and_duration_from_links_and_ntlegs(
     
     for pole in iterator:
         iterator.desc = str(pole) + ' '
-        
-        alllengths[pole], allpaths[pole] = nx.single_source_dijkstra(
-            nx_graph, pole)
+        olengths, opaths  = nx.single_source_dijkstra(nx_graph, pole)
+        opaths = {target: p for target, p in opaths.items() if target in pole_set}
+        olengths = {target: p for target, p in olengths.items() if target in pole_set}
+        alllengths[pole], allpaths[pole] = olengths, opaths
 
     duration_stack = assignment_raw.nested_dict_to_stack_matrix(
         alllengths, pole_set, name='gtime')
@@ -272,6 +273,7 @@ def path_and_duration_from_links_and_ntlegs(
         allpaths, pole_set, name='path')
 
     los = pd.merge(duration_stack, path_stack, on=['origin', 'destination'])
+    los['path'] = los['path'].apply(tuple)
     
     return los, nx_graph
 
