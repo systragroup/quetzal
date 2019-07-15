@@ -281,8 +281,9 @@ class TransportModel(preparationmodel.PreparationModel):
                 right_index=True
             )
 
-        for segment in segments:
-            print(segment)
+        iterator = tqdm(segments)
+        for segment in iterator:
+            iterator.desc = str(segment)
             self.step_pt_assignment(
                 volume_column=segment,
                 path_pivot_column=(segment, 'probability'),
@@ -309,6 +310,8 @@ class TransportModel(preparationmodel.PreparationModel):
             [(segment, 'boardings') for segment in segments]].T.sum()
         self.loaded_links['alightings'] = self.loaded_links[
             [(segment, 'alightings') for segment in segments]].T.sum()
+        self.loaded_links['all_pt'] = self.loaded_links[
+            [segment for segment in segments]].T.sum()
 
         self.loaded_nodes['transfers'] = self.loaded_nodes[
             [(segment, 'transfers') for segment in segments]].T.sum()
@@ -316,6 +319,32 @@ class TransportModel(preparationmodel.PreparationModel):
             [(segment, 'boardings') for segment in segments]].T.sum()
         self.loaded_nodes['alightings'] = self.loaded_nodes[
             [(segment, 'alightings') for segment in segments]].T.sum()
+        self.loaded_nodes['all_pt'] = self.loaded_nodes[
+            [segment for segment in segments]].T.sum()
+
+    
+    def step_car_assignment(self, volume_column=None):
+        """
+        Assignment step
+            * requires: road_links, car_los, road_links, volumes, path_probabilities
+            * builds: loaded_road_links
+        """
+        if volume_column is None:
+            self.segmented_car_assignment()
+
+    def segmented_car_assignment(self):
+
+        segments = self.segments
+        iterator = tqdm(segments)
+        for segment in iterator:
+            iterator.desc = str(segment)
+            merged = pd.merge(self.car_los, self.volumes, on=['origin', 'destination'])
+            merged['to_assign'] = merged[(segment ,'probability')] * merged[segment].fillna(0)
+            assigned = raw_assignment.assign(merged['to_assign'], merged['link_path']).fillna(0)
+            self.road_links[(segment, 'car')] = assigned
+
+        columns = [(segment, 'car') for segment in self.segments]
+        self.road_links[('all', 'car')] = self.road_links[columns].T.sum()
 
     #TODO move all utility features to another object / file
 

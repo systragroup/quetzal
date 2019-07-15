@@ -201,6 +201,10 @@ class AnalysisModel(summarymodel.SummaryModel):
         self.car_los['in_vehicle_length'] = self.car_los['link_path'].apply(
             lambda l: sum([d[t] for t in l]))
 
+        self.car_los['length'] = self.car_los[
+            ['access_length',  'in_vehicle_length']
+        ].T.sum()
+
     @track_args
     def analysis_summary(self):
         """
