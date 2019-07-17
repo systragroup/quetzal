@@ -9,6 +9,7 @@ from tqdm import tqdm
 from syspy.spatial import polygons, spatial
 from syspy.syspy_utils import neighbors, syscolors
 from syspy.syspy_utils import pandas_utils
+from shapely.ops import cascaded_union
 
 
 def compute_coverage_layer(layer, buffer, extensive_cols=[]):
@@ -137,82 +138,43 @@ def snail_number(zones, center):
     return indexed.loc[zones.index] # we use zones.index to sort the result
 
 
-def cluster_snail_number(zones, n_clusters=20, buffer=1e-6):
-    # zones can be a series or a list
-
-    zones = pd.DataFrame(pd.Series(zones))
-    df = zones.copy()
-
-    # we want the geometries to intersect each other
-
-    # the total area of the zoning
-    union = shapely.geometry.MultiPolygon(
-        list(df['geometry'])
-    ).buffer(buffer)
-
-    center = union.centroid
-
+def cluster_snail_number(zones, n_clusters=20, centre=None, buffer=10):
+    """
+    zones: GeoSeries
+    """
+    df = pd.DataFrame(zones).reset_index().copy()
+    
+    if centre is None:
+        union = cascaded_union(df.geometry).buffer(buffer)
+        centre = union.centroid
+        
+    # Snail clusterize
     clusters, cluster_series = spatial.zone_clusters(df, n_clusters=n_clusters)
     df['cluster'] = cluster_series
-
-    distance_series = clusters['geometry'].apply(lambda g: center.distance(g))
-    distance_series.name = 'cluster_distance'
-
-    distance_series.sort_values(inplace=True)
-    geometries = clusters['geometry'].to_dict()
-
-    snail = snail_number(clusters, center)
-
+    snail = snail_number(clusters, centre)
     clusters['snail'] = snail
-
-    df = pd.merge(df, snail.reset_index(), on='cluster')
-    df['distance'] = df['geometry'].apply(lambda g: center.distance(g))
-
-    sorted_df = df.sort_values(by=['cluster_snail', 'distance'])
-
+    df = df.merge(snail.reset_index(), on='cluster')
+    df.drop('cluster', 1, inplace=True)
+    
+    # snail numbering within cluster
     to_concat = []
-
-    for cluster in set(df['cluster']):
-
-        proto = sorted_df.copy()
-        proto = proto.loc[proto['cluster'] == cluster]
-        geometries = proto['geometry'].apply(
-            lambda g: g.buffer(buffer)).to_dict()
-        pool = list(proto.index)
-
-        done = pool_and_geometries(pool, geometries)
-
-        snail = pd.Series(done)
-        snail.index.name = 'snail'
-        snail.name = 'original_index'
-
-        proto.index.name = 'original_index'
-        proto.reset_index(inplace=True)
-        proto = pd.merge(proto, snail.reset_index(), on='original_index')
-
-        to_concat.append(proto)
-
+    for cluster in set(df['cluster_snail']):
+        temp_df = df.loc[df['cluster_snail']==cluster]
+        temp_centre = cascaded_union(temp_df.geometry).centroid
+        temp_snail = snail_number(temp_df, temp_centre)
+        temp_df['snail'] = temp_snail
+        to_concat.append(temp_df)
+    
     concat = pd.concat(to_concat)
-
-    df = concat.copy()
-    df.sort_values(by=['cluster_snail', 'snail'], inplace=True)
-
-    df.reset_index(inplace=True, drop=True)
-    df.reset_index(inplace=True, drop=False)
-
-    if True:
-        df.drop('geometry', inplace=True, axis=1)
-        df = pd.merge(
-            df,
-            sorted_df[['geometry']],
-            left_on='original_index',
-            right_index=True
-        )
-
-    #
-    df.set_index('original_index', inplace=True)
-
-    return df.loc[zones.index]
+    concat = concat.sort_values(['cluster_snail', 'snail']).reset_index(drop=True)
+    concat = concat.reset_index().rename(
+        columns={
+            'level_0': 'id',
+            'cluster_snail': 'cluster',
+            'index': 'original_index'
+        }
+    )
+    return concat[['cluster', 'id', 'original_index']]
 
 
 def greedy_color(zoning, colors=syscolors.rainbow_shades, buffer=1e-6):
