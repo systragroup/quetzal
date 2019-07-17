@@ -414,8 +414,8 @@ def nearest(one, many, geometry=False, n_neighbors=1):
     df_many = add_geometry_coordinates(many.copy(), columns=['x_geometry', 'y_geometry'])
     df_one = add_geometry_coordinates(one.copy(), columns=['x_geometry', 'y_geometry'])
 
-    x = df_many[['x_geometry','y_geometry']].as_matrix()
-    y = df_one[['x_geometry','y_geometry']].as_matrix()
+    x = df_many[['x_geometry','y_geometry']].values
+    y = df_one[['x_geometry','y_geometry']].values
 
     nbrs = NearestNeighbors(n_neighbors=n_neighbors, algorithm='ball_tree').fit(x)
     distances, indices = nbrs.kneighbors(y)
@@ -453,8 +453,8 @@ def nearest_deprecated(one, many, geometry=False):
     df_many = add_geometry_coordinates(many.copy(), columns=['x_geometry', 'y_geometry'])
     df_one = add_geometry_coordinates(one.copy(), columns=['x_geometry', 'y_geometry'])
 
-    x = df_many[['x_geometry','y_geometry']].as_matrix()
-    y = df_one[['x_geometry','y_geometry']].as_matrix()
+    x = df_many[['x_geometry','y_geometry']].values
+    y = df_one[['x_geometry','y_geometry']].values
 
     nbrs = NearestNeighbors(n_neighbors=1, algorithm='ball_tree').fit(x)
     distances, indices = nbrs.kneighbors(y)
