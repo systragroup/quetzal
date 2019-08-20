@@ -390,7 +390,7 @@ def zone_clusters(zones,  n_clusters=10, buffer=None, cluster_column=None):
     if cluster_column:
         cluster_series = df['cluster'] = df[cluster_column]
     else:
-        y_pred = KMeans(n_clusters=n_clusters).fit_predict(x)
+        y_pred = KMeans(n_clusters=n_clusters, random_state=1).fit_predict(x)
         cluster_series = df['cluster'] = pd.Series(y_pred, index=df.index)
 
     cluster_series.name = 'cluster'
