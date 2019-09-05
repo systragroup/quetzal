@@ -4,17 +4,23 @@ import shapely
 import pandas as pd
 from tqdm import tqdm
 
+def fast_multi_crop(to_crop, geometries):
+    cropped = to_crop
+    for g in geometries:
+        if cropped.intersects(g):
+            cropped=cropped.difference(g)
+    return cropped
+
 
 def remove_overlaps(geometries):
     """
     Run through the list of geometries. Each geometry is cropped by
-    the union of previously tackled geometries.
+    the previously tackled geometries.
     """
-    crop = shapely.geometry.polygon.Polygon()
     cropped = []
     for g in tqdm(geometries, desc='remove_overlaps'):
-        cropped.append(g.difference(crop))
-        crop = crop.union(g)
+        g = fast_multi_crop(g, cropped)
+        cropped.append(g)
     return cropped
 
 
@@ -22,10 +28,8 @@ def fill_gaps_with_buffer(geometries, fill_buffer=1e-6):
     polygons = []
     for i in tqdm(range(len(geometries)), desc='fill_gaps'):
         g = geometries[i].buffer(fill_buffer)
-        for j in range(len(geometries)):
-            if j != i:
-                g = g.difference(geometries[j])
-
+        cropping = geometries[:i] + geometries[i+1:]
+        g = fast_multi_crop(g, cropping)
         polygons.append(g)
 
     return polygons
@@ -148,7 +152,6 @@ def clean_zoning(
     polygons = biggest_polygons(polygons)
 
     if unite_gaps:
-
         voids = interstitial_polygons(polygons, buffer=mini_buffer, hull_buffer=hull_buffer)
         polygons = unite_gaps_to_polygons(voids, polygons, buffer=mini_buffer)
         polygons = [buffer_if_not_polygon(g, buffer) for g in polygons]
