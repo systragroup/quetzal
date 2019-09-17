@@ -23,6 +23,7 @@ def linestring_geometry(dataframe, point_dict, from_point, to_point):
             (point_dict[row[from_point]], point_dict[row[to_point]]))
     return df.apply(geometry, axis=1)
 
+
 class BaseGtfsImporter():
 
     """
@@ -65,6 +66,16 @@ class BaseGtfsImporter():
 
         self.frequencies = pd.read_csv(
             self.gtfs_path + 'frequencies.txt',
+            encoding=encoding
+        )
+
+        self.calendar_dates = pd.read_csv(
+            self.gtfs_path + 'calendar_dates.txt',
+            encoding=encoding
+        )
+
+        self.calendar = pd.read_csv(
+            self.gtfs_path + 'calendar.txt',
             encoding=encoding
         )
 
@@ -162,3 +173,4 @@ class BaseGtfsImporter():
         self.links = self.links.merge(
             self.trips[['trip_id', 'headway']],
         )
+

@@ -48,7 +48,7 @@ class GTFS_frequencies_utils():
         aggregated_headways = self.aggregate_headways_with_time(
             trip_ids, time_range, service_ids
         )
-
+        # print(aggregated_headways)
         return average_headway_over_time(aggregated_headways, time_range[0], time_range[1])
 
 
@@ -88,6 +88,7 @@ class GTFS_frequencies_utils():
             (self.frequencies['end_time_sec'] > time_range[0]) &\
             (self.frequencies['headway_secs'] > 0)
         ]
+        # print('intersecting_timetables', intersecting_timetables)
 
         intersecting_null_timetables = self.frequencies[
             (self.frequencies['trip_id'].isin(trip_ids)) &\
@@ -95,6 +96,7 @@ class GTFS_frequencies_utils():
             (self.frequencies['end_time_sec'] > time_range[0]) &\
             (self.frequencies['headway_secs'] == 0)
         ]
+        # print('intersecting_null_timetables', intersecting_null_timetables)
 
         # Time range separation
         time_list = list(intersecting_timetables['start_time_sec'].values) +\
@@ -103,10 +105,10 @@ class GTFS_frequencies_utils():
                     list(intersecting_null_timetables['end_time_sec'].values)
         time_list = list(set(time_list))
         time_list = [a for a in time_list if a > time_range[0] and a < time_range[1]]
-        intervals = [time_range[0]] + time_list + [time_range[1]]
+        intervals = sorted([time_range[0]] + time_list + [time_range[1]])
 
         def append_headway_if_included(row, array, interval):
-            if row['start_time_sec'] < interval[1] and row['end_time_sec'] >= interval[0]:
+            if row['start_time_sec'] < interval[1] and row['end_time_sec'] > interval[0]:
                 array.append(row['headway_secs'])
 
         def append_null_headway_if_included(row, array, interval):
@@ -130,7 +132,6 @@ class GTFS_frequencies_utils():
             )
 
             result[intervals[i]] = compute_avg_headway(headways_to_include)
-
         return result
 
 

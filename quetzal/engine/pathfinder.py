@@ -14,38 +14,39 @@ from syspy.routing.frequency import graph as frequency_graph
 import syspy.assignment.raw as assignment_raw
 from tqdm import tqdm
 
-def graph_from_links_and_ntlegs(
-    links,
-    ntlegs,
-    footpaths=None,
-    boarding_cost=300
-):
+# def graph_from_links_and_ntlegs(
+#     links,
+#     ntlegs,
+#     footpaths=None,
+#     boarding_cost=300
+# ):
     
-    links = links.copy()
+#     links = links.copy()
 
-    links['index'] = links.index # to be consistent with frequency_graph
+#     links['index'] = links.index # to be consistent with frequency_graph
 
-    nx_graph, _ = frequency_graph.graphs_from_links(
-        links,
-        include_edges=[],
-        include_igraph=False,
-        boarding_cost=boarding_cost
-    )
+#     nx_graph, _ = frequency_graph.graphs_from_links(
+#         links,
+#         include_edges=[],
+#         include_igraph=False,
+#         boarding_cost=boarding_cost
+#     )
 
-    nx_graph.add_weighted_edges_from(ntlegs[['a', 'b', 'time']].values.tolist())
+#     nx_graph.add_weighted_edges_from(ntlegs[['a', 'b', 'time']].values.tolist())
 
-    if footpaths is not None:
-        nx_graph.add_weighted_edges_from(
-            footpaths[['a', 'b', 'time']].values.tolist()
-        )
-    return nx_graph
+#     if footpaths is not None:
+#         nx_graph.add_weighted_edges_from(
+#             footpaths[['a', 'b', 'time']].values.tolist()
+#         )
+#     return nx_graph
 
 def path_and_duration_from_graph(
     nx_graph,
     pole_set,
     sources=None,
     reversed_nx_graph=None,
-    reverse=False
+    reverse=False,
+    ntlegs_penalty=1e9
 ):
         
     allpaths = {}
@@ -93,6 +94,7 @@ def path_and_duration_from_graph(
         target_los[['origin', 'destination']] = target_los[['destination', 'origin']]
 
         los = pd.concat([source_los, target_los])
+        los['gtime'] -= 2*ntlegs_penalty
     else:
 
         return source_los

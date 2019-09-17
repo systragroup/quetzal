@@ -286,10 +286,10 @@ class TransportModel(preparationmodel.PreparationModel):
             self.step_pt_assignment(
                 volume_column=segment,
                 path_pivot_column=(segment, 'probability'),
-                road=True,
+                road=kwargs['road'],
                 boardings=True,
                 alightings=True,
-                transfers=True
+                transfers=True,
             )
             self.loaded_links[(segment, 'boardings')] = self.loaded_links['boardings']
             self.loaded_nodes[(segment, 'boardings')] = self.loaded_nodes['boardings']

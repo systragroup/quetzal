@@ -235,6 +235,7 @@ def path_and_duration_from_links_and_ntlegs(
     """
     pole_set = pole_set.intersection(set(ntlegs['a']))
     links = links.copy()
+    ntlegs = ntlegs.copy()
 
     links['index'] = links.index # to be consistent with frequency_graph
 
@@ -274,7 +275,7 @@ def path_and_duration_from_links_and_ntlegs(
 
     los = pd.merge(duration_stack, path_stack, on=['origin', 'destination'])
     los['path'] = los['path'].apply(tuple)
-    
+
     return los, nx_graph
 
 
