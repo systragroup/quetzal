@@ -128,7 +128,7 @@ class SummaryModel(transportmodel.TransportModel):
         else:
             return stack
 
-    def summary_link_sum(self, inplace=False, dense=False):
+    def summary_link_sum(self, route_label='route_id', inplace=False, dense=False):
 
         """
         focuses on network use
@@ -144,7 +144,7 @@ class SummaryModel(transportmodel.TransportModel):
             columns += [(segment, c) for c in ['boardings']]
 
         to_concat = [
-            df[columns + ['route_type', 'route_id','trip_id'] ]]
+            df[columns + ['route_type', route_label,'trip_id'] ]]
         
         columns = ['length', 'time']
         
@@ -155,10 +155,10 @@ class SummaryModel(transportmodel.TransportModel):
             
         idf = pd.concat(to_concat, axis=1)
 
-        g = idf.groupby(['route_type', 'route_id','trip_id']).sum()
+        g = idf.groupby(['route_type', route_label,'trip_id']).sum()
         g.columns = pd.MultiIndex.from_tuples(g.columns)
         stack = g.stack().stack()
-        stack.index.names = ['route_type', 'route_id','trip_id', 'indicator', 'segment']
+        stack.index.names = ['route_type', route_label,'trip_id', 'indicator', 'segment']
         stack.name = 'sum'
         stack = densify(stack) if dense else stack
         if inplace:
@@ -166,7 +166,7 @@ class SummaryModel(transportmodel.TransportModel):
         else:
             return stack
 
-    def summary_link_max(self, segments=('root',), inplace=False, dense=False):
+    def summary_link_max(self, route_label='route_id', segments=('root',), inplace=False, dense=False):
         """
         focuses on network use
         processes self.loaded_links
@@ -176,9 +176,9 @@ class SummaryModel(transportmodel.TransportModel):
         segments = list(self.segments)
         df = self.loaded_links
         stack = df[
-            ['route_type', 'route_id','trip_id'] + segments
-        ].groupby(['route_type', 'route_id','trip_id']).max().stack()
-        stack.index.names = ['route_type', 'route_id','trip_id', 'segment']
+            ['route_type', route_label,'trip_id'] + segments
+        ].groupby(['route_type', route_label,'trip_id']).max().stack()
+        stack.index.names = ['route_type', route_label,'trip_id', 'segment']
         stack.name = 'max'
         stack = densify(stack) if dense else stack
         if inplace:
