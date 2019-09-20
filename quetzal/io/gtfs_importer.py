@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import os
 import pandas as pd
 from shapely.geometry import Point, LineString
 
@@ -64,11 +65,6 @@ class BaseGtfsImporter():
             encoding=encoding
         )
 
-        self.frequencies = pd.read_csv(
-            self.gtfs_path + 'frequencies.txt',
-            encoding=encoding
-        )
-
         self.calendar_dates = pd.read_csv(
             self.gtfs_path + 'calendar_dates.txt',
             encoding=encoding
@@ -78,6 +74,16 @@ class BaseGtfsImporter():
             self.gtfs_path + 'calendar.txt',
             encoding=encoding
         )
+
+        self.frequencies = pd.read_csv(
+            self.gtfs_path + 'frequencies.txt',
+            encoding=encoding
+        )
+        if 'shapes.txt' in os.listdir(self.gtfs_path):
+            self.shapes = pd.read_csv(
+                self.gtfs_path + 'shapes.txt',
+                encoding=encoding
+            )
 
 
     def pick_trips(self):
