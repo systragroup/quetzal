@@ -268,6 +268,7 @@ class PublicPathFinder:
         self.mode_combinations = mode_combinations
 
         links = self.links.copy()
+        links.drop('index', axis=1, inplace=True, errors='ignore')
         links.index.name = 'index'
 
         self.mode_links = links.reset_index().groupby(

@@ -512,19 +512,30 @@ class Model(IntegrityModel):
             projected_model.__dict__.items(),
             desc='Reprojecting model from epsg {} to epsg {}'.format(self.epsg, epsg)
         )
+        failed = []
 
         for key, attribute in iterator:
             if isinstance(attribute, (gpd.GeoDataFrame, gpd.GeoSeries)):
-                attribute.crs = {'init': 'epsg:{}'.format(self.epsg)}
-                attribute = attribute.to_crs(epsg=epsg)
-                projected_model.__setattr__(key, attribute)
+                try:
+                    attribute.crs = {'init': 'epsg:{}'.format(self.epsg)}
+                    attribute = attribute.to_crs(epsg=epsg)
+                    projected_model.__setattr__(key, attribute)
+                except RuntimeError: 
+                #b'tolerance condition error', b'latitude or longitude exceeded limits'
+                    failed.append(key)
             elif isinstance(attribute, pd.DataFrame):
                 if 'geometry' in attribute.columns:
-                    # print('Converting {}'.format(key))
-                    temp = gpd.GeoDataFrame(attribute)
-                    temp.crs =  {'init': 'epsg:{}'.format(self.epsg)}
-                    attribute = pd.DataFrame(temp.to_crs(epsg=epsg))
-                    projected_model.__setattr__(key, attribute)
+                    try:
+                        # print('Converting {}'.format(key))
+                        temp = gpd.GeoDataFrame(attribute)
+                        temp.crs =  {'init': 'epsg:{}'.format(self.epsg)}
+                        attribute = pd.DataFrame(temp.to_crs(epsg=epsg))
+                        projected_model.__setattr__(key, attribute)
+                    except RuntimeError: 
+                    #b'tolerance condition error', b'latitude or longitude exceeded limits'
+                        failed.append(key)
+
+
             elif isinstance(attribute, pd.Series):
                 try:
                     temp = gpd.GeoSeries(attribute)
@@ -532,8 +543,12 @@ class Model(IntegrityModel):
                     attribute = pd.Series(temp.to_crs(epsg=epsg))
                     projected_model.__setattr__(key, attribute)
                 except:
-                    pass
+                    failed.append(key)
         projected_model.epsg = epsg
         projected_model.coordinates_unit = coordinates_unit
+
+        if len(failed) > 0:
+            print('could not change epsg for the following attributes: ')
+            print(failed)
 
         return projected_model

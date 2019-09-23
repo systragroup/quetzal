@@ -317,7 +317,8 @@ class IntegrityModel:
             self.orphan_nodes = orphan_nodes
             assert len(orphan_nodes) == 0, msg
 
-        except AttributeError:  # no road_links or road_nodes
+        except (AttributeError, KeyError):  
+            # no road_links or road_nodes, KeyError if they are place_holders
             print('no road_links or road_nodes')
             pass
 
@@ -394,12 +395,18 @@ class IntegrityModel:
         ]
         for name in integrity_test_methods:
             try:
-                self.__getattribute__(name)()
-                if verbose:
-                    print('passed:', name)
-            except AssertionError as e:
+                try:
+                    self.__getattribute__(name)()
+                    if verbose:
+                        print('passed:', name)
+                except AssertionError as e:
+                    if verbose :
+                        print('failed:', name)
+                    if errors != 'ignore':
+                        raise e
+            except: # broad exception
                 if verbose :
-                    print('failed:', name)
+                        print('not performed:', name)
                 if errors != 'ignore':
                     raise e
 
