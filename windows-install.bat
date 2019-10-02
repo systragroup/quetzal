@@ -3,7 +3,7 @@ cd "%~dp0"
 if not "X%CONDA_DEFAULT_ENV%" == "Xquetzal" (
   conda info -e | findstr quetzal > NUL
   if errorlevel 1 (
-    call conda create -n quetzal -y python=3.6
+    call conda create -n quetzal -y python=3.7
     timeout 3 /nobreak > NUL
   )
   call activate quetzal

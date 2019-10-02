@@ -14,6 +14,7 @@ folium
 geopandas
 geopy
 ipywidgets
+ipykernel
 kml2geojson
 networkx
 numpy
