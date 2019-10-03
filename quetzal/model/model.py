@@ -87,11 +87,11 @@ def merge_links_and_nodes(
     left_nodes = left_nodes.copy()
     right_nodes = right_nodes.copy()
 
-    # suffixes
+    # suffixes
     sx_left = suffixes[0]
     sx_right = suffixes[1]
 
-    # we can not use suffixes_on non string indexes
+    # we can not use suffixes_on non string indexes
     left_links[['a', 'b']] = left_links[['a', 'b']].astype(str) + sx_left
     right_links[['a', 'b']] = right_links[['a', 'b']].astype(str) + sx_right
     left_nodes.index = pd.Series(left_nodes.index).astype(str) + sx_left
@@ -122,7 +122,7 @@ def merge(
     clear=True
 ):
     assert left.epsg == right.epsg
-    # we want to return an object with the same class as left
+    # we want to return an object with the same class as left
     model = left.__class__(epsg=left.epsg, coordinates_unit=left.coordinates_unit) if clear else left.copy()
     
 
@@ -155,11 +155,9 @@ class Model(IntegrityModel):
 
         """
         Initialization function, either from a json folder or a json_database representation.
-
         Args:
             json_database (json): a json_database representation of the model. Default None.
             json_folder (json): a json folder representation of the model. Default None.
-
         Examples:
         >>> sm = stepmodel.Model(json_database=json_database_object)
         >>> sm = stepmodel.Model(json_folder=folder_path)
@@ -256,11 +254,18 @@ class Model(IntegrityModel):
                 continue
 
             if isinstance(attribute, gpd.GeoDataFrame):
-                pd.DataFrame(attribute).to_hdf(filepath, key=key, mode='a')
+                df=pd.DataFrame(attribute)
+                df['geometry'] = df['geometry'].astype(object)
+                df.to_hdf(filepath, key=key, mode='a')
             elif isinstance(attribute, gpd.GeoSeries):
-                pd.Series(attribute).to_hdf(filepath, key=key, mode='a')
+                pd.Series(attribute).astype(object).to_hdf(filepath, key=key, mode='a')
             elif isinstance(attribute, (pd.DataFrame, pd.Series)):
-                attribute.to_hdf(filepath, key=key, mode='a')
+                df = attribute
+                try:
+                    df['geometry'] = df['geometry'].astype(object)
+                except:
+                    pass
+                df.to_hdf(filepath, key=key, mode='a')
             else:
                 try:
                     jsons[key] = json.dumps(attribute)
@@ -271,7 +276,7 @@ class Model(IntegrityModel):
             log('could not save attribute: ' + key, self.debug)
 
         json_series = pd.Series(jsons)
-        # mode=a : we do not want to overwrite the file !
+        # mode=a : we do not want to overwrite the file !
         json_series.to_hdf(filepath, 'jsons', mode='a')
 
     def to_zip(self, filepath, *args, **kwargs):
@@ -417,10 +422,8 @@ class Model(IntegrityModel):
                 key: value
             }
         }
-
         Args:
             stepmodel
-
         Returns:
             json_database (json): the single json representation of the model
         """
@@ -440,7 +443,7 @@ class Model(IntegrityModel):
             if isinstance(attribute, (pd.DataFrame, pd.Series)):
                 # Check index
                 assert attribute.index.is_unique, 'DataFrame attributes must have unique index'
-                attribute = pd.DataFrame(attribute) # copy and type conversion
+                attribute = pd.DataFrame(attribute) # copy and type conversion
                 attribute.drop('index', axis=1, errors='ignore', inplace=True)
                 attribute.index.name = 'index'
                 attribute = attribute.reset_index() # loss of index name
@@ -469,7 +472,6 @@ class Model(IntegrityModel):
     def read_json_database(self, json_database):
         """
         Load model from its json_database representation.
-
         Args:
             stepmodel
             json_database (json): the json_database model representation
@@ -512,19 +514,30 @@ class Model(IntegrityModel):
             projected_model.__dict__.items(),
             desc='Reprojecting model from epsg {} to epsg {}'.format(self.epsg, epsg)
         )
+        failed = []
 
         for key, attribute in iterator:
             if isinstance(attribute, (gpd.GeoDataFrame, gpd.GeoSeries)):
-                attribute.crs = {'init': 'epsg:{}'.format(self.epsg)}
-                attribute = attribute.to_crs(epsg=epsg)
-                projected_model.__setattr__(key, attribute)
+                try:
+                    attribute.crs = {'init': 'epsg:{}'.format(self.epsg)}
+                    attribute = attribute.to_crs(epsg=epsg)
+                    projected_model.__setattr__(key, attribute)
+                except RuntimeError: 
+                #b'tolerance condition error', b'latitude or longitude exceeded limits'
+                    failed.append(key)
             elif isinstance(attribute, pd.DataFrame):
                 if 'geometry' in attribute.columns:
-                    # print('Converting {}'.format(key))
-                    temp = gpd.GeoDataFrame(attribute)
-                    temp.crs =  {'init': 'epsg:{}'.format(self.epsg)}
-                    attribute = pd.DataFrame(temp.to_crs(epsg=epsg))
-                    projected_model.__setattr__(key, attribute)
+                    try:
+                        # print('Converting {}'.format(key))
+                        temp = gpd.GeoDataFrame(attribute)
+                        temp.crs =  {'init': 'epsg:{}'.format(self.epsg)}
+                        attribute = pd.DataFrame(temp.to_crs(epsg=epsg))
+                        projected_model.__setattr__(key, attribute)
+                    except RuntimeError: 
+                    #b'tolerance condition error', b'latitude or longitude exceeded limits'
+                        failed.append(key)
+
+
             elif isinstance(attribute, pd.Series):
                 try:
                     temp = gpd.GeoSeries(attribute)
@@ -532,8 +545,12 @@ class Model(IntegrityModel):
                     attribute = pd.Series(temp.to_crs(epsg=epsg))
                     projected_model.__setattr__(key, attribute)
                 except:
-                    pass
+                    failed.append(key)
         projected_model.epsg = epsg
         projected_model.coordinates_unit = coordinates_unit
+
+        if len(failed) > 0:
+            print('could not change epsg for the following attributes: ')
+            print(failed)
 
         return projected_model
