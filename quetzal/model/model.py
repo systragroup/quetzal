@@ -256,11 +256,11 @@ class Model(IntegrityModel):
                 continue
 
             if isinstance(attribute, gpd.GeoDataFrame):
-                pd.DataFrame(attribute).to_hdf(filepath, key=key, mode='a')
+                pd.DataFrame(attribute).astype(object).to_hdf(filepath, key=key, mode='a')
             elif isinstance(attribute, gpd.GeoSeries):
-                pd.Series(attribute).to_hdf(filepath, key=key, mode='a')
+                pd.Series(attribute).astype(object).to_hdf(filepath, key=key, mode='a')
             elif isinstance(attribute, (pd.DataFrame, pd.Series)):
-                attribute.to_hdf(filepath, key=key, mode='a')
+                attribute.astype(object).to_hdf(filepath, key=key, mode='a')
             else:
                 try:
                     jsons[key] = json.dumps(attribute)

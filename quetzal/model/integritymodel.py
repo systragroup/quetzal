@@ -16,8 +16,8 @@ from syspy.transitfeed import feed_links
 
 def label_links(links, node_prefixe):
     links = links.copy()
-    links['a'] = node_prefixe + links['a'].astype(str)
-    links['b'] = node_prefixe + links['b'].astype(str)
+    links['a'] = [node_prefixe + str(i).split(node_prefixe)[-1] for i in links['a']] 
+    links['b'] = [node_prefixe + str(i).split(node_prefixe)[-1] for i in links['b']]
     return links
 
 
@@ -137,7 +137,7 @@ class IntegrityModel:
         for key in prefixes.keys():
             attribute = self.__getattribute__(key)
             prefixe = prefixes[key]
-            attribute.index = prefixe + pd.Series(attribute.index).astype(str)
+            attribute.index = [prefixe + str(i).split(prefixe)[-1] for i in attribute.index] 
 
         if 'nodes' in prefixes.keys():
             for key in ['links', 'footpaths']:

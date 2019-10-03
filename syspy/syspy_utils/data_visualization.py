@@ -432,39 +432,50 @@ def bandwidth(
             plot = gpd.GeoDataFrame(pool).plot(linewidth=cat*scale, ax=plot, color=color_dict[int(cat)])
 
         # Add label
-        df['label'] = df['label'].fillna('')
+        df.dropna(subset=['label'])
         def get_normal(linestring):
-            c = linestring.coords[:]
-            v = (-(c[1][1] - c[0][1]), c[1][0] - c[0][0])
-            return v / np.sqrt(v[1]*v[1] + v[0]*v[0])
+            try:
+                c = linestring.coords[:]
+                v = (-(c[1][1] - c[0][1]), c[1][0] - c[0][0])
+                return v / np.sqrt(v[1]*v[1] + v[0]*v[0])
+            except IndexError: # list index out of range
+                # it is a point
+                return 0
         def get_label_angle_alignment_offset(row):
-            x = row.geometry.coords[:]
-
-            angle = (np.arccos((x[1][0] - x[0][0])/row.geometry.length) * 180/3.14)
-            angle *= np.sign(x[1][1] - x[0][1])
+            try:
+                x = row.geometry.coords[:]
+                angle = (np.arccos((x[1][0] - x[0][0])/row.geometry.length) * 180/3.14)
+                angle *= np.sign(x[1][1] - x[0][1])
+            except IndexError:
+                angle =  0
             va = 'bottom'
             label_offset = 0.6
-            return pd.Series({'va': va, 'label_angle': angle, 'label_offset':label_offset * row['cat'] * row['normal']})
+            return pd.Series(
+                {
+                    'va': va, 'label_angle': angle, 
+                    'label_offset':label_offset * row['cat'] * row['normal']
+                }
+            )
         
         df['normal'] = df.geometry.apply(get_normal)
         columns = ['label_angle',  'label_offset', 'va']
         df[columns] = df.apply(get_label_angle_alignment_offset, 1)[columns]
 
-        df.apply(
-            lambda x: plot.annotate(
-                s=x['label'],
-                xy=x.geometry.centroid.coords[0],
+        if label is not None:
+            df.apply(
+                lambda x: plot.annotate(
+                    s=x['label'],
+                    xy=x.geometry.centroid.coords[0],
+                    xytext=x['label_offset'],
+                    textcoords='offset pixels',
+                    rotation=x['label_angle'],
+                    rotation_mode='anchor',
+                    ha='center',va=x['va'],
 
-                xytext=x['label_offset'],
-                textcoords='offset pixels',
-                rotation=x['label_angle'],
-                rotation_mode='anchor',
-                ha='center',va=x['va'],
-
-                **label_kwargs
-            ),
-            axis=1
-        )
+                    **label_kwargs
+                ),
+                axis=1
+            )
         
         # Set plot bounds
         if geographical_bounds:
