@@ -1,12 +1,12 @@
 @echo off
 cd "%~dp0"
-if not "X%CONDA_DEFAULT_ENV%" == "Xquetzal" (
-  conda info -e | findstr quetzal > NUL
+if not "X%CONDA_DEFAULT_ENV%" == "Xquetzal_env" (
+  conda info -e | findstr quetzal_env > NUL
   if errorlevel 1 (
-    call conda create -n quetzal -y python=3.7
+    call conda create -n quetzal_env -y python=3.7
     timeout 3 /nobreak > NUL
   )
-  call activate quetzal
+  call activate quetzal_env
 )
 echo Installing...
 set conda_cmd=
