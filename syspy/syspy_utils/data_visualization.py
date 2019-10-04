@@ -489,7 +489,12 @@ def bandwidth(
         
         return plot
 
-def add_basemap(ax, zoom, url='http://tile.stamen.com/terrain-background/tileZ/tileX/tileY.png'):
+def add_basemap(
+    ax, 
+    zoom, 
+    url='http://tile.stamen.com/terrain-background/tileZ/tileX/tileY.png',
+    errors='ignore',
+    ):
     #TODO : move to another file
     try:
         import contextily as ctx
@@ -500,4 +505,6 @@ def add_basemap(ax, zoom, url='http://tile.stamen.com/terrain-background/tileZ/t
         ax.axis((xmin, xmax, ymin, ymax))
     except Exception as e:
         print('could not add basemap:', e)
+        if errors != 'ignore':
+            assert False
 
