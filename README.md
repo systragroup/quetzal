@@ -27,3 +27,13 @@ Alternatively, you can do these steps:
 - Then use `python get_conda_install_args.py` from the `quetzal` directory.
 - Execute the given conda command to install required dependencies from conda repositories.
 - Then `pip install -e .`
+
+If it does not work, you can, you can do these steps:
+- Base environment: `conda install nb_conda_kernels; conda create -n quetzal pip`
+- Enable virtual environments in Jupyter `conda activate quetzal; conda install ipykernel`
+- If you have troubles with PyTables or shapely or pyproj or geopandas: `conda install pytables; conda install -c conda-forge geopandas`
+- Then use `python get_conda_install_args.py` from the `quetzal` directory.
+- Execute the given conda command to install required dependencies from conda repositories.
+- Then `pip install -e .`
+
+
