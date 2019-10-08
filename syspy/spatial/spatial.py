@@ -197,8 +197,10 @@ def nearest_geometry(
     n_neighbors_centroid=10
 ):
 
-    one_centroid = one.copy()
-    many_centroid = many.copy()
+    one = pd.DataFrame(one)
+    many = pd.DataFrame(many)
+    one_centroid = pd.DataFrame(one)
+    many_centroid = pd.DataFrame(many)
 
     one_centroid['geometry'] = one_centroid['geometry'].apply(
         lambda g: g.centroid

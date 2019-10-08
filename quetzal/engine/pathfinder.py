@@ -185,6 +185,15 @@ class PublicPathFinder:
             self.centroids['geometry'] = self.centroids['geometry'].apply(
                 lambda g: g.centroid
             )
+            
+    def build_graph(self, **kwargs):
+        self.nx_graph = engine.multimodal_graph(
+            self.links,
+            ntlegs=self.ntlegs,
+            pole_set=set(self.zones.index),
+            footpaths=self.footpaths,
+            **kwargs
+        )
         
     def find_best_path(self, **kwargs):
         pt_los, self.nx_graph = engine.path_and_duration_from_links_and_ntlegs(
