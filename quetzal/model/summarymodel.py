@@ -102,7 +102,7 @@ class SummaryModel(transportmodel.TransportModel):
         df['count'] = 1
         columns = [
             'time', 'in_vehicle_time', 'in_vehicle_length', 
-            'count', 'price', 'ntransfers'
+            'count', 'price', 'ntransfers', 'length'
         ]
         idf = df[['route_type']]
 
