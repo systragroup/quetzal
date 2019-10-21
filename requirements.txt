@@ -14,9 +14,11 @@ folium
 geopandas
 geopy
 ipywidgets
+ipykernel
 kml2geojson
 networkx
 numpy
+openpyxl
 pandas
 pyPdf
 pyproj

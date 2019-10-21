@@ -11,6 +11,54 @@ def clean_seq(x, col):
     x[col] = np.arange(1, len(x)+1)
     return x
 
+
+def sort_links(to_sort, a_name='a', b_name='b', max_iter=50):
+    """
+    Given a links dataframe for one line and one direction, that may contain branches,
+    return the sorted dataframe based on origin and destination stops.
+    """
+    try:
+        to_sort = to_sort.sort_values('link_sequence')
+    except KeyError as e:
+        pass
+    sorted_line = pd.DataFrame()
+    left_to_sort = pd.DataFrame()
+    i=0
+    count = 0
+    while len(to_sort) > 0 and count < max_iter and i < 1000:
+        count +=1
+        for index, row in to_sort.iterrows():
+            if i==0:
+                sorted_line = sorted_line.append(row, ignore_index=True)
+                i+=1
+            else:
+                a = row[a_name]
+                b = row[b_name]
+                if len(sorted_line[sorted_line[b_name] == a]) > 0: # place after
+                    name = sorted_line[sorted_line[b_name] == a].index.max()
+                    row.name = name
+                    sorted_line = sorted_line.append(row)
+                    sorted_line.reset_index(drop=True, inplace=True)
+                elif len(sorted_line[sorted_line[a_name] == b]) > 0: # place before
+                    name = sorted_line[sorted_line[a_name] == b].index.min()
+                    row.name=name
+                    to_insert = pd.DataFrame(row).T
+                    sorted_line = pd.concat(
+                        [sorted_line.iloc[:name], to_insert, sorted_line.iloc[name:]]
+                    ).reset_index(drop=True)
+                else:
+                    left_to_sort = left_to_sort.append(row, ignore_index=True)
+                i+=1
+
+        to_sort = left_to_sort.copy()
+        left_to_sort = pd.DataFrame() 
+
+    if len(left_to_sort) > 0:
+        raise Exception('Sorting failed')
+
+    return sorted_line
+
+
 def shift_loadedlinks_alightings(load_df, load_column, alighting_column, boarding_column):
     """
     Shift alighting column in a loadedlinks to get a station-wise df.

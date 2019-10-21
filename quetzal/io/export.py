@@ -383,7 +383,7 @@ def ntlegs_centroids_to_shp(
             projection_file=projection_file
         )
 
-def build_lines(links, line_columns='all', group_id='trip_id', sum_columns=[], mean_columns=[]):
+def build_lines(links, line_columns='all', group_id='trip_id', sum_columns=[], mean_columns=[], force_linestring=True):
 
     if line_columns is 'all':
         # all the columns that are shared by all the links of the group are listed
@@ -400,13 +400,13 @@ def build_lines(links, line_columns='all', group_id='trip_id', sum_columns=[], m
     links = links.loc[~links['geometry'].apply(lambda g: g.is_empty)]
     lines['geometry'] = links.groupby(group_id)['geometry'].agg(
         ops.linemerge)
-
     lines = lines.dropna(subset =['geometry'])
-    iloc = lines['geometry'].apply(lambda g: g.geom_type) == 'MultiLineString'
-    loc = iloc, 'geometry'
+    if force_linestring:
+        iloc = lines['geometry'].apply(lambda g: g.geom_type) == 'MultiLineString'
+        loc = iloc, 'geometry'
 
-    lines.loc[loc] = lines.loc[loc].apply(line_list_to_polyline)
-    lines = lines.loc[~lines['geometry'].apply(lambda g: g.is_empty)]
+        lines.loc[loc] = lines.loc[loc].apply(line_list_to_polyline)
+        lines = lines.loc[~lines['geometry'].apply(lambda g: g.is_empty)]
     
     return lines.reset_index()
 

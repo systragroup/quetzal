@@ -139,12 +139,13 @@ class IntegrityModel:
             prefixe = prefixes[key]
             attribute.index = prefixe + pd.Series(attribute.index).astype(str)
 
-        for key in ['links', 'footpaths']:
-            try:
-                link_like = self.__getattribute__(key)
-                self.__setattr__(key, label_links(link_like, prefixes['nodes'])) 
-            except (AttributeError, KeyError): # KeyError: 'a'
-                print('can not add prefixes on table: ', key)
+        if 'nodes' in prefixes.keys():
+            for key in ['links', 'footpaths']:
+                try:
+                    link_like = self.__getattribute__(key)
+                    self.__setattr__(key, label_links(link_like, prefixes['nodes'])) 
+                except (AttributeError, KeyError): # KeyError: 'a'
+                    print('can not add prefixes on table: ', key)
 
     def integrity_test_sequences(self):
         """

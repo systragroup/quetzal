@@ -45,7 +45,7 @@ def get_patterns(gtfs_dir, direction=True, by_route=True) :
     else :
         trips_to_patterns['chosen_geo_pattern_links'] = trips_to_patterns['geo_pattern_links']
         trips_to_patterns['direction']=trips_to_patterns.apply(lambda r : 1 + 1*(r['geo_pattern_links']<r['reversed_geo_pattern_links']),axis = 1)
-
+    trips_direction = trips_to_patterns.copy()
 
 
 
@@ -68,4 +68,4 @@ def get_patterns(gtfs_dir, direction=True, by_route=True) :
 
 
 
-    return trips_to_patterns, patterns
+    return trips_to_patterns, patterns, trips_direction
