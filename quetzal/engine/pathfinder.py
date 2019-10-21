@@ -434,7 +434,8 @@ class PublicPathFinder:
         iterator =  tqdm(self.mode_combinations)
         for combination in iterator:
             if len(combination) == 0:
-                continue # their is no broken mode
+                pass
+                #continue # their is no broken mode
             iterator.desc = 'breaking modes: ' + str(combination) + ' '
             
             broken = self.broken_mode_graph(combination)
@@ -517,11 +518,10 @@ class PublicPathFinder:
         mode_workers=1,
         **kwargs
     ):
-    
-        self.find_best_path(**kwargs)
         to_concat = []
-
         if broken_routes:
+            self.find_best_path(**kwargs) # builds the graph
+            to_concat.append(self.best_paths)
             self.build_route_breaker(
                 route_column=route_column
             )
@@ -529,12 +529,16 @@ class PublicPathFinder:
             to_concat.append(self.broken_route_paths)
 
         if broken_modes:
+            self.build_graph(**kwargs)
             self.build_mode_combinations(mode_column=mode_column)
             self.find_broken_mode_paths(workers=mode_workers)
             to_concat.append(self.broken_mode_paths)
 
-        to_concat  = [self.best_paths] + to_concat
-        
+
+        if (broken_modes or broken_routes) == False:
+            self.find_best_path()
+            to_concat.append(self.best_paths)
+
         self.paths = pd.concat(to_concat)
         self.paths['path'] = self.paths['path'].apply(tuple)
 

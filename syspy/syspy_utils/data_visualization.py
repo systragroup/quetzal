@@ -508,3 +508,9 @@ def add_basemap(
         if errors != 'ignore':
             assert False
 
+def trim_axs(axs, N):
+    """little helper to massage the axs list to have correct length..."""
+    axs = axs.flat
+    for ax in axs[N:]:
+        ax.remove()
+    return axs[:N]
