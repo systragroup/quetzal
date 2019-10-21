@@ -124,7 +124,11 @@ def stops_with_parent_station(stops, stop_cluster_kwargs={}, sort_column=None):
             _stops['parent_station_merged']
         )
         # nan messing the types again... should be remove if using str
-        _stops['parent_station'] = _stops['parent_station'].astype(int)
+        try:
+            _stops['parent_station'] = _stops['parent_station'].astype(int)
+        except Exception as e:
+            print('Failed to convert parent_station_id to int: \n', e)
+            pass
 
     except KeyError:
         # KeyError: 'parent_station_merged': their was no parent station in
