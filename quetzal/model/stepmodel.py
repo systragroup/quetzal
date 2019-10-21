@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from quetzal.model import analysismodel, docmodel
+from quetzal.model import analysismodel, docmodel, plotmodel
 
 import warnings
 from functools import wraps
@@ -42,7 +42,12 @@ def read_json(folder):
     return m
 
 
-class StepModel(analysismodel.AnalysisModel, docmodel.DocModel):
+class StepModel(
+    plotmodel.PlotModel,
+    analysismodel.AnalysisModel, 
+    docmodel.DocModel,
+    
+    ):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

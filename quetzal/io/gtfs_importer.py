@@ -69,6 +69,13 @@ class BaseGtfsImporter():
             self.gtfs_path + 'calendar.txt',
             encoding=encoding
         )
+
+        if 'frequencies.txt' in os.listdir(self.gtfs_path):
+            self.frequencies = pd.read_csv(
+                self.gtfs_path + 'frequencies.txt',
+                encoding=encoding
+            )
+
         if 'shapes.txt' in os.listdir(self.gtfs_path):
             self.shapes = pd.read_csv(
                 self.gtfs_path + 'shapes.txt',

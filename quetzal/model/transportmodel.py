@@ -122,6 +122,7 @@ class TransportModel(preparationmodel.PreparationModel):
         speedup=False,
         walk_on_road=False, 
         keep_graph=False,
+        keep_pathfinder=False,
         **kwargs):
         """
         * requires: zones, links, footpaths, zone_to_road, zone_to_transit
@@ -140,8 +141,12 @@ class TransportModel(preparationmodel.PreparationModel):
             **kwargs
         )
         self.pt_los = publicpathfinder.paths.copy()
+
         if keep_graph:
             self.nx_graph=publicpathfinder.nx_graph
+        
+        if keep_pathfinder:
+            self.publicpathfinder = publicpathfinder
         
         analysis_nodes = pd.concat([self.nodes, self.road_nodes]) if walk_on_road else self.nodes
         self.pt_los = analysis.path_analysis_od_matrix(

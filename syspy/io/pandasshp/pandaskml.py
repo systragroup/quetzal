@@ -68,7 +68,7 @@ def read_kmz_folder(folder):
                     )
                 )
             except:
-                print('test')
+                print('fail')
 
         geometries += to_add
 

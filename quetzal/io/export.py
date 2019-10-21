@@ -399,7 +399,7 @@ def build_lines(links, line_columns='all', group_id='trip_id', sum_columns=[], m
 
     links = links.loc[~links['geometry'].apply(lambda g: g.is_empty)]
     lines['geometry'] = links.groupby(group_id)['geometry'].agg(
-        ops.linemerge)
+        lambda s: ops.linemerge(list(s))) # force the series to a list
     lines = lines.dropna(subset =['geometry'])
     if force_linestring:
         iloc = lines['geometry'].apply(lambda g: g.geom_type) == 'MultiLineString'

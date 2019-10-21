@@ -42,7 +42,6 @@ def od_volume_from_zones(zones, impedance_matrix=None, power=2,
         ['origin', 'destination', 'volume']
     """
     if impedance_matrix is None:
-        print('test')
         euclidean = skims.euclidean(zones, coordinates_unit=coordinates_unit, intrazonal=intrazonal)
         distance = euclidean.set_index(
             ['origin', 'destination'])['euclidean_distance'].unstack('destination')
@@ -175,13 +174,37 @@ def multimodal_graph(
     links,
     ntlegs,
     pole_set,
-    boarding_cost=300,
     footpaths=None,
-    ):
-    
+    boarding_cost=300,
+    ntlegs_penalty=1e9
+):
+
+    """
+    This is a graph builder and a pathfinder wrapper
+        * Builds a public transport frequency graph from links;
+        * Adds access and eggress to the graph (accegg) using the ntlegs;
+        * Search for shortest paths in the time graph;
+        * Returns an Origin->Destination stack matrix with path and duration;
+
+    example:
+    ::
+        links = engine.graph_links(links) # links is a LineDraft export
+        path_finder_stack = engine.path_and_duration_from_links_and_ntlegs(
+            links,
+            ntlegs
+        )
+
+    :param links: link DataFrame, built with graph_links;
+    :param ntlegs: ntlegs DataFrame built;
+    :param boarding_cost: an artificial cost to add the boarding edges
+        of the frequency graph (seconds);
+    :param ntlegs_penalty: (default 1e9) high time penalty in seconds to ensure
+        ntlegs are used only once for access and once for eggress;
+    :return: Origin->Destination stack matrix with path and duration;
+    """
     pole_set = pole_set.intersection(set(ntlegs['a']))
-    accegg = assignment_raw.build_ntlinks(ntlegs)[['a', 'b', 'time']]
     links = links.copy()
+    ntlegs = ntlegs.copy()
 
     links['index'] = links.index # to be consistent with frequency_graph
 
@@ -190,14 +213,15 @@ def multimodal_graph(
         include_edges=[],
         include_igraph=False,
         boarding_cost=boarding_cost
-        )
-
-    nx_graph.add_weighted_edges_from(accegg.values.tolist())
+    )
+    ntlegs['time'] += ntlegs_penalty
+    nx_graph.add_weighted_edges_from(ntlegs[['a', 'b', 'time']].values.tolist())
 
     if footpaths is not None:
         nx_graph.add_weighted_edges_from(
             footpaths[['a', 'b', 'time']].values.tolist()
         )
+
     return nx_graph
 
 
@@ -446,6 +470,7 @@ def loaded_links_and_nodes(
 
 
     merged[volume_column] = merged[volume_column] * merged['pivot']
+    print(merged[volume_column].sum())
     volume_array = merged[volume_column].values
     paths = merged[path_column].values
 

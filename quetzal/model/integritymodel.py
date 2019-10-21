@@ -16,8 +16,8 @@ from syspy.transitfeed import feed_links
 
 def label_links(links, node_prefixe):
     links = links.copy()
-    links['a'] = node_prefixe + links['a'].astype(str)
-    links['b'] = node_prefixe + links['b'].astype(str)
+    links['a'] = [node_prefixe + str(i).split(node_prefixe)[-1] for i in links['a']] 
+    links['b'] = [node_prefixe + str(i).split(node_prefixe)[-1] for i in links['b']]
     return links
 
 
@@ -137,7 +137,7 @@ class IntegrityModel:
         for key in prefixes.keys():
             attribute = self.__getattribute__(key)
             prefixe = prefixes[key]
-            attribute.index = prefixe + pd.Series(attribute.index).astype(str)
+            attribute.index = [prefixe + str(i).split(prefixe)[-1] for i in attribute.index] 
 
         if 'nodes' in prefixes.keys():
             for key in ['links', 'footpaths']:
@@ -317,7 +317,8 @@ class IntegrityModel:
             self.orphan_nodes = orphan_nodes
             assert len(orphan_nodes) == 0, msg
 
-        except AttributeError:  # no road_links or road_nodes
+        except (AttributeError, KeyError):  
+            # no road_links or road_nodes, KeyError if they are place_holders
             print('no road_links or road_nodes')
             pass
 
@@ -394,12 +395,18 @@ class IntegrityModel:
         ]
         for name in integrity_test_methods:
             try:
-                self.__getattribute__(name)()
-                if verbose:
-                    print('passed:', name)
-            except AssertionError as e:
+                try:
+                    self.__getattribute__(name)()
+                    if verbose:
+                        print('passed:', name)
+                except AssertionError as e:
+                    if verbose :
+                        print('failed:', name)
+                    if errors != 'ignore':
+                        raise e
+            except: # broad exception
                 if verbose :
-                    print('failed:', name)
+                        print('not performed:', name)
                 if errors != 'ignore':
                     raise e
 

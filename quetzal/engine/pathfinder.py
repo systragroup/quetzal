@@ -13,6 +13,10 @@ from syspy.spatial import spatial
 from syspy.routing.frequency import graph as frequency_graph
 import syspy.assignment.raw as assignment_raw
 from tqdm import tqdm
+from copy import deepcopy
+import json
+from quetzal.engine.subprocesses import filepaths
+from quetzal.os import parallel_call
 
 # def graph_from_links_and_ntlegs(
 #     links,
@@ -101,6 +105,62 @@ def path_and_duration_from_graph(
 
     return los
 
+def dumps_kwargs(kwargs):
+    data = kwargs
+    for key in ['nx_graph', 'reversed_nx_graph']:
+        try:
+            data[key] = nx.node_link_data(data[key])
+        except KeyError:
+            pass
+    try:
+        data['pole_set'] = list(data['pole_set'])
+    except KeyError: 
+        pass
+    
+    try:
+        data['sources'] = list(data['sources'])
+    except KeyError: 
+        pass
+    
+    s = json.dumps(data)
+    return s
+
+def dump_kwargs(kwargs, filepath):
+    s = dumps_kwargs(kwargs)
+    with open(filepath, 'w') as file:
+        file.write(s)
+
+def loads_kwargs(s):
+    data = json.loads(s)
+    for key in ['nx_graph', 'reversed_nx_graph']:
+        try:
+            data[key] = nx.node_link_graph(data[key])
+        except KeyError:
+            pass
+    
+    return data
+
+def load_kwargs(filepath):
+    with open(filepath, 'r') as file:
+        s = file.read()
+    return loads_kwargs(s)
+
+def dumps_result(result):
+    # reset_index to be sure index is unique
+    return result.reset_index(drop=True).to_json()
+
+def dump_result(result, filepath):
+    s = dumps_result(result)
+    with open(filepath, 'w') as file:
+        file.write(s)
+
+def load_result(filepath):
+    return pd.read_json(filepath)
+
+def path_and_duration_from_graph_json(input_json, output_json):
+    kwargs = load_kwargs(input_json)
+    result = path_and_duration_from_graph(**kwargs)
+    dump_result(result, output_json)
 
 class PublicPathFinder:
     def __init__(self, model, walk_on_road=False):
@@ -125,6 +185,15 @@ class PublicPathFinder:
             self.centroids['geometry'] = self.centroids['geometry'].apply(
                 lambda g: g.centroid
             )
+            
+    def build_graph(self, **kwargs):
+        self.nx_graph = engine.multimodal_graph(
+            self.links,
+            ntlegs=self.ntlegs,
+            pole_set=set(self.zones.index),
+            footpaths=self.footpaths,
+            **kwargs
+        )
         
     def find_best_path(self, **kwargs):
         pt_los, self.nx_graph = engine.path_and_duration_from_links_and_ntlegs(
@@ -186,8 +255,6 @@ class PublicPathFinder:
         self.route_links = links.reset_index().groupby(
             [route_column]
         )['index'].apply(lambda s: set(s)).to_dict()
-    
-
 
     def broken_route_graphs(
         self,
@@ -220,9 +287,17 @@ class PublicPathFinder:
         reversed_broken.remove_edges_from(reversed_ebunch)
         return broken, reversed_broken
 
-    def find_broken_route_paths(self, speedup=False):
-        los_dict = {}
-        
+    def find_broken_route_paths(self, speedup=False, workers=1, *args, **kwargs):
+
+        if workers > 1:
+            self.find_broken_route_paths_parallel(
+                speedup=speedup, 
+                workers=workers, 
+                *args, 
+                **kwargs
+            )
+            return 
+        los_tuples = []
         iterator =  tqdm(self.route_zones.items())
         for route, zones in iterator:
             if not speedup:
@@ -231,7 +306,7 @@ class PublicPathFinder:
             iterator.desc = 'breaking route: ' + str(route) + ' '
             
             broken, reversed_broken = self.broken_route_graphs(route)
-            
+
             los = path_and_duration_from_graph(
                 nx_graph=broken,
                 reversed_nx_graph=reversed_broken,
@@ -239,10 +314,57 @@ class PublicPathFinder:
                 sources=set(zones)
             )
             
-            los_dict[route] = los
+            los_tuples.append([route, los]) 
             
         to_concat = [] 
-        for route, los in los_dict.items():
+        for route, los in los_tuples:
+            los['pathfinder_session'] = 'route_breaker' 
+            los['broken_route'] = route
+            to_concat.append(los)
+            
+        self.broken_route_paths =  pd.concat(to_concat)
+
+    def find_broken_route_paths_parallel(self, speedup=False, workers=2, sleep=0, *args, **kwargs):
+
+        # fichier ou est stocké le sous process «path_and_duration...»
+        root = filepaths.__file__.split('filepaths.py')[0]
+        subprocess_file = 'subprocess_path_and_duration_from_graph_json.py'
+        subprocess_filepath = root + subprocess_file
+
+        iterator =  tqdm(self.route_zones.items())
+        
+        routes = []
+        kwarg_list = []
+
+        for route, zones in iterator:
+            if not speedup:
+                zones = set(self.zones.index).intersection(set(self.ntlegs['a']))
+
+            iterator.desc = 'breaking route: ' + str(route) + ' '
+            
+            broken, reversed_broken = self.broken_route_graphs(route)
+
+            kwarg_dict = {
+                'nx_graph': broken,
+                'reversed_nx_graph': reversed_broken,
+                'sources': set(zones),
+                'pole_set': set(self.zones.index).intersection(set(self.ntlegs['a'])),
+            }
+            routes.append(route)
+            kwarg_list.append(kwarg_dict)
+            
+        results = parallel_call.parallel_call_subprocess(
+            subprocess_filepath=subprocess_filepath, 
+            kwarg_list=kwarg_list, 
+            dump_kwargs=dump_kwargs, 
+            load_result=load_result,
+            workers=workers,
+            sleep=sleep
+        )
+            
+        los_tuples = list(zip(routes, results))
+        to_concat = [] 
+        for route, los in los_tuples:
             los['pathfinder_session'] = 'route_breaker' 
             los['broken_route'] = route
             to_concat.append(los)
@@ -268,6 +390,7 @@ class PublicPathFinder:
         self.mode_combinations = mode_combinations
 
         links = self.links.copy()
+        links.drop('index', axis=1, inplace=True, errors='ignore')
         links.index.name = 'index'
 
         self.mode_links = links.reset_index().groupby(
@@ -298,13 +421,21 @@ class PublicPathFinder:
 
         return broken
 
-    def find_broken_mode_paths(self):
+    def find_broken_mode_paths(self, workers=1, *args, **kwargs):
+
+        if workers > 1:
+            self.find_broken_mode_paths_parallel(
+                workers=workers,
+                *args,
+                **kwargs
+            )
+            return 
         los_tuples = []
-        
         iterator =  tqdm(self.mode_combinations)
         for combination in iterator:
             if len(combination) == 0:
-                continue # their is no broken mode
+                pass
+                #continue # their is no broken mode
             iterator.desc = 'breaking modes: ' + str(combination) + ' '
             
             broken = self.broken_mode_graph(combination)
@@ -326,6 +457,55 @@ class PublicPathFinder:
         self.broken_mode_paths =  pd.concat(to_concat)
 
 
+
+
+    def find_broken_mode_paths_parallel(self, workers=2, sleep=0, leave=False,  *args, **kwargs):
+
+        # fichier ou est stocké le sous process «path_and_duration...»
+        root = filepaths.__file__.split('filepaths.py')[0]
+        subprocess_file = 'subprocess_path_and_duration_from_graph_json.py'
+        subprocess_filepath = root + subprocess_file
+
+        iterator =  tqdm(self.mode_combinations)
+        
+        combinations = []
+        kwarg_list = []
+        
+        for combination in iterator:
+            if len(combination) == 0:
+                continue # their is no broken mode
+                
+            iterator.desc = 'breaking modes: ' + str(combination) + ' '
+            broken = self.broken_mode_graph(combination)
+            
+            kwarg_dict = {
+                'nx_graph': broken,
+                'pole_set': set(self.zones.index).intersection(set(self.ntlegs['a']))
+            }
+            combinations.append(combination)
+            
+            kwarg_list.append(kwarg_dict)
+            
+        results = parallel_call.parallel_call_subprocess(
+            subprocess_filepath=subprocess_filepath, 
+            kwarg_list=kwarg_list, 
+            dump_kwargs=dump_kwargs, 
+            load_result=load_result,
+            workers=workers,
+            sleep=sleep,
+            leave=leave,
+        )
+            
+        los_tuples = list(zip(combinations, results))
+
+        to_concat = [] 
+        for combination, los in los_tuples:
+            los['pathfinder_session'] = 'mode_breaker' 
+            los['broken_modes'] = [combination for i in range(len(los))]
+            to_concat.append(los)
+
+        self.broken_mode_paths =  pd.concat(to_concat)
+
     def find_best_paths(
         self, 
         route_column='route_id',
@@ -334,24 +514,31 @@ class PublicPathFinder:
         broken_modes=False,
         drop_duplicates=True,
         speedup=False,
+        route_workers=1,
+        mode_workers=1,
         **kwargs
     ):
-
-        self.find_best_path(**kwargs)
-        to_concat = [self.best_paths]
-
+        to_concat = []
         if broken_routes:
+            self.find_best_path(**kwargs) # builds the graph
+            to_concat.append(self.best_paths)
             self.build_route_breaker(
                 route_column=route_column
             )
-            self.find_broken_route_paths(speedup=speedup)
+            self.find_broken_route_paths(speedup=speedup, workers=route_workers)
             to_concat.append(self.broken_route_paths)
 
         if broken_modes:
+            self.build_graph(**kwargs)
             self.build_mode_combinations(mode_column=mode_column)
-            self.find_broken_mode_paths()
+            self.find_broken_mode_paths(workers=mode_workers)
             to_concat.append(self.broken_mode_paths)
-        
+
+
+        if (broken_modes or broken_routes) == False:
+            self.find_best_path()
+            to_concat.append(self.best_paths)
+
         self.paths = pd.concat(to_concat)
         self.paths['path'] = self.paths['path'].apply(tuple)
 
