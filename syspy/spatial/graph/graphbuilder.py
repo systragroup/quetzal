@@ -196,7 +196,6 @@ def clean_geometries(links, nodes):
     def return_directed(row):
         return list(ng[row['a']].coords)[0] == list(row['geometry'].coords)[-1]
 
-
     reverse = links.apply(
         return_directed,
         axis=1

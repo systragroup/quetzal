@@ -117,6 +117,7 @@ def zone_clusters(
     cluster_series.name = 'cluster'
 
     geo = df.groupby('cluster')['geometry'].agg(union_geometry)
+
     clusters = pd.DataFrame(geo.apply(geo_join_method))
 
     return clusters, cluster_series
