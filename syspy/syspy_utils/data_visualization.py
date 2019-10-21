@@ -33,7 +33,94 @@ from sklearn import linear_model
 import matplotlib.pyplot as plt
 import branca.colormap as cm
 
-from syspy.syspy_utils.syscolors import rainbow_shades, clear_shades, red_shades
+import geopandas as gpd
+import numpy as np
+from tqdm import tqdm
+
+# -*- coding: utf-8 -*-
+
+
+
+"""
+The following colors are mentioned in Systra's graphical charter: \n
+red shades \n
+grey shades \n
+rainbow shades : spot colors, vivid and highly contrasted \n
+sorted colors advised for word documents \n
+secondary colors \n
+"""
+
+import itertools
+
+
+# Couleurs d'accompagnement de la charte graphique
+rainbow_shades = ["#D22328", "#559BB4", "#91A564", "#DC9100", "#8C4B7D", "#A08C69",
+                  "#647D6E", "#5A7382", "#64411E", "#A00037", "#643C5A"]
+
+# Nuances de rouge
+# en rgb [(105,18,20),(157,26,30),(210,35,40),(232,119,122),(240,164,166),(247,210,211)]
+red_shades = ['#691214', '#9d1a1e', '#d22328', '#e8777a', '#f0a4a6', '#f7d2d3']
+
+# Nuances de gris
+# en rgb [(48,48,50),(90,90,90),(127,127,127),(166,165,165),(199,199,200),(227,227,228)]
+grey_shades = ['#303032', '#5a5a5a', '#7f7f7f', '#a6a5a5', '#c7c7c8', '#e3e3e4']
+
+
+# Couleurs ordonné dans le sens des préconisations de la charte graphique 
+sorted_colors = ['#d22328', '#7f7f7f', '#691214', '#f0a4a6']
+
+# Couleurs secondaires
+# en rgb [(100,60,90),(158,27,22),(100,66,30),(100,125,110),(91,115,130),(84,154,179),(219,145,3),(84,160,60)]
+secondary_colors = ['#643c5a', '#9e1b16', '#64421e', '#647d6e', '#5b7382', '#549ab3',
+                    '#db9103', '#54a03c']
+
+# Couleurs utilisées par Linedraft
+linedraft_shades = ["#1f77b4", "#2ca02c", "#d62728", "#9467bd", "#ff7f0e", "#8c564b",
+                    "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"]
+
+def itercolors(color_list, repetition):
+    return list(itertools.chain(*[[color]*repetition for color in color_list]))
+
+_NUMERALS = '0123456789abcdefABCDEF'
+_HEXDEC = {v: int(v, 16) for v in (x+y for x in _NUMERALS for y in _NUMERALS)}
+LOWERCASE, UPPERCASE = 'x', 'X'
+
+def rgb(triplet):
+    return _HEXDEC[triplet[1:][0:2]], _HEXDEC[triplet[1:][2:4]], _HEXDEC[triplet[1:][4:6]]
+
+def triplet(rgb, lettercase=LOWERCASE):
+    return '#'+(format(rgb[0]<<16 | rgb[1]<<8 | rgb[2], '06'+lettercase)).upper()
+
+def clear(rgb, x=50):
+    (r, g, b) = rgb
+    _r = round(((100 - x) * r + x * 255) / 100)
+    _g = round(((100 - x) * g + x * 255) / 100)
+    _b = round(((100 - x) * b + x * 255) / 100)
+    return (_r, _g, _b)
+
+def clear_shades():
+    return [triplet(clear(rgb(shade))) for shade in rainbow_shades]
+
+
+d = {
+    'marron' : 8,
+    'orange' : 5,
+    'rouge' : 0,
+    'bleue' : 1,
+    'verte' : 2,
+    'jaune' : 3,
+    'violette' : 4,
+    'rose': 9
+}
+
+def in_string(name):
+    for c in d.keys():
+        if c in name:
+            return rainbow_shades[d[c]]
+    return rainbow_shades[7]
+
+
+
 
 
 def width_series(value_series, outer_average_width=5, max_value=None, method='linear'):
@@ -180,7 +267,7 @@ def linear_plot(
 
     pool['distance'] = color_series(
         np.absolute((pool[y_column]-pool[x_column])/(pool[y_column]+pool[x_column])).fillna(0),
-        colors=[clear_shades[1], clear_shades[0]],
+        colors=[clear_shades()[1], clear_shades()[0]],
     )
     pool['size'] = width_series(np.absolute(np.power(np.maximum(pool[y_column],pool[x_column]), 0.3)), box_size)
 
@@ -199,7 +286,7 @@ def linear_plot(
         ):
 
             d = d if dynamic_size else box_size
-            c = c if dynamic_color else clear_shades[1]
+            c = c if dynamic_color else clear_shades()[1]
             plt.annotate(
                 label,
                 xy=(x, y), xytext = (-10, 10),
@@ -279,3 +366,151 @@ def render_mpl_table(
         else:
             cell.set_facecolor(row_colors[k[0]%len(row_colors) ])
     return ax
+
+
+spectral = list(reversed(['#9e0142','#d53e4f','#f46d43','#fdae61','#fee08b','#e6f598','#abdda4','#66c2a5','#3288bd','#5e4fa2']))
+
+from shapely import geometry
+def bandwidth(
+    df, value, label=None, max_value=None, power=1, scale=1, legend_values=None, legend_length=1/3, cmap=spectral,\
+    n_category=10, geographical_bounds=None, label_kwargs={'size':12}, *args, **kwargs):
+    # TODO: find a way to plot the two directions in one plot. This requires to add an offset of half the linewidth to each line
+            
+        # Extract data to plot from DataFrame
+        cols = [value, 'geometry'] if not label else [value, label, 'geometry']
+        df = df[cols].copy()
+        if label:
+            df.rename(columns={label: 'label'}, inplace=True)
+        df[value] = df[value].fillna(0)
+        df = df.loc[df[value] > 0]
+        
+        # Geographical bounds
+        if geographical_bounds:
+            b = geographical_bounds
+        else:
+            mls = geometry.MultiPoint(list(df['geometry'].apply(lambda g: g.centroid)))
+            b = mls.bounds
+
+        # Create legend
+        if legend_values is None:
+            s = df[value].copy()
+            r = int(np.log10(s.mean())) 
+            legend_values = [np.round(s.quantile(i/5), -r) for i in range(6)]
+        
+        # Place legend
+        delta = b[2] - b[0]
+        rank = 0
+        dx = delta * legend_length / len(legend_values)
+        data = []
+        for v in reversed(legend_values):
+            g = geometry.LineString([
+                ( b[2] - (rank + 1)*dx, (b[1] + b[1]) / 2),
+                ( b[2] - rank * dx, (b[1] + b[1]) / 2)]
+            )
+            rank += 1
+            data.append([v, g, str(v)])
+            legend_df = pd.DataFrame(data, columns=[value, 'geometry', 'label'])
+        df = pd.concat([df, legend_df])
+        #df = df.loc[df[value] > 0]
+        
+        # Plot geometry
+        plot = gpd.GeoDataFrame(df).plot(linewidth=0.1, color='grey', *args, **kwargs)
+        
+        # Power scale
+        power_series = (np.power(df[value], power))
+        
+        # Categories
+        max_value = np.power(max_value, power) if max_value else power_series.max()
+        ratio = n_category / max_value
+        df['cat'] = np.floor(power_series * ratio).fillna(0).apply(lambda x: min(x, n_category - 1))
+        df = df.loc[df['cat']> 0]
+        # colors
+        color_dict = color_series(pd.Series(range(n_category)), cmap).to_dict()
+        
+        for cat in tqdm(set(df['cat'])):
+            pool = df.loc[df['cat'] == cat]
+            plot = gpd.GeoDataFrame(pool).plot(linewidth=cat*scale, ax=plot, color=color_dict[int(cat)])
+
+        # Add label
+        df.dropna(subset=['label'])
+        def get_normal(linestring):
+            try:
+                c = linestring.coords[:]
+                v = (-(c[1][1] - c[0][1]), c[1][0] - c[0][0])
+                return v / np.sqrt(v[1]*v[1] + v[0]*v[0])
+            except IndexError: # list index out of range
+                # it is a point
+                return 0
+        def get_label_angle_alignment_offset(row):
+            try:
+                x = row.geometry.coords[:]
+                angle = (np.arccos((x[1][0] - x[0][0])/row.geometry.length) * 180/3.14)
+                angle *= np.sign(x[1][1] - x[0][1])
+            except IndexError:
+                angle =  0
+            va = 'bottom'
+            label_offset = 0.6
+            return pd.Series(
+                {
+                    'va': va, 'label_angle': angle, 
+                    'label_offset':label_offset * row['cat'] * row['normal']
+                }
+            )
+        
+        df['normal'] = df.geometry.apply(get_normal)
+        columns = ['label_angle',  'label_offset', 'va']
+        df[columns] = df.apply(get_label_angle_alignment_offset, 1)[columns]
+
+        if label is not None:
+            df.apply(
+                lambda x: plot.annotate(
+                    s=x['label'],
+                    xy=x.geometry.centroid.coords[0],
+                    xytext=x['label_offset'],
+                    textcoords='offset pixels',
+                    rotation=x['label_angle'],
+                    rotation_mode='anchor',
+                    ha='center',va=x['va'],
+
+                    **label_kwargs
+                ),
+                axis=1
+            )
+        
+        # Set plot bounds
+        if geographical_bounds:
+            x_offset= (b[2] - b[0]) * 1/100
+            y_offset= (b[3] - b[1]) * 1/100
+            plot.set_xlim(b[0] - x_offset, b[2] + x_offset)
+            plot.set_ylim(b[1] - y_offset, b[3] + y_offset)
+
+        plot.set_yticks([])
+        plot.set_xticks([])
+        
+        return plot
+
+def add_basemap(
+    ax, 
+    zoom, 
+    url='http://tile.stamen.com/terrain-background/tileZ/tileX/tileY.png',
+    errors='ignore',
+    ):
+    #TODO : move to another file
+    try:
+        import contextily as ctx
+        xmin, xmax, ymin, ymax = ax.axis()
+        basemap, extent = ctx.bounds2img(xmin, ymin, xmax, ymax, zoom=zoom, url=url)
+        ax.imshow(basemap, extent=extent, interpolation='bilinear')
+        # restore original x/y limits
+        ax.axis((xmin, xmax, ymin, ymax))
+    except Exception as e:
+        print('could not add basemap:', e)
+        if errors != 'ignore':
+            assert False
+
+def trim_axs(axs, N):
+    """little helper to massage the axs list to have correct length..."""
+    axs = axs.flat
+    for ax in axs[N:]:
+        ax.remove()
+    return axs[:N]

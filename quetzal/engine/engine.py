@@ -174,38 +174,9 @@ def multimodal_graph(
     links,
     ntlegs,
     pole_set,
+    footpaths=None,
     boarding_cost=300,
-    footpaths=None,
-    ):
-    
-    pole_set = pole_set.intersection(set(ntlegs['a']))
-    accegg = assignment_raw.build_ntlinks(ntlegs)[['a', 'b', 'time']]
-    links = links.copy()
-
-    links['index'] = links.index # to be consistent with frequency_graph
-
-    nx_graph, _ = frequency_graph.graphs_from_links(
-        links,
-        include_edges=[],
-        include_igraph=False,
-        boarding_cost=boarding_cost
-        )
-
-    nx_graph.add_weighted_edges_from(accegg.values.tolist())
-
-    if footpaths is not None:
-        nx_graph.add_weighted_edges_from(
-            footpaths[['a', 'b', 'time']].values.tolist()
-        )
-    return nx_graph
-
-
-def path_and_duration_from_links_and_ntlegs(
-    links,
-    ntlegs,
-    pole_set,
-    footpaths=None,
-    boarding_cost=300
+    ntlegs_penalty=1e9
 ):
 
     """
@@ -227,10 +198,13 @@ def path_and_duration_from_links_and_ntlegs(
     :param ntlegs: ntlegs DataFrame built;
     :param boarding_cost: an artificial cost to add the boarding edges
         of the frequency graph (seconds);
+    :param ntlegs_penalty: (default 1e9) high time penalty in seconds to ensure
+        ntlegs are used only once for access and once for eggress;
     :return: Origin->Destination stack matrix with path and duration;
     """
     pole_set = pole_set.intersection(set(ntlegs['a']))
     links = links.copy()
+    ntlegs = ntlegs.copy()
 
     links['index'] = links.index # to be consistent with frequency_graph
 
@@ -240,7 +214,62 @@ def path_and_duration_from_links_and_ntlegs(
         include_igraph=False,
         boarding_cost=boarding_cost
     )
+    ntlegs['time'] += ntlegs_penalty
+    nx_graph.add_weighted_edges_from(ntlegs[['a', 'b', 'time']].values.tolist())
 
+    if footpaths is not None:
+        nx_graph.add_weighted_edges_from(
+            footpaths[['a', 'b', 'time']].values.tolist()
+        )
+
+    return nx_graph
+
+
+def path_and_duration_from_links_and_ntlegs(
+    links,
+    ntlegs,
+    pole_set,
+    footpaths=None,
+    boarding_cost=300,
+    ntlegs_penalty=1e9
+):
+
+    """
+    This is a graph builder and a pathfinder wrapper
+        * Builds a public transport frequency graph from links;
+        * Adds access and eggress to the graph (accegg) using the ntlegs;
+        * Search for shortest paths in the time graph;
+        * Returns an Origin->Destination stack matrix with path and duration;
+
+    example:
+    ::
+        links = engine.graph_links(links) # links is a LineDraft export
+        path_finder_stack = engine.path_and_duration_from_links_and_ntlegs(
+            links,
+            ntlegs
+        )
+
+    :param links: link DataFrame, built with graph_links;
+    :param ntlegs: ntlegs DataFrame built;
+    :param boarding_cost: an artificial cost to add the boarding edges
+        of the frequency graph (seconds);
+    :param ntlegs_penalty: (default 1e9) high time penalty in seconds to ensure
+        ntlegs are used only once for access and once for eggress;
+    :return: Origin->Destination stack matrix with path and duration;
+    """
+    pole_set = pole_set.intersection(set(ntlegs['a']))
+    links = links.copy()
+    ntlegs = ntlegs.copy()
+
+    links['index'] = links.index # to be consistent with frequency_graph
+
+    nx_graph, _ = frequency_graph.graphs_from_links(
+        links,
+        include_edges=[],
+        include_igraph=False,
+        boarding_cost=boarding_cost
+    )
+    ntlegs['time'] += ntlegs_penalty
     nx_graph.add_weighted_edges_from(ntlegs[['a', 'b', 'time']].values.tolist())
 
     if footpaths is not None:
@@ -252,18 +281,24 @@ def path_and_duration_from_links_and_ntlegs(
     allpaths = {}
     alllengths = {}
     iterator = tqdm(list(pole_set))
+    
     for pole in iterator:
         iterator.desc = str(pole) + ' '
-        
-        alllengths[pole], allpaths[pole] = nx.single_source_dijkstra(
-            nx_graph, pole)
+        olengths, opaths  = nx.single_source_dijkstra(nx_graph, pole)
+        opaths = {target: p for target, p in opaths.items() if target in pole_set}
+        olengths = {target: p for target, p in olengths.items() if target in pole_set}
+        alllengths[pole], allpaths[pole] = olengths, opaths
 
     duration_stack = assignment_raw.nested_dict_to_stack_matrix(
         alllengths, pole_set, name='gtime')
+    # Remove access and egress ntlegs penalty
+    duration_stack['gtime'] -= 2*ntlegs_penalty
+
     path_stack = assignment_raw.nested_dict_to_stack_matrix(
         allpaths, pole_set, name='path')
 
     los = pd.merge(duration_stack, path_stack, on=['origin', 'destination'])
+    los['path'] = los['path'].apply(tuple)
 
     return los, nx_graph
 
@@ -379,6 +414,7 @@ def loaded_links_and_nodes(
     volume_column='volume',
     path_column='path',
     pivot_column=None,
+    path_pivot_column=None,
     boardings=False,
     alightings=False,
     transfers=False,
@@ -421,13 +457,20 @@ def loaded_links_and_nodes(
     # 
     analysis_col = ['transfers', 'boardings', 'alightings', 'alighting_links', 'boarding_links']
 
+    # use it in order to add probability to paths
+    path_finder_stack['pivot'] = 1
+    if path_pivot_column:
+        path_finder_stack['pivot'] = path_finder_stack[path_pivot_column]
+
     # we don't want name collision
     merged = pd.merge(
         volumes[['origin', 'destination', volume_column]],
-        path_finder_stack[['origin', 'destination', path_column] + analysis_col],
+        path_finder_stack[['origin', 'destination', 'pivot', path_column, ] + analysis_col],
         on=['origin', 'destination'])
 
 
+    merged[volume_column] = merged[volume_column] * merged['pivot']
+    print(merged[volume_column].sum())
     volume_array = merged[volume_column].values
     paths = merged[path_column].values
 

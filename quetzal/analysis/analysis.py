@@ -243,6 +243,7 @@ def economic_series(od_stack, lines, period_length=1):
     ])
 
     return df
+    
 
 # function definition
 checkpoint_demand = on_demand.checkpoint_demand

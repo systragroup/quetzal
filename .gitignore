@@ -4,3 +4,6 @@ doc/
 **.cache**
 quetzal/tests/data/out/
 tests/data/out/
+.eggs/
+*.egg-info/
+.venv/

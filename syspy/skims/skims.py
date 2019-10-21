@@ -400,7 +400,6 @@ def drop_coordinates(dataframe):
 
 
 def distance_from_geometry(geometry_series, projection=wgs84, method='numpy'):
-    #tqdm.pandas(desc='distance: ')
     df = pd.DataFrame(geometry_series)
     df.columns = ['geometry']
     df = add_coordinates(df)

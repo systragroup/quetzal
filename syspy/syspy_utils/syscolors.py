@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-
-
-
 """
 The following colors are mentioned in Systra's graphical charter: \n
 red shades \n
@@ -12,7 +9,8 @@ secondary colors \n
 """
 
 import itertools
-
+import matplotlib.pyplot as plt
+import numpy as np
 
 # Couleurs d'accompagnement de la charte graphique
 rainbow_shades = ["#D22328", "#559BB4", "#91A564", "#DC9100", "#8C4B7D", "#A08C69",
@@ -38,6 +36,56 @@ secondary_colors = ['#643c5a', '#9e1b16', '#64421e', '#647d6e', '#5b7382', '#549
 # Couleurs utilisées par Linedraft
 linedraft_shades = ["#1f77b4", "#2ca02c", "#d62728", "#9467bd", "#ff7f0e", "#8c564b",
                     "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"]
+
+all_colors = {
+        'rainbow_shades': rainbow_shades,
+        'red_shades': red_shades,
+        'grey_shades': grey_shades,
+        'sorted_colors': sorted_colors,
+        'secondary_colors': secondary_colors,
+        'linedraft_shades': linedraft_shades
+}
+
+def display_colors(label_hexa_dict):
+        """
+         Displays colors from a dict {label: hexadecimal}
+        """
+        x = np.linspace(0, 1, 10)
+        i = -1
+        for n, c in label_hexa_dict.items():
+                i+=1
+                plot = plt.plot(x, x*0 + i, linewidth=10, color=c, label=n)
+                plt.legend(loc='center left', bbox_to_anchor=(1.1, 0.5))
+        return plot
+
+
+def show_all_colors(
+                figsize=(15,10),
+                color_lists=['rainbow_shades', 'red_shades', 'grey_shades',\
+                        'sorted_colors', 'secondary_colors', 'linedraft_shades']):
+        n = len(color_lists)
+        if n<=3:
+                n_rows=1
+                n_cols=n
+        else:
+                n_rows = 2
+                n_cols = int(np.ceil(n /n_rows))
+                
+        f = plt.figure(figsize=figsize)
+        index = 1
+        for name, c_list in all_colors.items():
+                if name in color_lists:
+                        to_show = {}
+                        for i in range(len(c_list)):
+                                to_show.update({'{}[{}] - {}'.format(name, i, c_list[i]): c_list[i]})
+                        ax = f.add_subplot(n_rows,n_cols,index)
+                        ax = display_colors(to_show)
+                        if (index-1) // n_cols == 0:
+                                plt.legend(loc='lower left', bbox_to_anchor=(0,1.1))
+                        else:
+                                plt.legend(loc='upper left', bbox_to_anchor=(0,-0.1))
+                        index += 1
+
 
 def itercolors(color_list, repetition):
     return list(itertools.chain(*[[color]*repetition for color in color_list]))

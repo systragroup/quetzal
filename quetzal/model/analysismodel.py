@@ -2,14 +2,16 @@
 
 from quetzal.analysis import analysis
 from quetzal.engine import engine, linearsolver_utils
-from quetzal.model import model, transportmodel
+from quetzal.model import model, transportmodel, summarymodel
 from quetzal.io import export
 from syspy.syspy_utils import neighbors
-
+import numpy as np
+import networkx as nx
 import pandas as pd
 from tqdm import tqdm
 import geopandas as gpd
 from syspy.spatial import spatial, geometries
+from quetzal.engine import nested_logit
 
 def read_hdf(filepath):
     m = AnalysisModel()
@@ -26,7 +28,7 @@ def read_json(folder):
 track_args = model.track_args
 log = model.log
 
-class AnalysisModel(transportmodel.TransportModel):
+class AnalysisModel(summarymodel.SummaryModel):
     
     def _aggregate(self, nb_clusters):
         """
@@ -102,6 +104,106 @@ class AnalysisModel(transportmodel.TransportModel):
             self._aggregate(nb_clusters)
             self.agg._build_pivot_stack_matrix(constrained_links, linprog_kwargs)
             self._disaggregate()
+
+    def analysis_pt_route_type(self, hierarchy):
+        route_type_dict = self.links['route_type'].to_dict()
+        self.pt_los['route_types'] = self.pt_los['link_path'].apply(
+            lambda p: tuple({route_type_dict[l] for l in p})
+        )
+
+        def higher_route_type(route_types):
+            for mode in hierarchy:
+                if mode in route_types:
+                    return mode
+            return hierarchy[-1]
+
+        self.pt_los['route_type'] = self.pt_los['route_types'].apply(higher_route_type)
+
+    def analysis_car_route_type(self):
+        self.car_los['route_types'] = [tuple(['car']) for i in self.car_los.index]
+        self.car_los['route_type'] = 'car'
+
+
+    def analysis_pt_time(self, boarding_time=0, walk_on_road=False):
+        footpaths = self.footpaths
+        access = self.zone_to_transit
+
+        if walk_on_road:
+            road_links = self.road_links.copy()
+            road_links['time'] = road_links['walk_time']
+            road_to_transit = self.road_to_transit.copy()
+            road_to_transit['length'] = road_to_transit['distance']
+            footpaths = pd.concat([road_links, road_to_transit, self.footpaths])
+            access = pd.concat([self.zone_to_road, self.zone_to_transit])
+
+        d = access.set_index(['a', 'b'])['time'].to_dict()
+        self.pt_los['access_time'] = self.pt_los['ntlegs'].apply(
+            lambda l: sum([d[t] for t in l]))
+
+        d = footpaths.set_index(['a', 'b'])['time'].to_dict()
+        self.pt_los['footpath_time'] = self.pt_los['footpaths'].apply(
+            lambda l: sum([d[t] for t in l]))
+
+        d = self.links['time'].to_dict()
+        self.pt_los['in_vehicle_time'] = self.pt_los['link_path'].apply(
+            lambda l: sum([d[t] for t in l]))
+        d = self.links['headway'].to_dict()
+        self.pt_los['waiting_time'] = self.pt_los['boarding_links'].apply(
+            lambda l: sum([d[t] / 2 for t in l]))
+        self.pt_los['boarding_time'] = self.pt_los['boarding_links'].apply(
+            lambda t: len(t)*boarding_time)
+        self.pt_los['time'] = self.pt_los[
+            ['access_time', 'footpath_time', 'waiting_time', 'boarding_time', 'in_vehicle_time']
+        ].T.sum()
+
+    def analysis_pt_length(self, walk_on_road=False):
+        footpaths = self.footpaths
+        access = self.zone_to_transit
+
+        if walk_on_road:
+            road_links = self.road_links.copy()
+            road_links['time'] = road_links['walk_time']
+            road_to_transit = self.road_to_transit.copy()
+            road_to_transit['length'] = road_to_transit['distance']
+            footpaths = pd.concat([road_links, road_to_transit, self.footpaths])
+            access = pd.concat([self.zone_to_road, self.zone_to_transit])
+
+        d = access.set_index(['a', 'b'])['distance'].to_dict()
+        self.pt_los['access_length'] = self.pt_los['ntlegs'].apply(
+            lambda l: sum([d[t] for t in l]))
+        d = footpaths.set_index(['a', 'b'])['length'].to_dict()
+        self.pt_los['footpath_length'] = self.pt_los['footpaths'].apply(
+            lambda l: sum([d[t] for t in l]))
+        d = self.links['length'].to_dict()
+        self.pt_los['in_vehicle_length'] = self.pt_los['link_path'].apply(
+            lambda l: sum([d[t] for t in l]))
+        self.pt_los['length'] = self.pt_los[
+            ['access_length', 'footpath_length',  'in_vehicle_length']
+        ].T.sum()
+
+    def analysis_car_time(self):
+        d = self.zone_to_road.set_index(['a', 'b'])['time'].to_dict()
+        self.car_los['access_time'] = self.car_los['ntlegs'].apply(
+            lambda l: sum([d[t] for t in l]))   
+        d = self.road_links['time'].to_dict()
+        self.car_los['in_vehicle_time'] = self.car_los['link_path'].apply(
+            lambda l: sum([d[t] for t in l]))
+        self.car_los['time'] = self.car_los[
+            ['access_time', 'in_vehicle_time']
+        ].T.sum()
+    
+    def analysis_car_length(self):
+        d = self.zone_to_road.set_index(['a', 'b'])['distance'].to_dict()
+        self.car_los['access_length'] = self.car_los['ntlegs'].apply(
+            lambda l: sum([d[t] for t in l]))
+        
+        d = self.road_links['length'].to_dict()
+        self.car_los['in_vehicle_length'] = self.car_los['link_path'].apply(
+            lambda l: sum([d[t] for t in l]))
+
+        self.car_los['length'] = self.car_los[
+            ['access_length',  'in_vehicle_length']
+        ].T.sum()
 
     @track_args
     def analysis_summary(self):
@@ -236,3 +338,143 @@ class AnalysisModel(transportmodel.TransportModel):
             line_tuple_geometries[line_tuple] = geometries.connected_geometries(sorted_edges)
         
         return geometries.geometries_with_side(line_tuple_geometries, width=width)
+
+    def compute_arod_list(self):
+        agency_dict = self.links['agency_id'].to_dict()
+        route_dict = self.links['route_id'].to_dict()
+        node_zone_dict = self.nodes['zone_id'].to_dict()
+        df = self.pt_los[[ 'boardings', 'alightings', 'boarding_links', 'alighting_links']]
+        leg_tuples = [tuple(zip(*r)) for r in df.values]
+        
+        values = []
+        for leg in leg_tuples:
+            agencies_od_lists = []
+
+            for boarding_node, alighting_node,  boarding_link, alighting_link in leg:
+
+                agency_id = agency_dict[boarding_link]
+                route_id = route_dict[boarding_link]
+                origin_id = node_zone_dict[boarding_node]
+                destination_id = node_zone_dict[alighting_node]
+
+                agencies_od_lists.append(
+                    (agency_id, route_id, origin_id, destination_id)
+                ) 
+            values.append(agencies_od_lists)
+
+        self.pt_los['arod_list'] = values    
+
+    def compute_od_fares(self):
+    
+        # builds od fare graph to compute cheapest fare between o and d for a given agency
+        fares = pd.merge(self.fare_rules, self.fare_attributes, on='fare_id')
+        fare_graph_dict = {}
+        for agency_id in self.fare_attributes['agency_id'].unique():
+            df = fares.loc[fares['agency_id'] == agency_id].copy()
+            dg = nx.DiGraph()
+            dg.add_weighted_edges_from(df[['origin_id', 'destination_id', 'price']].values)
+            all_pairs =  nx.all_pairs_dijkstra_path_length(dg)
+            fare_graph_dict[agency_id] = dict(all_pairs)  
+            
+        def arod_list_to_aod_list(arod_list):
+            if len(arod_list) == 0:
+                return []
+
+            aod = []
+            agency, route, origin, destination = arod_list[0] 
+
+            for a, r ,  o, d in arod_list[1:]:
+                if a != agency:
+                    aod.append((agency, origin, destination))
+                    origin = o
+                    agency = a
+                destination = d
+
+            aod.append((agency, origin, destination))
+            return aod
+
+        def od_price_breakdown(arod_list):
+            aod_list = arod_list_to_aod_list(arod_list)
+
+            breakdown = {}
+            for agency, o, d in aod_list:
+                try:
+                    price = fare_graph_dict[agency][o][d]
+                    try:
+                        breakdown[agency] += price
+                    except KeyError: # agency is seen for the first time
+                        breakdown[agency] = price
+                except KeyError: # their is no fare_graph for this a
+                    price = np.nan
+            return breakdown
+        
+        self.pt_los['od_fares'] = self.pt_los['arod_list'].apply(od_price_breakdown)
+
+    def compute_route_fares(self):
+        route_dict = self.links['route_id'].to_dict()
+
+        # focus on fares rules that are given with unique within a route
+        df = self.fare_rules.dropna(subset=['route_id'])
+        df = df.loc[df['origin_id'].isnull() & df['destination_id'].isnull()]
+        df = df.drop_duplicates(subset=['route_id'])
+        route_fare_dict = {route_id: np.nan for route_id in route_dict.values()}
+        route_update = df.set_index('route_id')['fare_id'].to_dict()
+        route_fare_dict.update(route_update)
+        
+        # fare_attributes : speedups 
+        transfers = self.fare_attributes.set_index('fare_id')['transfers'].to_dict()
+        price = self.fare_attributes.set_index('fare_id')['price'].to_dict()
+
+        def fare(count, allowed_transfers, price):
+            return max(np.ceil(count / (allowed_transfers + 1))  , 1) * price
+
+        def consecutive_counts(arod_list):
+            # if their is no fare for a route, a nan is used
+            # it is necessary in order to break the sequence in the loop
+            fare_id_list = [route_fare_dict[route] for a, route, o, d in arod_list]
+            if len(fare_id_list) == 0:
+                return []
+            current = fare_id_list[0]
+            consecutive = []
+            count = 1
+            for fare_id in fare_id_list[1:] + [np.nan]:
+                if fare_id != current:
+                    consecutive.append((current, count))
+                    count = 1
+                else: 
+                    count += 1
+                current = fare_id
+            return [(fare_id, count) for fare_id, count in consecutive if fare_id is not np.nan]
+
+        def price_breakdown(consecutive_counts):
+            breakdown = {}
+            for fare_id, count in consecutive_counts:
+                add = 0
+                try: 
+                    add = fare(count, transfers[fare_id], price[fare_id]) 
+                    breakdown[fare_id] += add
+                except KeyError: 
+                    breakdown[fare_id] = add
+            return breakdown
+
+        def route_price_breakdown(arod_list):
+            return price_breakdown(consecutive_counts(arod_list))
+        
+        self.pt_los['route_fares'] = self.pt_los['arod_list'].apply(route_price_breakdown)
+    
+    def analysis_pt_fare(self, keep_intermediate_results=True):
+        self.compute_arod_list()
+        self.compute_od_fares()
+        self.compute_route_fares()
+        
+        values = self.pt_los[['route_fares', 'od_fares']].values
+        self.pt_los['price'] = [
+            sum(route_fares.values()) + sum(od_fares.values()) 
+            for route_fares, od_fares in values
+        ]
+
+        if not keep_intermediate_results:
+            del self.pt_los['arod_list']
+            del self.pt_los['route_fares']
+            del self.pt_los['od_fares']
+

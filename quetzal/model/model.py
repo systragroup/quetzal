@@ -10,7 +10,10 @@ from copy import deepcopy
 from functools import wraps
 from tqdm import tqdm
 import shutil
+import uuid
 import ntpath
+
+from syspy.syspy_utils.data_visualization import add_basemap
 
 from quetzal.model.integritymodel import IntegrityModel
 
@@ -84,11 +87,11 @@ def merge_links_and_nodes(
     left_nodes = left_nodes.copy()
     right_nodes = right_nodes.copy()
 
-    # suffixes
+    # suffixes
     sx_left = suffixes[0]
     sx_right = suffixes[1]
 
-    # we can not use suffixes_on non string indexes
+    # we can not use suffixes_on non string indexes
     left_links[['a', 'b']] = left_links[['a', 'b']].astype(str) + sx_left
     right_links[['a', 'b']] = right_links[['a', 'b']].astype(str) + sx_right
     left_nodes.index = pd.Series(left_nodes.index).astype(str) + sx_left
@@ -119,7 +122,7 @@ def merge(
     clear=True
 ):
     assert left.epsg == right.epsg
-    # we want to return an object with the same class as left
+    # we want to return an object with the same class as left
     model = left.__class__(epsg=left.epsg, coordinates_unit=left.coordinates_unit) if clear else left.copy()
     
 
@@ -139,16 +142,86 @@ def merge(
 
 class Model(IntegrityModel):
 
-    def plot(self, attribute, *args, **kwargs):
-        gdf = gpd.GeoDataFrame(self.__dict__[attribute])
-        return gdf.plot(*args, **kwargs)
+    def __init__(
+        self,
+        json_database=None,
+        json_folder=None,
+        hdf_database=None,
+        omitted_attributes=(),
+        only_attributes=None,
+        *args,
+        **kwargs
+    ):
 
-    def read_hdf(self, filepath):
+        """
+        Initialization function, either from a json folder or a json_database representation.
+        Args:
+            json_database (json): a json_database representation of the model. Default None.
+            json_folder (json): a json folder representation of the model. Default None.
+        Examples:
+        >>> sm = stepmodel.Model(json_database=json_database_object)
+        >>> sm = stepmodel.Model(json_folder=folder_path)
+        """
+        super().__init__(*args, **kwargs)
+
+        if json_database and json_folder:
+            raise Exception('Only one argument should be given to the init function.')
+        elif json_database:
+            self.read_json_database(json_database)
+        elif json_folder:
+            self.read_json(json_folder)
+        elif hdf_database:
+            self.read_hdf(
+                hdf_database, 
+                omitted_attributes=omitted_attributes,
+                only_attributes=only_attributes
+            )
+
+        self.debug = True
+
+        # Add default coordinates unit and epsg
+        if self.epsg is None:
+            print('Model epsg not defined: setting epsg to default one: 4326')
+            self.epsg = 4326
+        if self.coordinates_unit is None:
+            print('Model coordinates_unit not defined: setting coordinates_unit to default one: degree')
+            self.coordinates_unit = 'degree'
+
+    def plot(
+        self, attribute, ticks=False, 
+        basemap_url=None, zoom=12, 
+        title=None, fontsize=24,
+        fname=None,  
+        *args, **kwargs
+    ):
+        gdf = gpd.GeoDataFrame(self.__dict__[attribute])
+        plot = gdf.plot(*args, **kwargs)
+        if ticks == False:
+            plot.set_xticks([])
+            plot.set_yticks([])
+
+        if title: 
+            plot.set_title(title, fontsize=fontsize)
+
+        if basemap_url is not None:
+            assert self.epsg == 3857
+            add_basemap(plot, zoom=zoom, url=basemap_url)
+        if fname:
+            fig = plot.get_figure()
+            fig.savefig(fname, bbox_inches='tight')
+
+        return plot
+
+    def read_hdf(self, filepath, omitted_attributes=(), only_attributes=None):
         with pd.HDFStore(filepath) as hdf:
             keys = [k.split('/')[1] for k in hdf.keys()]
 
         iterator = tqdm(keys, desc='read_hdf: ')
         for key in iterator:
+            if key in omitted_attributes:
+                continue
+            if only_attributes is not None and key not in only_attributes:
+                continue
             value = pd.read_hdf(filepath, key)
             self.__setattr__(key, value)
 
@@ -158,10 +231,10 @@ class Model(IntegrityModel):
             for key, value in json_dict.items():
                 self.__setattr__(key, json.loads(value))
         except AttributeError:
-            print('error')
+            print('coul not read json attributes')
 
     @track_args
-    def to_hdf(self, filepath):
+    def to_hdf(self, filepath, omitted_attributes=(), only_attributes=None):
         """
         export the full model to a hdf database
         """
@@ -175,12 +248,24 @@ class Model(IntegrityModel):
 
         attributeerrors = []
         for key, attribute in iterator:
+            if key in omitted_attributes:
+                continue
+            if only_attributes is not None and key not in only_attributes:
+                continue
+
             if isinstance(attribute, gpd.GeoDataFrame):
-                pd.DataFrame(attribute).to_hdf(filepath, key=key, mode='a')
+                df=pd.DataFrame(attribute)
+                df['geometry'] = df['geometry'].astype(object)
+                df.to_hdf(filepath, key=key, mode='a')
             elif isinstance(attribute, gpd.GeoSeries):
-                pd.Series(attribute).to_hdf(filepath, key=key, mode='a')
+                pd.Series(attribute).astype(object).to_hdf(filepath, key=key, mode='a')
             elif isinstance(attribute, (pd.DataFrame, pd.Series)):
-                attribute.to_hdf(filepath, key=key, mode='a')
+                df = attribute
+                try:
+                    df['geometry'] = df['geometry'].astype(object)
+                except:
+                    pass
+                df.to_hdf(filepath, key=key, mode='a')
             else:
                 try:
                     jsons[key] = json.dumps(attribute)
@@ -191,20 +276,20 @@ class Model(IntegrityModel):
             log('could not save attribute: ' + key, self.debug)
 
         json_series = pd.Series(jsons)
-        # mode=a : we do not want to overwrite the file !
+        # mode=a : we do not want to overwrite the file !
         json_series.to_hdf(filepath, 'jsons', mode='a')
 
-    def to_zip(self, filepath):
+    def to_zip(self, filepath, *args, **kwargs):
         filedir = ntpath.dirname(filepath)
-        tempdir = filedir + '/quetzal_temp'
+        tempdir = filedir + '/quetzal_temp' + '-' + str(uuid.uuid4())
         os.mkdir(tempdir)
         hdf_path = tempdir+ r'/model.hdf'
-        self.to_hdf(hdf_path)
+        self.to_hdf(hdf_path, *args, **kwargs)
         shutil.make_archive(filepath.split('.zip')[0], 'zip', tempdir)
         shutil.rmtree(tempdir)
 
     @track_args
-    def to_json(self, folder, omitted_attributes=(), only_attributes=None):
+    def to_json(self, folder, omitted_attributes=(), only_attributes=None, verbose=False):
         
         """
         export the full model to a hdf database
@@ -243,7 +328,8 @@ class Model(IntegrityModel):
                 attribute.drop('index', axis=1, errors='ignore', inplace=True)
                 attribute.index.name = 'index'
                 attribute = attribute.reset_index()  # loss of index name
-                
+                attribute.rename(columns={x: str(x) for x in attribute.columns}, inplace=True)
+
                 df = attribute
                 geojson_columns = [c for c in df.columns 
                     if authorized_column(df, c) 
@@ -257,10 +343,14 @@ class Model(IntegrityModel):
                     )
                     if len(json_columns):
                         attribute[json_columns + ['index']].to_json(root_name + '_quetzaldata.json')
-                except (AttributeError, KeyError, ): # "['geometry'] not in index"
+                except (AttributeError, KeyError, ) as e: # "['geometry'] not in index"
+                    if verbose:
+                        print(e)
                     df = pd.DataFrame(attribute).drop('geometry', axis=1, errors='ignore')
                     df.to_json(root_name + '.json')       
-                except ValueError: 
+                except ValueError as e: 
+                    if verbose:
+                        print(e)
                     # Geometry column cannot contain mutiple geometry types when writing to file.
                     print('could not save geometry from table ' + key)
                     df = pd.DataFrame(attribute).drop('geometry', axis=1, errors='ignore')
@@ -332,10 +422,8 @@ class Model(IntegrityModel):
                 key: value
             }
         }
-
         Args:
             stepmodel
-
         Returns:
             json_database (json): the single json representation of the model
         """
@@ -355,7 +443,7 @@ class Model(IntegrityModel):
             if isinstance(attribute, (pd.DataFrame, pd.Series)):
                 # Check index
                 assert attribute.index.is_unique, 'DataFrame attributes must have unique index'
-                attribute = pd.DataFrame(attribute) # copy and type conversion
+                attribute = pd.DataFrame(attribute) # copy and type conversion
                 attribute.drop('index', axis=1, errors='ignore', inplace=True)
                 attribute.index.name = 'index'
                 attribute = attribute.reset_index() # loss of index name
@@ -384,7 +472,6 @@ class Model(IntegrityModel):
     def read_json_database(self, json_database):
         """
         Load model from its json_database representation.
-
         Args:
             stepmodel
             json_database (json): the json_database model representation
@@ -427,19 +514,30 @@ class Model(IntegrityModel):
             projected_model.__dict__.items(),
             desc='Reprojecting model from epsg {} to epsg {}'.format(self.epsg, epsg)
         )
+        failed = []
 
         for key, attribute in iterator:
             if isinstance(attribute, (gpd.GeoDataFrame, gpd.GeoSeries)):
-                attribute.crs = {'init': 'epsg:{}'.format(self.epsg)}
-                attribute = attribute.to_crs(epsg=epsg)
-                projected_model.__setattr__(key, attribute)
+                try:
+                    attribute.crs = {'init': 'epsg:{}'.format(self.epsg)}
+                    attribute = attribute.to_crs(epsg=epsg)
+                    projected_model.__setattr__(key, attribute)
+                except RuntimeError: 
+                #b'tolerance condition error', b'latitude or longitude exceeded limits'
+                    failed.append(key)
             elif isinstance(attribute, pd.DataFrame):
                 if 'geometry' in attribute.columns:
-                    # print('Converting {}'.format(key))
-                    temp = gpd.GeoDataFrame(attribute)
-                    temp.crs =  {'init': 'epsg:{}'.format(self.epsg)}
-                    attribute = pd.DataFrame(temp.to_crs(epsg=epsg))
-                    projected_model.__setattr__(key, attribute)
+                    try:
+                        # print('Converting {}'.format(key))
+                        temp = gpd.GeoDataFrame(attribute)
+                        temp.crs =  {'init': 'epsg:{}'.format(self.epsg)}
+                        attribute = pd.DataFrame(temp.to_crs(epsg=epsg))
+                        projected_model.__setattr__(key, attribute)
+                    except RuntimeError: 
+                    #b'tolerance condition error', b'latitude or longitude exceeded limits'
+                        failed.append(key)
+
+
             elif isinstance(attribute, pd.Series):
                 try:
                     temp = gpd.GeoSeries(attribute)
@@ -447,8 +545,12 @@ class Model(IntegrityModel):
                     attribute = pd.Series(temp.to_crs(epsg=epsg))
                     projected_model.__setattr__(key, attribute)
                 except:
-                    pass
+                    failed.append(key)
         projected_model.epsg = epsg
         projected_model.coordinates_unit = coordinates_unit
+
+        if len(failed) > 0:
+            print('could not change epsg for the following attributes: ')
+            print(failed)
 
         return projected_model

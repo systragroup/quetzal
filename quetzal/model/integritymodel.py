@@ -11,12 +11,13 @@ import networkx as nx
 from tqdm import tqdm
 
 from syspy.spatial.graph import network as networktools
+from syspy.transitfeed import feed_links
 
 
 def label_links(links, node_prefixe):
     links = links.copy()
-    links['a'] = node_prefixe + links['a'].astype(str)
-    links['b'] = node_prefixe + links['b'].astype(str)
+    links['a'] = [node_prefixe + str(i).split(node_prefixe)[-1] for i in links['a']] 
+    links['b'] = [node_prefixe + str(i).split(node_prefixe)[-1] for i in links['b']]
     return links
 
 
@@ -43,6 +44,7 @@ class IntegrityModel:
         self.walk_on_road=walk_on_road
         self.coordinates_unit = coordinates_unit
         self.epsg=epsg
+        self.segments = ['all']
 
         self.checkpoint_links = geodataframe_place_holder('LineString')
         self.loaded_links = geodataframe_place_holder('LineString')
@@ -65,6 +67,12 @@ class IntegrityModel:
         self.micro_zones = geodataframe_place_holder('Polygon')
         self.zones = geodataframe_place_holder('Polygon')
         self.node_clusters = geodataframe_place_holder('Polygon')
+
+        self.fare_rules = pd.DataFrame()
+        self.fare_attributes = pd.DataFrame()
+        self.mode_nests = pd.DataFrame()
+        self.logit_scales = pd.DataFrame()
+        self.utility_values = pd.DataFrame()
         
 
     def integrity_test_collision(self, sets=('links', 'nodes', 'zones')):
@@ -129,14 +137,15 @@ class IntegrityModel:
         for key in prefixes.keys():
             attribute = self.__getattribute__(key)
             prefixe = prefixes[key]
-            attribute.index = prefixe + pd.Series(attribute.index).astype(str)
+            attribute.index = [prefixe + str(i).split(prefixe)[-1] for i in attribute.index] 
 
-        for key in ['links', 'footpaths']:
-            try:
-                link_like = self.__getattribute__(key)
-                self.__setattr__(key, label_links(link_like, prefixes['nodes'])) 
-            except (AttributeError, KeyError): # KeyError: 'a'
-                print('can not add prefixes on table: ', key)
+        if 'nodes' in prefixes.keys():
+            for key in ['links', 'footpaths']:
+                try:
+                    link_like = self.__getattribute__(key)
+                    self.__setattr__(key, label_links(link_like, prefixes['nodes'])) 
+                except (AttributeError, KeyError): # KeyError: 'a'
+                    print('can not add prefixes on table: ', key)
 
     def integrity_test_sequences(self):
         """
@@ -160,6 +169,11 @@ class IntegrityModel:
         self.broken_sequences = broken_sequences
         assert len(broken_sequences) == 0, message
 
+        count_series = self.links.groupby(['trip_id'])['link_sequence'].count()
+        max_series = self.links.groupby(['trip_id'])['link_sequence'].max()
+        message = 'link_sequences are not continuous (1, 2, 3, 5, 6) for example'
+        assert (count_series == max_series).all(), message
+
     def integrity_fix_sequences(self):
         """
             * requires: links
@@ -168,9 +182,17 @@ class IntegrityModel:
         try:
             self.integrity_test_sequences()
         except AssertionError:
+            # a - b
             to_drop = self.links['trip_id'].isin(self.broken_sequences)
             self.links = self.links.loc[~to_drop]
             print('dropped broken sequences: ' + str(self.broken_sequences))
+
+            # link_sequence
+            l = self.links.copy()
+            l['index'] = l.index
+            l = feed_links.clean_sequences(l, sequence='link_sequence', group_id='trip_id')
+            self.links = l.set_index('index')
+
 
     def integrity_test_circular_lines(self):
         """
@@ -263,11 +285,22 @@ class IntegrityModel:
             self.missing_nodes = missing_nodes
             assert len(missing_nodes) == 0, msg
 
+            orphan_nodes = self.nodeset() - self.link_nodeset()
+            msg = 'some nodes are referenced in nodes but not in links \n'
+
+            # [:1000] we do not want to raise a heavy error (huge string)
+            msg += 'orphan nodes: ' + str(orphan_nodes)[:1000]
+
+            self.orphan_nodes = orphan_nodes
+            assert len(orphan_nodes) == 0, msg
+
         except AttributeError:  # no links or nodes
+            print('no links or nodes')
             pass
 
         try:
             missing_road_nodes = self.road_link_nodeset() - self.road_nodeset()
+            
 
             msg = 'some nodes are referenced in links but not in nodes \n'
             msg += 'missing road_nodes' + str(missing_road_nodes)[:1000]
@@ -275,8 +308,33 @@ class IntegrityModel:
             self.missing_road_nodes = missing_road_nodes
             assert len(missing_road_nodes) == 0, msg
 
-        except AttributeError:  # no road_links or road_nodes
+            orphan_road_nodes = self.road_nodeset() - self.road_link_nodeset()
+            msg = 'some nodes are referenced in nodes but not in links \n'
+
+            # [:1000] we do not want to raise a heavy error (huge string)
+            msg += 'orphan road_nodes: ' + str(orphan_road_nodes)[:1000]
+
+            self.orphan_nodes = orphan_nodes
+            assert len(orphan_nodes) == 0, msg
+
+        except (AttributeError, KeyError):  
+            # no road_links or road_nodes, KeyError if they are place_holders
+            print('no road_links or road_nodes')
             pass
+
+    def integrity_test_road_nodeset_consistency(self):
+        """
+            * requires: nodes, links
+        """
+
+        missing_road_nodes = self.road_link_nodeset() - self.road_nodeset()
+
+        msg = 'some nodes are referenced in links but not in nodes \n'
+        msg += 'missing road_nodes' + str(missing_road_nodes)[:1000]
+
+        self.missing_road_nodes = missing_road_nodes
+        assert len(missing_road_nodes) == 0, msg
+        
 
     def integrity_fix_nodeset_consistency(self):
         self.links = self.links.loc[self.links['a'].isin(self.nodeset())]
@@ -290,11 +348,21 @@ class IntegrityModel:
         ]
         self.road_nodes = self.road_nodes.loc[self.road_link_nodeset()]
 
+    def integrity_fix_road_nodeset_consistency(self):
+
+        self.road_links = self.road_links.loc[
+            self.road_links['a'].isin(self.road_nodeset())
+        ]
+        self.road_links = self.road_links.loc[
+            self.road_links['b'].isin(self.road_nodeset())
+        ]
+        self.road_nodes = self.road_nodes.loc[self.road_link_nodeset()]
+
     def integrity_test_road_network(self, cutoff=10):
 
         self.integrity_test_isolated_roads()
         self.integrity_test_dead_ends(cutoff=cutoff)
-        self.integrity_test_nodeset_consistency()
+        self.integrity_test_road_nodeset_consistency()
 
     def integrity_fix_road_network(self, cutoff=10, recursive_depth=1):
         """
@@ -302,12 +370,12 @@ class IntegrityModel:
             * requires: road_links, road_nodes
             * builds: road_links, road_nodes
         """
-        if not recursive_depth:
+        if recursive_depth < 1:
             return
 
         self.road_links = networktools.drop_secondary_components(self.road_links)
         self.road_links = networktools.drop_deadends(self.road_links, cutoff=cutoff)
-        self.integrity_fix_nodeset_consistency()
+        self.integrity_fix_road_nodeset_consistency()
         try:
             self.integrity_test_road_network()
         except AssertionError:
@@ -327,12 +395,18 @@ class IntegrityModel:
         ]
         for name in integrity_test_methods:
             try:
-                self.__getattribute__(name)()
-                if verbose:
-                    print('passed:', name)
-            except AssertionError as e:
+                try:
+                    self.__getattribute__(name)()
+                    if verbose:
+                        print('passed:', name)
+                except AssertionError as e:
+                    if verbose :
+                        print('failed:', name)
+                    if errors != 'ignore':
+                        raise e
+            except: # broad exception
                 if verbose :
-                    print('failed:', name)
+                        print('not performed:', name)
                 if errors != 'ignore':
                     raise e
 

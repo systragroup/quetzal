@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from quetzal.model import analysismodel, docmodel
+from quetzal.model import analysismodel, docmodel, plotmodel
 
 import warnings
 from functools import wraps
 import shutil
 import ntpath
+import uuid
 
 
 def deprecated_method(method):
@@ -23,15 +24,15 @@ def deprecated_method(method):
     return decorated
 
 
-def read_hdf(filepath):
-    m = StepModel(hdf_database=filepath)
+def read_hdf(filepath, *args, **kwargs):
+    m = StepModel(hdf_database=filepath, *args, **kwargs)
     return m
 
-def read_zip(filepath):
+def read_zip(filepath, *args, **kwargs):
     filedir = ntpath.dirname(filepath)
-    tempdir = filedir + '/quetzal_temp'
+    tempdir = filedir + '/quetzal_temp' + '-' + str(uuid.uuid4())
     shutil.unpack_archive(filepath, tempdir)
-    m = read_hdf(tempdir + r'/model.hdf')
+    m = read_hdf(tempdir + r'/model.hdf', *args, **kwargs)
     shutil.rmtree(tempdir)
     return m
 
@@ -41,7 +42,12 @@ def read_json(folder):
     return m
 
 
-class StepModel(analysismodel.AnalysisModel, docmodel.DocModel):
+class StepModel(
+    plotmodel.PlotModel,
+    analysismodel.AnalysisModel, 
+    docmodel.DocModel,
+    
+    ):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -53,6 +59,7 @@ class StepModel(analysismodel.AnalysisModel, docmodel.DocModel):
 StepModel.step_build_los = deprecated_method(StepModel.step_build_los)
 StepModel.step_modal_split = deprecated_method(StepModel.step_modal_split)
 StepModel.step_pathfinder = deprecated_method(StepModel.step_pathfinder)
+StepModel.step_assignment = deprecated_method(StepModel.step_pt_assignment)
 
 # moved to analysismodel
 StepModel.checkpoints = deprecated_method(StepModel.analysis_checkpoints)
@@ -95,3 +102,5 @@ StepModel.get_no_collision = deprecated_method(
     StepModel.integrity_fix_collision)
 StepModel.clean_road_network = deprecated_method(
     StepModel.integrity_fix_road_network)
+
+# renamed 

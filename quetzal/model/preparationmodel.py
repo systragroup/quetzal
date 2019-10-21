@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import pandas as pd
+import numpy as np
 
 from quetzal.engine import engine,  connectivity
 from quetzal.engine.add_network import NetworkCaster
@@ -27,46 +28,11 @@ log = model.log
 
 class PreparationModel(model.Model, cubemodel.cubeModel):
 
-    def __init__(
-        self,
-        json_database=None,
-        json_folder=None,
-        hdf_database=None,
-        *args,
-        **kwargs
-    ):
-
-        """
-        Initialization function, either from a json folder or a json_database representation.
-
-        Args:
-            json_database (json): a json_database representation of the model. Default None.
-            json_folder (json): a json folder representation of the model. Default None.
-
-        Examples:
-        >>> sm = stepmodel.Model(json_database=json_database_object)
-        >>> sm = stepmodel.Model(json_folder=folder_path)
-        """
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+ 
 
-        if json_database and json_folder:
-            raise Exception('Only one argument should be given to the init function.')
-        elif json_database:
-            self.read_json_database(json_database)
-        elif json_folder:
-            self.read_json(json_folder)
-        elif hdf_database:
-            self.read_hdf(hdf_database)
 
-        self.debug = True
-
-        # Add default coordinates unit and epsg
-        if self.epsg is None:
-            print('Model epsg not defined: setting epsg to default one: 4326')
-            self.epsg = 4326
-        if self.coordinates_unit is None:
-            print('Model coordinates_unit not defined: setting coordinates_unit to default one: degree')
-            self.coordinates_unit = 'degree'
 
     @track_args
     def preparation_footpaths(
@@ -160,6 +126,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
 
         if zone_to_road:
             self.integrity_test_collision(sets=('road_nodes', 'zones'))
+
             ntlegs = engine.ntlegs_from_centroids_and_nodes(
                 self.centroids,
                 self.road_nodes,
@@ -170,6 +137,19 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 coordinates_unit=self.coordinates_unit
             )
             self.zone_to_road = ntlegs.loc[ntlegs['distance'] < length].copy()
+
+            ntlegs = engine.ntlegs_from_centroids_and_nodes(
+                self.nodes,
+                self.road_nodes,
+                short_leg_speed=short_leg_speed,
+                long_leg_speed=long_leg_speed,
+                threshold=threshold,
+                n_neighbors=n_ntlegs,
+                coordinates_unit=self.coordinates_unit
+            )
+
+            self.road_to_transit = ntlegs.loc[ntlegs['distance'] < length].copy()
+            
 
     @track_args
     def preparation_cast_network(
@@ -195,11 +175,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
 
         """
 
-        try :
-            dump = self.road_links[weight] + 1
-        except TypeError:
-            raise TypeError(str(weight) + ' should be an int or a float')
- 
+
         if dumb_cast:
             nc = NetworkCaster(
                 self.nodes, 
@@ -207,7 +183,13 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 self.road_nodes
             )
             nc.dumb_cast()
+
         else:
+            try :
+                dump = self.road_links[weight] + 1
+            except TypeError:
+                raise TypeError(str(weight) + ' should be an int or a float')
+ 
             nc = NetworkCaster(
                 self.nodes, 
                 self.links, 
@@ -257,11 +239,80 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             self.road_to_transit = concatenated.reindex().reset_index(drop=True)
 
     @track_args
+    def preparation_logit(
+        self, 
+        mode=1, 
+        pt_mode=1, 
+        pt_path=1, 
+        segments=[],
+        time=-1,
+        price=-1,
+        transfers=-1
+    ):
+        """
+        * requires: 
+        * builds: mode_utility, mode_nests, logit_scales, utility_values
+
+        :param mode: phi parameter used in the logit choice between modes
+        :param pt_mode: phi parameter used in the logit choice between pt modes
+        :param pt_mode: phi parameter used in the logit choice between pt paths
+        :param segments: the demand segments that will have to chose ex ['car', 'nocar']
+        :param time: number of utility units by seconds
+        :param price: number of utility units by currency unit
+        :param transfers: number of utility units by transfer
+
+        we should have 1 >= mode >= pt_mode >= pt_path > 0
+        if the three of them are equal to 1 the nested logit will be equivalent to a flat logit
+        """
+        #TODO : move to preparation
+        
+        # utility values
+        self.utility_values = pd.DataFrame(
+            {'root': pd.Series( {'time':time,'price':price,'ntransfers':transfers,'mode_utility':1})}
+        )
+        self.utility_values.index.name = 'value'
+        self.utility_values.columns.name = 'segment'
+
+
+        route_types = set(self.links['route_type'].unique()).union({'car', 'walk', 'root'})
+
+        # mode_utility
+        self.mode_utility = pd.DataFrame(
+            {'root': pd.Series({rt: 0 for rt in route_types})}
+        )
+
+        self.mode_utility.index.name = 'route_type'
+        self.mode_utility.columns.name = 'segment'
+
+
+        # mode nests
+        self.mode_nests =  pd.DataFrame(
+            {'root': pd.Series({rt: 'pt' for rt in route_types})}
+        )
+
+        self.mode_nests.loc['pt', 'root'] = 'root'
+        self.mode_nests.loc[['car', 'walk'], 'root'] = 'root'
+        self.mode_nests.loc[['root'], 'root'] = np.nan
+        self.mode_nests.index.name = 'route_type'
+        self.mode_nests.columns.name = 'segment'
+
+        # logit_scales
+        self.logit_scales = self.mode_nests.copy()
+        self.logit_scales['root'] = pt_path
+        self.logit_scales.loc[['car', 'walk'], 'root'] = 0.01
+        self.logit_scales.loc[['pt'], 'root'] = pt_mode
+        self.logit_scales.loc[['root'], 'root'] = mode
+
+        for segment in segments:
+            for df in (self.mode_utility, self.mode_nests, self.logit_scales, self.utility_values):
+                df[segment] = df['root']
+
+    @track_args
     def preparation_clusterize_zones(self, max_zones=500, cluster_column=None, is_od_stack=False):
         """
         clusterize zones
             * requires: zones, volumes
-            * builds: zones, volumes, (cluster_series)
+            * builds: zones, volumes, cluster_series
         """
         zones = self.zones
         zones['geometry'] = zones['geometry'].apply(lambda g: g.buffer(1e-9))

@@ -111,13 +111,13 @@ def zone_clusters(
     if cluster_column:
         cluster_series = df['cluster'] = df[cluster_column]
     else:
-        y_pred = KMeans(n_clusters=n_clusters).fit_predict(x)
+        y_pred = KMeans(n_clusters=n_clusters, random_state=1).fit_predict(x)
         cluster_series = df['cluster'] = pd.Series(y_pred, index=df.index)
 
     cluster_series.name = 'cluster'
 
     geo = df.groupby('cluster')['geometry'].agg(union_geometry)
-    #tqdm.pandas('geo_union')
+
     clusters = pd.DataFrame(geo.apply(geo_join_method))
 
     return clusters, cluster_series
@@ -157,8 +157,8 @@ def nearest(one, many, geometry=False, n_neighbors=1):
     df_many = add_geometry_coordinates(many.copy(), columns=['x_geometry', 'y_geometry'])
     df_one = add_geometry_coordinates(one.copy(), columns=['x_geometry', 'y_geometry'])
 
-    x = df_many[['x_geometry','y_geometry']].as_matrix()
-    y = df_one[['x_geometry','y_geometry']].as_matrix()
+    x = df_many[['x_geometry','y_geometry']].values
+    y = df_one[['x_geometry','y_geometry']].values
 
     nbrs = NearestNeighbors(n_neighbors=n_neighbors, algorithm='ball_tree').fit(x)
     distances, indices = nbrs.kneighbors(y)
@@ -198,8 +198,10 @@ def nearest_geometry(
     n_neighbors_centroid=10
 ):
 
-    one_centroid = one.copy()
-    many_centroid = many.copy()
+    one = pd.DataFrame(one)
+    many = pd.DataFrame(many)
+    one_centroid = pd.DataFrame(one)
+    many_centroid = pd.DataFrame(many)
 
     one_centroid['geometry'] = one_centroid['geometry'].apply(
         lambda g: g.centroid
