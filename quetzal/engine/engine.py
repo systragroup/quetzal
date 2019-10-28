@@ -470,7 +470,6 @@ def loaded_links_and_nodes(
 
 
     merged[volume_column] = merged[volume_column] * merged['pivot']
-    print(merged[volume_column].sum())
     volume_array = merged[volume_column].values
     paths = merged[path_column].values
 

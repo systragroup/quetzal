@@ -13,7 +13,7 @@ import shutil
 import uuid
 import ntpath
 
-from syspy.syspy_utils.data_visualization import add_basemap
+from syspy.syspy_utils import data_visualization
 
 from quetzal.model.integritymodel import IntegrityModel
 
@@ -205,7 +205,7 @@ class Model(IntegrityModel):
 
         if basemap_url is not None:
             assert self.epsg == 3857
-            add_basemap(plot, zoom=zoom, url=basemap_url)
+            data_visualization.add_basemap(plot, zoom=zoom, url=basemap_url)
         if fname:
             fig = plot.get_figure()
             fig.savefig(fname, bbox_inches='tight')

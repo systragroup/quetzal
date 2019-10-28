@@ -340,13 +340,6 @@ class IntegrityModel:
         self.links = self.links.loc[self.links['a'].isin(self.nodeset())]
         self.links = self.links.loc[self.links['b'].isin(self.nodeset())]
         self.nodes = self.nodes.loc[self.link_nodeset()]
-        self.road_links = self.road_links.loc[
-            self.road_links['a'].isin(self.road_nodeset())
-        ]
-        self.road_links = self.road_links.loc[
-            self.road_links['b'].isin(self.road_nodeset())
-        ]
-        self.road_nodes = self.road_nodes.loc[self.road_link_nodeset()]
 
     def integrity_fix_road_nodeset_consistency(self):
 

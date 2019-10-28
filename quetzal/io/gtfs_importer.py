@@ -90,7 +90,6 @@ class BaseGtfsImporter():
     def pick_trips(self):
         # Keep only one trip by direction
         self.trips = pd.merge(self.trips, self.routes[['route_id']])
-        
         self.trips = self.trips.groupby(
             ['route_id', 'direction_id'],
             as_index=False
@@ -212,7 +211,7 @@ class ItsimGtfsImporter(FrequenciesGtfsImporter):
         columns_to_cast_to_string=['trip_id', 'route_id', 'stop_id']
     )
     importer.build_headways(['070000', '090000'], service_ids=['Mardi'])
-    importer.build_patterns_and_direction()
+    importer.build_patterns_and_directions()
     importer.build_pattern_headways()
     """
 
@@ -226,8 +225,7 @@ class ItsimGtfsImporter(FrequenciesGtfsImporter):
         2. Merge trips that have the same sorted list of links
         3. Create patterns dataframe
         """
-        stops_parent_stations = feed_stops.stops_with_parent_station(self.stops, stop_cluster_kwargs=stop_cluster_kwargs)
-        stop_to_parent_station = stops_parent_stations.set_index('stop_id')['parent_station'].to_dict()
+        stop_to_parent_station = self.stops.set_index('stop_id')['parent_station'].to_dict()
         trips_direction = feed_links.get_trips_direction(self.links, stop_to_parent_station, group=group, direction_ratio_threshold=direction_ratio_threshold)
         trips_direction['id'] = trips_direction['links_list'].apply(
             lambda x: str([[a[0], a[1]] for a in x if a[0]!=a[1]])
@@ -245,7 +243,6 @@ class ItsimGtfsImporter(FrequenciesGtfsImporter):
         self.patterns = patterns
         if debug:
             self.trips_direction = trips_direction
-            self.stops_parent_stations = stops_parent_stations
 
     def build_pattern_headways(self):
         """

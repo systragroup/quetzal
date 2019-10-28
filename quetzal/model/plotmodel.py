@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import geopandas as gpd
 from syspy.syspy_utils.data_visualization import trim_axs
+from syspy.syspy_utils import data_visualization
 
 styles = {
     'zones': {'color': 'grey', 'alpha': 0},
@@ -87,8 +88,10 @@ class PlotModel(summarymodel.SummaryModel):
         ax=None,
         rows=1,
         title=None,
+        basemap_url=None,
+        zoom=9,
         *args,
-        **kwargs
+        **kwargs,
     ):
         styles = self.get_geometries()
         paths = self.pt_los.set_index(['origin', 'destination']).loc[origin, destination]
@@ -115,6 +118,11 @@ class PlotModel(summarymodel.SummaryModel):
             ax.set_xticks([])
             ax.set_yticks([])
             i +=1 
+
+        if basemap_url is not None:
+            assert self.epsg == 3857
+            for ax in axes:
+                data_visualization.add_basemap(ax, url=basemap_url, zoom=zoom)
             
         return fig, axes
     

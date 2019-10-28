@@ -112,7 +112,14 @@ def same_direction_ratio(parent_links_list, links_list):
     return same_direction_score / len(links_list)
 
 
-def get_trips_direction(links, stop_to_parent_station=None, reference_trip_ids=None, group='route_id', direction_ratio_threshold=0.1):
+def get_trips_direction(
+    links, 
+    stop_to_parent_station=None, 
+    reference_trip_ids=None, 
+    group='route_id', 
+    direction_ratio_threshold=0.1,
+    count=0,
+    ):
     """
     Read a links dataframe and compute the direction for each trip within each group.
     Reference trip ids can be given to define trips that will be given the 0 direction.
@@ -153,14 +160,15 @@ def get_trips_direction(links, stop_to_parent_station=None, reference_trip_ids=N
         )
     
     # While some direction id are 100 (not found): recursively call function
-    count = 0
+    
     while len(df[df['direction_id']==100])>0 and (count < 10):
-        count += 1
+        
         df_ = get_trips_direction(
             links.loc[links['trip_id'].isin(df[df['direction_id']==100]['trip_id'].values)],
             stop_to_parent_station=stop_to_parent_station,
             group=group,
-            direction_ratio_threshold=direction_ratio_threshold
+            direction_ratio_threshold=direction_ratio_threshold,
+            count=count+1
         )
         d=df[
             (df['direction_0_ratio']!=0)&(df['direction_id']<100)
