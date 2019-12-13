@@ -7,8 +7,9 @@ from shapely.geometry import Point, LineString
 
 from syspy.spatial import spatial, zoning
 from syspy.transitfeed import feed_links, feed_stops
-from syspy.syspy_utils import headway_utils
-
+from . import frequency_utils
+from .feed_gtfsk import Feed
+import gtfs_kit as gk
 # seconds
 
 def to_seconds(time_string):
@@ -26,11 +27,10 @@ def linestring_geometry(dataframe, point_dict, from_point, to_point):
     return df.apply(geometry, axis=1)
 
 
-class BaseGtfsImporter():
+class GtfsImporter(Feed):
 
     """
     importer = BaseGtfsImporter(gtfs_path)
-
     importer.read()
     importer.build()
 
@@ -39,53 +39,19 @@ class BaseGtfsImporter():
     sm.links = importer.links
     sm.nodes = importer.stops
     """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    def __init__(self, gtfs_path):
-        self.gtfs_path = gtfs_path
+    def clean(self):
+        feed = super().clean()
+        feed.stop_times = feed_links.clean_sequences(feed.stop_times)
+        return feed
 
-    def read(self, encoding=None):
-        self.stop_times = pd.read_csv(
-            self.gtfs_path + 'stop_times.txt', 
-            encoding=encoding, 
-        )
-        self.trips = pd.read_csv(
-            self.gtfs_path + 'trips.txt', 
-            encoding=encoding, 
-            low_memory=False  # mixed types
-        )
-        self.routes = pd.read_csv(
-            self.gtfs_path + 'routes.txt', 
-            encoding=encoding
-        )
-        self.stops = pd.read_csv(
-            self.gtfs_path + 'stops.txt',
-            encoding=encoding
-        )
-        self.calendar_dates = pd.read_csv(
-            self.gtfs_path + 'calendar_dates.txt',
-            encoding=encoding
-        )
-        self.calendar = pd.read_csv(
-            self.gtfs_path + 'calendar.txt',
-            encoding=encoding
-        )
-
-        if 'frequencies.txt' in os.listdir(self.gtfs_path):
-            self.frequencies = pd.read_csv(
-                self.gtfs_path + 'frequencies.txt',
-                encoding=encoding
-            )
-
-        if 'shapes.txt' in os.listdir(self.gtfs_path):
-            self.shapes = pd.read_csv(
-                self.gtfs_path + 'shapes.txt',
-                encoding=encoding
-            )
-
-    def filter_services(self, service_ids=[]):
-        self.trips = self.trips[self.trips['service_id'].isin(service_ids)]
-        self.stop_times = self.stop_times[self.stop_times['trip_id'].isin(self.trips['trip_id'].unique())]
-        self.stops = self.stops[self.stops['stop_id'].isin(self.stop_times['stop_id'].unique())]
+    def stop_times_to_seconds(self):
+        time_columns = ['arrival_time', 'departure_time']
+        self.stop_times[time_columns] = self.stop_times[
+            time_columns
+        ].applymap(to_seconds)
 
     def pick_trips(self):
         # Keep only one trip by direction
@@ -98,15 +64,7 @@ class BaseGtfsImporter():
         self.stop_times = pd.merge(self.stop_times, self.trips[['trip_id']])
         stop_id_set = set(self.stop_times['stop_id'])
         self.stops = self.stops.loc[self.stops['stop_id'].isin(stop_id_set)]
-
-    def clean_sequences(self):
-        self.stop_times = feed_links.clean_sequences(self.stop_times)
-
-    def to_seconds(self):
-        time_columns = ['arrival_time', 'departure_time']
-        self.stop_times[time_columns] = self.stop_times[
-            time_columns].applymap(to_seconds)
-
+    
     def build_links(self):
         links = feed_links.link_from_stop_times(
             self.stop_times,
@@ -171,19 +129,10 @@ class BaseGtfsImporter():
         self.build_geometries()
 
 
-class FrequenciesGtfsImporter(BaseGtfsImporter):
-        
-    def read(self, encoding=None):
-        super().read(encoding=encoding)
-        self.frequencies = pd.read_csv(
-                self.gtfs_path + 'frequencies.txt',
-                encoding=encoding
-        )
-
     def build_headways(self, timerange, service_ids=None):
-        GTFSFrequencies = headway_utils.GTFS_frequencies_utils(self.frequencies, self.trips)
+        GTFSFrequencies = frequency_utils.GTFS_frequencies_utils(self.frequencies, self.trips)
         timerange_sec = [
-            headway_utils.hhmmss_to_seconds_since_midnight(x) for x in timerange
+            frequency_utils.hhmmss_to_seconds_since_midnight(x) for x in timerange
         ]
         self.trips['headway'] = self.trips.apply(
             lambda x: GTFSFrequencies.compute_average_headway(
@@ -196,25 +145,6 @@ class FrequenciesGtfsImporter(BaseGtfsImporter):
         self.links = self.links.merge(
             self.trips[['trip_id', 'headway']],
         )
-
-
-class ItsimGtfsImporter(FrequenciesGtfsImporter):
-    """
-    Example: complete import of an ItSim extracted GTFS, with 
-    - average headway computation
-    - patterns and direction processing
-
-    importer = gtfs_importer.ItsimGtfsImporter(gtfs_folder)
-    importer.read()
-    importer.build(
-        service_ids=['Mardi'],
-        pick_trips=False,
-        columns_to_cast_to_string=['trip_id', 'route_id', 'stop_id']
-    )
-    importer.build_headways(['070000', '090000'], service_ids=['Mardi'])
-    importer.build_patterns_and_direction()
-    importer.build_pattern_headways()
-    """
 
     def build_patterns_and_directions(
             self, group='route_id',

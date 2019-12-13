@@ -6,7 +6,7 @@ class GTFS_frequencies_utils():
     Example:
     >>> frequencies = pd.read_csv(gtfs_path + 'frequencies.txt')
     >>> trips = pd.read_csv(gtfs_path + 'trips.txt')
-    >>> GTFS_frequencies_utils = headway_utils.GTFS_frequencies_utils(frequencies, trips)
+    >>> GTFS_frequencies_utils = frequency_utils.GTFS_frequencies_utils(frequencies, trips)
     >>> GTFS_frequencies_utils.compute_average_headway(['trip_1', 'trip_2'], [36000, 39600], ['JOB'])
     --> return 300
     
