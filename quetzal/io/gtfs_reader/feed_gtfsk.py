@@ -15,7 +15,10 @@ from tqdm import tqdm
 
 class Feed(gk.feed.Feed):  # Overwrite Feed class 
 
-    from .filtering import restrict_to_services, restrict_to_timerange, restrict, restrict_to_trips
+    from .filtering import (
+        restrict_to_services, restrict_to_timerange, restrict,
+        restrict_to_trips, restrict_to_dates
+        )
 
     def __init__(self, dist_units: str, path=None):
         if path is not None:

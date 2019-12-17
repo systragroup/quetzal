@@ -10,6 +10,7 @@ from syspy.transitfeed import feed_links, feed_stops
 from . import frequency_utils
 from .feed_gtfsk import Feed
 import gtfs_kit as gk
+from . import patterns
 # seconds
 
 def to_seconds(time_string):
@@ -39,6 +40,9 @@ class GtfsImporter(Feed):
     sm.links = importer.links
     sm.nodes = importer.stops
     """
+    from .directions import build_directions
+    from .patterns import build_patterns
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -47,23 +51,32 @@ class GtfsImporter(Feed):
         feed.stop_times = feed_links.clean_sequences(feed.stop_times)
         return feed
 
+    def build_stop_clusters(self, **kwargs):
+        self.stops = patterns.build_stop_clusters(self.stops, **kwargs)
+    
     def stop_times_to_seconds(self):
         time_columns = ['arrival_time', 'departure_time']
         self.stop_times[time_columns] = self.stop_times[
             time_columns
         ].applymap(to_seconds)
 
-    def pick_trips(self):
-        # Keep only one trip by direction
-        self.trips = pd.merge(self.trips, self.routes[['route_id']])
+    def frequency_times_to_seconds(self):
+        time_columns = ['start_time', 'end_time']
+        self.frequencies[time_columns] = self.frequencies[
+            time_columns
+        ].applymap(to_seconds)
+
+    # def pick_trips(self):
+    #     # Keep only one trip by direction
+    #     self.trips = pd.merge(self.trips, self.routes[['route_id']])
         
-        self.trips = self.trips.groupby(
-            ['route_id', 'direction_id'],
-            as_index=False
-            ).first()
-        self.stop_times = pd.merge(self.stop_times, self.trips[['trip_id']])
-        stop_id_set = set(self.stop_times['stop_id'])
-        self.stops = self.stops.loc[self.stops['stop_id'].isin(stop_id_set)]
+    #     self.trips = self.trips.groupby(
+    #         ['route_id', 'direction_id'],
+    #         as_index=False
+    #         ).first()
+    #     self.stop_times = pd.merge(self.stop_times, self.trips[['trip_id']])
+    #     stop_id_set = set(self.stop_times['stop_id'])
+    #     self.stops = self.stops.loc[self.stops['stop_id'].isin(stop_id_set)]
     
     def build_links(self):
         links = feed_links.link_from_stop_times(
@@ -146,36 +159,6 @@ class GtfsImporter(Feed):
             self.trips[['trip_id', 'headway']],
         )
 
-    def build_patterns_and_directions(
-            self, group='route_id',
-            direction_ratio_threshold=0.1, debug=False,
-            stop_cluster_kwargs={}):
-        """
-        From a given links dataframe:
-        1. Group by direction trips belonging to the same group
-        2. Merge trips that have the same sorted list of links
-        3. Create patterns dataframe
-        """
-        stops_parent_stations = feed_stops.stops_with_parent_station(self.stops, stop_cluster_kwargs=stop_cluster_kwargs)
-        stop_to_parent_station = stops_parent_stations.set_index('stop_id')['parent_station'].to_dict()
-        trips_direction = feed_links.get_trips_direction(self.links, stop_to_parent_station, group=group, direction_ratio_threshold=direction_ratio_threshold)
-        trips_direction['id'] = trips_direction['links_list'].apply(
-            lambda x: str([[a[0], a[1]] for a in x if a[0]!=a[1]])
-        )
-        
-        patterns = trips_direction.groupby([group, 'direction_id', 'id']).agg({'trip_id': list}).reset_index()
-        
-        patterns['pattern_id_n'] = patterns.groupby([group, 'direction_id']).cumcount()
-        
-        patterns['pattern_id'] = patterns.apply(
-            lambda x: '{}_{}_{}'.format(x[group], x['direction_id'], x['pattern_id_n']),
-            1
-        )
-        patterns.drop(['id','pattern_id_n'], 1, inplace=True)
-        self.patterns = patterns
-        if debug:
-            self.trips_direction = trips_direction
-            self.stops_parent_stations = stops_parent_stations
 
     def build_pattern_headways(self):
         """

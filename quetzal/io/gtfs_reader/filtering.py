@@ -1,6 +1,7 @@
 from typing import List, Optional, Tuple, TYPE_CHECKING
 import numpy as np
 import gtfs_kit as gk
+import pandas as pd
 
 
 def restrict(feed, dates=None, service_ids=None, time_range=None, trip_ids=None):
@@ -8,7 +9,7 @@ def restrict(feed, dates=None, service_ids=None, time_range=None, trip_ids=None)
     feed = feed.copy()
     # Restrict to dates
     if dates is not None:
-        feed = gk.restrict_to_dates(feed, dates)  #TODO: too slow, compute_trip_actitivy must be rewritten with .loc…
+        feed = restrict_to_dates(feed, dates)
     # restrict to trip ids:
     if trip_ids is not None:
         feed = restrict_to_trips(feed, trip_ids=trip_ids)
@@ -52,6 +53,15 @@ def restrict_to_timerange(feed, time_range):
     """
     # TODO: real filtering that would modify the stop_times / frequencies
     # tables based on this restriction
+    def reformat(t):
+        if pd.isna(t):
+            return t
+        t = t.strip()
+        if len(t) == 7:
+            t = "0" + t
+        return t
+    time_range = [reformat(x) for x in time_range]
+
 
     # Initialize the new feed as the old feed.
     # Restrict its DataFrames below.
@@ -163,3 +173,51 @@ def restrict_to_trips(feed, trip_ids):
         ]
 
     return feed
+
+
+def get_active_services(feed, dates):
+    """
+    List all services that are active in at 
+    least one of the given date list
+    """
+    service_ids = set()
+    for date in dates:
+        wd = gk.helpers.weekday_to_str(
+            gk.helpers.datestr_to_date(date).weekday()
+        )
+        service_ids = service_ids.union(
+            set(
+                feed.calendar[
+                    (feed.calendar[wd]==1)&
+                    (feed.calendar['start_date']<= date)&
+                    (feed.calendar['end_date']>= date)
+                ]['service_id'].unique()
+            )
+        )
+    to_add = set(
+        feed.calendar_dates[
+            (feed.calendar_dates['date'].isin(dates))&
+            (feed.calendar_dates['exception_type'] == 1)
+        ]['service_id']
+    )
+    to_remove = set(
+        feed.calendar_dates[
+            (feed.calendar_dates['date'].isin(dates))&
+            (feed.calendar_dates['exception_type'] == 2)
+        ]['service_id']
+    )
+    service_ids = service_ids.union(to_add).difference(to_remove)
+
+    return list(service_ids)
+
+
+
+def restrict_to_dates(feed, dates):
+
+    active_services = get_active_services(feed, dates)
+    feed = restrict_to_services(feed, active_services)
+
+    return feed
+
+
+
