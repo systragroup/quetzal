@@ -25,7 +25,6 @@ def build_directions(
         lambda x: get_trip_directions(x, trip_stops)
     ).reset_index()
     feed.trips.drop('direction_id', 1, inplace=True)
-    #print(trip_directions.head())
     feed.trips = feed.trips.merge(
         trip_directions[group + ['trip_id', 'direction_id']],
         on=group + ['trip_id']
@@ -62,7 +61,10 @@ def same_direction_ratio(parent_link_list, link_list):
                 same_direction_score -= 1
     return same_direction_score / len(link_list) if len(link_list) > 0 else 0
 
-def get_trip_directions(trip_group, trip_stops, direction_ratio_threshold=0.1, count=0, max_iter=20):
+def get_trip_directions(
+    trip_group, trip_stops, direction_ratio_threshold=0.1,
+    count=0, max_iter=20
+):
     """
     Given a group of trips, return their directions
     """
@@ -73,7 +75,7 @@ def get_trip_directions(trip_group, trip_stops, direction_ratio_threshold=0.1, c
     # Sort by descending length
     df = trip_group.sort_values('n_stops', ascending=False).reset_index(drop=True)
     # Get one trip for which direction is define or set longest one to 0
-    if len(df[(df['direction_id'] == 0)|(df['direction_id']==1)]) > 1:
+    if len(df[(df['direction_id'] == 0)|(df['direction_id'] == 1)]) >= 1:
         ref_id = df.loc[
             (df['direction_id'] == 0)|(df['direction_id']==1),
             'trip_id'
@@ -81,25 +83,19 @@ def get_trip_directions(trip_group, trip_stops, direction_ratio_threshold=0.1, c
     else:
         ref_id = df.loc[0, 'trip_id']
         df.loc[0, 'direction_id'] = 0
-    ref_dir = df.loc[df['trip_id']==ref_id, 'direction_id'].values[0]
+    ref_direction = df.loc[df['trip_id']==ref_id, 'direction_id'].values[0]
+    ref_link_list = df.loc[df['trip_id']==ref_id, 'link_list'].values[0]
     df['reference_trip'] = ref_id
-    
-    df['ref_direction_ratio'] = df.apply(
-        lambda x: same_direction_ratio(
-            x['link_list'],
-            df.loc[df['trip_id']==x['reference_trip'], 'link_list'].values[0]
-        ),
-        1
-    )
 
     def get_direction_id(x):
         if not np.isnan(x['direction_id']) and x['direction_id'] is not None:
             return x['direction_id']
         else:
-            to_return = ref_dir * (x['ref_direction_ratio'] > direction_ratio_threshold) +\
-                (1-ref_dir) * (x['ref_direction_ratio'] < -direction_ratio_threshold) +\
-                100 * (x['ref_direction_ratio'] >= -direction_ratio_threshold) *\
-                (x['ref_direction_ratio'] <= direction_ratio_threshold)
+            dir_ratio = same_direction_ratio(x['link_list'], ref_link_list)
+            to_return = ref_direction * (dir_ratio > direction_ratio_threshold) +\
+                (1-ref_direction) * (dir_ratio < -direction_ratio_threshold) +\
+                100 * (dir_ratio >= -direction_ratio_threshold) *\
+                (dir_ratio <= direction_ratio_threshold)
             return to_return
     
     df['direction_id'] = df.apply(get_direction_id, 1)
