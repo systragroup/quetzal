@@ -1,12 +1,94 @@
 import collections
 import numpy as np
+import pandas as pd
+from tqdm import tqdm
+tqdm.pandas()
+from .filtering import restrict_to_timerange
+
+
+def convert_to_frequencies(feed, time_range, pattern_column='pattern_id'):
+    """
+    Given:
+        - a clean feed defined on one day / one service
+        - a time range
+    Returns a new feed, converted to frequencies
+    """
+    # Make sure only one service is defined
+    n_services = len(feed.trips.service_id.unique())
+    error_message = """
+        Your GTFS still contains {} services. You must select one date
+        or one service before converting to frequencies.
+    """.format(n_services)
+    assert n_services == 1, error_message
+        
+    # Make a restricted copy
+    feed = restrict_to_timerange(feed, time_range)
+
+    # Compute pattern headway
+    pattern_headways = compute_pattern_headways(feed, time_range)
+
+    # One trip per pattern
+    to_replace_all = feed.trips.set_index('trip_id')[pattern_column].to_dict()
+    feed.trips = feed.trips.groupby(pattern_column, as_index=False).first()
+    to_replace_first = feed.trips.set_index('trip_id')[pattern_column].to_dict()
+    feed.trips['trip_id'] = feed.trips['trip_id'].replace(to_replace_first)
+
+    # Replace stop times
+    feed.stop_times['trip_id'] = feed.stop_times['trip_id'].replace(to_replace_first)
+
+    # Replace frequencies
+    frequencies = pattern_headways.reset_index().rename(columns={pattern_column: 'trip_id'})
+    frequencies['start_time'] = time_range[0]
+    frequencies['end_time'] = time_range[1]
+    feed.frequencies = frequencies
+    # Clean
+    feed = feed.restrict_to_trips(feed.trips.trip_id)
+    feed = feed.clean()
+
+    return feed
+
+def compute_pattern_headways(feed, time_range):
+    """
+    Args:
+        feed
+        time_range: ['08:00:00', '10:00:00'] time range in HH:MM.SS format
+    returns:
+        DataFrame(pattern_id, headway_secs)
+    """
+    if feed.frequencies is not None:
+        temp_frequencies = feed.frequencies.copy()
+    else:
+        temp_frequencies = pd.DataFrame(columns=['trip_id', 'start_time', 'end_time', 'headway_secs'])
+
+    temp_stop_times = feed.stop_times.copy()
+    # remove all trips that are already defined in frequencies
+    temp_stop_times = temp_stop_times[~temp_stop_times['trip_id'].isin(temp_frequencies.trip_id)]
+
+    temp_stop_times = temp_stop_times.sort_values(
+        ['trip_id', 'stop_sequence']
+    ).groupby('trip_id').first()[
+        ['arrival_time', 'departure_time']
+    ].rename(columns={'arrival_time': 'start_time', 'departure_time': 'end_time'}).reset_index()
+    temp_stop_times['headway_secs'] = 0
+    temp_frequencies = temp_frequencies.append(temp_stop_times)
+
+    time_range_sec = [hhmmss_to_seconds_since_midnight(x) for x in time_range]
+
+    freq_conv = GTFS_frequencies_utils(temp_frequencies, feed.trips.copy())
+    pattern_headways = feed.trips.groupby('pattern_id')['trip_id'].agg({'trip_id': list})
+    pattern_headways['headway_secs'] = pattern_headways['trip_id'].progress_apply(
+        lambda x: freq_conv.compute_average_headway(x, time_range_sec)
+    )
+    
+    return pattern_headways[['headway_secs']]
+
 
 class GTFS_frequencies_utils():
     """
     Example:
     >>> frequencies = pd.read_csv(gtfs_path + 'frequencies.txt')
     >>> trips = pd.read_csv(gtfs_path + 'trips.txt')
-    >>> GTFS_frequencies_utils = frequency_utils.GTFS_frequencies_utils(frequencies, trips)
+    >>> GTFS_frequencies_utils = frequencies.GTFS_frequencies_utils(frequencies, trips)
     >>> GTFS_frequencies_utils.compute_average_headway(['trip_1', 'trip_2'], [36000, 39600], ['JOB'])
     --> return 300
     
@@ -93,7 +175,7 @@ class GTFS_frequencies_utils():
         intersecting_null_timetables = self.frequencies[
             (self.frequencies['trip_id'].isin(trip_ids)) &\
             (self.frequencies['start_time_sec'] < time_range[1]) &\
-            (self.frequencies['end_time_sec'] > time_range[0]) &\
+            (self.frequencies['end_time_sec'] >= time_range[0]) &\
             (self.frequencies['headway_secs'] == 0)
         ]
         # print('intersecting_null_timetables', intersecting_null_timetables)

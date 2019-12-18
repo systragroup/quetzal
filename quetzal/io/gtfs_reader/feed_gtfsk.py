@@ -46,11 +46,9 @@ class Feed(gk.feed.Feed):  # Overwrite Feed class
         return embed_map(map_stops(self, *args, **kwargs))
 
     def map_trips(self, *args, **kwargs):
-        # The original method requires stop_code which is optional
         return embed_map(gk.map_trips(self, *args, **kwargs))
 
     def map_routes(self, *args, **kwargs):
-        # The original method requires stop_code which is optional
         return embed_map(gk.map_routes(self, *args, **kwargs))
     
     def write_geojson(self, folder):
@@ -199,9 +197,14 @@ def embed_map(m):
     for displaying Folium maps with lots of features in Chrome-based browsers.
     """
     from IPython.display import IFrame
-
-    m.save('index.html')
-    return IFrame('index.html', width='100%', height='750px')
+    import os
+    i = 1
+    filename='index_1.html'
+    while os.path.exists(filename):
+        i += 1
+        filename = 'index_{}.html'.format(i)
+    m.save(filename)
+    return IFrame(filename, width='100%', height='750px')
 
 def map_stops(feed, stop_ids, stop_style=STOP_STYLE):
     """
