@@ -41,15 +41,24 @@ class Feed(gk.feed.Feed):  # Overwrite Feed class
         copy = deepcopy(self)
         return copy
 
-    def map_stops(self, *args, **kwargs):
+    def map_stops(self, *args, embed=False, **kwargs):
         # The original method requires stop_code which is optional
-        return embed_map(map_stops(self, *args, **kwargs))
+        if embed:
+            return embed_map(map_stops(self, *args, **kwargs))
+        else:
+            return map_stops(self, *args, **kwargs)
 
-    def map_trips(self, *args, **kwargs):
-        return embed_map(gk.map_trips(self, *args, **kwargs))
+    def map_trips(self, *args,  embed=False, **kwargs):
+        if embed:
+            return embed_map(gk.map_trips(self, *args, **kwargs))
+        else:
+            return gk.map_trips(self, *args, **kwargs)
 
-    def map_routes(self, *args, **kwargs):
-        return embed_map(gk.map_routes(self, *args, **kwargs))
+    def map_routes(self, *args, embed=False, **kwargs):
+        if embed:
+            return embed_map(gk.map_routes(self, *args, **kwargs))
+        else:
+            return gk.map_routes(self, *args, **kwargs)
     
     def write_geojson(self, folder):
         to_export = {
