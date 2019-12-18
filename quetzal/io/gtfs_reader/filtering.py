@@ -181,43 +181,58 @@ def get_active_services(feed, dates):
     least one of the given date list
     """
     service_ids = set()
-    for date in dates:
-        wd = gk.helpers.weekday_to_str(
-            gk.helpers.datestr_to_date(date).weekday()
-        )
-        service_ids = service_ids.union(
-            set(
-                feed.calendar[
-                    (feed.calendar[wd]==1)&
-                    (feed.calendar['start_date']<= date)&
-                    (feed.calendar['end_date']>= date)
-                ]['service_id'].unique()
+    if feed.calendar is not None and not feed.calendar.empty:
+        for date in dates:
+            wd = gk.helpers.weekday_to_str(
+                gk.helpers.datestr_to_date(date).weekday()
             )
+            service_ids = service_ids.union(
+                set(
+                    feed.calendar[
+                        (feed.calendar[wd]==1)&
+                        (feed.calendar['start_date']<= date)&
+                        (feed.calendar['end_date']>= date)
+                    ]['service_id'].unique()
+                )
+            )
+    if feed.calendar_dates is not None and not feed.calendar_dates.empty:
+        to_add = set(
+            feed.calendar_dates[
+                (feed.calendar_dates['date'].isin(dates))&
+                (feed.calendar_dates['exception_type'] == 1)
+            ]['service_id']
         )
-    to_add = set(
-        feed.calendar_dates[
-            (feed.calendar_dates['date'].isin(dates))&
-            (feed.calendar_dates['exception_type'] == 1)
-        ]['service_id']
-    )
-    to_remove = set(
-        feed.calendar_dates[
-            (feed.calendar_dates['date'].isin(dates))&
-            (feed.calendar_dates['exception_type'] == 2)
-        ]['service_id']
-    )
-    service_ids = service_ids.union(to_add).difference(to_remove)
+        to_remove = set(
+            feed.calendar_dates[
+                (feed.calendar_dates['date'].isin(dates))&
+                (feed.calendar_dates['exception_type'] == 2)
+            ]['service_id']
+        )
+        service_ids = service_ids.union(to_add).difference(to_remove)
 
     return list(service_ids)
 
 
 
 def restrict_to_dates(feed, dates):
+    
+    # Restrict calendar to dates: no calendar, but one row in calendar_dates per date
+    new_calendar_dates = pd.DataFrame(columns=['service_id', 'date', 'exception_type'])
+    active_services = set()
+    for date in dates:
+        services = get_active_services(feed, [date])
+        for s in services:
+            new_calendar_dates = new_calendar_dates.append(
+                {'service_id': s, 'date': date, 'exception_type': 1},
+                ignore_index=True
+            )
+        active_services = active_services.union(set(services))
 
-    active_services = get_active_services(feed, dates)
+    active_services = list(active_services)
     feed = restrict_to_services(feed, active_services)
+    feed.calendar = None
+    feed.calendar_dates = new_calendar_dates
 
     return feed
-
 
 

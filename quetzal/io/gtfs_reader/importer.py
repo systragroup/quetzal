@@ -42,6 +42,7 @@ class GtfsImporter(Feed):
     """
     from .directions import build_directions
     from .patterns import build_patterns
+    from .services import group_services
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
