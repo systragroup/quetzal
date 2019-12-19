@@ -33,10 +33,7 @@ class Feed(gk.feed.Feed):  # Overwrite Feed class
     
     def get_trips(self, date=None, time=None):
         return get_trips(self, date=date, time=time)
-    
-    def check_inconsistencies(self):
-        return gk.validate(self)
-    
+
     def copy(self):
         copy = deepcopy(self)
         return copy
