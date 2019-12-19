@@ -43,10 +43,30 @@ class GtfsImporter(Feed):
 
     def build_stop_clusters(self, **kwargs):
         self.stops = patterns.build_stop_clusters(self.stops, **kwargs)
+
+    def build(self, date, time_range, cluster_distance_threshold=None):
+        print('Restricting to date…')
+        feed = self.restrict(dates=[date])
+        print('Grouping services…')
+        feed.group_services()
+        print('Cleaning…')
+        feed.clean()
+        if cluster_distance_threshold is not None:
+            print('Clustering stops…')
+            feed.build_stop_clusters(distance_threshold=cluster_distance_threshold)
+            print('Building patterns…')
+            feed.build_patterns(on='cluster_id')
+        else:
+            print('Building patterns…')
+            feed.build_patterns()
+        print('Converting to frequencies…')
+        feed = feed.convert_to_frequencies(time_range=time_range)
+        print('Building links and nodes…')
+        feed.build_links_and_nodes()
+        return feed
     
-    def build_links_and_nodes(self, columns_to_cast_to_string=[]):
+    def build_links_and_nodes(self):
         self.clean()
-        self.cast_columns_to_string(columns=columns_to_cast_to_string)
         self.to_seconds()
         self.build_links()
         self.build_geometries()
@@ -101,18 +121,3 @@ class GtfsImporter(Feed):
             'b'
         )
         self.links = gpd.GeoDataFrame(self.links)
-
-    def cast_columns_to_string(
-        self, 
-        columns=['trip_id', 'route_id', 'stop_id']
-    ) :
-        for key, attr in self.__dict__.items():
-            try:
-                cols = []
-                for c in attr.columns :
-                    if c in columns:
-                        cols.append(c)
-                        attr[c] = attr[c].astype(str)
-                # print(key, cols, 'converted to string')
-            except AttributeError:  # 'str' object has no attribute 'columns'
-                pass
