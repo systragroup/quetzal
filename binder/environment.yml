@@ -10,36 +10,36 @@ dependencies:
   - argcomplete>=0.8.1
   - astropy>=0.4.2
   - babel>=2.3.4
-  - backcall=0.1.0
-  - backports-abc>=0.4
   - beautifulsoup4>=4.3.2
   - bitarray>=0.8.1
   - branca
-  - DateTime
   - dbf
   - descartes
   - folium
   - geopandas
   - geopy
-  - gtfs_kit
   - ipywidgets
   - ipykernel
-  - kml2geojson
   - networkx
   - numpy
   - openpyxl
   - pandas
-  - pyPdf
   - pyproj
   - requests
   - scikit-learn
   - scipy
   - selenium
   - shapely
-  - simpledbf
-  - sphinx-rtd-theme>=0.1.9
-  - Sphinx>=1.4.5
-  - tables>=3.4.2
   - tqdm
   - xlrd>=1.0.0
   - descartes
+  - pip:
+    - kml2geojson
+    - gtfs_kit
+    - backports-abc>=0.4
+    - DateTime
+    - tables>=3.4.2
+    - pyPdf
+    - simpledbf
+    - backcall
+    - geojson
