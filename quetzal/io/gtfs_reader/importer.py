@@ -50,7 +50,7 @@ class GtfsImporter(Feed):
         print('Grouping services…')
         feed.group_services()
         print('Cleaning…')
-        feed.clean()
+        feed = feed.clean()
         if cluster_distance_threshold is not None:
             print('Clustering stops…')
             feed.build_stop_clusters(distance_threshold=cluster_distance_threshold)
@@ -66,7 +66,6 @@ class GtfsImporter(Feed):
         return feed
     
     def build_links_and_nodes(self):
-        self.clean()
         self.to_seconds()
         self.build_links()
         self.build_geometries()

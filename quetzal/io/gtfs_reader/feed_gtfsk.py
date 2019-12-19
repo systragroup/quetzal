@@ -27,7 +27,7 @@ class Feed(gk.feed.Feed):  # Overwrite Feed class
             self.path = path
         else:
             super().__init__(dist_units=dist_units)
-    
+
     def describe(self, sample_date=None):
         return describe(self, sample_date)
     
@@ -67,7 +67,6 @@ class Feed(gk.feed.Feed):  # Overwrite Feed class
             gj = self.__getattribute__(method)()
             with open(folder + name + '.geojson', 'w') as f:
                 dump(gj, f)
-
 
 
 def read_gtfs(*args, **kwargs) -> dict:
