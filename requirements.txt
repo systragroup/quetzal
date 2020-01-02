@@ -13,6 +13,7 @@ descartes
 folium
 geopandas
 geopy
+gtfs_kit
 ipywidgets
 ipykernel
 kml2geojson

@@ -1,0 +1,2 @@
+feed_publisher_name,feed_start_date,feed_version,feed_end_date,feed_lang,feed_publisher_url
+OpenStreetMap Ghana,20190304,0.2,20200131,en,https://osmghana.org

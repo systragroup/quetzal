@@ -49,12 +49,12 @@ from IPython.display import display
 from tqdm import tqdm
 
 r_path = os.path.dirname(os.path.realpath(__file__))
-gis_resources = r_path + r'\gis_resources/'
+gis_resources = r_path + r'/gis_resources/'
 
 # gis_resources = r'G:\PLT\L-Lignes Produit\0. Dev\python\modules\pandasshp\gis_resources/'
-line_style = gis_resources + r'/styles/line.qml'
-line_offset_style = gis_resources + r'/styles/line_with_offset.qml'
-epsg4326_string = pandasshp.read_prj(gis_resources + r'/projections/epsg4326.prj')
+line_style = gis_resources + r'styles/line.qml'
+line_offset_style = gis_resources + r'styles/line_with_offset.qml'
+epsg4326_string = pandasshp.read_prj(gis_resources + r'projections/epsg4326.prj')
 
 warnings.simplefilter("ignore")
 

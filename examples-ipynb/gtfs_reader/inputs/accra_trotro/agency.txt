@@ -1,0 +1,2 @@
+agency_url,agency_name,agency_id,agency_timezone,agency_lang
+https://ama.gov.gh/department-details.php?d=MTU=,AMA Department of Transport,AMA,Africa/Accra,en

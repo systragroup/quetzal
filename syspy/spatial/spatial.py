@@ -7,11 +7,12 @@ __author__ = 'qchasserieau'
 
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 import shapely
 from shapely.ops import polygonize
 import shapely.geometry.polygon
 import shapely.geometry.linestring
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, AgglomerativeClustering
 from sklearn.neighbors import NearestNeighbors
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from tqdm import tqdm
@@ -121,6 +122,24 @@ def zone_clusters(
     clusters = pd.DataFrame(geo.apply(geo_join_method))
 
     return clusters, cluster_series
+
+
+def agglomerative_clustering(
+    stops,
+    distance_threshold=150,
+):
+    """
+    Stops must be in a metric cartesian coordinate system.
+    """
+    df = gpd.GeoDataFrame(stops).copy()
+    df['x'] = df.geometry.x
+    df['y'] = df.geometry.y
+    c = AgglomerativeClustering(
+        n_clusters=None,
+        distance_threshold=distance_threshold
+    ).fit(df[['x', 'y']].values)
+
+    return c.labels_
 
 
 def linestring_geometry(dataframe, point_dict, from_point, to_point):
