@@ -520,7 +520,5 @@ def loaded_links_and_nodes(
         transfer_nodes, transfer_links = assigned_node_links(paths_transfers)
         nodes['transfers'], links['transfers'] = transfer_nodes, transfer_links
 
-    nodes.fillna(0, inplace=True)
-
     return links, nodes
 
