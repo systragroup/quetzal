@@ -262,7 +262,6 @@ def polyline_graph(
     model_graph = pd.concat([single_links[columns], polylines[columns]])
     return model_graph
 
-
 def drop_secondary_components(links):
     """
     keep only the main component among the connected components of the graph
