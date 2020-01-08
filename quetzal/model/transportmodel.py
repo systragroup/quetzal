@@ -7,7 +7,7 @@ from quetzal.engine import engine
 from quetzal.engine.pathfinder import PublicPathFinder
 from quetzal.engine.road_pathfinder import RoadPathFinder
 from quetzal.engine import nested_logit
-from quetzal.model import model, preparationmodel
+from quetzal.model import model, preparationmodel, optimalmodel
 
 from syspy.assignment import raw as raw_assignment
 from syspy.skims import skims
@@ -29,7 +29,7 @@ def read_json(folder):
 track_args = model.track_args
 log = model.log
 
-class TransportModel(preparationmodel.PreparationModel):
+class TransportModel(optimalmodel.OptimalModel):
 
     @track_args
     def step_distribution(
