@@ -90,7 +90,14 @@ class OptimalModel(preparationmodel.PreparationModel):
         self.optimal_strategy_sets = optimal_strategy_sets
         self.optimal_strategy_nodes = optimal_strategy_nodes
 
-    def step_strategy_assignment(self, volume_column):
+        nodes = optimal_strategy_nodes.copy()
+        nodes.index.name = 'origin'
+        nodes.set_index('destination', append=True, inplace=True)
+        pt_los = nodes.loc[self.zones.index]['u'].reset_index().rename(columns={'u': 'gtime'})
+        pt_los['pathfinder_session'] = 'optimal_strategy'
+        self.pt_los = pt_los
+
+    def step_strategy_assignment(self, volume_column, road=False):
 
         destination_indexed_volumes = self.volumes.set_index(['destination', 'origin'])[volume_column]
         destination_indexed_nodes =  self.optimal_strategy_nodes.set_index(
@@ -144,3 +151,62 @@ class OptimalModel(preparationmodel.PreparationModel):
         self.loaded_edges = loaded_edges
         self.loaded_nodes = loaded_nodes
         self.loaded_links = loaded_links
+
+        if road:
+            self.road_links[volume_column] = raw_assignment.assign(
+                volume_array=list(self.loaded_links[volume_column]), 
+                paths=list(self.loaded_links['road_link_list'])
+            )
+            # todo remove 'load' from analysis module: 
+            self.road_links['load'] = self.road_links[volume_column]
+
+    def get_aggregated_edges(self, origin, destination):
+        
+        # restrection to the destination edges
+        edges = self.optimal_strategy_edges[['i', 'j', 'f', 'c']].copy()
+        edges = edges.loc[self.optimal_strategy_sets.loc[destination]]
+        edges['ix'] = edges.index
+
+        # removing the edges that are non relevant (p<1e-6)
+        f_total = edges.groupby('i')[['f']].sum()
+        edges = pd.merge(edges, f_total, left_on='i', right_index=True, suffixes=['', '_total'])
+        edges['p'] = np.round(edges['f'] / edges['f_total'], 6)
+        edges = edges.loc[edges['p'] > 0]
+
+        #restriction to the origin
+        g = nx.DiGraph()
+        for e in edges.to_dict(orient='records'):
+            g.add_edge(e['i'], e['j'])
+
+        paths = list(nx.all_simple_paths(g, source=origin, target=destination))
+        nodes = set.union(*[set(p) for p in paths])
+        ode = edges.loc[edges['i'].isin(nodes) & edges['j'].isin(nodes)]
+
+        # transform node -> (node, trip_id) to node -> trip_id
+        links = self.links.copy()
+        links['j'] = [tuple(l) for l in links[['b', 'trip_id']].values]
+        links['i'] = [tuple(l) for l in links[['a', 'trip_id']].values]
+        transit = pd.merge(links, ode[['i', 'j', 'ix']], on=['i', 'j'])
+        boardings = pd.merge(links[['a', 'i', 'trip_id']],  ode[['i', 'j', 'ix']], left_on=['a', 'i'], right_on=['i', 'j'])
+        alightings = pd.merge(links[['j', 'b', 'trip_id']],  ode[['i', 'j', 'ix']], left_on=['j', 'b'], right_on=['i', 'j'])
+
+        inlegs = set(transit['ix']).union(boardings['ix']).union(alightings['ix'])
+        remaining = ode.drop(list(inlegs))
+
+        boardings = boardings.set_index('ix')
+        boardings['i'] = boardings['a']
+        boardings['j'] = boardings['trip_id']
+        boardings['f'] = ode['f']
+        boardings['p'] = ode['p']
+
+        alightings = alightings.set_index('ix')
+        alightings['j'] = alightings['b']
+        alightings['i'] = alightings['trip_id']
+        alightings['f'] = ode['f']
+        alightings['p'] = 1
+
+        c = ['i', 'j', 'f', 'p']
+        a = pd.concat([boardings[c], alightings[c], remaining[c]])
+        a = a.dropna(subset=['i', 'j'])
+
+        return a
