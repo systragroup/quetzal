@@ -12,6 +12,7 @@ dbf
 descartes
 folium
 geopandas
+geojson
 geopy
 gtfs_kit
 ipywidgets

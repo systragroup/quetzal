@@ -470,7 +470,6 @@ def loaded_links_and_nodes(
 
 
     merged[volume_column] = merged[volume_column] * merged['pivot']
-    print(merged[volume_column].sum())
     volume_array = merged[volume_column].values
     paths = merged[path_column].values
 
@@ -519,8 +518,6 @@ def loaded_links_and_nodes(
         paths_transfers = merged['transfers'].values
         transfer_nodes, transfer_links = assigned_node_links(paths_transfers)
         nodes['transfers'], links['transfers'] = transfer_nodes, transfer_links
-
-    nodes.fillna(0, inplace=True)
 
     return links, nodes
 
