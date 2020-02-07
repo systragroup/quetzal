@@ -5,14 +5,18 @@ from syspy.skims import skims
 import pandas as pd
 import shapely
 
-def node_clustering(links, nodes, n_clusters, prefixe='', **kwargs):
+def node_clustering(links, nodes, n_clusters, prefixe='', group_id=None,**kwargs):
     
     disaggregated_nodes = nodes.copy()
-    clusters, cluster_series = spatial.zone_clusters(
-        nodes, 
-        n_clusters=n_clusters,
-        **kwargs
-    )
+    if group_id is None:
+        clusters, cluster_series = spatial.zone_clusters(
+            nodes, 
+            n_clusters=n_clusters,
+            **kwargs
+        )
+    else:
+        clusters = nodes.groupby(group_id).first()
+        cluster_series = nodes[group_id] 
     
     cluster_dict = cluster_series.to_dict()
     centroids = clusters.copy()

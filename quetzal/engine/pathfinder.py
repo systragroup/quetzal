@@ -99,6 +99,7 @@ def path_and_duration_from_graph(
 
         los = pd.concat([source_los, target_los])
         los['gtime'] -= 2*ntlegs_penalty
+        los['gtime'] = np.clip(los['gtime'], 0, None) # no negative time
     else:
 
         return source_los
