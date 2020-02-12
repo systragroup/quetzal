@@ -293,37 +293,31 @@ class TransportModel(optimalmodel.OptimalModel):
                 volume_column=segment,
                 path_pivot_column=(segment, 'probability'),
                 road=kwargs['road'],
-                boardings=True,
-                alightings=True,
-                transfers=True,
+                boardings=kwargs['boardings'],
+                alightings=kwargs['alightings'],
+                transfers=kwargs['transfers'],
             )
-            self.loaded_links[(segment, 'boardings')] = self.loaded_links['boardings']
-            self.loaded_nodes[(segment, 'boardings')] = self.loaded_nodes['boardings']
-            
-            self.loaded_links[(segment, 'alightings')] = self.loaded_links['alightings']
-            self.loaded_nodes[(segment, 'alightings')] = self.loaded_nodes['alightings']
-            
-            self.loaded_links[(segment, 'transfers')] = self.loaded_links['transfers']
-            self.loaded_nodes[(segment, 'transfers')] = self.loaded_nodes['transfers']
+
+            for column in ['boardings', 'alightings', 'transfers']:
+                try:
+                    self.loaded_links[(segment, column)] = self.loaded_links[column]
+                    self.loaded_nodes[(segment, column)] = self.loaded_nodes[column]
+                except:
+                    pass
 
             self.links = self.loaded_links
             self.nodes = self.loaded_nodes
+
+        for column in ['boardings', 'alightings', 'transfers']:
+            try:
+                columns = [(segment, column) for segment in segments]
+                self.loaded_links[column] = self.loaded_links[columns].T.sum()
+                self.loaded_nodes[column] = self.loaded_nodes[columnn].T.sum()
+            except:
+                pass
             
-        self.loaded_links['transfers'] = self.loaded_links[
-            [(segment, 'transfers') for segment in segments]].T.sum()
-        self.loaded_links['boardings'] = self.loaded_links[
-            [(segment, 'boardings') for segment in segments]].T.sum()
-        self.loaded_links['alightings'] = self.loaded_links[
-            [(segment, 'alightings') for segment in segments]].T.sum()
         self.loaded_links['all_pt'] = self.loaded_links[
             [segment for segment in segments]].T.sum()
-
-        self.loaded_nodes['transfers'] = self.loaded_nodes[
-            [(segment, 'transfers') for segment in segments]].T.sum()
-        self.loaded_nodes['boardings'] = self.loaded_nodes[
-            [(segment, 'boardings') for segment in segments]].T.sum()
-        self.loaded_nodes['alightings'] = self.loaded_nodes[
-            [(segment, 'alightings') for segment in segments]].T.sum()
         self.loaded_nodes['all_pt'] = self.loaded_nodes[
             [segment for segment in segments]].T.sum()
 
