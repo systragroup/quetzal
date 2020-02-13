@@ -293,6 +293,7 @@ def path_and_duration_from_links_and_ntlegs(
         alllengths, pole_set, name='gtime')
     # Remove access and egress ntlegs penalty
     duration_stack['gtime'] -= 2*ntlegs_penalty
+    duration_stack['gtime'] = np.clip(duration_stack['gtime'], 0, None)
 
     path_stack = assignment_raw.nested_dict_to_stack_matrix(
         allpaths, pole_set, name='path')
