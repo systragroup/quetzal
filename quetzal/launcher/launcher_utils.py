@@ -33,7 +33,7 @@ def parallel_call_notebook(
                     stderr=stderr
                 )
                 if (i + 1) % workers == 0 or (i + 1) == len(arg_list):
-                    print('waiting')
+                    #print('waiting')
                     popens[i].wait()
         time.sleep(sleep)
     if not leave:
