@@ -103,7 +103,7 @@ def zone_clusters(
 ):
     n_clusters = min(n_clusters, len(zones))
 
-    df = add_centroid(zones)
+    df = gpd.GeoDataFrame(add_centroid(zones))
 
     if buffer:
         df['geometry'] = df['geometry'].apply(lambda g: g.buffer(buffer))
@@ -117,7 +117,7 @@ def zone_clusters(
 
     cluster_series.name = 'cluster'
 
-    geo = df.groupby('cluster')['geometry'].agg(union_geometry)
+    geo = df.dissolve('cluster')['geometry']#.agg(union_geometry)
 
     clusters = pd.DataFrame(geo.apply(geo_join_method))
 

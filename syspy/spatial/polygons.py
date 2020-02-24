@@ -138,7 +138,9 @@ def clean_zoning(
             hull_buffer = 10000
         if mini_buffer is None:
             mini_buffer = 1
-    polygons = [g.buffer(buffer, **kwargs) for g in zones]
+    # clean geom
+    polygons = [g.simplify(buffer/10) for g in zones]
+    polygons = [g.buffer(buffer, **kwargs) for g in polygons]
     polygons = [g.simplify(buffer) for g in polygons]
 
     if fill_gaps:
@@ -148,7 +150,6 @@ def clean_zoning(
     polygons = biggest_polygons(polygons)
 
     if unite_gaps:
-
         voids = interstitial_polygons(polygons, buffer=mini_buffer, hull_buffer=hull_buffer)
         polygons = unite_gaps_to_polygons(voids, polygons, buffer=mini_buffer)
         polygons = [buffer_if_not_polygon(g, buffer) for g in polygons]
