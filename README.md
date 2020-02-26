@@ -20,20 +20,19 @@ pip install -e .
 ### For Windows
 `Conda` is supposed to be installed.
 
-Use `windows-install`
+`windows-install` creates an environment `quetzal_env` and installs quetzal there
+`windows-install-here` installs quetzal in the active environment
 
-Alternatively, you can do these steps:
-- Virtual environment: `conda create -n quetzal; conda activate quetzal`
-- Then use `python get_conda_install_args.py` from the `quetzal` directory.
-- Execute the given conda command to install required dependencies from conda repositories.
-- Then `pip install -e .`
+To install quetzal in base environment:
+-(base): `windows-install-here.bat`
 
-If it does not work, you can, you can do these steps:
-- Base environment: `conda install nb_conda_kernels; conda create -n quetzal pip`
-- Enable virtual environments in Jupyter `conda activate quetzal; conda install ipykernel`
-- If you have troubles with PyTables or shapely or pyproj or geopandas: `conda install pytables; conda install -c conda-forge geopandas`
-- Then use `python get_conda_install_args.py` from the `quetzal` directory.
-- Execute the given conda command to install required dependencies from conda repositories.
-- Then `pip install -e .`
+To create quetzal_env automatically and install quetzal:
+-(base): `windows-install.bat`
+
+To manage the environments manually and install quetzal:
+- (base): `conda install nb_conda_kernels; conda create -n quetzal pip`
+- Enable virtual environments in Jupyter `conda activate quetzal_env`
+- (quentzal_env) `windows-install-here.bat`
+
 
 
