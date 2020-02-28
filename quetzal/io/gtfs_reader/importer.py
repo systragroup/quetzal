@@ -12,8 +12,11 @@ from . import frequencies
 from .feed_gtfsk import Feed
 import gtfs_kit as gk
 from . import patterns
-# seconds
+import utm
 
+def get_epsg(lat,lon):
+    return int(32700 - round((45 + lat )/ 90, 0) * 100 + round((183 + lon)/6, 0))
+# seconds
 def to_seconds(time_string):
     return pd.to_timedelta(time_string).total_seconds()
 
@@ -112,7 +115,11 @@ class GtfsImporter(Feed):
         self.links = pd.merge(self.links, links_trips, on ='trip_id') 
         
     def build_geometries(self, use_utm=True):
-        self.nodes = gk.stops.geometrize_stops_0(self.stops, use_utm=use_utm)
+        self.nodes = gk.stops.geometrize_stops_0(self.stops)
+        if use_utm:
+            epsg = get_epsg(self.stops.iloc[1]['stop_lat'], self.stops.iloc[1]['stop_lon'])
+            self.nodes = self.nodes.to_crs(epsg=epsg)
+
         self.links['geometry'] = linestring_geometry(
             self.links, 
             self.nodes.set_index('stop_id')['geometry'].to_dict(), 
