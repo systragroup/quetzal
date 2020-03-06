@@ -76,6 +76,7 @@ def path_and_duration_from_graph(
     path_stack = assignment_raw.nested_dict_to_stack_matrix(
         allpaths, pole_set, name='path')
     source_los = pd.merge(duration_stack, path_stack, on=['origin', 'destination'])
+    source_los.loc[source_los['origin']!=source_los['destination'],'gtime'] -= 2*ntlegs_penalty
     source_los['reversed'] = False
     
     # targets
@@ -96,10 +97,10 @@ def path_and_duration_from_graph(
         target_los['reversed'] = True
         target_los['path'] = target_los['path'].apply(lambda x: list(reversed(x)))
         target_los[['origin', 'destination']] = target_los[['destination', 'origin']]
-
+        target_los.loc[target_los['origin']!=target_los['destination'],'gtime'] -= 2*ntlegs_penalty
+        
         los = pd.concat([source_los, target_los])
-        los['gtime'] -= 2*ntlegs_penalty
-        los['gtime'] = np.clip(los['gtime'], 0, None) # no negative time
+        # los['gtime'] = np.clip(los['gtime'], 0, None) # no negative time
     else:
 
         return source_los
