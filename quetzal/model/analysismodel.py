@@ -68,6 +68,30 @@ class AnalysisModel(summarymodel.SummaryModel):
             **linprog_kwargs
         )
 
+    def _analysis_road_link_path(self, include_road_footpaths=False): 
+        """
+        Build road_link_path column of pt_los based on link_path
+        """
+        try:
+            link_to_road_links = self.links['road_link_list'].to_dict()
+        except KeyError as e:
+            raise KeyError('road_link_list column missing: links must be networkasted.')
+            
+        self.pt_los['road_link_path'] = self.pt_los['link_path'].apply(
+            lambda x: [i for l in map(link_to_road_links.get, x) if l is not None for i in l ]
+        )
+        
+        if include_road_footpaths:
+            # Footpath to road_link_path
+            road_links_dict = self.road_links.reset_index().set_index(['a','b'])[self.road_links.index.name].to_dict()
+            
+            nan_loc = self.pt_los['footpaths'].isnull()
+            self.pt_los.loc[nan_loc, 'footpaths'] = [[]] * nan_loc.sum()
+            
+            self.pt_los['road_link_path'] += self.pt_los['footpaths'].apply(
+                lambda x: [a for a in list(map(lambda l: road_links_dict.get(l), x)) if a is not None]
+            )
+
     def analysis_linear_solver(
         self,
         constrained_links,
