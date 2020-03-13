@@ -195,6 +195,10 @@ class Model(IntegrityModel):
         *args, **kwargs
     ):
         gdf = gpd.GeoDataFrame(self.__dict__[attribute])
+        if self.epsg != 3857 and basemap_url is not None:
+            gdf.crs = {'init': 'epsg:{}'.format(self.epsg)}
+            gdf = gdf.to_crs(epsg=3857)
+        
         plot = gdf.plot(*args, **kwargs)
         if ticks == False:
             plot.set_xticks([])
@@ -204,7 +208,6 @@ class Model(IntegrityModel):
             plot.set_title(title, fontsize=fontsize)
 
         if basemap_url is not None:
-            assert self.epsg == 3857
             add_basemap(plot, zoom=zoom, url=basemap_url)
         if fname:
             fig = plot.get_figure()
@@ -547,7 +550,8 @@ class Model(IntegrityModel):
                     attribute = pd.Series(temp.to_crs(epsg=epsg))
                     projected_model.__setattr__(key, attribute)
                 except:
-                    failed.append(key)
+                    if attribute.name == 'geometry':
+                        failed.append(key)
         projected_model.epsg = epsg
         projected_model.coordinates_unit = coordinates_unit
 

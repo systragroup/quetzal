@@ -5,6 +5,7 @@ This module provides tools for spatial analysis.
 """
 __author__ = 'qchasserieau'
 
+import warnings
 import numpy as np
 import pandas as pd
 import geopandas as gpd
@@ -172,6 +173,14 @@ def add_geometry_coordinates(df, columns=['x_geometry', 'y_geometry']):
 
 
 def nearest(one, many, geometry=False, n_neighbors=1):
+
+    try:
+        assert many.index.is_unique
+        assert one.index.is_unique
+    except AssertionError:
+        msg = 'index of one and many should not contain duplicates'
+        print(msg)
+        warnings.warn(msg)
 
     df_many = add_geometry_coordinates(many.copy(), columns=['x_geometry', 'y_geometry'])
     df_one = add_geometry_coordinates(one.copy(), columns=['x_geometry', 'y_geometry'])

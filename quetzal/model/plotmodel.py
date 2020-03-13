@@ -9,9 +9,9 @@ from syspy.syspy_utils import data_visualization
 
 styles = {
     'zones': {'color': 'grey', 'alpha': 0},
-    'nodes': {'color': 'grey', 'alpha': 1, 'width':2},
+    'nodes': {'color': 'grey', 'alpha': 1, 'width':2, 'markersize':10},
     'links': {'color': 'red', 'alpha':1 ,'width': 3},
-    'road_nodes': {'color': 'blue', 'width': 1},
+    'road_nodes': {'color': 'blue', 'width': 1, 'markersize':1},
     'road_links': {'color': 'blue', 'width': 1}
 }
 
@@ -26,11 +26,11 @@ def plot_one_path(path, styles=styles, ax=None):
     full_path = geometry.LineString(coord_list)
     
     ax = gpd.GeoSeries(full_path).plot(color='black', linestyle='dotted', ax=ax)
-    grouped = df.groupby(['color', 'width', 'alpha'], as_index=False)['geometry'].agg(list)
-    for color, width, alpha, geometries in grouped[
-        ['color', 'width','alpha', 'geometry']].values.tolist():
+    grouped = df.groupby(['color', 'width', 'alpha', 'markersize'], as_index=False)['geometry'].agg(list)
+    for color, width, alpha, geometries, markersize in grouped[
+        ['color', 'width','alpha', 'geometry', 'markersize']].values.tolist():
         s = gpd.GeoSeries(geometries)
-        ax = s.plot(color=color, linewidth=width, ax=ax, alpha=alpha)
+        ax = s.plot(color=color, linewidth=width, ax=ax, alpha=alpha, markersize=markersize)
     return ax
 
 class PlotModel(summarymodel.SummaryModel):
@@ -50,6 +50,7 @@ class PlotModel(summarymodel.SummaryModel):
         geometries['alpha'].fillna(1, inplace=True)
         geometries['width'].fillna(1, inplace=True)
         geometries['color'].fillna('black', inplace=True)
+        geometries['markersize'].fillna(1, inplace=True)
         return geometries
 
     def od_basemap(self, origin, destination, alpha=0.5, color='grey', *args, **kwargs):
@@ -64,9 +65,12 @@ class PlotModel(summarymodel.SummaryModel):
         destination, 
         ax=None,
         separated=False,
+        basemap_url=None,
+        zoom=9,
         *args,
         **kwargs
     ):
+
         styles = self.get_geometries()
         ax = self.od_basemap(origin,  destination, *args, **kwargs)
         paths = self.pt_los.set_index(['origin', 'destination']).loc[origin, destination]
@@ -78,7 +82,11 @@ class PlotModel(summarymodel.SummaryModel):
             ax = plot_one_path(p, styles, ax=ax)
             ax.set_xticks([])
             ax.set_yticks([])
-            
+
+        if basemap_url is not None:
+            assert self.epsg == 3857
+            data_visualization.add_basemap(ax, url=basemap_url, zoom=zoom)
+        
         return ax
 
     def plot_separated_paths(
@@ -96,13 +104,16 @@ class PlotModel(summarymodel.SummaryModel):
     ):
         styles = self.get_geometries()
         paths = self.pt_los.set_index(['origin', 'destination']).loc[origin, destination]
+        if paths.ndim == 1: # their is only one path 
+            paths = pd.DataFrame(data=paths).T 
         paths['title'] = '' if title is None else paths[title] 
         g_id_set = set.union(*[set(p) for p in paths['path']])
         
 
         columns = len(paths)//rows + bool(len(paths)%rows)
         fig, ax_array = plt.subplots(rows, columns,*args, **kwargs) 
-        ax_array = trim_axs(ax_array, len(paths))
+        if len(paths) > 1:
+            ax_array = trim_axs(ax_array, len(paths))
         axes = fig.get_axes()
                 
         if paths.ndim == 1: # their is only one path 
