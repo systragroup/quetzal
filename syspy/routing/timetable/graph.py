@@ -199,7 +199,7 @@ def dijkstra_powered_single_source_labels(
     :return: a list of labels that track the search for the best paths to all the stops from the source
     """
 
-    stop_set = {node['destination'] for node in graph.node.values()}
+    stop_set = {node['destination'] for node in graph.nodes.values()}
 
     root = {
         'stop': graph.node[source]['destination'],
@@ -343,7 +343,7 @@ def single_source_labels(
     :return: a list of labels that track the search for the best paths to all the stops from the source
     """
 
-    stop_set = {node['destination'] for node in graph.node.values()}
+    stop_set = {node['destination'] for node in graph.nodes.values()}
 
     root = {
         'stop': graph.node[source]['destination'],

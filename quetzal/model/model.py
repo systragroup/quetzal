@@ -223,6 +223,8 @@ class Model(IntegrityModel):
             if only_attributes is not None and key not in only_attributes:
                 continue
             value = pd.read_hdf(filepath, key)
+            if isinstance(value, pd.DataFrame) and 'geometry' in value.columns:
+                value = gpd.GeoDataFrame(value)
             self.__setattr__(key, value)
 
         # some attributes may have been store in the json_series

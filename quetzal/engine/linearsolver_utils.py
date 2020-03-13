@@ -65,7 +65,7 @@ def build_indicator(od_stack, constrained_links):
     '''
     constrained_zip = zip(*constrained_links.items())
     keys, values = tuple(constrained_zip)
-    paths = od_stack['path']
+    paths = od_stack['link_path']
     indicator = pd.DataFrame([
         tuple(int(i in p) for i in keys)
         for p in paths
@@ -235,13 +235,20 @@ def build_constraints(
     b_tot_em = pd.DataFrame([tot_em_pos, tot_em_neg])
 
     # constraints on distance (C3)
-    vect_dist = od_stack['euclidean_distance']
-    dist_moy = (vect_dist.values*X).sum()/X.sum()
-    G1 = pd.DataFrame([[X[i]*(vect_dist[i] - dist_moy - pas_distance) for i in range(nb_od)]])
-    G2 = pd.DataFrame([[X[i]*(-vect_dist[i] + dist_moy - pas_distance) for i in range(nb_od)]])
-    G_y = pd.DataFrame([[0 for j in range(k)]])
-    G_sup = pd.concat([G1, G_y], axis=1)
-    G_inf = pd.concat([G2, G_y], axis=1)
+    if pas_distance is not None:
+        vect_dist = od_stack['euclidean_distance']
+        dist_moy = (vect_dist.values*X).sum()/X.sum()
+        G1 = pd.DataFrame([[X[i]*(vect_dist[i] - dist_moy - pas_distance) for i in range(nb_od)]])
+        G2 = pd.DataFrame([[X[i]*(-vect_dist[i] + dist_moy - pas_distance) for i in range(nb_od)]])
+        G_y = pd.DataFrame([[0 for j in range(k)]])
+        G_sup = pd.concat([G1, G_y], axis=1)
+        G_inf = pd.concat([G2, G_y], axis=1)
+    else:
+        G1 = pd.DataFrame([[X[i]*0 for i in range(nb_od)]])
+        G2 = pd.DataFrame([[X[i]*0 for i in range(nb_od)]])
+        G_y = pd.DataFrame([[0 for j in range(k)]])
+        G_sup = pd.concat([G1, G_y], axis=1)
+        G_inf = pd.concat([G2, G_y], axis=1)
 
     A_ub = pd.concat(
         [A_pos, A_neg, A_e, A_a, -A_e, -A_a, A_tot_em, -A_tot_em, G_sup, G_inf]

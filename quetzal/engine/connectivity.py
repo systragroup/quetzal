@@ -3,6 +3,7 @@
 from syspy.spatial import spatial
 from syspy.skims import skims
 import pandas as pd
+import geopandas as gpd
 import shapely
 
 def node_clustering(links, nodes, n_clusters, prefixe='', group_id=None,**kwargs):
@@ -81,7 +82,7 @@ def voronoi_graph_and_tesselation(nodes, max_length=None, coordinates_unit='degr
 def build_footpaths(nodes, speed=3, max_length=None, n_clusters=None, coordinates_unit='degree'):
 
     if n_clusters and n_clusters < len(nodes):
-        centroids, links = centroid_and_links(nodes, n_clusters)
+        centroids, links = centroid_and_links(nodes, n_clusters, coordinates_unit=coordinates_unit)
         nodes=nodes.loc[centroids]
         # not a bool for the geodataframe to be serializabe
         links['voronoi'] = 0 
@@ -112,7 +113,7 @@ def build_footpaths(nodes, speed=3, max_length=None, n_clusters=None, coordinate
     return footpaths
 
 
-def centroid_and_links(nodes, n_clusters):
+def centroid_and_links(nodes, n_clusters, coordinates_unit='degree'):
     
         clusters, cluster_series = spatial.zone_clusters(
             nodes, 
@@ -140,6 +141,9 @@ def centroid_and_links(nodes, n_clusters):
                         values.append([a, b, link_geometry(a, b)])
 
         links = pd.DataFrame(values, columns=['a', 'b', 'geometry'])
-        links['length'] = skims.distance_from_geometry(links['geometry'])
+        if coordinates_unit=='degree':
+            links['length'] = skims.distance_from_geometry(links['geometry'])
+        else:
+            links['length'] = gpd.GeoDataFrame(links).length
 
         return first, links

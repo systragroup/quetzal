@@ -119,8 +119,11 @@ def pool_and_geometries(pool, geometries):
     return done
 
 
-def snail_number(zones, center):
-    distance_series = zones['geometry'].apply(lambda g: center.distance(g))
+def snail_number(zones, center, distance_to='zone'):
+    if distance_to == 'zone':
+        distance_series = zones['geometry'].apply(lambda g: center.distance(g))
+    elif distance_to == 'centroid':
+        distance_series = zones['geometry'].apply(lambda g: center.distance(g.centroid))
     distance_series.name = 'cluster_distance'
     distance_series.sort_values(inplace=True)
     geometries = zones['geometry'].to_dict()
