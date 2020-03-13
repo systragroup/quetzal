@@ -526,6 +526,7 @@ def base_plot(df, geographical_bounds, *args, **kwargs):
 def linewidth_from_data_units(linewidth, axis, reference='y'):
     """
     Convert a linewidth in data units to linewidth in points.
+
     Parameters
     ----------
     linewidth: float
@@ -536,6 +537,7 @@ def linewidth_from_data_units(linewidth, axis, reference='y'):
     reference: string
         The axis that is taken as a reference for the data width.
         Possible values: 'x' and 'y'. Defaults to 'y'.
+
     Returns
     -------
     linewidth: float
@@ -600,47 +602,3 @@ def create_label_dataframe(df, label_column='label', linewidth_column='linewidth
     columns = ['label_angle',  'label_offset', 'va']
     label_df[columns] = label_df.apply(get_label_angle_alignment_offset, 1)[columns]
     return label_df
-
-import os
-import sys
-import PIL
-from PIL import Image
-import numpy as np
-work_path = r'../'
-plot_path = './'
-
-def hstack(image_list):
-    # pick the image which is the smallest, and resize the others to match it (can be arbitrary image shape here)
-    min_shape = sorted( [(np.sum(i.size), i.size ) for i in image_list])[0][1]
-    imgs_comb =  np.hstack( [np.asarray( i.resize(min_shape) ) for i in image_list] )
-    return PIL.Image.fromarray( imgs_comb)
-
-def vstack(image_list):
-    # pick the image which is the smallest, and resize the others to match it (can be arbitrary image shape here)
-    min_shape = sorted( [(np.sum(i.size), i.size ) for i in image_list])[0][1]
-    # for a vertical stacking it is simple: use vstack
-    imgs_comb = np.vstack([ np.asarray( i.resize(min_shape) ) for i in image_list]  )
-    return PIL.Image.fromarray( imgs_comb)
-
-def mstack(image_matrix, text_matrix=[]):
-    rows = [hstack(row) for row in image_matrix]
-    return vstack(rows)
-
-def combine_and_save(image_files, image_file, **kwargs):
-    image_matrix = [[PIL.Image.open(i) for i in row] for row in image_files]
-    image = mstack(image_matrix)
-    image.save(image_file)
-
-
-def list_files(path, patterns):
-    files = [
-        os.path.join(path, file)
-        for file in os.listdir(path)
-        if file.split('.')[-1].lower() in patterns
-    ]
-    return files
-
-def clear_folder(path):
-    files = list_files(path, ['PNGw', 'pgw'])
-    for file in files:
-        os.remove(file)
