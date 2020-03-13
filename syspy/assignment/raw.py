@@ -30,6 +30,8 @@ def assign(volume_array, paths, checkpoints=None, checkpoints_how='all'):
     nested_row_indices = [[i]*len(paths[i]) for i in range(len(volume_array))]
     row_indices = list(itertools.chain.from_iterable(nested_row_indices))
     column_indices = list(itertools.chain.from_iterable(paths))
+    if len(column_indices)==0:
+        return pd.DataFrame(columns=['volume', 'link']).set_index('link')
     nested_volumes = nested_list(volume_array, paths)
     volumes = list(itertools.chain.from_iterable(nested_volumes))
     try:

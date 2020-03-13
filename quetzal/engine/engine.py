@@ -418,7 +418,8 @@ def loaded_links_and_nodes(
     transfers=False,
     link_checkpoints=set(),
     node_checkpoints=set(),
-    checkpoints_how='all'
+    checkpoints_how='all',
+     **kwargs
 ):
     """
     The assignment function. The last step of modelling the demand.
@@ -472,8 +473,6 @@ def loaded_links_and_nodes(
     paths = merged[path_column].values
 
     def assigned_node_links(paths):
-        
-
         assigned = assignment_raw.assign(
             volume_array,
             paths,
