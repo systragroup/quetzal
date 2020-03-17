@@ -32,20 +32,23 @@ class AnalysisModel(summarymodel.SummaryModel):
 
 
 
-    def _aggregate(self, nb_clusters, cluster_column=None):
+    def _aggregate(self, nb_clusters, cluster_column=None, volume_column='volume'):
         """
         Aggregates a model (in order to perform optimization)
             * requires: nb_clusters, cluster_series, od_stack, indicator
             * builds: cluster_series, aggregated model, reduced indicator
         """
         self.agg = self.copy()
-        self.agg.preparation_clusterize_zones(nb_clusters, cluster_column, is_od_stack=True)
-        # self.agg.renumber(nb_clusters, cluster_column, is_od_stack=True)
+        self.agg.preparation_clusterize_zones(
+            nb_clusters,cluster_column, is_od_stack=True,
+            volume_columns=[volume_column], volume_od_columns=[volume_column]
+        )
         self.cluster_series = self.agg.cluster_series
         self.agg.indicator = linearsolver_utils.reduce_indicator(
             self.indicator,
             self.cluster_series,
-            self.od_stack
+            self.od_stack,
+            volume_column=volume_column
         )
 
     def _disaggregate(self):
@@ -55,7 +58,7 @@ class AnalysisModel(summarymodel.SummaryModel):
                 self.cluster_series
         )
 
-    def _build_pivot_stack_matrix(self, constrained_links, linprog_kwargs):
+    def _build_pivot_stack_matrix(self, constrained_links, linprog_kwargs, **kwargs):
         """
         Builds the pivot_stack_matrix. Performs the optimization.
             * requires: constrained_links, od_stack, indicator
@@ -65,7 +68,8 @@ class AnalysisModel(summarymodel.SummaryModel):
             self.indicator,
             constrained_links,
             self.od_stack,
-            **linprog_kwargs
+            **linprog_kwargs,
+            **kwargs
         )
 
     def _analysis_road_link_path(self, include_road_footpaths=False): 
@@ -97,6 +101,7 @@ class AnalysisModel(summarymodel.SummaryModel):
         constrained_links,
         nb_clusters=20,
         cluster_column=None,
+        link_path_column='link_path',
         linprog_kwargs={
             'bounds_A': [0.75, 1.5],
             'bounds_emissions': [0.8, 1.2],
@@ -104,7 +109,8 @@ class AnalysisModel(summarymodel.SummaryModel):
             'pas_distance': 200,
             'maxiter': 3000,
             'tolerance': 1e-5
-        }
+        },
+        **kwargs,
         ):
         """
         To perform the optimization on a model object once it is built and run,
@@ -125,12 +131,14 @@ class AnalysisModel(summarymodel.SummaryModel):
         """
         self.indicator = linearsolver_utils.build_indicator(
             self.od_stack,
-            constrained_links)
+            constrained_links,
+            link_path_column=link_path_column
+            )
         if len(self.zones) < nb_clusters:
-            self._build_pivot_stack_matrix(constrained_links, linprog_kwargs)
+            self._build_pivot_stack_matrix(constrained_links, linprog_kwargs, **kwargs)
         else:
-            self._aggregate(nb_clusters, cluster_column)
-            self.agg._build_pivot_stack_matrix(constrained_links, linprog_kwargs)
+            self._aggregate(nb_clusters, cluster_column, **kwargs)
+            self.agg._build_pivot_stack_matrix(constrained_links, linprog_kwargs, **kwargs)
             self._disaggregate()
 
     def analysis_pt_route_type(self, hierarchy):
