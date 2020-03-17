@@ -14,7 +14,8 @@ def linearsolver(
     bounds_tot_emissions,
     pas_distance,
     maxiter,
-    tolerance
+    tolerance,
+    **kwargs
 ):
     '''
     Cette fonction est le coeur de la méthode linear_solver.
@@ -40,7 +41,8 @@ def linearsolver(
         bounds_A,
         bounds_emissions,
         bounds_tot_emissions,
-        pas_distance
+        pas_distance,
+        **kwargs
     )
     try:
         l = linprog(obj, A_ub=A_ub, b_ub=b_ub, bounds=bound_ub,
@@ -57,7 +59,7 @@ def linearsolver(
         pass
 
 
-def build_indicator(od_stack, constrained_links):
+def build_indicator(od_stack, constrained_links, link_path_column='link_path'):
     '''
     :param od_stack (pd.DataFrame): od_stack of the model
     :param constrained_links (dict): constrained links and their volumes
@@ -65,7 +67,7 @@ def build_indicator(od_stack, constrained_links):
     '''
     constrained_zip = zip(*constrained_links.items())
     keys, values = tuple(constrained_zip)
-    paths = od_stack['link_path']
+    paths = od_stack[link_path_column]
     indicator = pd.DataFrame([
         tuple(int(i in p) for i in keys)
         for p in paths
@@ -73,7 +75,7 @@ def build_indicator(od_stack, constrained_links):
     return indicator
 
 
-def reduce_indicator(big_indicator, cluster_series, volumes):
+def reduce_indicator(big_indicator, cluster_series, volumes, volume_column='volume_pt'):
     '''
     :param big_indicator (pd.DataFrame): indicator of the entire model
     :param cluster_series (pd.Serie): correspondance between zones and clusters
@@ -91,7 +93,7 @@ def reduce_indicator(big_indicator, cluster_series, volumes):
             [i for i in range(nb_keys)]]
 
     indicator = pd.DataFrame([
-        tuple(np.ma.average(table[k], weights=table['volume_pt'], axis=0)
+        tuple(np.ma.average(table[k], weights=table[volume_column], axis=0)
             for k in range(nb_keys))
         for couple, table in grouped
         ]).fillna(0)
@@ -138,7 +140,8 @@ def build_constraints(
     bounds_A,
     bounds_emissions,
     bounds_tot_emissions,
-    pas_distance
+    pas_distance,
+    volume_column='volume_pt'
 ):
     """
     Ici on construit l'objectif et les contraintes du problème d'optimisation
@@ -177,7 +180,7 @@ def build_constraints(
     """
     
     od_stack = od_stack.sort_values(['origin', 'destination'])
-    volumes = od_stack['volume_pt']
+    volumes = od_stack[volume_column]
     zone_list = sorted(od_stack['origin'])
 
     I = np.array(indicator)

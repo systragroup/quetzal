@@ -310,7 +310,10 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 df[segment] = df['root']
 
     @track_args
-    def preparation_clusterize_zones(self, max_zones=500, cluster_column=None, is_od_stack=False):
+    def preparation_clusterize_zones(
+        self, max_zones=500, cluster_column=None,
+        is_od_stack=False, **kwargs
+        ):
         """
         clusterize zones
             * requires: zones, volumes
@@ -327,14 +330,16 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 self.micro_volumes,
                 self.micro_od_stack,
                 max_zones,
-                cluster_column
+                cluster_column,
+                **kwargs
             )
         else:
             self.zones, self.volumes, self.cluster_series = renumber.renumber(
                 self.micro_zones,
                 self.micro_volumes,
                 max_zones,
-                cluster_column
+                cluster_column,
+                **kwargs
             )
             
     @track_args
