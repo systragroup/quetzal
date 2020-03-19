@@ -270,12 +270,13 @@ def drop_secondary_components(links):
     """
     g = nx.Graph()
     g.add_edges_from(links[['a', 'b']].values.tolist())
-    l = list(nx.connected_component_subgraphs(g))
-    subgraph_length_list = [len(sg.node) for sg in l]
+    # l = list(nx.connected_component_subgraphs(g))  --> Deprecated with nx 2.4
+    l = [g.subgraph(c) for c in nx.connected_components(g)]
+    subgraph_length_list = [len(sg.nodes) for sg in l]
     max_length = max(subgraph_length_list)
 
-    main_graph = [sg for sg in l if len(sg.node) == max_length][0]
-    main_nodes = set(main_graph.node.keys())
+    main_graph = [sg for sg in l if len(sg.nodes) == max_length][0]
+    main_nodes = set(main_graph.nodes.keys())
     main_links = links[links['a'].isin(main_nodes)]
 
     return main_links

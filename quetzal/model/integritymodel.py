@@ -75,7 +75,10 @@ class IntegrityModel:
         self.utility_values = pd.DataFrame()
         
 
-    def integrity_test_collision(self, sets=('links', 'nodes', 'zones')):
+    def integrity_test_collision(
+        self, 
+        sets=('links', 'nodes', 'zones', 'road_links', 'road_nodes')
+        ):
         """
             * requires: links, nodes, zones
         """

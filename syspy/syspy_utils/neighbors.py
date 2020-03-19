@@ -521,7 +521,10 @@ def compute_neighborhood_with_origins(
 
     if colors_df is None:
         # Color from Colorbrewer
-        colors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928']
+        colors = [
+            '#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c',
+            '#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928'
+        ]
         colors_df = pd.Series({a: b for a,b in zip(list(zones[macro_col].unique()), colors)})
 
     # Compute assignment for each macro zone    
@@ -559,7 +562,10 @@ def compute_neighborhood_with_origins(
         offset = offset_df[[col]].rename(columns={col:'offset_vol'})
         width = width_df[[col, 'geometry']].rename(columns={col:'width_vol'})
         df = width.merge(offset, left_index=True, right_index=True)
-        a = get_shp_with_offset(df, 'width_vol', outer_average_width=15, max_value=max_value, color=color, offset_col='offset_vol')
+        a = get_shp_with_offset(
+            df, 'width_vol', outer_average_width=15,
+            max_value=max_value, color=color, offset_col='offset_vol'
+        )
         to_export = gpd.GeoDataFrame(a)
         if zones.crs:
             to_export.crs = zones.crs
