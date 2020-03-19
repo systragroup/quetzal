@@ -31,7 +31,7 @@ To create quetzal_env automatically and install quetzal:
 -(base): `windows-install.bat`
 
 To manage the environments manually and install quetzal:
-- (base): `conda install nb_conda_kernels; conda create -n quetzal pip`
+- (base): `conda install nb_conda_kernels; conda create -n quetzal_env pip`
 - Enable virtual environments in Jupyter `conda activate quetzal_env`
 - (quentzal_env) `windows-install-here.bat`
 
