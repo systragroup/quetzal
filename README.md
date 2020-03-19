@@ -21,6 +21,7 @@ pip install -e .
 `Conda` is supposed to be installed.
 
 `windows-install` creates an environment `quetzal_env` and installs quetzal there
+
 `windows-install-here` installs quetzal in the active environment
 
 To install quetzal in base environment:
