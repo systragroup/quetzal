@@ -59,7 +59,7 @@ def sort_links(to_sort, a_name='a', b_name='b', max_iter=50):
     return sorted_line
 
 
-def shift_loadedlinks_alightings(load_df, load_column, alighting_column, boarding_column):
+def shift_loadedlinks_alightings(load_df, load_column='load', alighting_column='alightings', boarding_column='boardings'):
     """
     Shift alighting column in a loadedlinks to get a station-wise df.
     """
@@ -144,18 +144,15 @@ def plot_load_b_a_for_loadedlinks(
         align='center'
     )
     
-    plt.xticks(
-        load_df['link_sequence'].values,
-        load_df['a'].values,
-        ha='right',
-        rotation=45
-    )
+    ax.set_xticks(load_df['link_sequence'].values) 
+    ax.set_xticklabels(load_df['a'].values, ha='right', rotation=45)
+
     return ax
 
 
 def create_two_directions_load_b_a_graph(
         load_fwd_bwd, 
-        load_column='load', boarding_column='boarding', alighting_column='alighting',
+        load_column='load', boarding_column='boardings', alighting_column='alightings',
         forward_col_suffix='_fwd', backward_col_suffix='_bwd',
         forward_label='forward', backward_label='backward', 
         legend=True, **kwargs):
@@ -218,7 +215,7 @@ def create_two_directions_load_b_a_graph(
 
 def directional_loads_to_station_bidirection_load(
         load_fwd, load_bwd, stations_to_parent_stations={},
-        load_column='load', boarding_column='boarding', alighting_column='alighting',
+        load_column='load', boarding_column='boardings', alighting_column='alightings',
         forward_suffix='_fwd', backward_suffix='_bwd'):
     """
     Take forward and backward loaded links for a line and return a station-oriented load df
