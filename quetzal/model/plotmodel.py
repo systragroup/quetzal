@@ -147,6 +147,7 @@ class PlotModel(summarymodel.SummaryModel):
 
         return fig, axes
 
+
     def plot_load_ba_graph(
         self, route, by='route_id', stop_name_column=None, graph_direction='both',
         max_value=None, yticks=None, reverse_direction=False,
@@ -154,6 +155,7 @@ class PlotModel(summarymodel.SummaryModel):
     ):
         """
         Plot line graph with load, boardings and alightings
+
         :param route: name of line to plot. Must be a value of the param 'by' column
         :param by (route_id): name of column to search route from:
         :param stop_name_column (None): column of nodes dataframe containing stop names
@@ -161,6 +163,7 @@ class PlotModel(summarymodel.SummaryModel):
             *both (default): try to plot the two directions in the same graphe
             *single: one graph per direction
         :param reverse_direction (False): plot directions in reversed order
+
         Returns fig, axes
         """
 
@@ -201,8 +204,6 @@ class PlotModel(summarymodel.SummaryModel):
                     yticks = sorted(set(yticks).union(-yticks))
                     plt.setp(axes, yticks=yticks)
 
-
-
         if graph_direction == 'single':
             fig, ax_array = plt.subplots(2,1)
             axes = fig.get_axes()
@@ -231,4 +232,4 @@ def _both_directions_graph_possible(df):
         if str(e) == 'Cannot plot both directions':
             return False
         else:
-            raise(e) 
+            raise(e)
