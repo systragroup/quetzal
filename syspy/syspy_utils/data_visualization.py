@@ -373,7 +373,7 @@ spectral = list(reversed(['#9e0142','#d53e4f','#f46d43','#fdae61','#fee08b','#e6
 from shapely import geometry
 def bandwidth(
     gdf, value_column, max_value=None, power=1, legend=True, legend_values=None, legend_length=1/3,
-    label_column=None,  max_linewidth_meters=100, line_offset=True, cmap=spectral,
+    label_column=None,  max_linewidth_meters=100, variable_width=True, line_offset=True, cmap=spectral,
     geographical_bounds=None, label_kwargs={'size':12}, *args, **kwargs
     ):
     # TODO: 
@@ -409,7 +409,10 @@ def bandwidth(
     # Color
     df['color'] = color_series(df['power'], colors=cmap, max_value=power_max_value)
     # Linewidth
-    df['geographical_width'] = width_series(df['power'], max_linewidth_meters, max_value=power_max_value)
+    if variable_width:
+        df['geographical_width'] = width_series(df['power'], max_linewidth_meters, max_value=power_max_value)
+    else:
+        df['geographical_width'] = max_linewidth_meters
     df['linewidth'] = linewidth_from_data_units(df['geographical_width'].values, plot)
     # Offset
     if line_offset:
