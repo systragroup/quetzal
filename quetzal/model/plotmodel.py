@@ -203,7 +203,7 @@ class PlotModel(summarymodel.SummaryModel):
                 plt.setp(axes, ylim=[-max_value, max_value])
                 if yticks is not None:
                     yticks = sorted(set(yticks).union(-yticks))
-                    plt.setp(axes, yticks=yticks)
+                    plt.setp(axes, yticks=yticks, yticklabels=map(abs,yticks))
 
         if graph_direction == 'single':
             fig, ax_array = plt.subplots(2,1)
