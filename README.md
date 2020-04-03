@@ -30,6 +30,7 @@ press enter to accept default environment name
 (base) C:users\you\path\to\quetzal> windows-install.bat
 ```
 press enter to accept default environment name
+
 security warning: the host is added to pip.ini  
 #### To install quetzal in active environment
 ```bash
