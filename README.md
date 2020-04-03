@@ -19,21 +19,24 @@ pip install -e .
 ```
 ### For Windows
 `Conda` is supposed to be installed.
-
+####
 To create quetzal_env automatically and install quetzal
 ```bash
 (base) C:users\you\path\to\quetzal> `windows-install.bat`
 ```
+press enter to accept default environment name
+####
 If you are facing SSL issues:
 ```bash
 (base) pip config set global.trusted-host "pypi.org files.pythonhosted.org"
-(base) C:users\you\path\to\quetzal> `windows-install.bat`
+(base) C:users\you\path\to\quetzal> windows-install.bat
 ```
+press enter to accept default environment name
 security warning: the host is added to pip.ini  
-
+####
 To install quetzal in active environment:
 ```bash
-(base) C:users\you\path\to\quetzal> `windows-install-here.bat`
+(base) C:users\you\path\to\quetzal> windows-install-here.bat
 ```
 
 
