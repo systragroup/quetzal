@@ -20,20 +20,22 @@ pip install -e .
 ### For Windows
 `Conda` is supposed to be installed.
 
-`windows-install` creates an environment `quetzal_env` and installs quetzal there
+To create quetzal_env automatically and install quetzal
+```bash
+(base) C:users\you\path\to\quetzal> `windows-install.bat`
+```
+If you are facing SSL issues:
+```bash
+(base) pip config set global.trusted-host "pypi.org files.pythonhosted.org"
+(base) C:users\you\path\to\quetzal> `windows-install.bat`
+```
+security warning: the host is added to pip.ini  
 
-`windows-install-here` installs quetzal in the active environment
+To install quetzal in active environment:
+```bash
+(base) C:users\you\path\to\quetzal> `windows-install-here.bat`
+```
 
-To install quetzal in base environment:
--(base): `windows-install-here.bat`
-
-To create quetzal_env automatically and install quetzal:
--(base): `windows-install.bat`
-
-To manage the environments manually and install quetzal:
-- (base): `conda install nb_conda_kernels; conda create -n quetzal_env pip`
-- Enable virtual environments in Jupyter `conda activate quetzal_env`
-- (quentzal_env) `windows-install-here.bat`
 
 
 
