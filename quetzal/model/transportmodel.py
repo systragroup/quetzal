@@ -34,15 +34,15 @@ class TransportModel(optimalmodel.OptimalModel):
     @track_args
     def step_distribution(
         self,
-        impedance_matrix=None,
+        deterrence_matrix=None,
         **od_volume_from_zones_kwargs
     ):
         """
         * requires: zones
         * builds: volumes
 
-        :param impedance_matrix: an OD unstaked friction dataframe
-            used to compute the distribution.
+        :param deterrence_matrix: an OD unstaked dataframe representing the disincentive to 
+            travel as distance/time/cost increases.
         :param od_volume_from_zones_kwargs: if the friction matrix is not
             provided, it will be automatically computed using a gravity distribution which
             uses the following parameters:
@@ -52,7 +52,7 @@ class TransportModel(optimalmodel.OptimalModel):
         """
         self.volumes = engine.od_volume_from_zones(
             self.zones,
-            impedance_matrix,
+            deterrence_matrix,
             coordinates_unit=self.coordinates_unit,
             **od_volume_from_zones_kwargs
         )
@@ -123,11 +123,19 @@ class TransportModel(optimalmodel.OptimalModel):
         walk_on_road=False, 
         keep_graph=False,
         keep_pathfinder=False,
+        force=False,
         **kwargs):
         """
         * requires: zones, links, footpaths, zone_to_road, zone_to_transit
         * builds: pt_los
         """
+        sets = ['nodes', 'links', 'zones']
+        if walk_on_road:
+            sets += ['road_nodes', 'road_links']
+
+        if not force:
+            self.integrity_test_collision(sets)
+
         self.links = engine.graph_links(self.links)
 
         publicpathfinder = PublicPathFinder(self, walk_on_road=walk_on_road)

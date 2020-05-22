@@ -3,12 +3,14 @@
 import pandas as pd
 import numpy as np
 
-from quetzal.engine import engine,  connectivity
+from quetzal.engine import engine,  connectivity, gps_tracks
 from quetzal.engine.add_network import NetworkCaster
 from quetzal.model import model, cubemodel
 
 from syspy.skims import skims
 from syspy.renumber import renumber
+
+from tqdm import tqdm
 
 
 def read_hdf(filepath):
@@ -353,3 +355,39 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         self.node_clusters['geometry'] = self.node_clusters[
             'geometry'
         ].apply(lambda g: g.buffer(1e-9))
+
+
+    def preparation_map_tracks(
+        self, 
+        agg={'gps_speed': lambda s: s.mean() * 3.6}, 
+        buffer=50, 
+        smoothing_span=100, 
+        *args, **kwargs
+    ):
+        # agg = ['mean', 'min', 'max', 'std', list] for extensive description of speeds
+        to_concat = []
+        iterator = tqdm(self.track_points['trip_id'].unique())
+        for trip_id in iterator:
+            iterator.desc = str(trip_id)
+            points = self.track_points.loc[self.track_points['trip_id'] == trip_id]
+            times = gps_tracks.get_times(
+                points, 
+                road_links=self.road_links, 
+                buffer=buffer, 
+                road_nodes=self.road_nodes, 
+                smoothing_span=smoothing_span
+            )
+            times['trip_id'] = trip_id
+            to_concat.append(times)
+            
+        # INDEX
+        self.road_links.drop(['index'], axis=1, errors='ignore', inplace=True)
+        indexed = self.road_links.reset_index().set_index(['a', 'b'])['index'].to_dict()
+        concatenated = pd.concat(to_concat)
+        concatenated['road_link'] = concatenated.apply(lambda r: indexed[(r['a'], r['b'])], axis=1) 
+        aggregated = concatenated.groupby(['road_link'])['speed'].agg(agg)
+        
+        for c in aggregated.columns:
+            self.road_links[c] = aggregated[c]
+            
+        self.track_links = concatenated.drop(['a', 'b'], axis=1)

@@ -7,6 +7,7 @@ backports-abc>=0.4
 beautifulsoup4>=4.3.2
 bitarray>=0.8.1
 branca
+contextily
 DateTime
 dbf
 descartes
@@ -21,9 +22,9 @@ kml2geojson
 networkx
 numpy
 openpyxl
+osmnx==0.11.4
 pandas
 pyPdf
-pyproj
 requests
 scikit-learn
 scipy

@@ -29,15 +29,18 @@ track_args = model.track_args
 log = model.log
 
 class AnalysisModel(summarymodel.SummaryModel):
-    
-    def _aggregate(self, nb_clusters):
+
+
+
+    def _aggregate(self, nb_clusters, cluster_column=None):
         """
         Aggregates a model (in order to perform optimization)
             * requires: nb_clusters, cluster_series, od_stack, indicator
             * builds: cluster_series, aggregated model, reduced indicator
         """
         self.agg = self.copy()
-        self.agg.renumber(nb_clusters, is_od_stack=True)
+        self.agg.preparation_clusterize_zones(nb_clusters, cluster_column, is_od_stack=True)
+        # self.agg.renumber(nb_clusters, cluster_column, is_od_stack=True)
         self.cluster_series = self.agg.cluster_series
         self.agg.indicator = linearsolver_utils.reduce_indicator(
             self.indicator,
@@ -69,6 +72,7 @@ class AnalysisModel(summarymodel.SummaryModel):
         self,
         constrained_links,
         nb_clusters=20,
+        cluster_column=None,
         linprog_kwargs={
             'bounds_A': [0.75, 1.5],
             'bounds_emissions': [0.8, 1.2],
@@ -91,8 +95,8 @@ class AnalysisModel(summarymodel.SummaryModel):
             liens contraints dans chaque OD)
         1. Agrégation du modèle.
         2. Résolution du problème d'optimisation linéaire pour construire
-            pivot_stack_matrix (mztrice pivot). Plus de détails dans
-            linersolver_utils
+            pivot_stack_matrix (matrice pivot). Plus de détails dans
+            linearsolver_utils.
         3. Désagrégation de la matrice pivot pour revenir au modèle de base.
         """
         self.indicator = linearsolver_utils.build_indicator(
@@ -101,7 +105,7 @@ class AnalysisModel(summarymodel.SummaryModel):
         if len(self.zones) < nb_clusters:
             self._build_pivot_stack_matrix(constrained_links, linprog_kwargs)
         else:
-            self._aggregate(nb_clusters)
+            self._aggregate(nb_clusters, cluster_column)
             self.agg._build_pivot_stack_matrix(constrained_links, linprog_kwargs)
             self._disaggregate()
 
@@ -477,4 +481,33 @@ class AnalysisModel(summarymodel.SummaryModel):
             del self.pt_los['arod_list']
             del self.pt_los['route_fares']
             del self.pt_los['od_fares']
+
+    def generate_production_attraction_densities(self, volume_columns=None):
+        if volume_columns is None:
+            volume_columns = list(self.volumes.columns)
+        prod = self.volumes[list(set(volume_columns + ['origin', 'destination']))].groupby(
+            'origin', as_index=False
+        ).sum()
+        attr = self.volumes[list(set(volume_columns + ['origin', 'destination']))].groupby(
+            'destination', as_index=False
+        ).sum()
+        # Add geometry
+        prod = gpd.GeoDataFrame(
+            prod.rename(columns={'origin': 'zone_id'}).merge(
+                self.zones[['geometry']], left_on='zone_id', right_index=True
+            )
+        )
+        attr = gpd.GeoDataFrame(
+            attr.rename(columns={'destination': 'zone_id'}).merge(
+                self.zones[['geometry']], left_on='zone_id', right_index=True
+            )
+        )
+        # Compute densities
+        for col in list(set(prod.columns).intersection(set(volume_columns))):
+            prod[col + r'_d'] = prod[col] / prod.area * 10**6
+            attr[col + r'_d'] = attr[col] / attr.area * 10**6
+        
+        self.production = prod
+        self.attraction = attr
+
 
