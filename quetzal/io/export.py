@@ -401,12 +401,13 @@ def build_lines(links, line_columns='all', group_id='trip_id', sum_columns=[], m
     lines['geometry'] = links.groupby(group_id)['geometry'].agg(
         lambda s: ops.linemerge(list(s))) # force the series to a list
     lines = lines.dropna(subset =['geometry'])
+
     if force_linestring:
-        iloc = lines['geometry'].apply(lambda g: g.geom_type) == 'MultiLineString'
-        if iloc.sum() > 0:
-            loc = iloc, 'geometry'
-            lines.loc[loc] = lines.loc[loc].apply(line_list_to_polyline)
-            lines = lines.loc[~lines['geometry'].apply(lambda g: g.is_empty)]
+        lines['geometry'] = links.groupby(group_id)['geometry'].agg(
+            lambda s: line_list_to_polyline(list(s))) # force the series to a list
+
+    lines = lines.dropna(subset =['geometry'])
+    lines = lines.loc[~lines['geometry'].apply(lambda g: g.is_empty)]
     
     return lines.reset_index()
 

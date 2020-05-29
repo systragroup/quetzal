@@ -34,15 +34,15 @@ class TransportModel(optimalmodel.OptimalModel):
     @track_args
     def step_distribution(
         self,
-        impedance_matrix=None,
+        deterrence_matrix=None,
         **od_volume_from_zones_kwargs
     ):
         """
         * requires: zones
         * builds: volumes
 
-        :param impedance_matrix: an OD unstaked friction dataframe
-            used to compute the distribution.
+        :param deterrence_matrix: an OD unstaked dataframe representing the disincentive to 
+            travel as distance/time/cost increases.
         :param od_volume_from_zones_kwargs: if the friction matrix is not
             provided, it will be automatically computed using a gravity distribution which
             uses the following parameters:
@@ -52,7 +52,7 @@ class TransportModel(optimalmodel.OptimalModel):
         """
         self.volumes = engine.od_volume_from_zones(
             self.zones,
-            impedance_matrix,
+            deterrence_matrix,
             coordinates_unit=self.coordinates_unit,
             **od_volume_from_zones_kwargs
         )
