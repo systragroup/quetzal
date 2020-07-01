@@ -2,7 +2,8 @@
 
 from quetzal.engine import engine
 
-
+from scipy.sparse import csr_matrix
+from scipy.sparse.csgraph import dijkstra
 import pandas as pd
 import numpy as np
 import networkx as nx
@@ -44,67 +45,87 @@ from quetzal.os import parallel_call
 #         )
 #     return nx_graph
 
+def get_path(predecessors, i, j):
+    path = [j]
+    k = j
+    p = 0
+    while p != -9999:
+        k = p = predecessors[i, k]
+        path.append(p)
+    return path[::-1][1:]
+
 def path_and_duration_from_graph(
-    nx_graph,
+    nx_graph, 
     pole_set,
     sources=None,
     reversed_nx_graph=None,
     reverse=False,
     ntlegs_penalty=1e9
 ):
-        
-    allpaths = {}
-    alllengths = {}
-    if sources is None:
-        sources = pole_set
-        
-    
-    # sources
-
-    allpaths = {}
-    alllengths = {}  
-
-    iterator = set(sources).intersection(list(pole_set))
-    for pole in iterator:
-        olengths, opaths  = nx.single_source_dijkstra(nx_graph, pole)
-        opaths = {target: p for target, p in opaths.items() if target in pole_set}
-        olengths = {target: p for target, p in olengths.items() if target in pole_set}
-        alllengths[pole], allpaths[pole] = olengths, opaths
-
-    duration_stack = assignment_raw.nested_dict_to_stack_matrix(
-        alllengths, pole_set, name='gtime')
-    path_stack = assignment_raw.nested_dict_to_stack_matrix(
-        allpaths, pole_set, name='path')
-    source_los = pd.merge(duration_stack, path_stack, on=['origin', 'destination'])
-    source_los.loc[source_los['origin']!=source_los['destination'],'gtime'] -= 2*ntlegs_penalty
+    sources = pole_set if sources is None else sources
+    source_los=sparse_los_from_nx_graph(nx_graph, pole_set, sources=sources)
     source_los['reversed'] = False
     
-    # targets
-    if reverse or reversed_nx_graph is not None:
+    reverse = reverse or reversed_nx_graph is not None
+    if reverse:
         if reversed_nx_graph is None:
             reversed_nx_graph = nx_graph.reverse()
-
-        iterator = set(sources).intersection(list(pole_set))
-        for pole in iterator:
-            alllengths[pole], allpaths[pole] = nx.single_source_dijkstra(
-                reversed_nx_graph, source=pole)
-
-        duration_stack = assignment_raw.nested_dict_to_stack_matrix(
-            alllengths, pole_set, name='gtime')
-        path_stack = assignment_raw.nested_dict_to_stack_matrix(
-            allpaths, pole_set, name='path')
-        target_los = pd.merge(duration_stack, path_stack, on=['origin', 'destination'])
-        target_los['reversed'] = True
-        target_los['path'] = target_los['path'].apply(lambda x: list(reversed(x)))
-        target_los[['origin', 'destination']] = target_los[['destination', 'origin']]
-        target_los.loc[target_los['origin']!=target_los['destination'],'gtime'] -= 2*ntlegs_penalty
         
-        los = pd.concat([source_los, target_los])
-        # los['gtime'] = np.clip(los['gtime'], 0, None) # no negative time
-    else:
+        target_los=sparse_los_from_nx_graph(reversed_nx_graph, pole_set, sources=sources)
+        target_los['path'].apply(lambda x: list(reversed(x)))
+        target_los['reversed'] = True
+        
+    los = pd.concat([source_los, target_los]) if reverse else source_los
+    los.loc[los['origin'] != los['destination'],'gtime'] -= 2*ntlegs_penalty
+    return los
+    
+    
+def sparse_los_from_nx_graph(nx_graph, pole_set, sources=None):
 
-        return source_los
+    sources = pole_set if sources is None else sources
+    # INDEX
+    pole_list = sorted(list(pole_set)) # fix order
+    source_list = [zone for zone in pole_list if zone in sources]
 
+    nodes = list(nx_graph.nodes)
+    node_index = dict(zip(nodes, range(len(nodes))))
+    
+    zones = [node_index[zone] for zone in source_list]
+    source_index = dict(zip(source_list, range(len(source_list))))
+    zone_index = dict(zip(pole_list, range(len(pole_list))))
+
+    # SPARSE GRAPH
+    sparse = nx.to_scipy_sparse_matrix(nx_graph)
+    graph = csr_matrix(sparse)
+    dist_matrix, predecessors = dijkstra(
+        csgraph=graph, 
+        directed=True, 
+        indices=zones, 
+        return_predecessors=True
+    )
+
+    # LOS LAYOUT
+    df = pd.DataFrame(dist_matrix)
+
+    df.index = [zone for zone in pole_list if zone in sources]
+    df.columns = list(nx_graph.nodes)
+    df.columns.name = 'destination'
+    df.index.name = 'origin'
+    stack = df[pole_list].stack()
+    stack.name = 'gtime'
+    los = stack.reset_index()
+
+    # QUETZAL FORMAT
+    los = los.loc[los['gtime'] < np.inf]
+
+
+    # BUILD PATH FROM PREDECESSORS
+    od_list = los[['origin', 'destination']].values.tolist()
+    paths = [
+        [nodes[i] for i in get_path(predecessors, source_index[o], node_index[d])]
+        for o, d in od_list
+    ]
+    los['path'] = paths
     return los
 
 def dumps_kwargs(kwargs):
@@ -198,12 +219,16 @@ class PublicPathFinder:
         )
         
     def find_best_path(self, **kwargs):
-        pt_los, self.nx_graph = engine.path_and_duration_from_links_and_ntlegs(
+        self.nx_graph = engine.multimodal_graph(
             self.links,
             ntlegs=self.ntlegs,
             pole_set=set(self.zones.index),
             footpaths=self.footpaths,
             **kwargs
+        )
+        pt_los = path_and_duration_from_graph(
+            self.nx_graph, 
+            pole_set=set(self.zones.index)
         )
 
         pt_los['pathfinder_session'] = 'best_path'

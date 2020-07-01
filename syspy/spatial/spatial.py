@@ -155,8 +155,8 @@ def linestring_geometry(dataframe, point_dict, from_point, to_point):
 def _join_geometry(link_row, one, many):
     return shapely.geometry.LineString(
         [
-            one['geometry'].loc[link_row['ix_one']],
-            many['geometry'].loc[link_row['ix_many']]
+            one[link_row['ix_one']],
+            many[link_row['ix_many']]
         ]
     )
 
@@ -213,8 +213,10 @@ def nearest(one, many, geometry=False, n_neighbors=1):
 
     links = pd.concat(to_concat)
 
+    one_dict = one['geometry'].to_dict()
+    many_dict = many['geometry'].to_dict()
     if geometry:
-        links['geometry'] = links.apply(lambda r: _join_geometry(r, one, many), axis=1)
+        links['geometry'] = links.apply(lambda r: _join_geometry(r, one_dict, many_dict), axis=1)
 
     return links
 
