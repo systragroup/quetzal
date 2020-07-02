@@ -12,13 +12,13 @@ import syspy.assignment.raw as assignment_raw
 from tqdm import tqdm
 
 
-def od_volume_from_zones(zones, impedance_matrix=None, power=2,
+def od_volume_from_zones(zones, deterrence_matrix=None, power=2,
                          coordinates_unit='degree', intrazonal=False):
     """
     Use this function to build an Origin -> Destination demand matrix.
-        * an impedance matrix can be provided, if not:
+        * a deterrence matrix can be provided, if not:
             * The euclidean distance matrix will be calculated automatically.
-            * The friction matrix will be calculated from the distance matrix
+            * The deterrence matrix will be calculated from the distance matrix
                 (elevated to a given power)
         * A doubly constrained distribution will be performed in the end,
             it is based on zones['emission'] and zones['attraction']
@@ -30,8 +30,8 @@ def od_volume_from_zones(zones, impedance_matrix=None, power=2,
 
     :param zones: zoning GeoDataFrame, indexed by the zones numeric
         contains a geometry column named 'geometry', productions and attractions
-    :param impedance_matrix: Default None. The impedance matrix used to compute
-        the distribution. If not provided, an impedance matrix will automatically
+    :param deterrence_matrix: Default None. The deterrence matrix used to compute
+        the distribution. If not provided, a deterrence matrix will automatically
         be computed from the euclidean distance elevated to a given power.
     :param power: the friction curve used in the gravity model is equal to
         the euclidean distance to the power of this exponent
@@ -41,7 +41,7 @@ def od_volume_from_zones(zones, impedance_matrix=None, power=2,
     :return: volumes, a DataFrame with the following columns
         ['origin', 'destination', 'volume']
     """
-    if impedance_matrix is None:
+    if deterrence_matrix is None:
         euclidean = skims.euclidean(zones, coordinates_unit=coordinates_unit, intrazonal=intrazonal)
         distance = euclidean.set_index(
             ['origin', 'destination'])['euclidean_distance'].unstack('destination')
@@ -50,18 +50,15 @@ def od_volume_from_zones(zones, impedance_matrix=None, power=2,
         if not intrazonal:
             # friction the impedance matrix
             distance.replace(0, 1e9, inplace=True)
-        friction = np.power(distance, -power)
+        deterrence_matrix = np.power(distance, -power)
 
-        friction.replace(float('inf'), 1e9, inplace=True)
-
-    else:
-        friction = impedance_matrix
+        deterrence_matrix.replace(float('inf'), 1e9, inplace=True)
 
     # gravitaire doublement contraint
     volume_array = distribution.CalcDoublyConstrained(
         zones['emission'].values,
         zones['attraction'].values,
-        friction.values
+        deterrence_matrix.values
     )
 
     volumes = pd.DataFrame(

@@ -1,8 +1,10 @@
 @echo off
 cd "%~dp0"
 
+
 call set SSL_NO_VERIFY=1
 call conda config --set ssl_verify false
+call conda install nb_conda_kernels
 
 SET /P env_name=enter an environment name (default = quetzal_env):
 IF NOT DEFINED env_name SET "env_name=quetzal_env"
@@ -24,7 +26,7 @@ for /f "delims=" %%a in ('python get_conda_install_args.py') do set conda_cmd=%%
 @echo on
 call conda install -y ipykernel
 call conda install -y pytables
-call conda install -y geopandas
+call conda install -c conda-forge geopandas==0.7
 call conda install -y -c conda-forge contextily
 call %conda_cmd%
 call pip install -e . --trusted-host pypi.org --trusted-host files.pythonhosted.org

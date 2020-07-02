@@ -22,7 +22,7 @@ kml2geojson
 networkx
 numpy
 openpyxl
-osmnx
+osmnx==0.11.4
 pandas
 pyPdf
 requests
