@@ -211,7 +211,7 @@ def multimodal_graph(
         include_igraph=False,
         boarding_cost=boarding_cost
     )
-    ntlegs['time'] += ntlegs_penalty
+    ntlegs.loc[ntlegs['direction']=='access', 'time'] += ntlegs_penalty
     nx_graph.add_weighted_edges_from(ntlegs[['a', 'b', 'time']].values.tolist())
 
     if footpaths is not None:

@@ -60,10 +60,12 @@ def path_and_duration_from_graph(
     sources=None,
     reversed_nx_graph=None,
     reverse=False,
-    ntlegs_penalty=1e9
+    ntlegs_penalty=1e9,
+    cutoff=np.inf,
 ):
     sources = pole_set if sources is None else sources
-    source_los=sparse_los_from_nx_graph(nx_graph, pole_set, sources=sources)
+    source_los=sparse_los_from_nx_graph(
+        nx_graph, pole_set, sources=sources, cutoff=cutoff+ntlegs_penalty)
     source_los['reversed'] = False
     
     reverse = reverse or reversed_nx_graph is not None
@@ -71,16 +73,17 @@ def path_and_duration_from_graph(
         if reversed_nx_graph is None:
             reversed_nx_graph = nx_graph.reverse()
         
-        target_los=sparse_los_from_nx_graph(reversed_nx_graph, pole_set, sources=sources)
+        target_los=sparse_los_from_nx_graph(
+            reversed_nx_graph, pole_set, sources=sources, cutoff=cutoff+ntlegs_penalty)
         target_los['path'].apply(lambda x: list(reversed(x)))
         target_los['reversed'] = True
         
     los = pd.concat([source_los, target_los]) if reverse else source_los
-    los.loc[los['origin'] != los['destination'],'gtime'] -= 2*ntlegs_penalty
+    los.loc[los['origin'] != los['destination'],'gtime'] -= ntlegs_penalty
     return los
     
     
-def sparse_los_from_nx_graph(nx_graph, pole_set, sources=None):
+def sparse_los_from_nx_graph(nx_graph, pole_set, sources=None, cutoff=np.inf):
 
     sources = pole_set if sources is None else sources
     # INDEX
@@ -101,7 +104,8 @@ def sparse_los_from_nx_graph(nx_graph, pole_set, sources=None):
         csgraph=graph, 
         directed=True, 
         indices=zones, 
-        return_predecessors=True
+        return_predecessors=True,
+        limit=cutoff
     )
 
     # LOS LAYOUT
@@ -218,7 +222,7 @@ class PublicPathFinder:
             **kwargs
         )
         
-    def find_best_path(self, **kwargs):
+    def find_best_path(self, cutoff=np.inf, **kwargs):
         self.nx_graph = engine.multimodal_graph(
             self.links,
             ntlegs=self.ntlegs,
@@ -228,7 +232,8 @@ class PublicPathFinder:
         )
         pt_los = path_and_duration_from_graph(
             self.nx_graph, 
-            pole_set=set(self.zones.index)
+            pole_set=set(self.zones.index),
+            cutoff=cutoff
         )
 
         pt_los['pathfinder_session'] = 'best_path'
@@ -314,7 +319,14 @@ class PublicPathFinder:
         reversed_broken.remove_edges_from(reversed_ebunch)
         return broken, reversed_broken
 
-    def find_broken_route_paths(self, speedup=False, workers=1, *args, **kwargs):
+    def find_broken_route_paths(
+        self, 
+        speedup=False, 
+        workers=1, 
+        cutoff=np.inf, 
+        *args, 
+        **kwargs
+    ):
 
         if workers > 1:
             self.find_broken_route_paths_parallel(
@@ -338,7 +350,8 @@ class PublicPathFinder:
                 nx_graph=broken,
                 reversed_nx_graph=reversed_broken,
                 pole_set=set(self.zones.index).intersection(set(self.ntlegs['a'])),
-                sources=set(zones)
+                sources=set(zones),
+                cutoff=cutoff
             )
             
             los_tuples.append([route, los]) 
@@ -448,7 +461,7 @@ class PublicPathFinder:
 
         return broken
 
-    def find_broken_mode_paths(self, workers=1, *args, **kwargs):
+    def find_broken_mode_paths(self, workers=1, cutoff=np.inf, *args, **kwargs):
 
         if workers > 1:
             self.find_broken_mode_paths_parallel(
@@ -471,6 +484,7 @@ class PublicPathFinder:
                 nx_graph=broken,
                 reversed_nx_graph=None,
                 pole_set=set(self.zones.index).intersection(set(self.ntlegs['a'])),
+                cutoff=cutoff
             )
 
             los_tuples.append([combination, los])
@@ -543,27 +557,28 @@ class PublicPathFinder:
         speedup=False,
         route_workers=1,
         mode_workers=1,
+        cutoff=np.inf,
         **kwargs
     ):
         to_concat = []
         if broken_routes:
-            self.find_best_path(**kwargs) # builds the graph
+            self.find_best_path(cutoff=cutoff,**kwargs) # builds the graph
             to_concat.append(self.best_paths)
             self.build_route_breaker(
                 route_column=route_column
             )
-            self.find_broken_route_paths(speedup=speedup, workers=route_workers)
+            self.find_broken_route_paths(speedup=speedup, workers=route_workers, cutoff=cutoff)
             to_concat.append(self.broken_route_paths)
 
         if broken_modes:
             self.build_graph(**kwargs)
             self.build_mode_combinations(mode_column=mode_column)
-            self.find_broken_mode_paths(workers=mode_workers)
+            self.find_broken_mode_paths(workers=mode_workers, cutoff=cutoff)
             to_concat.append(self.broken_mode_paths)
 
 
         if (broken_modes or broken_routes) == False:
-            self.find_best_path()
+            self.find_best_path(cutoff=cutoff)
             to_concat.append(self.best_paths)
 
         self.paths = pd.concat(to_concat)
