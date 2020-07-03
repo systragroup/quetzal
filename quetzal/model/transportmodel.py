@@ -183,10 +183,10 @@ class TransportModel(optimalmodel.OptimalModel):
         if keep_pathfinder:
             self.publicpathfinder = publicpathfinder
         
-        analysis_nodes = pd.concat([self.nodes, self.road_nodes]) if walk_on_road else self.nodes
         self.pt_los = publicpathfinder.paths
+        analysis_nodes = pd.concat([self.nodes, self.road_nodes]) if walk_on_road else self.nodes
         
-        if analysis:
+        if path_analysis:
             self.pt_los = analysis.path_analysis_od_matrix(
                 od_matrix=self.pt_los,
                 links=self.links,

@@ -129,6 +129,77 @@ class AnalysisModel(summarymodel.SummaryModel):
         except AttributeError:
             pass
 
+    def analysis_car_los(self):
+        def path_to_ntlegs(path):
+            try:
+                return [(path[0], path[1]), (path[-2], path[-1])]
+            except IndexError:
+                return  []
+
+        def node_path_to_link_path(road_node_list, ab_indexed_dict):
+            tuples = list(zip(road_node_list[:-1], road_node_list[1:]))
+            road_link_list = [ab_indexed_dict[t] for t in tuples]
+            return road_link_list
+        road_links = self.road_links
+        road_links['index'] = road_links.index
+        indexed = road_links.set_index(['a', 'b']).sort_index()
+        ab_indexed_dict = indexed['index'].to_dict()
+
+        los = self.car_los
+        los['node_path'] = los['path'].apply(lambda p: p[1:-1])
+        los['link_path'] = [node_path_to_link_path(p, ab_indexed_dict) for p in los['node_path']]
+        los['ntlegs'] = los['path'].apply(path_to_ntlegs)
+        self.car_los = los
+
+    def analysis_pr_los(self):
+        analysis_nodes = pd.concat([self.nodes, self.road_nodes])
+        analysis_links = pd.concat([self.links, self.road_links])
+        self.pr_los = analysis.path_analysis_od_matrix(
+            od_matrix=self.pr_los,
+            links=self.links,
+            nodes=analysis_nodes,
+            centroids=self.centroids,
+        )
+    def analysis_pt_los(self, walk_on_road=False):
+        analysis_nodes = pd.concat([self.nodes, self.road_nodes]) if walk_on_road else self.nodes
+        self.pt_los = analysis.path_analysis_od_matrix(
+            od_matrix=self.pt_los,
+            links=self.links,
+            nodes=analysis_nodes,
+            centroids=self.centroids,
+        )
+
+    def lighten_car_los(self):
+        self.car_los = self.car_los.drop(
+            ['node_path', 'link_path', 'ntlegs'], 
+            axis=1, errors='ignore')
+    def lighten_pt_los(self):
+        to_drop = ['alighting_links','alightings','all_walk','boarding_links','boardings',
+        'footpaths','length_link_path','link_path','node_path','ntlegs',
+        'time_link_path','transfers']
+        self.pt_los = self.pt_los.drop(to_drop, axis=1, errors='ignore')
+    def lighten_pr_los(self):
+        to_drop = ['alighting_links','alightings','all_walk','boarding_links','boardings',
+        'footpaths','length_link_path','link_path','node_path','ntlegs',
+        'time_link_path','transfers']
+        self.pr_los = self.pr_los.drop(to_drop, axis=1, errors='ignore')
+    def lighten_los(self):
+        try:
+            self.lighten_pt_los()
+        except AttributeError:
+            pass
+        try:
+            self.lighten_pr_los()
+        except AttributeError:
+            pass
+        try:
+            self.lighten_car_los()
+        except AttributeError:
+            pass
+    def lighten(self):
+        # to be completed
+        self.lighten_los()
+
     def analysis_car_route_type(self):
         self.car_los['route_types'] = [tuple(['car']) for i in self.car_los.index]
         self.car_los['route_type'] = 'car'
