@@ -52,7 +52,13 @@ class RoadPathFinder:
             pass
         
 
-    def aon_road_pathfinder(self, time='time', ntleg_penalty=1e9,**kwargs):
+    def aon_road_pathfinder(
+        self, 
+        time='time', 
+        ntleg_penalty=1e9,
+        cutoff=np.inf,
+        **kwargs,
+    ):
         road_links = self.road_links
         road_links['index'] = road_links.index
         indexed = road_links.set_index(['a', 'b']).sort_index()
@@ -70,8 +76,8 @@ class RoadPathFinder:
         road_graph.add_weighted_edges_from(
             self.road_links[['a', 'b', time]].values.tolist()
         )
-        zone_to_road = self.zone_to_road[['a', 'b', 'time']].copy()
-        zone_to_road['time'] += ntleg_penalty
+        zone_to_road = self.zone_to_road[['a', 'b','direction', 'time']].copy()
+        zone_to_road.loc[zone_to_road['direction'] == 'access', 'time'] += ntleg_penalty
         road_graph.add_weighted_edges_from(
             zone_to_road[['a', 'b', 'time']].values.tolist()
         )
@@ -86,11 +92,15 @@ class RoadPathFinder:
             except IndexError:
                 return  []
             
-        los = sparse_los_from_nx_graph(road_graph, pole_set=set(self.zones.index))
+        los = sparse_los_from_nx_graph(
+            road_graph, 
+            pole_set=set(self.zones.index), 
+            cutoff=cutoff+ntleg_penalty
+        )
         los['node_path'] = los['path'].apply(lambda p: p[1:-1])
         los['link_path'] = los['node_path'].apply(lambda p:node_path_to_link_path(p,ab_indexed_dict ))
         los['ntlegs'] = los['path'].apply(path_to_ntlegs)
-        los.loc[los['origin'] != los['destination'], 'gtime'] -= 2*ntleg_penalty
+        los.loc[los['origin'] != los['destination'], 'gtime'] -= ntleg_penalty
         self.car_los = los.rename(columns={'gtime': 'time'})
 
     def frank_wolfe_step(

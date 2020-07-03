@@ -111,21 +111,88 @@ class AnalysisModel(summarymodel.SummaryModel):
 
     def analysis_pt_route_type(self, hierarchy):
         route_type_dict = self.links['route_type'].to_dict()
-        self.pt_los['route_types'] = self.pt_los['link_path'].apply(
-            lambda p: tuple({route_type_dict[l] for l in p})
-        )
-
         def higher_route_type(route_types):
             for mode in hierarchy:
                 if mode in route_types:
                     return mode
             return hierarchy[-1]
 
+        self.pt_los['route_types'] = self.pt_los['link_path'].apply(
+            lambda p: tuple({route_type_dict[l] for l in p})
+        )
         self.pt_los['route_type'] = self.pt_los['route_types'].apply(higher_route_type)
+        try:
+            self.pr_los['route_types'] = self.pr_los['link_path'].apply(
+            lambda p: ('car',) + tuple({route_type_dict[l] for l in p})
+            )
+            self.pr_los['route_type'] = self.pr_los['route_types'].apply(higher_route_type)
+        except AttributeError:
+            pass
 
     def analysis_car_route_type(self):
         self.car_los['route_types'] = [tuple(['car']) for i in self.car_los.index]
         self.car_los['route_type'] = 'car'
+
+    def analysis_pr_time(self, boarding_time=0):
+        footpaths = self.footpaths
+        road_links = self.road_links.copy()
+        road_to_transit = self.road_to_transit.copy()
+        road_to_transit['length'] = road_to_transit['distance']
+        footpaths = pd.concat([road_to_transit, self.footpaths])
+        access = pd.concat([self.zone_to_road, self.zone_to_transit])
+
+        d = access.set_index(['a', 'b'])['time'].to_dict()
+        self.pr_los['access_time'] = self.pr_los['ntlegs'].apply(
+            lambda l: sum([d[t] for t in l]))
+
+        d = footpaths.set_index(['a', 'b'])['time'].to_dict()
+        self.pr_los['footpath_time'] = self.pr_los['footpaths'].apply(
+            lambda l: sum([d.get(t, 0) for t in l]))
+        
+        d = road_links.set_index(['a', 'b'])['time'].to_dict()
+        self.pr_los['car_time'] = self.pr_los['footpaths'].apply(
+            lambda l: sum([d.get(t, 0) for t in l]))
+
+        d = self.links['time'].to_dict()
+        self.pr_los['pt_time'] = self.pr_los['link_path'].apply(
+            lambda l: sum([d[t] for t in l]))
+        d = self.links['headway'].to_dict()
+        self.pr_los['waiting_time'] = self.pr_los['boarding_links'].apply(
+            lambda l: sum([d[t] / 2 for t in l]))
+        self.pr_los['boarding_time'] = self.pr_los['boarding_links'].apply(
+            lambda t: len(t)*boarding_time)
+        self.pr_los['in_vehicle_time'] = self.pr_los[['pt_time', 'car_time']].T.sum()
+        self.pr_los['time'] = self.pr_los[
+            ['access_time', 'footpath_time', 'waiting_time', 'boarding_time', 'in_vehicle_time']
+        ].T.sum()
+        
+    def analysis_pr_length(self):
+        footpaths = self.footpaths
+        road_links = self.road_links.copy()
+        road_to_transit = self.road_to_transit.copy()
+        road_to_transit['length'] = road_to_transit['distance']
+        footpaths = pd.concat([road_to_transit, self.footpaths])
+        access = pd.concat([self.zone_to_road, self.zone_to_transit])
+        
+        d = access.set_index(['a', 'b'])['distance'].to_dict()
+        self.pr_los['access_length'] = self.pr_los['ntlegs'].apply(
+            lambda l: sum([d[t] for t in l]))
+        
+        d = footpaths.set_index(['a', 'b'])['length'].to_dict()
+        self.pr_los['footpath_length'] = self.pr_los['footpaths'].apply(
+            lambda l: sum([d.get(t, 0) for t in l]))
+        
+        d = road_links.set_index(['a', 'b'])['length'].to_dict()
+        self.pr_los['in_car_length'] = self.pr_los['footpaths'].apply(
+            lambda l: sum([d.get(t, 0) for t in l])) 
+
+        d = self.links['length'].to_dict()
+        self.pr_los['in_vehicle_length'] = self.pr_los['link_path'].apply(
+            lambda l: sum([d.get(t,0) for t in l]))
+        
+        self.pr_los['length'] = self.pr_los[
+            ['access_length', 'footpath_length', 'in_car_length', 'in_vehicle_length']
+        ].T.sum()
 
 
     def analysis_pt_time(self, boarding_time=0, walk_on_road=False):
