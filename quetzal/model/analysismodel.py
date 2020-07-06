@@ -111,21 +111,159 @@ class AnalysisModel(summarymodel.SummaryModel):
 
     def analysis_pt_route_type(self, hierarchy):
         route_type_dict = self.links['route_type'].to_dict()
-        self.pt_los['route_types'] = self.pt_los['link_path'].apply(
-            lambda p: tuple({route_type_dict[l] for l in p})
-        )
-
         def higher_route_type(route_types):
             for mode in hierarchy:
                 if mode in route_types:
                     return mode
             return hierarchy[-1]
 
+        self.pt_los['route_types'] = self.pt_los['link_path'].apply(
+            lambda p: tuple({route_type_dict[l] for l in p})
+        )
         self.pt_los['route_type'] = self.pt_los['route_types'].apply(higher_route_type)
+        try:
+            self.pr_los['route_types'] = self.pr_los['link_path'].apply(
+            lambda p: ('car',) + tuple({route_type_dict[l] for l in p})
+            )
+            self.pr_los['route_type'] = self.pr_los['route_types'].apply(higher_route_type)
+        except AttributeError:
+            pass
+
+    def analysis_car_los(self):
+        def path_to_ntlegs(path):
+            try:
+                return [(path[0], path[1]), (path[-2], path[-1])]
+            except IndexError:
+                return  []
+
+        def node_path_to_link_path(road_node_list, ab_indexed_dict):
+            tuples = list(zip(road_node_list[:-1], road_node_list[1:]))
+            road_link_list = [ab_indexed_dict[t] for t in tuples]
+            return road_link_list
+        road_links = self.road_links
+        road_links['index'] = road_links.index
+        indexed = road_links.set_index(['a', 'b']).sort_index()
+        ab_indexed_dict = indexed['index'].to_dict()
+
+        los = self.car_los
+        los['node_path'] = los['path'].apply(lambda p: p[1:-1])
+        los['link_path'] = [node_path_to_link_path(p, ab_indexed_dict) for p in los['node_path']]
+        los['ntlegs'] = los['path'].apply(path_to_ntlegs)
+        self.car_los = los
+
+    def analysis_pr_los(self):
+        analysis_nodes = pd.concat([self.nodes, self.road_nodes])
+        analysis_links = pd.concat([self.links, self.road_links])
+        self.pr_los = analysis.path_analysis_od_matrix(
+            od_matrix=self.pr_los,
+            links=self.links,
+            nodes=analysis_nodes,
+            centroids=self.centroids,
+        )
+    def analysis_pt_los(self, walk_on_road=False):
+        analysis_nodes = pd.concat([self.nodes, self.road_nodes]) if walk_on_road else self.nodes
+        self.pt_los = analysis.path_analysis_od_matrix(
+            od_matrix=self.pt_los,
+            links=self.links,
+            nodes=analysis_nodes,
+            centroids=self.centroids,
+        )
+
+    def lighten_car_los(self):
+        self.car_los = self.car_los.drop(
+            ['node_path', 'link_path', 'ntlegs'], 
+            axis=1, errors='ignore')
+    def lighten_pt_los(self):
+        to_drop = ['alighting_links','alightings','all_walk','boarding_links','boardings',
+        'footpaths','length_link_path','link_path','node_path','ntlegs',
+        'time_link_path','transfers']
+        self.pt_los = self.pt_los.drop(to_drop, axis=1, errors='ignore')
+    def lighten_pr_los(self):
+        to_drop = ['alighting_links','alightings','all_walk','boarding_links','boardings',
+        'footpaths','length_link_path','link_path','node_path','ntlegs',
+        'time_link_path','transfers']
+        self.pr_los = self.pr_los.drop(to_drop, axis=1, errors='ignore')
+    def lighten_los(self):
+        try:
+            self.lighten_pt_los()
+        except AttributeError:
+            pass
+        try:
+            self.lighten_pr_los()
+        except AttributeError:
+            pass
+        try:
+            self.lighten_car_los()
+        except AttributeError:
+            pass
+    def lighten(self):
+        # to be completed
+        self.lighten_los()
 
     def analysis_car_route_type(self):
         self.car_los['route_types'] = [tuple(['car']) for i in self.car_los.index]
         self.car_los['route_type'] = 'car'
+
+    def analysis_pr_time(self, boarding_time=0):
+        footpaths = self.footpaths
+        road_links = self.road_links.copy()
+        road_to_transit = self.road_to_transit.copy()
+        road_to_transit['length'] = road_to_transit['distance']
+        footpaths = pd.concat([road_to_transit, self.footpaths])
+        access = pd.concat([self.zone_to_road, self.zone_to_transit])
+
+        d = access.set_index(['a', 'b'])['time'].to_dict()
+        self.pr_los['access_time'] = self.pr_los['ntlegs'].apply(
+            lambda l: sum([d[t] for t in l]))
+
+        d = footpaths.set_index(['a', 'b'])['time'].to_dict()
+        self.pr_los['footpath_time'] = self.pr_los['footpaths'].apply(
+            lambda l: sum([d.get(t, 0) for t in l]))
+        
+        d = road_links.set_index(['a', 'b'])['time'].to_dict()
+        self.pr_los['car_time'] = self.pr_los['footpaths'].apply(
+            lambda l: sum([d.get(t, 0) for t in l]))
+
+        d = self.links['time'].to_dict()
+        self.pr_los['pt_time'] = self.pr_los['link_path'].apply(
+            lambda l: sum([d[t] for t in l]))
+        d = self.links['headway'].to_dict()
+        self.pr_los['waiting_time'] = self.pr_los['boarding_links'].apply(
+            lambda l: sum([d[t] / 2 for t in l]))
+        self.pr_los['boarding_time'] = self.pr_los['boarding_links'].apply(
+            lambda t: len(t)*boarding_time)
+        self.pr_los['in_vehicle_time'] = self.pr_los[['pt_time', 'car_time']].T.sum()
+        self.pr_los['time'] = self.pr_los[
+            ['access_time', 'footpath_time', 'waiting_time', 'boarding_time', 'in_vehicle_time']
+        ].T.sum()
+        
+    def analysis_pr_length(self):
+        footpaths = self.footpaths
+        road_links = self.road_links.copy()
+        road_to_transit = self.road_to_transit.copy()
+        road_to_transit['length'] = road_to_transit['distance']
+        footpaths = pd.concat([road_to_transit, self.footpaths])
+        access = pd.concat([self.zone_to_road, self.zone_to_transit])
+        
+        d = access.set_index(['a', 'b'])['distance'].to_dict()
+        self.pr_los['access_length'] = self.pr_los['ntlegs'].apply(
+            lambda l: sum([d[t] for t in l]))
+        
+        d = footpaths.set_index(['a', 'b'])['length'].to_dict()
+        self.pr_los['footpath_length'] = self.pr_los['footpaths'].apply(
+            lambda l: sum([d.get(t, 0) for t in l]))
+        
+        d = road_links.set_index(['a', 'b'])['length'].to_dict()
+        self.pr_los['in_car_length'] = self.pr_los['footpaths'].apply(
+            lambda l: sum([d.get(t, 0) for t in l])) 
+
+        d = self.links['length'].to_dict()
+        self.pr_los['in_vehicle_length'] = self.pr_los['link_path'].apply(
+            lambda l: sum([d.get(t,0) for t in l]))
+        
+        self.pr_los['length'] = self.pr_los[
+            ['access_length', 'footpath_length', 'in_car_length', 'in_vehicle_length']
+        ].T.sum()
 
 
     def analysis_pt_time(self, boarding_time=0, walk_on_road=False):

@@ -5,6 +5,7 @@ import numpy as np
 from quetzal.analysis import analysis
 from quetzal.engine import engine
 from quetzal.engine.pathfinder import PublicPathFinder
+from quetzal.engine.park_and_ride_pathfinder import ParkRidePathFinder 
 from quetzal.engine.road_pathfinder import RoadPathFinder
 from quetzal.engine import nested_logit
 from quetzal.model import model, preparationmodel, optimalmodel
@@ -113,6 +114,32 @@ class TransportModel(optimalmodel.OptimalModel):
         self.road_links = roadpathfinder.road_links
 
     @track_args
+    def step_pr_pathfinder(
+        self,
+        force=False,
+        path_analysis=True,
+        **kwargs
+    ):
+        if not force:
+            sets = ['nodes', 'links', 'zones', 'road_nodes', 'road_links']
+            self.integrity_test_collision(sets)
+        self.links = engine.graph_links(self.links)
+        parkridepathfinder = ParkRidePathFinder(self)
+        parkridepathfinder.find_best_path(**kwargs)
+
+        self.pr_los = parkridepathfinder.paths
+        
+        if path_analysis:
+            analysis_nodes = pd.concat([self.nodes, self.road_nodes])
+            analysis_links = pd.concat([self.links, self.road_links])
+            self.pr_los = analysis.path_analysis_od_matrix(
+                od_matrix=self.pr_los,
+                links=self.links,
+                nodes=analysis_nodes,
+                centroids=self.centroids,
+            ) # analyse non vérifiée, prise directement depuis pt_los
+
+    @track_args
     def step_pt_pathfinder(
         self,
         broken_routes=True, 
@@ -124,6 +151,7 @@ class TransportModel(optimalmodel.OptimalModel):
         keep_graph=False,
         keep_pathfinder=False,
         force=False,
+        path_analysis=True,
         **kwargs):
         """
         * requires: zones, links, footpaths, zone_to_road, zone_to_transit
@@ -148,7 +176,6 @@ class TransportModel(optimalmodel.OptimalModel):
             speedup=speedup,
             **kwargs
         )
-        self.pt_los = publicpathfinder.paths.copy()
 
         if keep_graph:
             self.nx_graph=publicpathfinder.nx_graph
@@ -156,13 +183,16 @@ class TransportModel(optimalmodel.OptimalModel):
         if keep_pathfinder:
             self.publicpathfinder = publicpathfinder
         
+        self.pt_los = publicpathfinder.paths
         analysis_nodes = pd.concat([self.nodes, self.road_nodes]) if walk_on_road else self.nodes
-        self.pt_los = analysis.path_analysis_od_matrix(
-            od_matrix=self.pt_los,
-            links=self.links,
-            nodes=analysis_nodes,
-            centroids=self.centroids,
-        )
+        
+        if path_analysis:
+            self.pt_los = analysis.path_analysis_od_matrix(
+                od_matrix=self.pt_los,
+                links=self.links,
+                nodes=analysis_nodes,
+                centroids=self.centroids,
+            )
 
     @track_args
     def step_concatenate_los(self):
