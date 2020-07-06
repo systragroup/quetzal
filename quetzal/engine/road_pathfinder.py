@@ -95,7 +95,8 @@ class RoadPathFinder:
         los = sparse_los_from_nx_graph(
             road_graph, 
             pole_set=set(self.zones.index), 
-            cutoff=cutoff+ntleg_penalty
+            cutoff=cutoff+ntleg_penalty,
+            **kwargs
         )
         los['node_path'] = los['path'].apply(lambda p: p[1:-1])
         los['link_path'] = los['node_path'].apply(lambda p:node_path_to_link_path(p,ab_indexed_dict ))

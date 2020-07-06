@@ -26,12 +26,13 @@ class ParkRidePathFinder:
             **kwargs
         )
 
-    def find_best_path(self, cutoff=np.inf, **kwargs):
+    def find_best_path(self, cutoff=np.inf, od_set=None, **kwargs):
         self.build_graph(**kwargs)
         pr_los = path_and_duration_from_graph(
             self.nx_graph, 
             pole_set=set(self.zones.index),
-            cutoff=cutoff
+            cutoff=cutoff,
+            od_set=od_set
         )
 
         pr_los['pathfinder_session'] = 'park_and_ride'
