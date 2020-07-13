@@ -15,6 +15,7 @@ def parallel_call_notebook(
     leave=False,
     errout_suffix=False
 ):
+    start = time.time()
     os.system('jupyter nbconvert --to python %s' % notebook)
     file = notebook.replace('.ipynb', '.py')
     popens = {}
@@ -34,7 +35,7 @@ def parallel_call_notebook(
                     stderr=stderr
                 )
                 if (i + 1) % workers == 0 or (i + 1) == len(arg_list):
-                    print('waiting')
+                    #print('waiting')
                     for p in popens.values():
                         p.wait()
         time.sleep(sleep)
@@ -49,6 +50,9 @@ def parallel_call_notebook(
             content = stderr.read()
             if 'Error' in content and "end_of_notebook" not in content:
                 print("subprocess **{} {}** terminated with an error.".format(i, arg))
+    
+    end = time.time()
+    print(int(end - start), 'seconds')
 
 
 def parallel_call_python(
