@@ -238,6 +238,16 @@ class Model(IntegrityModel):
         except AttributeError:
             print('coul not read json attributes')
 
+    def to_excel(self, filepath, prefix='stack'):
+        l = len(prefix)
+        stacks = {
+            name[l+1:]: attr for name, attr in self.__dict__.items() 
+            if name[:l] == prefix
+        }
+        with pd.ExcelWriter(filepath) as writer:  
+            for name, stack in stacks.items():
+                stack.reset_index().to_excel(writer, sheet_name=name, index=False)
+
     @track_args
     def to_hdf(self, filepath, omitted_attributes=(), only_attributes=None):
         """

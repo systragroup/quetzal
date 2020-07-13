@@ -24,11 +24,10 @@ def parallel_call_notebook(
         suffix = arg if errout_suffix else ''
         suffix += '_' + notebook.split('.')[0]
         mode =  'w' if errout_suffix else 'a+'
-        print(i, arg)
+        print(i,file, arg)
         with open(stdout_path.replace('.txt', '_' + suffix + '.txt'), mode) as stdout:
             with open(stderr_path.replace('.txt', '_' + suffix + '.txt'), mode) as stderr:
 
-                print(file)
                 popens[i] = Popen(
                     ['python', file, arg],
                     stdout=stdout,
