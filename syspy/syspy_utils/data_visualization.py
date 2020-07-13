@@ -372,122 +372,78 @@ spectral = list(reversed(['#9e0142','#d53e4f','#f46d43','#fdae61','#fee08b','#e6
 
 from shapely import geometry
 def bandwidth(
-    df, value, label=None, max_value=None, power=1, scale=1, legend_values=None, legend_length=1/3, cmap=spectral,\
-    n_category=10, geographical_bounds=None, label_kwargs={'size':12}, *args, **kwargs):
-    # TODO: find a way to plot the two directions in one plot. This requires to add an offset of half the linewidth to each line
-            
-        # Extract data to plot from DataFrame
-        cols = [value, 'geometry'] if not label else [value, label, 'geometry']
-        df = df[cols].copy()
-        if label:
-            df.rename(columns={label: 'label'}, inplace=True)
-        df[value] = df[value].fillna(0)
-        df = df.loc[df[value] > 0]
-        
-        # Geographical bounds
-        if geographical_bounds:
-            b = geographical_bounds
-        else:
-            mls = geometry.MultiPoint(list(df['geometry'].apply(lambda g: g.centroid)))
-            b = mls.bounds
+    gdf, value_column, max_value=None, power=1, legend=True, legend_values=None, legend_length=1/3,
+    label_column=None,  max_linewidth_meters=100, line_offset=True, cmap=spectral,
+    geographical_bounds=None, label_kwargs={'size':12}, *args, **kwargs
+    ):
+    # TODO: 
+    # 1. add to plot model
+    # 2. add arrows?
 
-        # Create legend
+    # Can only plot valid LineString
+    df = gdf[gdf.length>0].sort_values(value_column).copy()
+    df = df[df.geometry.type == 'LineString']
+
+    if label_column is None:  # Then it is 'label'
+        df.drop('label', 1, errors='ignore', inplace=True)
+        label_column = 'label'
+    # Create base plot        
+    plot = base_plot(df, geographical_bounds, *args, **kwargs)
+
+    # Handle legend
+    if legend:
         if legend_values is None:
-            s = df[value].copy()
+            s = df[value_column].copy()
             r = int(np.log10(s.mean())) 
-            legend_values = [np.round(s.quantile(i/5), -r) for i in range(6)]
-        
-        # Place legend
-        delta = b[2] - b[0]
-        rank = 0
-        dx = delta * legend_length / len(legend_values)
-        data = []
-        for v in reversed(legend_values):
-            g = geometry.LineString([
-                ( b[2] - (rank + 1)*dx, (b[1] + b[1]) / 2),
-                ( b[2] - rank * dx, (b[1] + b[1]) / 2)]
-            )
-            rank += 1
-            data.append([v, g, str(v)])
-            legend_df = pd.DataFrame(data, columns=[value, 'geometry', 'label'])
-        df = pd.concat([df, legend_df])
-        #df = df.loc[df[value] > 0]
-        
-        # Plot geometry
-        plot = gpd.GeoDataFrame(df).plot(linewidth=0.1, color='grey', *args, **kwargs)
-        
-        # Power scale
-        power_series = (np.power(df[value], power))
-        
-        # Categories
-        max_value = np.power(max_value, power) if max_value else power_series.max()
-        ratio = n_category / max_value
-        df['cat'] = np.floor(power_series * ratio).fillna(0).apply(lambda x: min(x, n_category - 1))
-        df = df.loc[df['cat']> 0]
-        # colors
-        color_dict = color_series(pd.Series(range(n_category)), cmap).to_dict()
-        
-        for cat in tqdm(set(df['cat'])):
-            pool = df.loc[df['cat'] == cat]
-            plot = gpd.GeoDataFrame(pool).plot(linewidth=cat*scale, ax=plot, color=color_dict[int(cat)])
+            legend_values = [np.round(s.quantile(i/5), -r) for i in range(6)]    
+        legend_df = create_legend_geodataframe(
+            plot, legend_values=legend_values, relative_width=legend_length,
+            label_column=label_column, value_column=value_column
+        )
+        df = pd.concat([legend_df, df]).reset_index()
 
-        # Add label
-        df.dropna(subset=['label'])
-        def get_normal(linestring):
-            try:
-                c = linestring.coords[:]
-                v = (-(c[1][1] - c[0][1]), c[1][0] - c[0][0])
-                return v / np.sqrt(v[1]*v[1] + v[0]*v[0])
-            except IndexError: # list index out of range
-                # it is a point
-                return 0
-        def get_label_angle_alignment_offset(row):
-            try:
-                x = row.geometry.coords[:]
-                angle = (np.arccos((x[1][0] - x[0][0])/row.geometry.length) * 180/3.14)
-                angle *= np.sign(x[1][1] - x[0][1])
-            except IndexError:
-                angle =  0
-            va = 'bottom'
-            label_offset = 0.6
-            return pd.Series(
-                {
-                    'va': va, 'label_angle': angle, 
-                    'label_offset':label_offset * row['cat'] * row['normal']
-                }
-            )
-        
-        df['normal'] = df.geometry.apply(get_normal)
-        columns = ['label_angle',  'label_offset', 'va']
-        df[columns] = df.apply(get_label_angle_alignment_offset, 1)[columns]
+    # Plot values
+    # Power scale
+    df['power'] = np.power(df[value_column], power)
+    power_max_value = np.power(max_value, power) if max_value else df['power'].max()
+    # Color
+    df['color'] = color_series(df['power'], colors=cmap, max_value=power_max_value)
+    # Linewidth
+    df['geographical_width'] = width_series(df['power'], max_linewidth_meters, max_value=power_max_value)
+    df['linewidth'] = linewidth_from_data_units(df['geographical_width'].values, plot)
+    # Offset
+    if line_offset:
+        df['geometry'] = df.apply(
+            lambda x: x['geometry'].parallel_offset(x['geographical_width']*0.5, 'right'), 1
+        )
+        df = df[df.geometry.type == 'LineString']
+        df = df[df.length>0] # offset can create empty LineString
+        # For some reason, right offset reverse the coordinates sequence
+        # https://github.com/Toblerity/Shapely/issues/284
+        df['geometry'] = df.geometry.apply(lambda x: geometry.LineString(x.coords[::-1]))
+    # Plot
+    df.plot(color=df['color'], linewidth=df['linewidth'], ax=plot)
 
-        if label is not None:
-            df.apply(
-                lambda x: plot.annotate(
-                    s=x['label'],
-                    xy=x.geometry.centroid.coords[0],
-                    xytext=x['label_offset'],
-                    textcoords='offset pixels',
-                    rotation=x['label_angle'],
-                    rotation_mode='anchor',
-                    ha='center',va=x['va'],
+    # Plot label
+    df_label = create_label_dataframe(df, label_column)
+    df_label.apply(
+        lambda x: plot.annotate(
+            s=x[label_column],
+            xy=x.geometry.centroid.coords[0],
+            xytext=x['label_offset'],
+            textcoords='offset pixels',
+            rotation=x['label_angle'],
+            rotation_mode='anchor',
+            ha='center',va=x['va'],
+            **label_kwargs
+        ),
+        axis=1
+    )
 
-                    **label_kwargs
-                ),
-                axis=1
-            )
-        
-        # Set plot bounds
-        if geographical_bounds:
-            x_offset= (b[2] - b[0]) * 1/100
-            y_offset= (b[3] - b[1]) * 1/100
-            plot.set_xlim(b[0] - x_offset, b[2] + x_offset)
-            plot.set_ylim(b[1] - y_offset, b[3] + y_offset)
+    plt.xticks([])
+    plt.yticks([])
 
-        plot.set_yticks([])
-        plot.set_xticks([])
-        
-        return plot
+    return plot
 
 def add_basemap(
     ax, 
@@ -514,6 +470,136 @@ def trim_axs(axs, N):
     for ax in axs[N:]:
         ax.remove()
     return axs[:N]
+
+def create_legend_geodataframe(
+        plot, legend_values, relative_width=0.3,
+        value_column='value', label_column='label'
+    ):
+    """
+    Create a GeoDataFrame with legend data, geolocated at the right bottom of the plot.
+    - plot: the matplotlib plot that will include the legend
+    - legend_values (list of float): list of legend values to include
+    - relative_width (float between 0 and 1): legend length (1=entire axis length)
+    - value_column: column name for values
+    - label_column: column name for labels
+    
+    returns:
+    GeoDataFrame with columns value_column, label_column, 'geometry'
+    """
+    # Get plot bounds
+    ylims = plot.get_ylim()
+    xlims = plot.get_xlim()
+    
+    # Place legend
+    plot_width = xlims[1] - xlims[0]
+    plot_height = ylims[1] - ylims[0]
+    rank = 0
+    dx = plot_width * relative_width / len(legend_values)
+    data = []
+    for v in reversed(legend_values):
+        g = geometry.LineString([
+            ( xlims[1] - plot_width/100 - rank * dx, ylims[0] + plot_height/100),
+            ( xlims[1] - plot_width/100 - (rank + 1)*dx, ylims[0] + plot_height/100)]
+        )
+        rank += 1
+        data.append([v, g, str(v)])
+        legend_df = gpd.GeoDataFrame(data, columns=[value_column, 'geometry', label_column])
+
+    return legend_df
+
+def base_plot(df, geographical_bounds, *args, **kwargs):
+    """
+    Create a basic plot of a GeoDataFrame with specific geographical bounds.
+    """
+    def _set_bandwidth_geographical_bounds(plot, xmin, ymin, xmax, ymax, offset=0.01):
+        x_offset= (xmax - xmin) * offset
+        y_offset= (ymax - ymin) * offset
+        plot.set_xlim(xmin - x_offset, xmax + x_offset)
+        plot.set_ylim(ymin - y_offset, ymax + y_offset)
+    # Light geometry plot
+    plot = gpd.GeoDataFrame(df).plot(linewidth=0.1, color='grey', *args, **kwargs)
+    # Set bounds geographical bounds
+    _set_bandwidth_geographical_bounds(plot, *geographical_bounds)
+
+    return plot
+
+def linewidth_from_data_units(linewidth, axis, reference='y'):
+    """
+    Convert a linewidth in data units to linewidth in points.
+    Parameters
+    ----------
+    linewidth: float
+        Linewidth in data units of the respective reference-axis
+    axis: matplotlib axis
+        The axis which is used to extract the relevant transformation
+        data (data limits and size must not change afterwards)
+    reference: string
+        The axis that is taken as a reference for the data width.
+        Possible values: 'x' and 'y'. Defaults to 'y'.
+    Returns
+    -------
+    linewidth: float
+        Linewidth in points
+    """
+    fig = axis.get_figure()
+    if reference == 'x':
+        length = fig.bbox_inches.width * axis.get_position().width
+        value_range = np.diff(axis.get_xlim())
+    elif reference == 'y':
+        length = fig.bbox_inches.height * axis.get_position().height
+        value_range = np.diff(axis.get_ylim())
+    # Convert length to points
+    length *= 72
+    # Scale linewidth to value range
+    return linewidth * (length / value_range)
+
+def get_normal(linestring):
+    try:
+        c = linestring.coords[:]
+        v = (-(c[1][1] - c[0][1]), c[1][0] - c[0][0])
+        return v / np.sqrt(v[1]*v[1] + v[0]*v[0])
+    except IndexError: # list index out of range
+        # it is a point
+        return 0
+    except NotImplementedError:  # MultiLineString
+        c = linestring[0].coords[:]
+        v = (-(c[1][1] - c[0][1]), c[1][0] - c[0][0])
+        return v / np.sqrt(v[1]*v[1] + v[0]*v[0])
+
+def get_label_angle_alignment_offset(row, linewidth_column='linewidth'): 
+    try:
+        x = [row.geometry.coords[0], row.geometry.coords[-1]]
+        angle = (np.arccos((x[1][0] - x[0][0])/row.geometry.length) * 180/3.14) + 180
+        angle *= np.sign(x[1][1] - x[0][1])
+    except NotImplementedError:  # MultiLineString
+        x = row.geometry[0].coords[:]
+        angle = (np.arccos((x[1][0] - x[0][0])/row.geometry.length) * 180/3.14) + 180
+        angle *= np.sign(x[1][1] - x[0][1])
+    except IndexError:
+        angle =  0
+        
+    va = 'bottom'
+    if linewidth_column is None:
+        label_offset = 1
+    else:
+        label_offset = row[linewidth_column]
+
+    return pd.Series(
+        {
+            'va': va, 'label_angle': angle, 
+            'label_offset': -label_offset/4 * row['normal']
+        }
+    )
+
+def create_label_dataframe(df, label_column='label', linewidth_column='linewidth'):
+    cols = ['geometry', label_column]
+    if linewidth_column is not None:
+        cols += [linewidth_column]
+    label_df = df[cols].dropna(subset=[label_column])
+    label_df['normal'] = label_df.geometry.apply(get_normal)
+    columns = ['label_angle',  'label_offset', 'va']
+    label_df[columns] = label_df.apply(get_label_angle_alignment_offset, 1)[columns]
+    return label_df
 
 import os
 import sys
