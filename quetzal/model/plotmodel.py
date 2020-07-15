@@ -201,6 +201,8 @@ class PlotModel(summarymodel.SummaryModel):
                     yticks = sorted(set(yticks).union(-yticks))
                     plt.setp(axes, yticks=yticks)
 
+
+
         if graph_direction == 'single':
             fig, ax_array = plt.subplots(2,1)
             axes = fig.get_axes()
