@@ -355,7 +355,7 @@ class TransportModel(optimalmodel.OptimalModel):
             try:
                 columns = [(segment, column) for segment in segments]
                 self.loaded_links[column] = self.loaded_links[columns].T.sum()
-                self.loaded_nodes[column] = self.loaded_nodes[columnn].T.sum()
+                self.loaded_nodes[column] = self.loaded_nodes[columns].T.sum()
             except:
                 pass
             

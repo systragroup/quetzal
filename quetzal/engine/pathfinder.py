@@ -78,8 +78,9 @@ def path_and_duration_from_graph(
         target_los=sparse_los_from_nx_graph(
             reversed_nx_graph, pole_set, sources=sources, 
             cutoff=cutoff+ntlegs_penalty, **kwargs)
-        target_los['path'].apply(lambda x: list(reversed(x)))
         target_los['reversed'] = True
+        target_los['path'] = target_los['path'].apply(lambda x: list(reversed(x)))
+        target_los[['origin', 'destination']] = target_los[['destination', 'origin']]
         
     los = pd.concat([source_los, target_los]) if reverse else source_los
     los.loc[los['origin'] != los['destination'],'gtime'] -= ntlegs_penalty
