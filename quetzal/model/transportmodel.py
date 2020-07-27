@@ -436,25 +436,33 @@ class TransportModel(optimalmodel.OptimalModel):
         self.od_probabilities = od.copy()
         self.od_utilities = od.copy()
 
-    def step_logit(self, segment=None, *args, **kwargs):
+    def step_logit(self, segment=None, probabilities=None, utilities=None, *args, **kwargs):
         """
         * requires: mode_nests, logit_scales, los
         * builds: los, od_utilities, od_probabilities, path_utilities, path_probabilities
         """
 
         if segment is None:
+            probabilities = []
+            utilities = []
             for segment in self.segments:
                 print(segment)
-                self.step_logit(segment=segment, *args, **kwargs)
+                self.step_logit(
+                    segment=segment, 
+                    probabilities=probabilities, utilities=utilities,
+                    *args, **kwargs
+                )
+            self.od_probabilities = pd.concat(probabilities, axis=1)
+            self.od_utilities = pd.concat(utilities, axis=1)
             return 
-        
+
         mode_nests = self.mode_nests.reset_index().groupby(segment)['route_type'].agg(
             lambda s: list(s)).to_dict()
         nls = self.logit_scales[segment].to_dict()
-        
-        paths = self.los.copy()
+
+        paths = self.los
         paths['utility'] = paths[(segment, 'utility')]
-        
+
         l, u, p = nested_logit.nested_logit_from_paths(
             paths, 
             mode_nests=mode_nests,
@@ -462,17 +470,18 @@ class TransportModel(optimalmodel.OptimalModel):
             *args,
             **kwargs
         )
-        
-        l = l[['utility', 'probability']]
+
+        l = l[['probability']]
         u = u.set_index(['origin', 'destination'])
         p = p.set_index(['origin', 'destination'])
-        
+
         for df in l, u, p:
             df.columns = [(segment, c) for c in df.columns]
-        
-        self.los[l.columns] = l 
-        self.od_utilities[u.columns] = u
-        self.od_probabilities[p.columns] = p
+
+        self.los.drop(l.columns, axis=1, errors='ignore', inplace=True)
+        self.los = pd.concat([self.los, l], axis=1)
+        probabilities.append(p)
+        utilities.append(u)
 
 
 def get_combined_mode_utility(route_types, mode_utility,  how='min',):
