@@ -29,6 +29,14 @@ def read_hdf(filepath, *args, **kwargs):
     return m
 
 def read_zip(filepath, *args, **kwargs):
+    try:
+        m = StepModel(zip_database=filepath, *args, **kwargs)
+        return m
+    except : 
+        # the zip is a zipped hdf and can not be decompressed
+        return read_zipped_hdf(filepath, *args, **kwargs)
+
+def read_zipped_hdf(filepath, *args, **kwargs):
     filedir = ntpath.dirname(filepath)
     tempdir = filedir + '/quetzal_temp' + '-' + str(uuid.uuid4())
     shutil.unpack_archive(filepath, tempdir)

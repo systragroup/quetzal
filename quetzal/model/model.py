@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import json
+import zlib
 import os
 
 import geopandas as gpd
@@ -12,6 +13,7 @@ from tqdm import tqdm
 import shutil
 import uuid
 import ntpath
+from quetzal.io import hdf_io
 
 from syspy.syspy_utils.data_visualization import add_basemap
 
@@ -22,7 +24,6 @@ def read_hdf(filepath):
     m = Model()
     m.read_hdf(filepath)
     return m
-
 
 def log(text, debug=False):
     if debug:
@@ -147,6 +148,7 @@ class Model(IntegrityModel):
         json_database=None,
         json_folder=None,
         hdf_database=None,
+        zip_database=None,
         omitted_attributes=(),
         only_attributes=None,
         *args,
@@ -176,15 +178,21 @@ class Model(IntegrityModel):
                 omitted_attributes=omitted_attributes,
                 only_attributes=only_attributes
             )
+        elif zip_database:
+            self.read_zip(
+                zip_database, 
+                omitted_attributes=omitted_attributes,
+                only_attributes=only_attributes
+            )
 
         self.debug = True
 
         # Add default coordinates unit and epsg
         if self.epsg is None:
-            print('Model epsg not defined: setting epsg to default one: 4326')
+            #print('Model epsg not defined: setting epsg to default one: 4326')
             self.epsg = 4326
         if self.coordinates_unit is None:
-            print('Model coordinates_unit not defined: setting coordinates_unit to default one: degree')
+            #print('Model coordinates_unit not defined: setting coordinates_unit to default one: degree')
             self.coordinates_unit = 'degree'
 
     def plot(
@@ -238,6 +246,43 @@ class Model(IntegrityModel):
         except AttributeError:
             print('coul not read json attributes')
 
+    def read_zip(self, filepath, omitted_attributes=(), only_attributes=None):
+        # read the zip in a buffer
+        with open(filepath, 'rb') as file:
+            data = file.read()
+            bigbyte = zlib.decompress(data)
+
+        # build a store from the buffer
+        with pd.HDFStore(
+            "quetzal-%s.h5"%str(uuid.uuid4()),
+            mode="r",
+            driver="H5FD_CORE",
+            driver_core_backing_store=0,
+            driver_core_image=bigbyte
+        ) as store:
+            iterator = tqdm(store.keys())
+            for key in iterator:
+                
+                if key in omitted_attributes:
+                    continue
+                if only_attributes is not None and key not in only_attributes:
+                    continue
+                    
+                value = store[key]
+                if isinstance(value, pd.DataFrame) and 'geometry' in value.columns:
+                    value = gpd.GeoDataFrame(value)
+                skey = key.split(r'/')[-1]
+                iterator.desc = skey
+                self.__setattr__(skey, value)
+
+            # some attributes may have been store in the json_series
+            try:
+                json_dict = self.jsons.to_dict()
+                for key, value in json_dict.items():
+                    self.__setattr__(key, json.loads(value))
+            except AttributeError:
+                print('coul not read json attributes')
+
     def to_excel(self, filepath, prefix='stack'):
         l = len(prefix)
         stacks = {
@@ -247,6 +292,43 @@ class Model(IntegrityModel):
         with pd.ExcelWriter(filepath) as writer:  
             for name, stack in stacks.items():
                 stack.reset_index().to_excel(writer, sheet_name=name, index=False)
+
+    def to_frames(self, omitted_attributes=(), only_attributes=None):
+        """
+        export the full model to a dataframe dict
+        """
+        jsons = {}
+        attributeerrors = []
+        frames = {}
+        for key, attribute in self.__dict__.items():
+            if key in omitted_attributes:
+                continue
+            if only_attributes is not None and key not in only_attributes:
+                continue
+
+            elif isinstance(attribute, gpd.GeoSeries):
+                frames[key] = pd.Series(attribute).astype(object)
+            elif isinstance(attribute, (pd.DataFrame, pd.Series, gpd.GeoDataFrame)):
+                df=pd.DataFrame(attribute)
+                try:
+                    df['geometry'] = df['geometry'].astype(object)
+                except:
+                    pass
+                frames[key] = df
+            else:
+                try:
+                    jsons[key] = json.dumps(attribute)
+                except TypeError:
+                    attributeerrors.append(key)
+        frames['jsons'] = pd.Series(jsons)
+        return frames
+
+    def to_zip(self, filepath, *args, **kwargs):
+        frames = self.to_frames(*args, **kwargs)
+        buffer = hdf_io.write_hdf_to_buffer(frames)
+        smallbuffer = zlib.compress(buffer)
+        with open(filepath, 'wb') as file:
+            file.write(smallbuffer)
 
     @track_args
     def to_hdf(self, filepath, omitted_attributes=(), only_attributes=None):
@@ -294,7 +376,7 @@ class Model(IntegrityModel):
         # mode=a : we do not want to overwrite the file !
         json_series.to_hdf(filepath, 'jsons', mode='a')
 
-    def to_zip(self, filepath, *args, **kwargs):
+    def to_zipped_hdf(self, filepath, *args, **kwargs):
         filedir = ntpath.dirname(filepath)
         tempdir = filedir + '/quetzal_temp' + '-' + str(uuid.uuid4())
         os.mkdir(tempdir)
