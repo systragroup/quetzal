@@ -68,7 +68,7 @@ def path_and_duration_from_graph(
     sources = pole_set if sources is None else sources
     source_los=sparse_los_from_nx_graph(
         nx_graph, pole_set, sources=sources, 
-        cutoff=cutoff+ntlegs_penalty, **kwargs)
+        cutoff=cutoff+ntlegs_penalty, od_set=od_set, **kwargs)
     source_los['reversed'] = False
     
     reverse = reverse or reversed_nx_graph is not None
