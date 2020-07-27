@@ -316,18 +316,8 @@ class TransportModel(optimalmodel.OptimalModel):
     def segmented_assignment(self, *args, **kwargs):
         segments = self.segments
         index_columns = ['pathfinder_session', 'route_types', 'path']
-        for segment in segments:
-            self.pt_los.drop((segment, 'probability'), axis=1, inplace=True, errors='ignore')
-            right = self.los.set_index(index_columns)[[(segment, 'probability')]]
-            msg = 'self.los cannot have several rows with the same combination of ' 
-            msg += str(index_columns)
-            assert right.index.is_unique, msg
-            self.pt_los = pd.merge(
-                self.pt_los, 
-                right,
-                left_on=index_columns,
-                right_index=True
-            )
+        assert self.pt_los.duplicated(subset=index_columns).sum() == 0, msg
+
 
         iterator = tqdm(segments)
         for segment in iterator:
