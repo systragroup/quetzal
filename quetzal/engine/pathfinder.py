@@ -76,9 +76,14 @@ def path_and_duration_from_graph(
         if reversed_nx_graph is None:
             reversed_nx_graph = nx_graph.reverse()
         
+        try:
+            reversed_od_set = {(d, o) for o, d in od_set}
+        except TypeError:
+            reversed_od_set = None
+
         target_los=sparse_los_from_nx_graph(
             reversed_nx_graph, pole_set, sources=sources, 
-            cutoff=cutoff+ntlegs_penalty, od_set=od_set, **kwargs)
+            cutoff=cutoff+ntlegs_penalty, od_set=reversed_od_set, **kwargs)
         target_los['reversed'] = True
         target_los['path'] = target_los['path'].apply(lambda x: list(reversed(x)))
         target_los[['origin', 'destination']] = target_los[['destination', 'origin']]
