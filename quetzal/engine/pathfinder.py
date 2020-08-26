@@ -154,6 +154,64 @@ def sparse_los_from_nx_graph(
     los['path'] = paths
     return los
 
+def los_from_graph(
+    csgraph, # graph is assumed to be a scipy csr_matrix
+    node_index=None,
+    pole_set=None, 
+    sources=None, 
+    cutoff=np.inf,
+    od_set=None,
+):
+    sources = pole_set if sources is None else sources
+    # INDEX
+    pole_list = sorted(list(pole_set)) # fix order
+    source_list = [zone for zone in pole_list if zone in sources]
+
+    zones = [node_index[zone] for zone in source_list]
+    source_index = dict(zip(source_list, range(len(source_list))))
+    zone_index = dict(zip(pole_list, range(len(pole_list))))
+
+    # SPARSE GRAPH
+    dist_matrix, predecessors = dijkstra(
+        csgraph=csgraph, 
+        directed=True, 
+        indices=zones, 
+        return_predecessors=True,
+        limit=cutoff
+    )
+
+    # LOS LAYOUT
+    df = pd.DataFrame(dist_matrix)
+    indexed_nodes = {v: k for k, v in node_index.items()}
+    df.rename(columns=indexed_nodes, inplace=True)
+
+    df.index = [zone for zone in pole_list if zone in sources]
+
+    df.columns.name = 'destination'
+    df.index.name = 'origin'
+
+    stack = df[pole_list].stack()
+
+    stack = df[pole_list].stack()
+    stack.name = 'gtime'
+    los = stack.reset_index()
+
+    # QUETZAL FORMAT
+    los = los.loc[los['gtime'] < np.inf]
+    if od_set is not None:
+        tuples = [tuple(l) for l in  los[['origin', 'destination']].values.tolist()]
+        los = los.loc[[t in od_set for t in tuples]]
+        
+    # BUILD PATH FROM PREDECESSORS
+    od_list = los[['origin', 'destination']].values.tolist()
+    paths = [
+        [indexed_nodes[i] for i in get_path(predecessors, source_index[o], node_index[d])]
+        for o, d in od_list
+    ]
+
+    los['path'] = paths
+    return los
+
 def dumps_kwargs(kwargs):
     data = kwargs
     for key in ['nx_graph', 'reversed_nx_graph']:
@@ -588,7 +646,7 @@ class PublicPathFinder:
     ):
         to_concat = []
         if broken_routes:
-            self.find_best_path(cutoff=cutoff,**kwargs) # builds the graph
+            self.find_best_path(cutoff=cutoff, od_set=od_set, **kwargs) # builds the graph
             to_concat.append(self.best_paths)
             self.build_route_breaker(
                 route_column=route_column
