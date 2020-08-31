@@ -301,7 +301,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         # logit_scales
         self.logit_scales = self.mode_nests.copy()
         self.logit_scales['root'] = pt_path
-        self.logit_scales.loc[['car', 'walk'], 'root'] = 0.01
+        self.logit_scales.loc[['car', 'walk'], 'root'] = 0
         self.logit_scales.loc[['pt'], 'root'] = pt_mode
         self.logit_scales.loc[['root'], 'root'] = mode
 
