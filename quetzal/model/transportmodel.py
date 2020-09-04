@@ -167,7 +167,6 @@ class TransportModel(optimalmodel.OptimalModel):
         self.links = engine.graph_links(self.links)
 
         publicpathfinder = PublicPathFinder(self, walk_on_road=walk_on_road)
-
         publicpathfinder.find_best_paths(
             broken_routes=broken_routes, 
             broken_modes=broken_modes, 

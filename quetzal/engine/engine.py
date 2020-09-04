@@ -173,7 +173,7 @@ def multimodal_graph(
     pole_set,
     footpaths=None,
     boarding_cost=300,
-    ntlegs_penalty=1e9
+    ntlegs_penalty=1e9,
 ):
 
     """
@@ -199,6 +199,7 @@ def multimodal_graph(
         ntlegs are used only once for access and once for eggress;
     :return: Origin->Destination stack matrix with path and duration;
     """
+    print(boarding_cost)
     pole_set = pole_set.intersection(set(ntlegs['a']))
     links = links.copy()
     ntlegs = ntlegs.copy()
