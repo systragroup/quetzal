@@ -146,6 +146,7 @@ class TransportModel(optimalmodel.OptimalModel):
         broken_modes=True, 
         route_column='route_id',
         mode_column='route_type',
+        boarding_time=0,
         speedup=False,
         walk_on_road=False, 
         keep_graph=False,
@@ -173,6 +174,7 @@ class TransportModel(optimalmodel.OptimalModel):
             route_column=route_column,
             mode_column=mode_column,
             speedup=speedup,
+            boarding_time=boarding_time,
             **kwargs
         )
 

@@ -156,7 +156,7 @@ def adjacency_matrix(
         l['boarding_time'] = boarding_time
 
     if 'alighting_time' not in l.columns:
-        l['alighting_time'] = boarding_time
+        l['alighting_time'] = alighting_time
 
     l['total_time'] = l['boarding_time'] + l['cost']
 
@@ -500,7 +500,12 @@ class PublicPathFinder:
             to_concat.append(self.broken_mode_paths)
 
         if (broken_modes or broken_routes) == False:
-            self.find_best_path(cutoff=cutoff, od_set=od_set, **kwargs)
+            self.find_best_path(
+                cutoff=cutoff, 
+                od_set=od_set, 
+                boarding_time=boarding_time,
+                **kwargs
+            )
             to_concat.append(self.best_paths)
 
         self.paths = pd.concat(to_concat)
