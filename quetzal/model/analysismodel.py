@@ -475,6 +475,7 @@ class AnalysisModel(summarymodel.SummaryModel):
             for road_link_list in selected.sort_values('link_sequence')['road_link_list']:
                 for road_link in road_link_list:
                     sorted_road_links.append(road_link)
+            indexer = [l for l in sorted_road_links if l in edges.index]
             sorted_edges = edges.loc[sorted_road_links].dropna(subset=['a', 'b'])
             
             line_tuple_geometries[line_tuple] = geometries.connected_geometries(sorted_edges)

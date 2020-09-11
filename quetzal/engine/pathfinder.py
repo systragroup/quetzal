@@ -371,7 +371,7 @@ class PublicPathFinder:
         
     ):
         pole_set=set(self.zones.index)
-        do_set = {(d, o) for o, d in od_set}
+        do_set = {(d, o) for o, d in od_set} if od_set is not None else None
         to_concat = []
         iterator = tqdm(self.route_zones.items())
         for route_id, zones in iterator:
@@ -476,7 +476,6 @@ class PublicPathFinder:
                 boarding_time=boarding_time, 
                 cutoff=cutoff, 
                 od_set=od_set, 
-                pole_set=pole_set,
                 **kwargs
             ) # builds the graph
             to_concat.append(self.best_paths)
@@ -485,7 +484,8 @@ class PublicPathFinder:
                 speedup=speedup, 
                 od_set=od_set, 
                 boarding_time=boarding_time, 
-                cutoff=cutoff
+                cutoff=cutoff,
+                route_column=route_column
             )
             to_concat.append(self.broken_route_paths)
 
@@ -496,6 +496,7 @@ class PublicPathFinder:
                 od_set=od_set, 
                 cutoff=cutoff,
                 boarding_time=boarding_time,
+                mode_column=mode_column
             )
             to_concat.append(self.broken_mode_paths)
 
