@@ -317,6 +317,8 @@ class TransportModel(optimalmodel.OptimalModel):
     def segmented_assignment(self, *args, **kwargs):
         segments = self.segments
         index_columns = ['pathfinder_session', 'route_types', 'path']
+
+        msg = 'duplicated paths'
         assert self.pt_los.duplicated(subset=index_columns).sum() == 0, msg
 
 
@@ -397,12 +399,15 @@ class TransportModel(optimalmodel.OptimalModel):
         route_types['mode_utility'] = route_types['route_types'].apply(
             get_combined_mode_utility, how=how, mode_utility=mode_utility)
         
+        route_types['rt_string'] = route_types['route_types'].astype(str)
         los = self.los.copy()
+        los['rt_string'] = los['route_types'].astype(str)
         los['index'] = los.index
+        
         merged = pd.merge(
-            los, 
-            route_types, 
-            on=['route_types'], 
+            los[['rt_string', 'index']], 
+            route_types[['rt_string', 'mode_utility']], 
+            on=['rt_string'], 
         ).set_index('index')
         
         los['mode_utility'] = merged['mode_utility']
