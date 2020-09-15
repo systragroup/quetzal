@@ -11,6 +11,7 @@ from quetzal.engine import nested_logit
 from quetzal.model import model, preparationmodel, optimalmodel
 
 from syspy.assignment import raw as raw_assignment
+from syspy.assignment.raw import assign
 from syspy.skims import skims
 from tqdm import tqdm
 import networkx as nx
@@ -203,45 +204,6 @@ class TransportModel(optimalmodel.OptimalModel):
         """
 
     @track_args
-    def step_build_los(
-         self,
-         build_car_skims=True,
-         token=None,
-         nb_clusters=20,
-         skim_matrix_kwargs={}
-        ):
-        """
-        * requires: pt_los, car_los
-        * builds: los
-
-        :param build_car_skims: if True, the car_los matrix is build using
-            Google API (if a valid token is given, a random matrix is
-            generated otherwise). If False the current car_los matrix is used.
-        :param token: a token or list of tokens
-        :param nb_clusters: the number of clusters that will be build from the
-            zoning. A single token allows only 2500 itineraries so 50 zones.
-        """
-        if build_car_skims:
-            skim_columns = [
-                'origin', 'destination', 'euclidean_distance',
-                'distance', 'duration'
-            ]
-            self.car_los = skims.skim_matrix(
-                self.zones,
-                token,
-                nb_clusters,
-                coordinates_unit=self.coordinates_unit,
-                skim_matrix_kwargs=skim_matrix_kwargs
-            )[skim_columns]
-
-        self.los = pd.merge(  # Weird: we lose the los for which one of the mode is missing?
-            self.car_los,
-            self.pt_los,
-            on=['origin', 'destination'],
-            suffixes=['_car', '_pt']
-        )
-
-    @track_args
     def step_modal_split(self, build_od_stack=True, **modal_split_kwargs):
         """
         * requires: volumes, los
@@ -267,6 +229,109 @@ class TransportModel(optimalmodel.OptimalModel):
             self.od_stack = analysis.volume_analysis_od_matrix(shared)
 
         self.shared = shared
+
+    def compute_los_volume(self):
+        segments = self.segments
+        probabilities = [(segment, 'probability') for segment in segments] 
+        on = ['origin', 'destination']
+        left = self.los[on + probabilities]
+        left['index'] = left.index
+        df = pd.merge(left, self.volumes, on=on).set_index('index')
+        values = df[probabilities].values * df[segments].values
+        right = pd.DataFrame(values, index=df.index, columns=segments)
+        for segment in segments:
+            self.los[segment] = right[segment]
+        self.los['volume'] = right.T.sum() 
+
+    def step_assignment(
+        self, 
+        road=False, 
+        boardings=False, 
+        alightings=False, 
+        transfers=False,
+        segmented=False
+        ):
+        self.compute_los_volume()
+        column = 'link_path'
+        l = self.los.dropna(subset=[column])
+        self.links['volume'] = assign(l['volume'], l[column])
+        
+        if road:
+            self.road_links[('volume', 'car')] = assign(l['volume'], l[column])
+            self.road_links[('volume', 'pt')] = assign(
+                self.links['volume'], 
+                self.links['road_link_list']
+            )
+            
+        if boardings:
+            column = 'boarding_links'
+            l = self.los.dropna(subset=[column])
+            self.links[ 'boardings'] = assign(l[segment], l[column])
+            
+            column = 'boardings'
+            l = self.los.dropna(subset=[column])
+            self.nodes['boardings'] = assign(l[segment], l[column])
+            
+        if alightings:
+            column = 'alighting_links'
+            l = self.los.dropna(subset=[column])
+            self.links['alightings'] = assign(l[segment], l[column])
+            
+            column = 'alightings'
+            l = self.los.dropna(subset=[column])
+            self.nodes['alightings'] = assign(l[segment], l[column])
+            
+        if transfers:
+            column = 'transfers'
+            l = self.los.dropna(subset=[column])
+            self.nodes[ 'transfers'] = assign(l[segment], l[column])
+        if segmented:
+            self.segmented_assigment(
+                road=road, 
+                boardings=boardings, alightings=alightings, transfers=transfers
+            )
+        
+    def segmented_assigment(
+        self, 
+        road=False, 
+        boardings=False, 
+        alightings=False, 
+        transfers=False
+        ):
+        
+        for segment in self.segments:
+
+            column = 'link_path'
+            l = self.los.dropna(subset=[column])
+            self.links[segment] = assign(l[segment], l[column])
+            if road:
+                self.road_links[(segment, 'car')] = assign(l[segment], l[column])
+                self.road_links[(segment, 'pt')] = assign(
+                    self.links[segment], 
+                    self.links['road_link_list']
+                )
+            if boardings:
+                column = 'boarding_links'
+                l = self.los.dropna(subset=[column])
+                self.links[(segment, 'boardings')] = assign(l[segment], l[column])
+
+                column = 'boardings'
+                l = self.los.dropna(subset=[column])
+                self.nodes[(segment, 'boardings')] = assign(l[segment], l[column])
+
+            if alightings:
+                column = 'alighting_links'
+                l = self.los.dropna(subset=[column])
+                self.links[(segment, 'alightings')] = assign(l[segment], l[column])
+
+                column = 'alightings'
+                l = self.los.dropna(subset=[column])
+                self.nodes[(segment, 'alightings')] = assign(l[segment], l[column])
+
+            if transfers:
+                column = 'transfers'
+                l = self.los.dropna(subset=[column])
+                self.nodes[(segment, 'transfers')] = assign(l[segment], l[column])
 
     @track_args
     def step_pt_assignment(
@@ -294,7 +359,7 @@ class TransportModel(optimalmodel.OptimalModel):
         """
 
         if volume_column is None:
-            self.segmented_assignment(road=road, **kwargs)
+            self.segmented_pt_assignment(road=road, **kwargs)
             return 
 
         self.loaded_links, self.loaded_nodes = engine.loaded_links_and_nodes(
@@ -314,7 +379,7 @@ class TransportModel(optimalmodel.OptimalModel):
             # todo remove 'load' from analysis module: 
             self.road_links['load'] = self.road_links[volume_column]
 
-    def segmented_assignment(self, *args, **kwargs):
+    def segmented_pt_assignment(self, *args, **kwargs):
         segments = self.segments
         index_columns = ['pathfinder_session', 'route_types', 'path']
 
@@ -381,6 +446,10 @@ class TransportModel(optimalmodel.OptimalModel):
         columns = [(segment, 'car') for segment in self.segments]
         self.road_links[('all', 'car')] = self.road_links[columns].T.sum()
 
+
+
+    
+
     #TODO move all utility features to another object / file
 
     def analysis_mode_utility(self, how='min', segment=None, segments=None):
@@ -432,17 +501,59 @@ class TransportModel(optimalmodel.OptimalModel):
         self.od_probabilities = od.copy()
         self.od_utilities = od.copy()
 
+    def _unique_model_segmented_logit(self):
+        # assert all logit scales are the same and pick one
+        logit_scales = self.logit_scales.T.drop_duplicates().T
+        assert len(logit_scales.columns) == 1
+        logit_scales.columns = ['root']
+        nls = logit_scales['root'].to_dict()
+
+        # assert all mode_nests are the same and pick one
+        mode_nests = self.mode_nests.T.drop_duplicates().T
+        assert len(mode_nests.columns) == 1
+        mode_nests.columns = ['root']
+        nests = mode_nests.reset_index().groupby('root')['route_type'].agg(
+            lambda s: list(s)).to_dict()
+
+        # concatenate paths
+        to_concat = []
+        for segment in self.segments:
+            paths = self.los.copy()
+            paths['utility'] = paths[(segment, 'utility')]
+            paths['segment'] = segment
+            to_concat.append(paths[['origin', 'destination', 'route_type', 'utility', 'segment']])
+        segmented_paths = pd.concat(to_concat)
+
+        l, u, p = nested_logit.nested_logit_from_paths(
+            segmented_paths, 
+            mode_nests=nests,
+            phi=nls,
+            verbose=False
+        )
+
+        pool = l.reset_index().set_index(['segment', 'index'])
+        for segment in self.segments:
+            self.los[(segment, 'probability')] = pool.loc[segment]['probability']
+        
+        self.probabilities = p
+        self.utilities = u
+
     def step_logit(self, segment=None, probabilities=None, utilities=None, *args, **kwargs):
         """
         * requires: mode_nests, logit_scales, los
         * builds: los, od_utilities, od_probabilities, path_utilities, path_probabilities
         """
+        try:
+            self._unique_model_segmented_logit()
+            return 
+        except AssertionError:
+            print('segment specific logit models')
+            pass
 
         if segment is None:
             probabilities = []
             utilities = []
             for segment in self.segments:
-                print(segment)
                 self.step_logit(
                     segment=segment, 
                     probabilities=probabilities, utilities=utilities,

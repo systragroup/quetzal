@@ -13,6 +13,17 @@ def ma_fonction_a_tester(a, b):
 def nested_list(volume_array, paths):
     return [[volume_array[i]]*len(paths[i]) for i in range(len(volume_array))]
 
+def fast_assign(volume_array, paths):
+    
+    z = zip(volume_array, paths)
+    d = {}
+    for volume, path in list(z):
+        for key in path:
+            try:
+                d[key] += volume
+            except KeyError:
+                d[key] = volume
+    return pd.Series(d)
 
 def assign(volume_array, paths, checkpoints=None, checkpoints_how='all'):
 
