@@ -68,9 +68,9 @@ class GtfsImporter(Feed):
         feed.build_links_and_nodes()
         return feed
     
-    def build_links_and_nodes(self):
+    def build_links_and_nodes(self, time_dependent=False):
         self.to_seconds()
-        self.build_links()
+        self.build_links(time_dependent=time_dependent)
         self.build_geometries()
 
     def to_seconds(self):
@@ -80,16 +80,17 @@ class GtfsImporter(Feed):
             time_columns
         ].applymap(to_seconds)
         # frequencies
-        time_columns = ['start_time', 'end_time']
-        self.frequencies[time_columns] = self.frequencies[
-            time_columns
-        ].applymap(to_seconds)
+        if self.frequencies is not None:
+            time_columns = ['start_time', 'end_time']
+            self.frequencies[time_columns] = self.frequencies[
+                time_columns
+            ].applymap(to_seconds)
 
-    def build_links(self):
+    def build_links(self, time_dependent=False):
         """
         Create links and add relevant information
         """
-        links = feed_links.link_from_stop_times(
+        self.links = feed_links.link_from_stop_times(
             self.stop_times,
             max_shortcut=1,
             stop_id='stop_id',
@@ -99,18 +100,21 @@ class GtfsImporter(Feed):
             stop_id_destination = 'destination',
             out_sequence='link_sequence'
         ).reset_index()
-        links['time'] = links['arrival_time'] - links['departure_time']
-        links.rename(
+        self.links['time'] = self.links['arrival_time'] - self.links['departure_time']
+        self.links.rename(
             columns={
                 'origin': 'a',
                 'destination': 'b',
             },
             inplace=True
         )
-        self.links = links.merge(self.frequencies[['trip_id', 'headway_secs']], on='trip_id')
-        self.links.rename(columns={'headway_secs': 'headway'}, inplace=True)
-        # Filter on strictly positive headway (Headway = 0 : no trip)
-        self.links = self.links.loc[self.links['headway']>0].reset_index(drop=True)
+
+        if not time_dependent:
+            self.links = self.links.merge(self.frequencies[['trip_id', 'headway_secs']], on='trip_id')
+            self.links.rename(columns={'headway_secs': 'headway'}, inplace=True)
+            # Filter on strictly positive headway (Headway = 0 : no trip)
+            self.links = self.links.loc[self.links['headway']>0].reset_index(drop=True)
+    
         links_trips = pd.merge(self.trips, self.routes, on='route_id')
         self.links = pd.merge(self.links, links_trips, on ='trip_id') 
         
