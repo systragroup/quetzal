@@ -150,7 +150,7 @@ class TransportModel(optimalmodel.OptimalModel):
         boarding_time=0,
         speedup=False,
         walk_on_road=False, 
-        keep_graph=False,
+        # keep_graph=False,
         keep_pathfinder=False,
         force=False,
         path_analysis=True,
@@ -179,8 +179,8 @@ class TransportModel(optimalmodel.OptimalModel):
             **kwargs
         )
 
-        if keep_graph:
-            self.nx_graph=publicpathfinder.nx_graph
+        # if keep_graph:
+        #     self.nx_graph=publicpathfinder.nx_graph
         
         if keep_pathfinder:
             self.publicpathfinder = publicpathfinder

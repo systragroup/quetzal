@@ -490,7 +490,7 @@ class PublicPathFinder:
             to_concat.append(self.broken_route_paths)
 
         if broken_modes:
-            self.build_graph(**kwargs)
+            # self.build_graph(**kwargs)
             self.build_mode_combinations(mode_column=mode_column)
             self.find_broken_mode_paths(
                 od_set=od_set, 
