@@ -575,8 +575,9 @@ class TransportModel(optimalmodel.OptimalModel):
         u = 0
         for key, value in utility_values.items():
             u += value * los[key]
-            
+
         self.los[(segment, 'utility')] = u
+        self.los[(segment, 'utility')] = self.los[(segment, 'utility')].astype(float)
         
     def analysis_utility(self, segment='root'):
         utility_values = self.utility_values[segment].to_dict()
@@ -584,6 +585,7 @@ class TransportModel(optimalmodel.OptimalModel):
         for key, value in utility_values.items():
             u += value * self.los[key]
         self.los[(segment, 'utility')] = u
+        self.los[(segment, 'utility')] = self.los[(segment, 'utility')].astype(float)
 
     def initialize_logit(self):
         zones = list(self.zones.index)

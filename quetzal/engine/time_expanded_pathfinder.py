@@ -128,9 +128,14 @@ def create_transfers_edges(arrival_nodes, transfer_nodes, min_transfer_time=180)
     Transfers_edges: within one stop, from arrival node to 
     earliest transfer node above transfer threshold
     """
+    try:
+        transfer_nodes['min_transfer_time'] = np.maximum(transfer_nodes['transfer_duration'].values, min_transfer_time)
+    except KeyError:
+        print('cluster transfer duration not defined')
+        transfer_nodes['min_transfer_time'] = min_transfer_time
     transfers = arrival_nodes.merge(transfer_nodes, on='stop', suffixes=('_arrival', '_transfer'))
     transfers['time'] = transfers['time_transfer'] - transfers['time_arrival']
-    transfers = transfers.loc[transfers['time'] >= min_transfer_time].sort_values('time_transfer')
+    transfers = transfers.loc[transfers['time'] >= transfers['min_transfer_time']].sort_values('time_transfer')
     transfers = transfers.groupby(['stop', 'time_arrival'], as_index=False).first()
 
     transfer_edges = []
@@ -195,7 +200,7 @@ def create_footpath_edges(nodes, footpaths):
     return footpath_edges
 
 
-def create_egress_edges(nodes, zone_to_transit, ntlegs_penalty=1e9,  time_interval=None):
+def create_egress_edges(nodes, zone_to_transit, ntlegs_penalty=1e9, time_interval=None):
     # eggress: every arrival node arriving after departure time is connected to a zone
     arrival_nodes = nodes.loc[nodes['type']=='arrival']
     
@@ -282,7 +287,7 @@ def create_access_edges(nodes, zone_to_transit, ntlegs_penalty=1e9, time_interva
 
     return access_edges
 
-def pt_edges_and_nodes_from_links(links, time_interval=None, boarding_cost=300):
+def pt_edges_and_nodes_from_links(links, nodes, time_interval=None, boarding_cost=300, min_transfer_time=180):
     if time_interval is not None:
         links = links.loc[
             (links['departure_time'] >= time_interval[0])
@@ -295,20 +300,22 @@ def pt_edges_and_nodes_from_links(links, time_interval=None, boarding_cost=300):
     
     temp = pd.concat([edges['a'], edges['b']]).drop_duplicates()
     
-    nodes = pd.DataFrame(
+    graph_nodes = pd.DataFrame(
         data=temp.map(list).values.tolist(),
         columns=['stop', 'type', 'time']
     )
+    # add data such as transfer duration for clusters
+    graph_nodes = graph_nodes.merge(nodes[['transfer_duration']], left_on='stop', right_index=True)
     
-    arrival_nodes = nodes.loc[nodes['type']=='arrival']
-    transfer_nodes = nodes.loc[nodes['type']=='transfer']
+    arrival_nodes = graph_nodes.loc[graph_nodes['type']=='arrival']
+    transfer_nodes = graph_nodes.loc[graph_nodes['type']=='transfer']
     
     waiting_edges = create_waiting_edges(transfer_nodes)
-    transfer_edges = create_transfers_edges(arrival_nodes, transfer_nodes)
+    transfer_edges = create_transfers_edges(arrival_nodes, transfer_nodes, min_transfer_time=180)
     
     edges = pd.concat([edges, waiting_edges, transfer_edges])
 
-    return edges, nodes.reset_index(drop=True)
+    return edges, graph_nodes.reset_index(drop=True)
 
 # Scipy pathfinder
 
@@ -518,3 +525,38 @@ def analysis_durations(los, all_edges, ntlegs_penalty):
     )
     
     return los
+
+
+def expand_volumes_with_time(volumes, time_interval, bins, volume_columns):
+    # departure times
+    duration = time_interval[1] - time_interval[0]
+    departures = [time_interval[0] + duration / bins * (x + 0.5) for x in np.arange(bins)]
+    
+    time_volumes = pd.DataFrame()
+    for departure in departures:
+        volumes['time'] = departure
+        time_volumes = pd.concat([time_volumes, volumes])
+    for col in volume_columns:
+        time_volumes[col] *= 1 / len(departures)
+    
+    time_volumes['origin'] = [tuple(l) for l in time_volumes[['origin', 'time']].values]
+    time_volumes.reset_index(inplace=True, drop=True)
+    return time_volumes
+
+def expand_los_with_time(los, time_interval, bins):
+    
+    duration = time_interval[1] - time_interval[0]
+    departures = [time_interval[0] + duration / bins * (x + 0.5) for x in np.arange(bins)]
+    
+    all_los = []
+    for d in departures:
+        los['wished_dep_time'] = d
+        all_los.append(los)
+    te_los = pd.concat(all_los)
+
+    ot = te_los[['origin', 'wished_dep_time']].values
+    te_los['origin'] = pd.Series(map(tuple, ot))
+    te_los.drop(['wished_dep_time'], 1, inplace=True)
+    te_los.reset_index(inplace=True, drop=True)
+
+    return te_los

@@ -4,6 +4,8 @@ from quetzal.engine import time_expanded_pathfinder as te_pathfinder
 import pandas as pd
 import networkx as nx
 import numpy as np
+from shapely import geometry
+from syspy.spatial import spatial
 
 import warnings
 from functools import wraps
@@ -38,15 +40,61 @@ def read_json(folder):
 
 class TimeExpandedModel(stepmodel.StepModel):
 
-    def __init__(self, time_interval=[0,24*3600-1], *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.time_interval = time_interval
+        if not 'time_interval' in dir(self):
+            self.time_interval = [0, 24*3600-1]
 
-    def _preparation_create_graph_edges(self, boarding_cost=300):
+    def preparation_clusterize_stops(self, distance_threshold=1000, walking_speed=3):
+        """
+        Create node clusters with an agglomerative clustering approach and a distance threshold.
+        For each cluster, compute the average transfer length and corresponding walking duration.
+        """
+        # Create clusters
+        self.nodes['cluster_id'] = spatial.agglomerative_clustering(
+            self.nodes,
+            distance_threshold=distance_threshold
+        )
+        # Save nodes
+        self.disaggregated_nodes = self.nodes.copy()
+
+        # Replace in model
+        stop_id_to_cluster = self.nodes['cluster_id'].to_dict()
+        self.links['disaggregated_a'] = self.links['a']
+        self.links['disaggregated_b'] = self.links['b']
+        self.links['a'] = self.links['a'].apply(lambda x: stop_id_to_cluster[x])
+        self.links['b'] = self.links['b'].apply(lambda x: stop_id_to_cluster[x])
+        self.links = self.links.loc[self.links['a']!=self.links['b']]
+
+        # Compute cluster characteristics
+        self.nodes['transfer_length'] = self.nodes['geometry'].copy()
+        g = self.nodes.groupby('cluster_id').get_group(1)
+        def transfer_length(g):
+            """
+            For a list of stops, compute the average length between each pair of stops
+            """
+            if len(g)==1:
+                return 0
+            else:
+                lengths = []
+                for i in range(len(g)):
+                    for j in range(i+1, len(g)):
+                        lengths.append(geometry.LineString(g.iloc[[i,j]].values).length)
+                return sum(lengths) / len(lengths)
+
+        self.nodes = self.nodes.groupby('cluster_id').agg(
+            {
+                'geometry': lambda x: geometry.MultiPoint(x).centroid,
+                'transfer_length': lambda x: transfer_length(x),
+            }
+        )
+        self.nodes['transfer_duration'] = self.nodes['transfer_length'] / (walking_speed / 3.6)
+
+    def _preparation_create_graph_edges(self, boarding_cost=300, min_transfer_time=180):
 
         # PT edges and transfer
         edges, graph_nodes = te_pathfinder.pt_edges_and_nodes_from_links(
-            self.links,
+            self.links, self.nodes,
             time_interval=self.time_interval,
             boarding_cost=boarding_cost
         )
@@ -69,10 +117,14 @@ class TimeExpandedModel(stepmodel.StepModel):
         )
 
         self.edges = pd.concat([edges, access_edges, egress_edges, footpath_edges])
+        self.graph_nodes = graph_nodes
 
-    def step_pt_pathfinder(self, boarding_cost, ntlegs_penalty=1e9):
+    def step_pt_pathfinder(self, boarding_cost, min_transfer_time=180, ntlegs_penalty=1e9):
+        # WARNING: all walk paths are not computed (one must take a trip to reach an alighting node)
+        #TODO: solve this issue (adding an all walk pathfinder?)
+
         # create edges
-        self._preparation_create_graph_edges(boarding_cost=boarding_cost)
+        self._preparation_create_graph_edges(boarding_cost=boarding_cost, min_transfer_time=min_transfer_time)
         
         # build graph
         edge_list = [tuple([a, b, w]) for a,b,w in self.edges[['a', 'b', 'weight']].values.tolist()]
@@ -111,3 +163,10 @@ class TimeExpandedModel(stepmodel.StepModel):
             )
             self.pt_los = te_pathfinder.analysis_transfers(self.pt_los)
             self.pt_los = te_pathfinder.analysis_durations(self.pt_los, self.edges, ntlegs_penalty)
+    
+    def analysis_time_shift(self, threshold=300):
+        def time_shift(departure_time, wished_time, threshold=threshold):
+            return np.maximum((abs(departure_time - wished_time) - threshold), 0)
+
+        temp = self.los[['departure_time', 'origin']].values.T
+        self.los['time_shift'] = time_shift(temp[0], np.array([x[1] for x in temp[1]]))
