@@ -652,10 +652,10 @@ class AnalysisModel(summarymodel.SummaryModel):
 
         self.pt_los['route_fares'] = self.pt_los['arod_list'].apply(route_price_breakdown)
     
-    def analysis_pt_fare(self, keep_intermediate_results=True):
+    def analysis_pt_fare(self, keep_intermediate_results=True, consecutive=False):
         self.compute_arod_list()
         self.compute_od_fares()
-        self.compute_route_fares()
+        self.compute_route_fares(consecutive)
         
         values = self.pt_los[['route_fares', 'od_fares']].values
         self.pt_los['price'] = [
