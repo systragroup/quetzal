@@ -247,7 +247,7 @@ class TransportModel(optimalmodel.OptimalModel):
         self, 
         road=False, 
         boardings=False, 
-        alightings=False, 
+        alightings=False,
         transfers=False,
         segmented=False
         ):
@@ -266,25 +266,31 @@ class TransportModel(optimalmodel.OptimalModel):
         if boardings:
             column = 'boarding_links'
             l = self.los.dropna(subset=[column])
-            self.links[ 'boardings'] = assign(l[segment], l[column])
+            self.links[ 'boardings'] = assign(l['volume'], l[column])
+            self.links['boardings'].fillna(0, inplace=True)
             
             column = 'boardings'
             l = self.los.dropna(subset=[column])
-            self.nodes['boardings'] = assign(l[segment], l[column])
+            self.nodes['boardings'] = assign(l['volume'], l[column])
+            self.nodes['boardings'].fillna(0, inplace=True)
             
         if alightings:
             column = 'alighting_links'
             l = self.los.dropna(subset=[column])
-            self.links['alightings'] = assign(l[segment], l[column])
+            self.links['alightings'] = assign(l['volume'], l[column])
+            self.links['alightings'].fillna(0, inplace=True)
             
             column = 'alightings'
             l = self.los.dropna(subset=[column])
-            self.nodes['alightings'] = assign(l[segment], l[column])
+            self.nodes['alightings'] = assign(l['volume'], l[column])
+            self.nodes['alightings'].fillna(0, inplace=True)
             
         if transfers:
             column = 'transfers'
             l = self.los.dropna(subset=[column])
-            self.nodes[ 'transfers'] = assign(l[segment], l[column])
+            self.nodes['transfers'] = assign(l['volume'], l[column])
+            self.nodes['transfers'].fillna(0, inplace=True)
+
         if segmented:
             self.segmented_assigment(
                 road=road, 
