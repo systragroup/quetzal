@@ -522,7 +522,8 @@ def base_plot(df, geographical_bounds, *args, **kwargs):
     # Light geometry plot
     plot = gpd.GeoDataFrame(df).plot(linewidth=0.1, color='grey', *args, **kwargs)
     # Set bounds geographical bounds
-    _set_bandwidth_geographical_bounds(plot, *geographical_bounds)
+    if geographical_bounds is not None:
+        _set_bandwidth_geographical_bounds(plot, *geographical_bounds)
 
     return plot
 

@@ -1,8 +1,12 @@
 import pandas as pd
 import geopandas as gpd
 import numpy as np
+from syspy.skims import skims
+from shapely import geometry
+import pyproj
 
-def create_connection_boarding_edges(links, boarding_cost=300):
+
+def create_connection_boarding_edges(links, boarding_time=0):
     """
     connection_edges: from (a, departure, departure_time) to 
         (b, arrival, arrival_time), at cost 'time'
@@ -29,8 +33,8 @@ def create_connection_boarding_edges(links, boarding_cost=300):
             [
                 tuple([a, 'transfer', dep_time]),
                 node_dep,
-                boarding_cost,
-                {'trip_id': t_id},
+                boarding_time,
+                {'trip_id': t_id, 'id': i},
                 dep_time
             ]
         )
@@ -123,13 +127,13 @@ def create_waiting_edges(nodes):
 
     return waiting_edges
 
-def create_transfers_edges(arrival_nodes, transfer_nodes, min_transfer_time=180):
+def create_transfers_edges(arrival_nodes, transfer_nodes, min_transfer_time=0):
     """
     Transfers_edges: within one stop, from arrival node to 
     earliest transfer node above transfer threshold
     """
     try:
-        transfer_nodes['min_transfer_time'] = np.maximum(transfer_nodes['transfer_duration'].values, min_transfer_time)
+        transfer_nodes['min_transfer_time'] = np.maximum(transfer_nodes['transfer_duration'].values, min_transfer_time) # l'un sinon l'autre
     except KeyError:
         print('cluster transfer duration not defined')
         transfer_nodes['min_transfer_time'] = min_transfer_time
@@ -287,13 +291,13 @@ def create_access_edges(nodes, zone_to_transit, ntlegs_penalty=1e9, time_interva
 
     return access_edges
 
-def pt_edges_and_nodes_from_links(links, nodes, time_interval=None, boarding_cost=300, min_transfer_time=180):
+def pt_edges_and_nodes_from_links(links, nodes, time_interval=None, boarding_time=0, min_transfer_time=0):
     if time_interval is not None:
         links = links.loc[
             (links['departure_time'] >= time_interval[0])
         ] 
     
-    connection_edges, boarding_edges = create_connection_boarding_edges(links, boarding_cost=boarding_cost)
+    connection_edges, boarding_edges = create_connection_boarding_edges(links, boarding_time=boarding_time)
     transit_edges = create_transit_edges(links)
     
     edges = pd.concat([connection_edges, boarding_edges, transit_edges])
@@ -311,7 +315,7 @@ def pt_edges_and_nodes_from_links(links, nodes, time_interval=None, boarding_cos
     transfer_nodes = graph_nodes.loc[graph_nodes['type']=='transfer']
     
     waiting_edges = create_waiting_edges(transfer_nodes)
-    transfer_edges = create_transfers_edges(arrival_nodes, transfer_nodes, min_transfer_time=180)
+    transfer_edges = create_transfers_edges(arrival_nodes, transfer_nodes, min_transfer_time=0)
     
     edges = pd.concat([edges, waiting_edges, transfer_edges])
 
@@ -392,13 +396,20 @@ def get_edge_path(los):
     return los
 
 def get_model_link_path(los, all_edges):
-    all_edges['index'] = [x.get('id') for x in all_edges['data'].values]
+    if not 'edge_path' in los.columns:
+        los = get_edge_path(los)
+
+    all_edges['index'] = [x.get('id') for x in all_edges['data'].values] # remove get?
     ab_indexed_dict = all_edges.set_index(['a', 'b']).sort_index()['index'].to_dict()
     ml_paths = []
     for lp in los['edge_path'].values:
 #         ml_paths.append([l for l in list(map(ab_indexed_dict.get, lp)) if l is not None])
-        ml_paths.append([l for l in [ab_indexed_dict[x] for x in  lp] if l is not None])
-    los['model_link_path'] = ml_paths
+        ml_paths.append([l for l in [ab_indexed_dict[x] for x in lp] if l is not None])
+    # los['link_path'] = ml_paths
+
+    los['link_path'] = [
+        list(dict.fromkeys(p)) for p in ml_paths # remove duplicated link ids (link_i, link_i, etc.)
+    ]
     return los
 
 def get_edges_per_type_set(los, all_edges):
@@ -441,28 +452,33 @@ def merge_node_link_paths(node_path, link_path):
         return list(reduce(operator.add, zip(node_path, link_path))) + [node_path[-1]]
     
 def get_model_path(los):
-    link_path_loc = (los['model_link_path'].apply(len) > 0)
+    link_path_loc = (los['link_path'].apply(len) > 0)
     m_paths = []
-    for mlp, mnp in los.loc[link_path_loc, ['model_link_path', 'model_node_path']].values:
+    for mlp, mnp in los.loc[link_path_loc, ['link_path', 'model_node_path']].values:
         m_paths.append(merge_node_link_paths(mnp, mlp))
     los.loc[link_path_loc, 'path'] = m_paths
     return los
 
-def analysis_paths(los, all_edges, typed_edges=False):
+def analysis_paths(los, all_edges, typed_edges=False, force=False):
     # edge_path
-    los = get_edge_path(los)
+    if not 'edge_path' in los.columns or force:
+        los = get_edge_path(los)
    
     # model_link_path
-    los = get_model_link_path(los, all_edges)
+    if not 'link_path' in los.columns or force:
+        los = get_model_link_path(los, all_edges)
     
-    if typed_edges:
+
+    if (typed_edges and not 'edges_per_type' in los.columns) or force:
         los = get_edges_per_type_dict(los, all_edges)
 
     # model_node_path
-    los = get_model_node_path(los)
+    if not 'model_node_path' in los.columns or force:
+        los = get_model_node_path(los)
 
     # model_path (node, link, node, link, …)
-    los = get_model_path(los)
+    if not 'model_path' in los.columns or force:
+        los = get_model_path(los)
     
     return los
 
@@ -470,20 +486,20 @@ def analysis_lengths(los, links, footpaths, zone_to_transit):
     # LOS Lengths
     model_edges_length =  gpd.GeoSeries(pd.concat([links.geometry, footpaths.geometry, zone_to_transit.geometry])).length
     length_dict = model_edges_length.to_dict()
-    los['length'] = los['model_link_path'].apply(lambda x: sum(map(length_dict.get, x)))
+    los['length'] = los['link_path'].apply(lambda x: sum(map(length_dict.get, x)))
 
     links_length_dict = links.geometry.length.to_dict()
-    los['in_vehicle_length'] = los['model_link_path'].apply(
+    los['in_vehicle_length'] = los['link_path'].apply(
         lambda x: sum(map(lambda y: links_length_dict.get(y,0), x))
     )
 
     footpath_length_dict = footpaths.geometry.apply(lambda x: x.length).to_dict()
-    los['footpath_length'] = los['model_link_path'].apply(
+    los['footpath_length'] = los['link_path'].apply(
         lambda x: sum(map(lambda y: footpath_length_dict.get(y,0), x))
     )
 
     ntlegs_length_dict = zone_to_transit.geometry.apply(lambda x: x.length).to_dict()
-    los['ntlegs_length'] = los['model_link_path'].apply(
+    los['ntlegs_length'] = los['link_path'].apply(
         lambda x: sum(map(lambda y: ntlegs_length_dict.get(y,0), x))
     )
     
@@ -534,29 +550,29 @@ def expand_volumes_with_time(volumes, time_interval, bins, volume_columns):
     
     time_volumes = pd.DataFrame()
     for departure in departures:
-        volumes['time'] = departure
+        volumes['wished_departure_time'] = departure
         time_volumes = pd.concat([time_volumes, volumes])
     for col in volume_columns:
         time_volumes[col] *= 1 / len(departures)
     
-    time_volumes['origin'] = [tuple(l) for l in time_volumes[['origin', 'time']].values]
     time_volumes.reset_index(inplace=True, drop=True)
     return time_volumes
 
-def expand_los_with_time(los, time_interval, bins):
-    
-    duration = time_interval[1] - time_interval[0]
-    departures = [time_interval[0] + duration / bins * (x + 0.5) for x in np.arange(bins)]
-    
-    all_los = []
-    for d in departures:
-        los['wished_dep_time'] = d
-        all_los.append(los)
-    te_los = pd.concat(all_los)
-
-    ot = te_los[['origin', 'wished_dep_time']].values
-    te_los['origin'] = pd.Series(map(tuple, ot))
-    te_los.drop(['wished_dep_time'], 1, inplace=True)
-    te_los.reset_index(inplace=True, drop=True)
-
-    return te_los
+def build_dense_footpaths(nodes, max_length=1000, walking_speed=3):
+    footpaths = skims.euclidean(nodes, coordinates_unit='meter')
+    footpaths = footpaths.loc[footpaths['euclidean_distance'] < max_length]
+    footpaths['duration'] = footpaths['euclidean_distance'] / (walking_speed / 3.6) # km/h to m/s
+    footpaths = footpaths.loc[footpaths['origin']!=footpaths['destination']]
+    footpaths['geometry'] = footpaths.apply(
+        lambda x: geometry.LineString(
+            [
+                [x['x_origin'], x['y_origin']],
+                [x['x_destination'], x['y_destination']],
+            ]
+        ),
+        1
+    )
+    footpaths = footpaths[['origin', 'destination', 'duration', 'geometry']].rename(
+        columns={'origin': 'a', 'destination': 'b'}
+    )
+    return footpaths
