@@ -230,22 +230,29 @@ class TransportModel(optimalmodel.OptimalModel):
 
         self.shared = shared
 
-    def compute_los_volume(self):
+    def compute_los_volume(self, time_expanded=False):
 
+        los = self.los if not time_expanded else self.te_los
+    
         segments = self.segments
         probabilities = [(segment, 'probability') for segment in segments]
 
-        shared_cols = list(set(self.volumes.columns).intersection(set(self.los.columns)))
+        shared_cols = list(set(self.volumes.columns).intersection(set(los.columns)))
         on = [col for col in shared_cols if col in ['origin', 'destination', 'wished_departure_time']]
 
-        left = self.los[on + probabilities]
+        left = los[on + probabilities]
         left['index'] = left.index
         df = pd.merge(left, self.volumes, on=on).set_index('index')
         values = df[probabilities].values * df[segments].values
         right = pd.DataFrame(values, index=df.index, columns=segments)
         for segment in segments:
-            self.los[segment] = right[segment]
-        self.los['volume'] = right.T.sum() 
+            los[segment] = right[segment]
+        los['volume'] = right.T.sum() 
+
+        if time_expanded:
+            los_volumes = self.te_los.groupby('path_id')[['volume'] + segments].sum()
+            self.los.drop(['volume'] + segments, axis=1, inplace=True, errors='ignore')
+            self.los = self.los.merge(los_volumes, on='path_id')
 
     def step_assignment(
         self, 
@@ -254,12 +261,15 @@ class TransportModel(optimalmodel.OptimalModel):
         alightings=False, 
         transfers=False,
         segmented=False,
-        aggregate_los_by=None # set to 'path_id' for time_expanded_model
+        time_expanded=False,
+        aggregate_los=False,  # setting to True can be a speedup if duplicated paths in los
         ):
-        self.compute_los_volume()
+        self.compute_los_volume(time_expanded=time_expanded)
 
         # speed up time_expanded_model
-        if aggregate_los_by is not None:
+        if aggregate_los:
+            los = self.los.copy()
+            los['path_id'] = los['link_path'].apply(str)
             required_columns = ['link_path']
             if boardings:
                 required_columns += ['boarding_links', 'boardings']
@@ -271,9 +281,9 @@ class TransportModel(optimalmodel.OptimalModel):
                 required_columns += self.segments
             agg = {col: 'first' for col in required_columns}
             agg.update({'volume': sum})
-            los = self.los.groupby(aggregate_los_by).agg(agg)
+            los = los.groupby('path_id').agg(agg)
         else:
-            los = self.los
+            los = self.los.copy()
 
         column = 'link_path'
         l = los.dropna(subset=[column])

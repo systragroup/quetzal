@@ -133,9 +133,9 @@ def create_transfers_edges(arrival_nodes, transfer_nodes, min_transfer_time=0):
     earliest transfer node above transfer threshold
     """
     try:
-        transfer_nodes['min_transfer_time'] = np.maximum(transfer_nodes['transfer_duration'].values, min_transfer_time) # l'un sinon l'autre
+        transfer_nodes['min_transfer_time'] = transfer_nodes['transfer_duration'] + min_transfer_time
     except KeyError:
-        print('cluster transfer duration not defined')
+        print('Cluster transfer duration not defined, setting to min_transfer_time: {}'.format(min_transfer_time))
         transfer_nodes['min_transfer_time'] = min_transfer_time
     transfers = arrival_nodes.merge(transfer_nodes, on='stop', suffixes=('_arrival', '_transfer'))
     transfers['time'] = transfers['time_transfer'] - transfers['time_arrival']
@@ -412,6 +412,20 @@ def get_model_link_path(los, all_edges):
     ]
     return los
 
+def get_boarding_links(los, all_edges):
+    boardings = []
+    boarding_links = []
+    ab_boarding_edges = all_edges.loc[all_edges.type=='boarding'].set_index(['a', 'b'])['data'].to_dict()
+    for edges in los['edge_path'].values:
+        b_edges = [e for e in edges if e[0][1]=='transfer' and e[1][1]=='departure']
+        b = [ab_boarding_edges.get(x)['id'] for x in b_edges]
+        boarding_links.append(b)
+        boardings.append([x[0][0] for x in b_edges])
+    los['boardings'] = boardings
+    los['boarding_links'] = boarding_links
+
+    return los
+
 def get_edges_per_type_set(los, all_edges):
     # edges per type
     link_path_sets = los['edge_path'].map(set).values
@@ -468,7 +482,6 @@ def analysis_paths(los, all_edges, typed_edges=False, force=False):
     if not 'link_path' in los.columns or force:
         los = get_model_link_path(los, all_edges)
     
-
     if (typed_edges and not 'edges_per_type' in los.columns) or force:
         los = get_edges_per_type_dict(los, all_edges)
 
@@ -503,11 +516,6 @@ def analysis_lengths(los, links, footpaths, zone_to_transit):
         lambda x: sum(map(lambda y: ntlegs_length_dict.get(y,0), x))
     )
     
-    return los
-
-def analysis_transfers(los):
-    # LOS transfers
-    los['transfers'] = los['edges_per_type'].apply(lambda x: max(0, len(x.get('boarding', [])) - 1))
     return los
 
 def analysis_durations(los, all_edges, ntlegs_penalty):
@@ -559,6 +567,7 @@ def expand_volumes_with_time(volumes, time_interval, bins, volume_columns):
     return time_volumes
 
 def build_dense_footpaths(nodes, max_length=1000, walking_speed=3):
+    #TODO improve with sklearn function if too slow for large number of nodes
     footpaths = skims.euclidean(nodes, coordinates_unit='meter')
     footpaths = footpaths.loc[footpaths['euclidean_distance'] < max_length]
     footpaths['duration'] = footpaths['euclidean_distance'] / (walking_speed / 3.6) # km/h to m/s

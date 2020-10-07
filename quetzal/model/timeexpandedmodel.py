@@ -154,13 +154,22 @@ class TimeExpandedModel(stepmodel.StepModel):
         los['origin'] = los['origin'].apply(lambda x: x[0])
         los['destination'] = los['destination'].apply(lambda x: x[0])
         los = los[los['origin']!=los['destination']]
+        
+        # build paths, boardings, transfers
+        los = te_utils.get_edge_path(los)
+        los = te_utils.get_model_link_path(los, self.edges)
+        los = te_utils.get_boarding_links(los, self.edges)
 
-        self.pt_los = te_utils.get_model_link_path(los, self.edges)
+        # transfers
+        los['ntransfers'] = los['boarding_links'].apply(len) - 1
+        los['ntransfers'] = los['ntransfers'].clip(0)
+
+        self.pt_los = los
     
     def step_logit(self):
         """
-        * requires: mode_nests, logit_scales, los
-        * builds: los, od_utilities, od_probabilities, path_utilities, path_probabilities
+        * requires: mode_nests, logit_scales, te_los, los
+        * builds: te_los, los, od_utilities, od_probabilities, path_utilities, path_probabilities
         """
         try:
             self._unique_model_segmented_logit(time_expanded=True)
@@ -170,23 +179,17 @@ class TimeExpandedModel(stepmodel.StepModel):
             pass
 
 
-    def analysis_paths(self, typed_edges=True, boardings=False, alightings=False, transfers=False, kpis=True, ntlegs_penalty=1e9):
+    def analysis_paths(self, typed_edges=True, boardings=True, alightings=False, transfers=False, kpis=True, ntlegs_penalty=1e9):
         self.pt_los = te_utils.analysis_paths(
             self.pt_los, self.edges, typed_edges=typed_edges
         )
-        self.pt_los = te_utils.analysis_transfers(self.pt_los)
         
         if boardings:
-            boardings = []
-            boarding_links = []
-            ab_boarding_edges = self.edges.loc[self.edges.type=='boarding'].set_index(['a', 'b'])['data'].to_dict()
-            for typed_edges in self.pt_los['edges_per_type'].values:
-                b_edges = typed_edges['boarding']
-                b = [ab_boarding_edges.get(x)['id'] for x in b_edges]
-                boarding_links.append(b)
-                boardings.append([x[0][0] for x in b_edges])
-            self.pt_los['boardings'] = boardings
-            self.pt_los['boarding_links'] = boarding_links
+            self.pt_los = te_utils.get_boarding_links(self.pt_los, self.edges)
+
+            # transfers
+            self.pt_los['ntransfers'] = self.pt_los['boarding_links'].apply(len) - 1
+            self.pt_los['ntransfers'] = self.pt_los['ntransfers'].clip(0)
 
         if kpis:
             self.pt_los = te_utils.analysis_lengths(
@@ -204,7 +207,7 @@ class TimeExpandedModel(stepmodel.StepModel):
         self.los.reset_index(inplace=True)
         # Create te_los
         columns_to_keep = {'origin', 'destination', 'path_id', 'departure_time', 'arrival_time',
-            'transfers', 'route_types', 'route_type'}
+            'transfers', 'route_types', 'route_type', 'ntransfers', 'time', 'price'}
         columns = list(set(self.los.columns).intersection(columns_to_keep))
         self.te_los = self.volumes[['origin', 'destination', 'wished_departure_time']].merge(
             self.los[columns],
