@@ -249,7 +249,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         segments=[],
         time=-1,
         price=-1,
-        transfers=-1
+        transfers=-1,
+        time_shift=None # for time expanded model
     ):
         """
         * requires: 
@@ -269,9 +270,14 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         #TODO : move to preparation
         
         # utility values
-        self.utility_values = pd.DataFrame(
-            {'root': pd.Series( {'time':time,'price':price,'ntransfers':transfers,'mode_utility':1})}
-        )
+        if time_shift is None:
+            self.utility_values = pd.DataFrame(
+                {'root': pd.Series( {'time': time, 'price': price, 'ntransfers': transfers, 'mode_utility': 1})}
+            )
+        else:
+            self.utility_values = pd.DataFrame(
+                {'root': pd.Series( {'time': time, 'price': price, 'ntransfers': transfers, 'mode_utility': 1, 'time_shift': time_shift})}
+            )
         self.utility_values.index.name = 'value'
         self.utility_values.columns.name = 'segment'
 
@@ -310,7 +316,10 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 df[segment] = df['root']
 
     @track_args
-    def preparation_clusterize_zones(self, max_zones=500, cluster_column=None, is_od_stack=False):
+    def preparation_clusterize_zones(
+        self, max_zones=500, cluster_column=None,
+        is_od_stack=False, **kwargs
+        ):
         """
         clusterize zones
             * requires: zones, volumes
@@ -327,14 +336,16 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 self.micro_volumes,
                 self.micro_od_stack,
                 max_zones,
-                cluster_column
+                cluster_column,
+                **kwargs
             )
         else:
             self.zones, self.volumes, self.cluster_series = renumber.renumber(
                 self.micro_zones,
                 self.micro_volumes,
                 max_zones,
-                cluster_column
+                cluster_column,
+                **kwargs
             )
             
     @track_args

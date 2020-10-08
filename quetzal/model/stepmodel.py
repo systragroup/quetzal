@@ -54,7 +54,6 @@ class StepModel(
     plotmodel.PlotModel,
     analysismodel.AnalysisModel, 
     docmodel.DocModel,
-    
     ):
 
     def __init__(self, *args, **kwargs):

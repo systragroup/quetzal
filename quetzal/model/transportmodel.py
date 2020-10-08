@@ -150,7 +150,7 @@ class TransportModel(optimalmodel.OptimalModel):
         boarding_time=0,
         speedup=False,
         walk_on_road=False, 
-        keep_graph=False,
+        # keep_graph=False,
         keep_pathfinder=False,
         force=False,
         path_analysis=True,
@@ -179,8 +179,8 @@ class TransportModel(optimalmodel.OptimalModel):
             **kwargs
         )
 
-        if keep_graph:
-            self.nx_graph=publicpathfinder.nx_graph
+        # if keep_graph:
+        #     self.nx_graph=publicpathfinder.nx_graph
         
         if keep_pathfinder:
             self.publicpathfinder = publicpathfinder
@@ -230,30 +230,63 @@ class TransportModel(optimalmodel.OptimalModel):
 
         self.shared = shared
 
-    def compute_los_volume(self):
+    def compute_los_volume(self, time_expanded=False):
+
+        los = self.los if not time_expanded else self.te_los
+    
         segments = self.segments
-        probabilities = [(segment, 'probability') for segment in segments] 
-        on = ['origin', 'destination']
-        left = self.los[on + probabilities]
+        probabilities = [(segment, 'probability') for segment in segments]
+
+        shared_cols = list(set(self.volumes.columns).intersection(set(los.columns)))
+        on = [col for col in shared_cols if col in ['origin', 'destination', 'wished_departure_time']]
+
+        left = los[on + probabilities]
         left['index'] = left.index
         df = pd.merge(left, self.volumes, on=on).set_index('index')
         values = df[probabilities].values * df[segments].values
         right = pd.DataFrame(values, index=df.index, columns=segments)
         for segment in segments:
-            self.los[segment] = right[segment]
-        self.los['volume'] = right.T.sum() 
+            los[segment] = right[segment]
+        los['volume'] = right.T.sum() 
+
+        if time_expanded:
+            los_volumes = self.te_los.groupby('path_id')[['volume'] + segments].sum()
+            self.los.drop(['volume'] + segments, axis=1, inplace=True, errors='ignore')
+            self.los = self.los.merge(los_volumes, on='path_id')
 
     def step_assignment(
         self, 
         road=False, 
         boardings=False, 
-        alightings=False, 
+        alightings=False,
         transfers=False,
-        segmented=False
+        segmented=False,
+        time_expanded=False,
+        aggregate_los=False,  # setting to True can be a speedup if duplicated paths in los
         ):
-        self.compute_los_volume()
+        self.compute_los_volume(time_expanded=time_expanded)
+
+        # speed up time_expanded_model
+        if aggregate_los:
+            los = self.los.copy()
+            los['path_id'] = los['link_path'].apply(str)
+            required_columns = ['link_path']
+            if boardings:
+                required_columns += ['boarding_links', 'boardings']
+            if alightings:
+                required_columns += ['alighting_links', 'alightings']
+            if transfers:
+                required_columns += ['transfers']
+            if segmented:
+                required_columns += self.segments
+            agg = {col: 'first' for col in required_columns}
+            agg.update({'volume': sum})
+            los = los.groupby('path_id').agg(agg)
+        else:
+            los = self.los.copy()
+
         column = 'link_path'
-        l = self.los.dropna(subset=[column])
+        l = los.dropna(subset=[column])
         self.links['volume'] = assign(l['volume'], l[column])
         
         if road:
@@ -265,30 +298,32 @@ class TransportModel(optimalmodel.OptimalModel):
             
         if boardings:
             column = 'boarding_links'
-            l = self.los.dropna(subset=[column])
-            self.links[ 'boardings'] = assign(l[segment], l[column])
+            l = los.dropna(subset=[column])
+            self.links[ 'boardings'] = assign(l['volume'], l[column])
             
             column = 'boardings'
-            l = self.los.dropna(subset=[column])
-            self.nodes['boardings'] = assign(l[segment], l[column])
+            l = los.dropna(subset=[column])
+            self.nodes['boardings'] = assign(l['volume'], l[column])
             
         if alightings:
             column = 'alighting_links'
-            l = self.los.dropna(subset=[column])
-            self.links['alightings'] = assign(l[segment], l[column])
+            l = los.dropna(subset=[column])
+            self.links['alightings'] = assign(l['volume'], l[column])
             
             column = 'alightings'
-            l = self.los.dropna(subset=[column])
-            self.nodes['alightings'] = assign(l[segment], l[column])
+            l = los.dropna(subset=[column])
+            self.nodes['alightings'] = assign(l['volume'], l[column])
             
         if transfers:
             column = 'transfers'
-            l = self.los.dropna(subset=[column])
-            self.nodes[ 'transfers'] = assign(l[segment], l[column])
+            l = los.dropna(subset=[column])
+            self.nodes[ 'transfers'] = assign(l['volume'], l[column])
+
         if segmented:
             self.segmented_assigment(
                 road=road, 
-                boardings=boardings, alightings=alightings, transfers=transfers
+                boardings=boardings, alightings=alightings, transfers=transfers,
+                aggregated_los=los
             )
         
     def segmented_assigment(
@@ -296,13 +331,15 @@ class TransportModel(optimalmodel.OptimalModel):
         road=False, 
         boardings=False, 
         alightings=False, 
-        transfers=False
+        transfers=False,
+        aggregated_los=None
         ):
-        
+        los = aggregated_los if aggregated_los is not None else self.los
+    
         for segment in self.segments:
 
             column = 'link_path'
-            l = self.los.dropna(subset=[column])
+            l = los.dropna(subset=[column])
             self.links[segment] = assign(l[segment], l[column])
             if road:
                 self.road_links[(segment, 'car')] = assign(l[segment], l[column])
@@ -312,56 +349,67 @@ class TransportModel(optimalmodel.OptimalModel):
                 )
             if boardings:
                 column = 'boarding_links'
-                l = self.los.dropna(subset=[column])
+                l = los.dropna(subset=[column])
                 self.links[(segment, 'boardings')] = assign(l[segment], l[column])
 
                 column = 'boardings'
-                l = self.los.dropna(subset=[column])
+                l = los.dropna(subset=[column])
                 self.nodes[(segment, 'boardings')] = assign(l[segment], l[column])
 
             if alightings:
                 column = 'alighting_links'
-                l = self.los.dropna(subset=[column])
+                l = los.dropna(subset=[column])
                 self.links[(segment, 'alightings')] = assign(l[segment], l[column])
 
                 column = 'alightings'
-                l = self.los.dropna(subset=[column])
+                l = los.dropna(subset=[column])
                 self.nodes[(segment, 'alightings')] = assign(l[segment], l[column])
 
             if transfers:
                 column = 'transfers'
-                l = self.los.dropna(subset=[column])
+                l = los.dropna(subset=[column])
                 self.nodes[(segment, 'transfers')] = assign(l[segment], l[column])
 
     @track_args
     def step_pt_assignment(
         self,
         volume_column=None,
-        road=False,
+        on_road_links=False,
+        split_by=None,
         **kwargs
         ):
         """
         Assignment step
             * requires: links, nodes, pt_los, road_links, volumes, path_probabilities
-            * builds: loaded_links, loaded_nodes, loaded_road_links
+            * builds: loaded_links, loaded_nodes, add load to road_links
 
-        :param loaded_links_and_nodes_kwargs: kwargs of engine.loaded_links_and_nodes
+        :param volume_column: volume column of self.volumes to assign. If none, all columns will be assigned
+        :param on_road_links: if True, performs pt assignment on road_links as well
+        :param split_by: path categories to be tracked in the assignment. Must be a column of self.pt_los
 
         example:
         ::
             sm.step_assignment(
-                loaded_links_and_nodes_kwargs={
-                    'boardings': True,
-                    'alightings': True,
-                    'transfers': True
+                    volume_column=None,
+                    on_road_links=False,
+                    split_by='route_type',
+                    boardings=True,
+                    alightings=True,
+                    transfers=True
                 }
             )
         """
 
         if volume_column is None:
-            self.segmented_pt_assignment(road=road, **kwargs)
+            self.segmented_pt_assignment(
+                on_road_links=on_road_links,
+                split_by=split_by,
+                **kwargs
+            )
             return 
 
+        # When split_by is not None, this call could be replaced by a sum, provided 
+        # prior dumb definition of loaded_links and loaded_nodes 
         self.loaded_links, self.loaded_nodes = engine.loaded_links_and_nodes(
             self.links,
             self.nodes,
@@ -370,57 +418,134 @@ class TransportModel(optimalmodel.OptimalModel):
             volume_column=volume_column,
             **kwargs
         )
-        
-        if road:
-            self.road_links[volume_column] = raw_assignment.assign(
-                volume_array=list(self.loaded_links[volume_column]), 
-                paths=list(self.loaded_links['road_link_list'])
-            )
+
+        # Rename columns
+        self.loaded_links.rename(columns={volume_column: ('load', volume_column)}, inplace=True)
+        self.loaded_nodes.rename(columns={volume_column: ('load', volume_column)}, inplace=True)
+        for col in list(set(['boardings', 'alightings', 'transfers']).intersection(kwargs.keys())):
+            self.loaded_links.rename(columns={col: (col, volume_column)}, inplace=True)
+            self.loaded_nodes.rename(columns={col: (col, volume_column)}, inplace=True)
+
+        # Group assignment
+        if split_by is not None:
+            groups = self.pt_los[split_by].unique()
+            for group in groups:
+                # TODO remove rows with empty link_path
+                group_pt_los = self.pt_los.loc[self.pt_los[split_by]==group]
+                group_loaded_links, group_loaded_nodes = engine.loaded_links_and_nodes(
+                    self.links,
+                    self.nodes,
+                    volumes=self.volumes,
+                    path_finder_stack=group_pt_los,
+                    volume_column=volume_column,
+                    **kwargs
+                )
+                # Append results columns
+                self.loaded_links[('load', volume_column, group)] = group_loaded_links[volume_column]
+                self.loaded_nodes[('load', volume_column, group)] = group_loaded_nodes[volume_column]
+                for col in list(set(['boardings', 'alightings', 'transfers']).intersection(kwargs.keys())):
+                    self.loaded_links[(col, volume_column, group)] = group_loaded_links[col]
+                    self.loaded_nodes[(col, volume_column, group)] = group_loaded_nodes[col]
+
+        # Assignment on road_links
+        if on_road_links:
+            if not 'road_link_path' in self.pt_los.columns:
+                # create road_link_path column from networkcasted linkss if not already defined
+                self._analysis_road_link_path()
+
+            merged = pd.merge(self.pt_los, self.volumes, on=['origin', 'destination'])
+            merged['to_assign'] = merged[(volume_column ,'probability')] * merged[volume_column].fillna(0)
+            
+            if split_by is not None:
+                def assign_group(g):
+                    x = g.reset_index()
+                    result = raw_assignment.assign(x['to_assign'], x['road_link_path'])
+                    return result
+                group_assigned = merged.groupby(split_by).apply(assign_group)
+                assigned = group_assigned.unstack().T.loc['volume'].fillna(0)
+                # Add empty groups
+                for empty in list(set(groups).difference(set(assigned.columns))):
+                    assigned[empty] = 0
+                self.road_links[[(volume_column, col) for col in groups]] = assigned[[col for col in groups]]
+                self.road_links[volume_column] =  assigned.T.sum()
+
+            else: # no groups
+                assigned = raw_assignment.assign(merged['to_assign'], merged['road_link_path'])
+                self.road_links[volume_column] = assigned['volume']
+
             # todo remove 'load' from analysis module: 
             self.road_links['load'] = self.road_links[volume_column]
 
-    def segmented_pt_assignment(self, *args, **kwargs):
+    def segmented_pt_assignment(self, split_by=None, on_road_links=False, *args, **kwargs):
+        """
+        Performs pt assignment for all demand segments.
+        Requires computed path probabilities in pt_los for each segment.
+        """
         segments = self.segments
-        index_columns = ['pathfinder_session', 'route_types', 'path']
-
-        msg = 'duplicated paths'
-        assert self.pt_los.duplicated(subset=index_columns).sum() == 0, msg
-
+	# Merge conflict: should we modify pt_los here 
+	# or let the modeller check
+        # index_columns = ['pathfinder_session', 'route_types', 'path']
+        # for segment in segments:
+            # self.pt_los.drop((segment, 'probability'), axis=1, inplace=True, errors='ignore')
+            # right = self.los.set_index(index_columns)[[(segment, 'probability')]]
+            # msg = 'self.los cannot have several rows with the same combination of ' 
+            # msg += str(index_columns)
+            # assert right.index.is_unique, msg
+            # self.pt_los = pd.merge(
+            #    self.pt_los, 
+            #     right,
+            #     left_on=index_columns,
+            #     right_index=True
+            # )
 
         iterator = tqdm(segments)
         for segment in iterator:
             iterator.desc = str(segment)
+            # Assign demand segment
             self.step_pt_assignment(
                 volume_column=segment,
                 path_pivot_column=(segment, 'probability'),
-                road=kwargs['road'],
-                boardings=kwargs['boardings'],
-                alightings=kwargs['alightings'],
-                transfers=kwargs['transfers'],
+                split_by=split_by,
+                on_road_links=on_road_links,
+                **kwargs
             )
-
-            for column in ['boardings', 'alightings', 'transfers']:
-                try:
-                    self.loaded_links[(segment, column)] = self.loaded_links[column]
-                    self.loaded_nodes[(segment, column)] = self.loaded_nodes[column]
-                except:
-                    pass
-
+            # Update links and nodes to keep results as loaded links and nodes
+            # are erased at each call of step_pt_assignment
             self.links = self.loaded_links
             self.nodes = self.loaded_nodes
 
-        for column in ['boardings', 'alightings', 'transfers']:
-            try:
-                columns = [(segment, column) for segment in segments]
-                self.loaded_links[column] = self.loaded_links[columns].T.sum()
-                self.loaded_nodes[column] = self.loaded_nodes[columns].T.sum()
-            except:
-                pass
-            
-        self.loaded_links['all_pt'] = self.loaded_links[
-            [segment for segment in segments]].T.sum()
-        self.loaded_nodes['all_pt'] = self.loaded_nodes[
-            [segment for segment in segments]].T.sum()
+        # Group assignment results: sum over demand segments
+        try:
+            groups = self.pt_los[split_by].unique()
+        except KeyError as e:
+            groups = []
+        cols = ['load']
+        # Add boardings, alightings and transfers if processed
+        cols += list(set(['boardings', 'alightings', 'transfers']).intersection(kwargs.keys()))
+        for col in cols:
+            for g in groups:
+                columns = [tuple([col, s, g]) for s in segments]
+                name = tuple([col, g])
+                self.loaded_links[name] = self.loaded_links[columns].T.sum()
+                self.loaded_links.drop(columns, 1, inplace=True)
+
+                self.loaded_nodes[name] = self.loaded_nodes[columns].T.sum()
+                self.loaded_nodes.drop(columns, 1, inplace=True)
+
+            columns = [tuple([col, s]) for s in segments]
+            self.loaded_links[col] = self.loaded_links[columns].T.sum()
+            self.loaded_links.drop(columns, 1, inplace=True)
+
+            self.loaded_nodes[col] = self.loaded_nodes[columns].T.sum()
+            self.loaded_nodes.drop(columns, 1, inplace=True)
+
+        if on_road_links:
+            for group in groups:
+                self.road_links[('all', group)] = self.road_links[[(s, group) for s in segments]].T.sum()
+                self.road_links.drop([(s, group) for s in segments], 1, inplace=True)
+
+            self.road_links['load'] = self.road_links[[s for s in segments]].T.sum()
+            self.road_links.drop([s for s in segments], 1, inplace=True)
 
     
     def step_car_assignment(self, volume_column=None):
@@ -445,14 +570,16 @@ class TransportModel(optimalmodel.OptimalModel):
 
         columns = [(segment, 'car') for segment in self.segments]
         self.road_links[('all', 'car')] = self.road_links[columns].T.sum()
-
-
-
-    
+	#TODO Merge conflict: TO CHECK WITH ACCRA        
+	# self.road_links.drop(columns, 1, inplace=True)
+        # if not 'load' in self.road_links.columns:
+        #    self.road_links['load'] = 0
+        # self.road_links['load'] += self.road_links[('all','car')]
+        
 
     #TODO move all utility features to another object / file
 
-    def analysis_mode_utility(self, how='min', segment=None, segments=None):
+    def analysis_mode_utility(self, how='min', segment=None, segments=None, time_expanded=False):
         """
         * requires: mode_utility, los, utility_values
         * builds: los
@@ -460,16 +587,20 @@ class TransportModel(optimalmodel.OptimalModel):
         if segment is None:
             for segment in self.segments:
                 print(segment)
-                self.analysis_mode_utility(how=how, segment=segment)
+                self.analysis_mode_utility(how=how, segment=segment, time_expanded=time_expanded)
             return 
+        if time_expanded:
+            logit_los = self.te_los
+        else:
+            logit_los = self.los
         mode_utility = self.mode_utility[segment].to_dict()
-        route_types = self.los['route_types'].unique()
+        route_types = logit_los['route_types'].unique()
         route_types = pd.DataFrame(route_types, columns=['route_types'])
         route_types['mode_utility'] = route_types['route_types'].apply(
             get_combined_mode_utility, how=how, mode_utility=mode_utility)
         
         route_types['rt_string'] = route_types['route_types'].astype(str)
-        los = self.los.copy()
+        los = logit_los.copy()
         los['rt_string'] = los['route_types'].astype(str)
         los['index'] = los.index
         
@@ -485,8 +616,9 @@ class TransportModel(optimalmodel.OptimalModel):
         u = 0
         for key, value in utility_values.items():
             u += value * los[key]
-            
-        self.los[(segment, 'utility')] = u
+
+        logit_los[(segment, 'utility')] = u
+        logit_los[(segment, 'utility')] = logit_los[(segment, 'utility')].astype(float)
         
     def analysis_utility(self, segment='root'):
         utility_values = self.utility_values[segment].to_dict()
@@ -494,6 +626,7 @@ class TransportModel(optimalmodel.OptimalModel):
         for key, value in utility_values.items():
             u += value * self.los[key]
         self.los[(segment, 'utility')] = u
+        self.los[(segment, 'utility')] = self.los[(segment, 'utility')].astype(float)
 
     def initialize_logit(self):
         zones = list(self.zones.index)
@@ -501,7 +634,7 @@ class TransportModel(optimalmodel.OptimalModel):
         self.od_probabilities = od.copy()
         self.od_utilities = od.copy()
 
-    def _unique_model_segmented_logit(self):
+    def _unique_model_segmented_logit(self, time_expanded=False):
         # assert all logit scales are the same and pick one
         logit_scales = self.logit_scales.T.drop_duplicates().T
         assert len(logit_scales.columns) == 1
@@ -516,16 +649,20 @@ class TransportModel(optimalmodel.OptimalModel):
             lambda s: list(s)).to_dict()
 
         # concatenate paths
+        od_cols = ['origin', 'destination']
+        if time_expanded:
+            od_cols.append('wished_departure_time')
         to_concat = []
         for segment in self.segments:
-            paths = self.los.copy()
+            paths = self.los.copy() if not time_expanded else self.te_los.copy()
             paths['utility'] = paths[(segment, 'utility')]
             paths['segment'] = segment
-            to_concat.append(paths[['origin', 'destination', 'route_type', 'utility', 'segment']])
+            to_concat.append(paths[od_cols + ['route_type', 'utility', 'segment']])
         segmented_paths = pd.concat(to_concat)
 
         l, u, p = nested_logit.nested_logit_from_paths(
             segmented_paths, 
+            od_cols,
             mode_nests=nests,
             phi=nls,
             verbose=False
@@ -533,18 +670,21 @@ class TransportModel(optimalmodel.OptimalModel):
 
         pool = l.reset_index().set_index(['segment', 'index'])
         for segment in self.segments:
-            self.los[(segment, 'probability')] = pool.loc[segment]['probability']
+            if time_expanded:
+                self.te_los[(segment, 'probability')] = pool.loc[segment]['probability']
+            else:
+                self.los[(segment, 'probability')] = pool.loc[segment]['probability']
         
         self.probabilities = p
         self.utilities = u
 
-    def step_logit(self, segment=None, probabilities=None, utilities=None, *args, **kwargs):
+    def step_logit(self, segment=None, probabilities=None, utilities=None, time_expanded=False, *args, **kwargs):
         """
         * requires: mode_nests, logit_scales, los
         * builds: los, od_utilities, od_probabilities, path_utilities, path_probabilities
         """
         try:
-            self._unique_model_segmented_logit()
+            self._unique_model_segmented_logit(time_expanded=time_expanded)
             return 
         except AssertionError:
             print('segment specific logit models')

@@ -32,20 +32,23 @@ class AnalysisModel(summarymodel.SummaryModel):
 
 
 
-    def _aggregate(self, nb_clusters, cluster_column=None):
+    def _aggregate(self, nb_clusters, cluster_column=None, volume_column='volume'):
         """
         Aggregates a model (in order to perform optimization)
             * requires: nb_clusters, cluster_series, od_stack, indicator
             * builds: cluster_series, aggregated model, reduced indicator
         """
         self.agg = self.copy()
-        self.agg.preparation_clusterize_zones(nb_clusters, cluster_column, is_od_stack=True)
-        # self.agg.renumber(nb_clusters, cluster_column, is_od_stack=True)
+        self.agg.preparation_clusterize_zones(
+            nb_clusters,cluster_column, is_od_stack=True,
+            volume_columns=[volume_column], volume_od_columns=[volume_column]
+        )
         self.cluster_series = self.agg.cluster_series
         self.agg.indicator = linearsolver_utils.reduce_indicator(
             self.indicator,
             self.cluster_series,
-            self.od_stack
+            self.od_stack,
+            volume_column=volume_column
         )
 
     def _disaggregate(self):
@@ -55,7 +58,7 @@ class AnalysisModel(summarymodel.SummaryModel):
                 self.cluster_series
         )
 
-    def _build_pivot_stack_matrix(self, constrained_links, linprog_kwargs):
+    def _build_pivot_stack_matrix(self, constrained_links, linprog_kwargs, **kwargs):
         """
         Builds the pivot_stack_matrix. Performs the optimization.
             * requires: constrained_links, od_stack, indicator
@@ -65,14 +68,40 @@ class AnalysisModel(summarymodel.SummaryModel):
             self.indicator,
             constrained_links,
             self.od_stack,
-            **linprog_kwargs
+            **linprog_kwargs,
+            **kwargs
         )
+
+    def _analysis_road_link_path(self, include_road_footpaths=False): 
+        """
+        Build road_link_path column of pt_los based on link_path
+        """
+        try:
+            link_to_road_links = self.links['road_link_list'].to_dict()
+        except KeyError as e:
+            raise KeyError('road_link_list column missing: links must be networkasted.')
+            
+        self.pt_los['road_link_path'] = self.pt_los['link_path'].apply(
+            lambda x: [i for l in map(link_to_road_links.get, x) if l is not None for i in l ]
+        )
+        
+        if include_road_footpaths:
+            # Footpath to road_link_path
+            road_links_dict = self.road_links.reset_index().set_index(['a','b'])[self.road_links.index.name].to_dict()
+            
+            nan_loc = self.pt_los['footpaths'].isnull()
+            self.pt_los.loc[nan_loc, 'footpaths'] = [[]] * nan_loc.sum()
+            
+            self.pt_los['road_link_path'] += self.pt_los['footpaths'].apply(
+                lambda x: [a for a in list(map(lambda l: road_links_dict.get(l), x)) if a is not None]
+            )
 
     def analysis_linear_solver(
         self,
         constrained_links,
         nb_clusters=20,
         cluster_column=None,
+        link_path_column='link_path',
         linprog_kwargs={
             'bounds_A': [0.75, 1.5],
             'bounds_emissions': [0.8, 1.2],
@@ -80,7 +109,8 @@ class AnalysisModel(summarymodel.SummaryModel):
             'pas_distance': 200,
             'maxiter': 3000,
             'tolerance': 1e-5
-        }
+        },
+        **kwargs,
         ):
         """
         To perform the optimization on a model object once it is built and run,
@@ -101,12 +131,14 @@ class AnalysisModel(summarymodel.SummaryModel):
         """
         self.indicator = linearsolver_utils.build_indicator(
             self.od_stack,
-            constrained_links)
+            constrained_links,
+            link_path_column=link_path_column
+            )
         if len(self.zones) < nb_clusters:
-            self._build_pivot_stack_matrix(constrained_links, linprog_kwargs)
+            self._build_pivot_stack_matrix(constrained_links, linprog_kwargs, **kwargs)
         else:
-            self._aggregate(nb_clusters, cluster_column)
-            self.agg._build_pivot_stack_matrix(constrained_links, linprog_kwargs)
+            self._aggregate(nb_clusters, cluster_column, **kwargs)
+            self.agg._build_pivot_stack_matrix(constrained_links, linprog_kwargs, **kwargs)
             self._disaggregate()
 
     def analysis_pt_route_type(self, hierarchy):
@@ -553,7 +585,7 @@ class AnalysisModel(summarymodel.SummaryModel):
         
         self.pt_los['od_fares'] = self.pt_los['arod_list'].apply(od_price_breakdown)
 
-    def compute_route_fares(self):
+    def compute_route_fares(self, consecutive=False):
         route_dict = self.links['route_id'].to_dict()
 
         # focus on fares rules that are given with unique within a route
@@ -569,7 +601,10 @@ class AnalysisModel(summarymodel.SummaryModel):
         price = self.fare_attributes.set_index('fare_id')['price'].to_dict()
 
         def fare(count, allowed_transfers, price):
-            return max(np.ceil(count / (allowed_transfers + 1))  , 1) * price
+            if np.isnan(allowed_transfers):
+                return price
+            else:
+                return max(np.ceil(count / (allowed_transfers + 1))  , 1) * price
 
         def consecutive_counts(arod_list):
             # if their is no fare for a route, a nan is used
@@ -600,15 +635,27 @@ class AnalysisModel(summarymodel.SummaryModel):
                     breakdown[fare_id] = add
             return breakdown
 
+        def fare_counts(arod_list):
+            fare_id_list = [route_fare_dict[route] for a, route, o, d in arod_list]
+
+            fare_counts = []
+            for fare_id in list(np.unique(fare_id_list)):
+                if fare_id != 'nan':
+                    fare_counts.append((fare_id, fare_id_list.count(fare_id)))
+            return fare_counts
+
         def route_price_breakdown(arod_list):
-            return price_breakdown(consecutive_counts(arod_list))
-        
+            if consecutive:
+                return price_breakdown(fare_counts(arod_list))
+            else:
+                return price_breakdown(consecutive_counts(arod_list))
+
         self.pt_los['route_fares'] = self.pt_los['arod_list'].apply(route_price_breakdown)
     
-    def analysis_pt_fare(self, keep_intermediate_results=True):
+    def analysis_pt_fare(self, keep_intermediate_results=True, consecutive=False):
         self.compute_arod_list()
         self.compute_od_fares()
-        self.compute_route_fares()
+        self.compute_route_fares(consecutive)
         
         values = self.pt_los[['route_fares', 'od_fares']].values
         self.pt_los['price'] = [

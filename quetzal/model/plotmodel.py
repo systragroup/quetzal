@@ -22,8 +22,11 @@ def plot_one_path(path, styles=styles, ax=None):
     df = styles.loc[[k for k in path if k in styles.index]]
     geometries = list(df['geometry'])
     coord_list = list(geometries[0].centroid.coords) # origin
-    for g in list(geometries[1:-1]): 
-        coord_list += list(g.coords)
+    for g in list(geometries[1:-1]):
+        try:
+            coord_list += list(g.coords)
+        except NotImplementedError: # In case a zone is in the path
+            coord_list += list(g.centroid.coords)
     coord_list += list(geometries[-1].centroid.coords) # destination
     full_path = geometry.LineString(coord_list)
     
@@ -147,6 +150,7 @@ class PlotModel(summarymodel.SummaryModel):
 
         return fig, axes
 
+
     def plot_load_ba_graph(
         self, route, by='route_id', stop_name_column=None, graph_direction='both',
         max_value=None, yticks=None, reverse_direction=False,
@@ -154,6 +158,7 @@ class PlotModel(summarymodel.SummaryModel):
     ):
         """
         Plot line graph with load, boardings and alightings
+
         :param route: name of line to plot. Must be a value of the param 'by' column
         :param by (route_id): name of column to search route from:
         :param stop_name_column (None): column of nodes dataframe containing stop names
@@ -161,6 +166,7 @@ class PlotModel(summarymodel.SummaryModel):
             *both (default): try to plot the two directions in the same graphe
             *single: one graph per direction
         :param reverse_direction (False): plot directions in reversed order
+
         Returns fig, axes
         """
 
@@ -199,9 +205,7 @@ class PlotModel(summarymodel.SummaryModel):
                 plt.setp(axes, ylim=[-max_value, max_value])
                 if yticks is not None:
                     yticks = sorted(set(yticks).union(-yticks))
-                    plt.setp(axes, yticks=yticks)
-
-
+                    plt.setp(axes, yticks=yticks, yticklabels=map(abs,yticks))
 
         if graph_direction == 'single':
             fig, ax_array = plt.subplots(2,1)
@@ -231,4 +235,4 @@ def _both_directions_graph_possible(df):
         if str(e) == 'Cannot plot both directions':
             return False
         else:
-            raise(e) 
+            raise(e)

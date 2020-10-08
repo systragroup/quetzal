@@ -373,7 +373,7 @@ spectral = list(reversed(['#9e0142','#d53e4f','#f46d43','#fdae61','#fee08b','#e6
 from shapely import geometry
 def bandwidth(
     gdf, value_column, max_value=None, power=1, legend=True, legend_values=None, legend_length=1/3,
-    label_column=None,  max_linewidth_meters=100, line_offset=True, cmap=spectral,
+    label_column=None,  max_linewidth_meters=100, variable_width=True, line_offset=True, cmap=spectral,
     geographical_bounds=None, label_kwargs={'size':12}, *args, **kwargs
     ):
     # TODO: 
@@ -409,7 +409,10 @@ def bandwidth(
     # Color
     df['color'] = color_series(df['power'], colors=cmap, max_value=power_max_value)
     # Linewidth
-    df['geographical_width'] = width_series(df['power'], max_linewidth_meters, max_value=power_max_value)
+    if variable_width:
+        df['geographical_width'] = width_series(df['power'], max_linewidth_meters, max_value=power_max_value)
+    else:
+        df['geographical_width'] = max_linewidth_meters
     df['linewidth'] = linewidth_from_data_units(df['geographical_width'].values, plot)
     # Offset
     if line_offset:
@@ -519,13 +522,15 @@ def base_plot(df, geographical_bounds, *args, **kwargs):
     # Light geometry plot
     plot = gpd.GeoDataFrame(df).plot(linewidth=0.1, color='grey', *args, **kwargs)
     # Set bounds geographical bounds
-    _set_bandwidth_geographical_bounds(plot, *geographical_bounds)
+    if geographical_bounds is not None:
+        _set_bandwidth_geographical_bounds(plot, *geographical_bounds)
 
     return plot
 
 def linewidth_from_data_units(linewidth, axis, reference='y'):
     """
     Convert a linewidth in data units to linewidth in points.
+
     Parameters
     ----------
     linewidth: float
@@ -536,6 +541,7 @@ def linewidth_from_data_units(linewidth, axis, reference='y'):
     reference: string
         The axis that is taken as a reference for the data width.
         Possible values: 'x' and 'y'. Defaults to 'y'.
+
     Returns
     -------
     linewidth: float
@@ -600,47 +606,3 @@ def create_label_dataframe(df, label_column='label', linewidth_column='linewidth
     columns = ['label_angle',  'label_offset', 'va']
     label_df[columns] = label_df.apply(get_label_angle_alignment_offset, 1)[columns]
     return label_df
-
-import os
-import sys
-import PIL
-from PIL import Image
-import numpy as np
-work_path = r'../'
-plot_path = './'
-
-def hstack(image_list):
-    # pick the image which is the smallest, and resize the others to match it (can be arbitrary image shape here)
-    min_shape = sorted( [(np.sum(i.size), i.size ) for i in image_list])[0][1]
-    imgs_comb =  np.hstack( [np.asarray( i.resize(min_shape) ) for i in image_list] )
-    return PIL.Image.fromarray( imgs_comb)
-
-def vstack(image_list):
-    # pick the image which is the smallest, and resize the others to match it (can be arbitrary image shape here)
-    min_shape = sorted( [(np.sum(i.size), i.size ) for i in image_list])[0][1]
-    # for a vertical stacking it is simple: use vstack
-    imgs_comb = np.vstack([ np.asarray( i.resize(min_shape) ) for i in image_list]  )
-    return PIL.Image.fromarray( imgs_comb)
-
-def mstack(image_matrix, text_matrix=[]):
-    rows = [hstack(row) for row in image_matrix]
-    return vstack(rows)
-
-def combine_and_save(image_files, image_file, **kwargs):
-    image_matrix = [[PIL.Image.open(i) for i in row] for row in image_files]
-    image = mstack(image_matrix)
-    image.save(image_file)
-
-
-def list_files(path, patterns):
-    files = [
-        os.path.join(path, file)
-        for file in os.listdir(path)
-        if file.split('.')[-1].lower() in patterns
-    ]
-    return files
-
-def clear_folder(path):
-    files = list_files(path, ['PNGw', 'pgw'])
-    for file in files:
-        os.remove(file)
