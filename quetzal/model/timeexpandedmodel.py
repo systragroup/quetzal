@@ -1,6 +1,6 @@
 
 from quetzal.model import stepmodel
-from quetzal.engine import time_expanded_pathfinder as te_pathfinder
+from quetzal.engine import time_expanded_utils as te_utils
 import pandas as pd
 import networkx as nx
 import numpy as np
@@ -90,28 +90,33 @@ class TimeExpandedModel(stepmodel.StepModel):
         )
         self.nodes['transfer_duration'] = self.nodes['transfer_length'] / (walking_speed / 3.6)
 
-    def _preparation_create_graph_edges(self, boarding_cost=300, min_transfer_time=180):
+    def preparation_dense_footpaths(self, max_length=1000, walking_speed=3):
+        self.footpaths = te_utils.build_dense_footpaths(
+            self.nodes, max_length=max_length, walking_speed=walking_speed
+        )
+
+    def _preparation_create_graph_edges(self, boarding_time=0, min_transfer_time=0):
 
         # PT edges and transfer
-        edges, graph_nodes = te_pathfinder.pt_edges_and_nodes_from_links(
+        edges, graph_nodes = te_utils.pt_edges_and_nodes_from_links(
             self.links, self.nodes,
             time_interval=self.time_interval,
-            boarding_cost=boarding_cost
+            boarding_time=boarding_time
         )
         # access / egress
-        access_edges = te_pathfinder.create_access_edges(
+        access_edges = te_utils.create_access_edges(
             graph_nodes,
             self.zone_to_transit, 
             time_interval=self.time_interval
         )
 
-        egress_edges = te_pathfinder.create_egress_edges(
+        egress_edges = te_utils.create_egress_edges(
             graph_nodes,
             self.zone_to_transit, 
             time_interval=self.time_interval
         )
 
-        footpath_edges = te_pathfinder.create_footpath_edges(
+        footpath_edges = te_utils.create_footpath_edges(
             graph_nodes,
             self.footpaths
         )
@@ -119,12 +124,12 @@ class TimeExpandedModel(stepmodel.StepModel):
         self.edges = pd.concat([edges, access_edges, egress_edges, footpath_edges])
         self.graph_nodes = graph_nodes
 
-    def step_pt_pathfinder(self, boarding_cost, min_transfer_time=180, ntlegs_penalty=1e9):
+    def step_pt_pathfinder(self, boarding_time, min_transfer_time=0, ntlegs_penalty=1e9):
         # WARNING: all walk paths are not computed (one must take a trip to reach an alighting node)
         #TODO: solve this issue (adding an all walk pathfinder?)
 
         # create edges
-        self._preparation_create_graph_edges(boarding_cost=boarding_cost, min_transfer_time=min_transfer_time)
+        self._preparation_create_graph_edges(boarding_time=boarding_time, min_transfer_time=min_transfer_time)
         
         # build graph
         edge_list = [tuple([a, b, w]) for a,b,w in self.edges[['a', 'b', 'weight']].values.tolist()]
@@ -137,7 +142,7 @@ class TimeExpandedModel(stepmodel.StepModel):
         zone_nodes = zone_dep_nodes + zone_arr_nodes
 
         # compute LOS
-        los = te_pathfinder.sparse_los_from_nx_graph(
+        los = te_utils.sparse_los_from_nx_graph(
             G, zone_nodes, sources=zone_dep_nodes, cutoff=np.inf+ntlegs_penalty
         )
 
@@ -149,24 +154,69 @@ class TimeExpandedModel(stepmodel.StepModel):
         los['origin'] = los['origin'].apply(lambda x: x[0])
         los['destination'] = los['destination'].apply(lambda x: x[0])
         los = los[los['origin']!=los['destination']]
+        
+        # build paths, boardings, transfers
+        los = te_utils.get_edge_path(los)
+        los = te_utils.get_model_link_path(los, self.edges)
+        los = te_utils.get_boarding_links(los, self.edges)
+
+        # transfers
+        los['ntransfers'] = los['boarding_links'].apply(len) - 1
+        los['ntransfers'] = los['ntransfers'].clip(0)
 
         self.pt_los = los
-
     
-    def analysis_paths(self, typed_edges=True, kpis=True, ntlegs_penalty=1e9):
-        self.pt_los = te_pathfinder.analysis_paths(
+    def step_logit(self):
+        """
+        * requires: mode_nests, logit_scales, te_los, los
+        * builds: te_los, los, od_utilities, od_probabilities, path_utilities, path_probabilities
+        """
+        try:
+            self._unique_model_segmented_logit(time_expanded=True)
+            return 
+        except AssertionError:
+            print('Cannot perform logit with segment specific logits')
+            pass
+
+
+    def analysis_paths(self, typed_edges=True, boardings=True, alightings=False, transfers=False, kpis=True, ntlegs_penalty=1e9):
+        self.pt_los = te_utils.analysis_paths(
             self.pt_los, self.edges, typed_edges=typed_edges
         )
+        
+        if boardings:
+            self.pt_los = te_utils.get_boarding_links(self.pt_los, self.edges)
+
+            # transfers
+            self.pt_los['ntransfers'] = self.pt_los['boarding_links'].apply(len) - 1
+            self.pt_los['ntransfers'] = self.pt_los['ntransfers'].clip(0)
+
         if kpis:
-            self.pt_los = te_pathfinder.analysis_lengths(
+            self.pt_los = te_utils.analysis_lengths(
                 self.pt_los, self.links, self.footpaths, self.zone_to_transit
             )
-            self.pt_los = te_pathfinder.analysis_transfers(self.pt_los)
-            self.pt_los = te_pathfinder.analysis_durations(self.pt_los, self.edges, ntlegs_penalty)
+            self.pt_los = te_utils.analysis_durations(self.pt_los, self.edges, ntlegs_penalty)
     
-    def analysis_time_shift(self, threshold=300):
+    def build_te_los(self):
+        """
+        Requires time expanded volumes.
+        Expand los as in time expanded volumes
+        """
+        # index paths
+        self.los.index = self.los.index.set_names(['path_id'])
+        self.los.reset_index(inplace=True)
+        # Create te_los
+        columns_to_keep = {'origin', 'destination', 'path_id', 'departure_time', 'arrival_time',
+            'transfers', 'route_types', 'route_type', 'ntransfers', 'time', 'price'}
+        columns = list(set(self.los.columns).intersection(columns_to_keep))
+        self.te_los = self.volumes[['origin', 'destination', 'wished_departure_time']].merge(
+            self.los[columns],
+            on=['origin', 'destination']
+        )
+
+    def analysis_time_shift(self, threshold=0):
         def time_shift(departure_time, wished_time, threshold=threshold):
             return np.maximum((abs(departure_time - wished_time) - threshold), 0)
 
-        temp = self.los[['departure_time', 'origin']].values.T
-        self.los['time_shift'] = time_shift(temp[0], np.array([x[1] for x in temp[1]]))
+        temp = self.te_los[['departure_time', 'wished_departure_time']].values.T
+        self.te_los['time_shift'] = time_shift(temp[0], temp[1])

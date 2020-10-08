@@ -68,9 +68,9 @@ class GtfsImporter(Feed):
         feed.build_links_and_nodes()
         return feed
     
-    def build_links_and_nodes(self, time_dependent=False):
+    def build_links_and_nodes(self, time_expanded=False):
         self.to_seconds()
-        self.build_links(time_dependent=time_dependent)
+        self.build_links(time_expanded=time_expanded)
         self.build_geometries()
 
     def to_seconds(self):
@@ -86,7 +86,7 @@ class GtfsImporter(Feed):
                 time_columns
             ].applymap(to_seconds)
 
-    def build_links(self, time_dependent=False):
+    def build_links(self, time_expanded=False):
         """
         Create links and add relevant information
         """
@@ -109,7 +109,7 @@ class GtfsImporter(Feed):
             inplace=True
         )
 
-        if not time_dependent:
+        if not time_expanded:
             self.links = self.links.merge(self.frequencies[['trip_id', 'headway_secs']], on='trip_id')
             self.links.rename(columns={'headway_secs': 'headway'}, inplace=True)
             # Filter on strictly positive headway (Headway = 0 : no trip)
