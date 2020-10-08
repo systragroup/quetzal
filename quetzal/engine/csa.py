@@ -144,3 +144,36 @@ def get_path(predecessor, source, maxiter=1000):
             current = predecessor[current] 
         except KeyError: # root
             return path[:-1]
+
+
+
+def trip_bit(t, c_in, c_out, trip_connections):
+    trip = trip_connections[t]
+    left = bisect.bisect_left(trip, c_in)
+    right = bisect.bisect_right(trip, c_out)
+    return trip[left:right]
+
+def path_to_boarding_links_and_boarding_path(csa_path, connection_trip, trip_connections):
+    link_path = []
+    trips = set()
+    boarding_links = []
+    
+    for i in range(len(csa_path) -2):
+        
+
+        c_in, c_out = csa_path[i: i+2]
+        
+        try:
+            trip_in =  connection_trip[c_in]
+            link_path.append(c_in)
+            if trip_in not in trips:
+                trips.add(trip_in)
+                boarding_links.append(c_in)
+            assert trip_in == connection_trip[c_out]
+            link_path += trip_bit(connection_trip[c_in], c_in, c_out, trip_connections)
+        except (KeyError, AssertionError):
+            pass
+        link_path.append(c_out)
+        
+    link_path = list(dict.fromkeys(link_path))
+    return link_path, boarding_links
