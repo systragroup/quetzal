@@ -258,7 +258,7 @@ class TransportModel(optimalmodel.OptimalModel):
         self, 
         road=False, 
         boardings=False, 
-        alightings=False, 
+        alightings=False,
         transfers=False,
         segmented=False,
         time_expanded=False,

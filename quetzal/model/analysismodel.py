@@ -585,7 +585,7 @@ class AnalysisModel(summarymodel.SummaryModel):
         
         self.pt_los['od_fares'] = self.pt_los['arod_list'].apply(od_price_breakdown)
 
-    def compute_route_fares(self):
+    def compute_route_fares(self, consecutive=False):
         route_dict = self.links['route_id'].to_dict()
 
         # focus on fares rules that are given with unique within a route
@@ -601,7 +601,10 @@ class AnalysisModel(summarymodel.SummaryModel):
         price = self.fare_attributes.set_index('fare_id')['price'].to_dict()
 
         def fare(count, allowed_transfers, price):
-            return max(np.ceil(count / (allowed_transfers + 1))  , 1) * price
+            if np.isnan(allowed_transfers):
+                return price
+            else:
+                return max(np.ceil(count / (allowed_transfers + 1))  , 1) * price
 
         def consecutive_counts(arod_list):
             # if their is no fare for a route, a nan is used
@@ -632,15 +635,27 @@ class AnalysisModel(summarymodel.SummaryModel):
                     breakdown[fare_id] = add
             return breakdown
 
+        def fare_counts(arod_list):
+            fare_id_list = [route_fare_dict[route] for a, route, o, d in arod_list]
+
+            fare_counts = []
+            for fare_id in list(np.unique(fare_id_list)):
+                if fare_id != 'nan':
+                    fare_counts.append((fare_id, fare_id_list.count(fare_id)))
+            return fare_counts
+
         def route_price_breakdown(arod_list):
-            return price_breakdown(consecutive_counts(arod_list))
-        
+            if consecutive:
+                return price_breakdown(fare_counts(arod_list))
+            else:
+                return price_breakdown(consecutive_counts(arod_list))
+
         self.pt_los['route_fares'] = self.pt_los['arod_list'].apply(route_price_breakdown)
     
-    def analysis_pt_fare(self, keep_intermediate_results=True):
+    def analysis_pt_fare(self, keep_intermediate_results=True, consecutive=False):
         self.compute_arod_list()
         self.compute_od_fares()
-        self.compute_route_fares()
+        self.compute_route_fares(consecutive)
         
         values = self.pt_los[['route_fares', 'od_fares']].values
         self.pt_los['price'] = [
