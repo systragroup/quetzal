@@ -1,6 +1,7 @@
 import pandas as pd
+import bisect
 
-def time_footpaths(links, footpaths):
+def time_footpaths(links, footpaths, drop_domiated=False):
     left = pd.merge(links[[ 'b', 'arrival_time']], footpaths[['a', 'b', 'duration']], on='b')
     transfers = pd.merge(links[['a', 'departure_time']], left, on='a')
     transfers = transfers.loc[transfers['a'] != transfers['b']]
@@ -14,31 +15,35 @@ def time_footpaths(links, footpaths):
     transfers.sort_values('arrival_time', ascending=False, inplace=True)
     transfers = transfers.groupby(['a', 'b', 'departure_time'], as_index=False).first()
 
-    transfers['negative_time'] =  transfers['arrival_time'] - transfers['departure_time']
-    
-    transfers = transfers.sort_values(['a','b','arrival_time', 'negative_time'], ascending=False)
+
 
     # discard dominated transfers
     # il se semble pas y avoir des transferts dominés, mais bon...
 
-    _ab = 'start'
-    kept = []
-    for a, b, departure in transfers[['a', 'b', 'departure_time']].values:
-        keep = False
-        if (a, b) != _ab :
-            _departure = float('inf')
-            _ab = (a, b)
-        if departure < _departure:
-            keep = True
-            _departure = departure
-        kept.append(keep)
+    if drop_domiated:
 
-    transfers['keep'] = kept
-    transfers = transfers.loc[transfers['keep'] == True]
+        transfers['negative_time'] =  transfers['arrival_time'] - transfers['departure_time']
+        transfers = transfers.sort_values(['a','b','arrival_time', 'negative_time'], ascending=False)
+        _ab = 'start'
+        kept = []
+        for a, b, departure in transfers[['a', 'b', 'departure_time']].values:
+            keep = False
+            if (a, b) != _ab :
+                _departure = float('inf')
+                _ab = (a, b)
+            if departure < _departure:
+                keep = True
+                _departure = departure
+            kept.append(keep)
 
-    transfers[['a', 'b', 'departure_time', 'arrival_time']] = transfers[['b', 'a', 'arrival_time', 'departure_time']]
+        transfers['keep'] = kept
+        transfers = transfers.loc[transfers['keep'] == True]
+
+    transfers[['a', 'b', 'departure_time', 'arrival_time']] = transfers[
+        ['b', 'a', 'arrival_time', 'departure_time']
+    ]
     transfers['str'] = [str(i) for i in transfers.index]
-    transfers['ix'] = 'footpath_' + transfers['str']
+    transfers['csa_index'] = 'footpath_' + transfers['str']
     transfers['trip_id'] = 'footpath_trip_' + transfers['str']
 
     return transfers
@@ -75,9 +80,9 @@ def time_zone_to_transit(links, zone_to_transit):
     egress = df.copy()
     df = pd.concat([access, egress])
     df['str'] = range(len(df))
-    df['ix'] = 'ztt_' + df['str'].astype(str)
+    df['csa_index'] = 'ztt_' + df['str'].astype(str)
     df['trip_id'] = 'ztt_trip_' + df['str'].astype(str)
-    return df[['a', 'b', 'departure_time', 'arrival_time', 'trip_id', 'ix', 'direction']]
+    return df[['a', 'b', 'departure_time', 'arrival_time', 'trip_id', 'csa_index', 'direction']]
 
 
 def csa_profile(
@@ -98,7 +103,7 @@ def csa_profile(
     
     for c in connections:
     ############## SCAN
-        a, b, index, trip_id = c['a'], c['b'], c['ix'], c['trip_id']
+        a, b, index, trip_id = c['a'], c['b'], c['csa_index'], c['trip_id']
         
         ########## EVALUATE
         t_min_stop = float('inf')
