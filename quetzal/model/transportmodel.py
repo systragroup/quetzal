@@ -11,7 +11,7 @@ from quetzal.engine import nested_logit
 from quetzal.model import model, preparationmodel, optimalmodel
 
 from syspy.assignment import raw as raw_assignment
-from syspy.assignment.raw import assign
+from syspy.assignment.raw import fast_assign as assign
 from syspy.skims import skims
 from tqdm import tqdm
 import networkx as nx
