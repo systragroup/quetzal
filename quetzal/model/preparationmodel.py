@@ -249,7 +249,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         segments=[],
         time=-1,
         price=-1,
-        transfers=-1
+        transfers=-1,
+        time_shift=None # for time expanded model
     ):
         """
         * requires: 
@@ -269,9 +270,14 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         #TODO : move to preparation
         
         # utility values
-        self.utility_values = pd.DataFrame(
-            {'root': pd.Series( {'time':time,'price':price,'ntransfers':transfers,'mode_utility':1})}
-        )
+        if time_shift is None:
+            self.utility_values = pd.DataFrame(
+                {'root': pd.Series( {'time': time, 'price': price, 'ntransfers': transfers, 'mode_utility': 1})}
+            )
+        else:
+            self.utility_values = pd.DataFrame(
+                {'root': pd.Series( {'time': time, 'price': price, 'ntransfers': transfers, 'mode_utility': 1, 'time_shift': time_shift})}
+            )
         self.utility_values.index.name = 'value'
         self.utility_values.columns.name = 'segment'
 

@@ -22,8 +22,11 @@ def plot_one_path(path, styles=styles, ax=None):
     df = styles.loc[[k for k in path if k in styles.index]]
     geometries = list(df['geometry'])
     coord_list = list(geometries[0].centroid.coords) # origin
-    for g in list(geometries[1:-1]): 
-        coord_list += list(g.coords)
+    for g in list(geometries[1:-1]):
+        try:
+            coord_list += list(g.coords)
+        except NotImplementedError: # In case a zone is in the path
+            coord_list += list(g.centroid.coords)
     coord_list += list(geometries[-1].centroid.coords) # destination
     full_path = geometry.LineString(coord_list)
     
