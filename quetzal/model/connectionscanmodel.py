@@ -46,9 +46,15 @@ class ConnectionScanModel(stepmodel.StepModel):
         if not 'time_interval' in dir(self):
             self.time_interval = [0, 24*3600-1]
 
-    def preparation_build_connection_dataframe(self, min_transfer_time=0):
+    def preparation_build_connection_dataframe(
+        self, min_transfer_time=0, 
+        time_interval=None, cutoff=np.inf
+        ):
+        time_interval = time_interval if time_interval is not None else self.time_interval
 
         links = self.links.loc[self.links['a'] != self.links['b']]
+        links = links.loc[links['departure_time'] >= time_interval[0]]
+        links = links.loc[links['departure_time'] <= time_interval[1] + cutoff]
 
         try:
             links = pd.merge(
@@ -61,24 +67,28 @@ class ConnectionScanModel(stepmodel.StepModel):
             links['min_transfer_time'] = min_transfer_time
 
         pseudo_links = links[
-            ['a', 'b', 'departure_time', 'arrival_time','min_transfer_time', 'trip_id']
+            ['a', 'b', 'departure_time', 'arrival_time',
+            'min_transfer_time', 'trip_id', 'link_sequence',
+            ]
         ].copy()
-        pseudo_links['link_index'] = pseudo_links.index
+        pseudo_links['link_index'] = pseudo_links['model_index'] = pseudo_links.index
         pseudo_links['departure_time'] -= links['min_transfer_time']
         zone_to_transit = csa.time_zone_to_transit(pseudo_links, self.zone_to_transit)
         footpaths = csa.time_footpaths(pseudo_links, self.footpaths)
+        self.time_expended_footpaths = footpaths
+        self.time_expended_zone_to_transit = zone_to_transit
         
         pseudo_connections = pd.concat([pseudo_links, footpaths, zone_to_transit])
         pseudo_connections = pseudo_connections[pseudo_connections['a'] != pseudo_connections['b']]
 
         # connections of each trip are consecutive
-        pseudo_connections.sort_values(by=['trip_id', 'departure_time'], inplace=True)
+        pseudo_connections.sort_values(by=['trip_id', 'link_sequence'], inplace=True)
         pseudo_connections['csa_index'] = range(len(pseudo_connections)) # use int as index
         pseudo_connections.sort_values('departure_time', ascending=False, inplace=True)
         
         self.pseudo_connections = pseudo_connections
 
-    def step_pt_pathfinder(self, min_transfer_time=0, time_interval=None):
+    def step_pt_pathfinder(self, min_transfer_time=0, time_interval=None, cutoff=np.inf, complete=False):
         
         time_interval = time_interval if time_interval is not None else self.time_interval
         
@@ -108,16 +118,20 @@ class ConnectionScanModel(stepmodel.StepModel):
 
         pareto = []
         for target in tqdm(zone_set):
-
+            
             # BUILD CONNECTIONS
-            start, end = time_interval
-            slice_end = bisect.bisect_left(departure_times, time_interval[0])
+            start, end = time_interval[0], time_interval[1] + cutoff
+            slice_end = bisect.bisect_left(departure_times, start)
             end = max([t for t in egress_time_dict[target] if t <= end] + [0]) 
             slice_start = bisect.bisect_right(departure_times, end)
-            time_interval_connections = decreasing_departure_connections[-slice_start: -slice_end]
+            if slice_end == 0:
+                ti_connections =decreasing_departure_connections[-slice_start:]
+            else :
+                ti_connections = decreasing_departure_connections[-slice_start: -slice_end]
             forbidden = drop_egress[target]
-            connections = [c for c in time_interval_connections if c['csa_index'] not in forbidden]
-
+            connections = [c for c in ti_connections if c['csa_index'] not in forbidden]
+            if complete:
+                connections = decreasing_departure_connections[:]
             profile, predecessor = csa.csa_profile(
                 connections, target=target,
                 stop_set=stop_set, Ttrip=Ttrip_inf.copy()
@@ -131,33 +145,48 @@ class ConnectionScanModel(stepmodel.StepModel):
                     path = [source] + path + [target]
                     pareto.append((source, target, departure, arrival, c, path))
 
-        df = pd.DataFrame(
+        self.pt_los = pd.DataFrame(
             pareto, 
-            columns=['source', 'target', 
-            'departure_time', 'arrival_time', 'last_connection', 'path']
+            columns=['origin', 'destination', 
+            'departure_time', 'arrival_time', 'last_connection', 'csa_path']
         )
+        
+    def analysis_path(self):
+        pseudo_connections = self.pseudo_connections
         clean = pseudo_connections[['csa_index','trip_id']].dropna()
-        trip_connections = clean.sort_values(by='csa_index').groupby('trip_id')['csa_index'].apply(list).to_dict()
+        trip_connections = clean.sort_values(by='csa_index').groupby(
+            'trip_id')['csa_index'].apply(list).to_dict()
         connection_trip =  clean.set_index('csa_index')['trip_id'].to_dict()
+        df = self.pt_los
         values = [
             csa.path_to_boarding_links_and_boarding_path(
                 path,
                 trip_connections=trip_connections, 
                 connection_trip=connection_trip
-            ) for path in df['path']
+            ) for path in df['csa_path']
         ]
         df['connection_path'] = [v[0] for v in values]
         df['first_connections'] = [v[1] for v in values]
+
+        # links
         pool = pseudo_connections[['link_index', 'csa_index']].dropna()
         d = pool.set_index('csa_index')['link_index'].to_dict()
         df['link_path'] = [
             [d[i] for i in p if i in d]
             for p in df['connection_path']
         ]
-
         df['boarding_links'] = [
             [d[i] for i in p if i in d] 
             for p in df['first_connections']
         ]
 
-        self.los = df
+        # model
+        pool = pseudo_connections[['model_index', 'csa_index']].dropna()
+        d = pool.set_index('csa_index')['model_index'].to_dict()
+        df['path'] = [
+            [d[i] for i in p if i in d]
+            for p in df['connection_path']
+        ]
+        df['path'] = df.apply(lambda r: [r['origin']] + r['path'] + [r['destination']], axis=1)
+        self.pt_los = df
+

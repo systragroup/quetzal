@@ -1,12 +1,56 @@
 import pandas as pd
 import bisect
 
-def time_footpaths(links, footpaths, drop_domiated=False):
-    left = pd.merge(links[[ 'b', 'arrival_time']], footpaths[['a', 'b', 'duration']], on='b')
-    transfers = pd.merge(links[['a', 'departure_time']], left, on='a')
-    transfers = transfers.loc[transfers['a'] != transfers['b']]
-    transfers = transfers.loc[transfers['departure_time'] >= transfers['arrival_time']]
-    
+def time_footpaths(links, footpaths):
+    footpaths['model_index'] = footpaths.index
+
+    left = pd.merge(
+        links[[ 'b', 'arrival_time']], 
+        footpaths[['a', 'b', 'duration', 'model_index']], 
+        left_on='b', right_on='a', suffixes=['_link', '']
+    )
+
+    left['ready_time'] = left['arrival_time'] + left['duration']
+    right = links[['a', 'departure_time']]
+
+    # EFFICIENT MERGE GROUPBY FIRST
+    left['ka'] = left['b']
+    left['kb'] = left['ready_time']
+
+    right['ka'] = right['a']
+    right['kb'] = right['departure_time']
+
+    a_intindex = {}
+    i = 0
+    for k in set(left['ka']).union(set(right['ka'])):
+        i += 1
+        a_intindex[k] = i * 1e9
+
+    b_intindex = {}
+    i = 0
+    for k in sorted(set(left['kb']).union(set(right['kb']))):
+        i += 1
+        b_intindex[k] = i 
+
+    left['a_intindex'] = [a_intindex[v] for v in left['ka']]
+    right['a_intindex'] = [a_intindex[v] for v in right['ka']]
+
+    left['b_intindex'] = [b_intindex[v] for v in left['kb']]
+    right['b_intindex'] = [b_intindex[v] for v in right['kb']]
+
+    left['key'] = left['a_intindex'] + left['b_intindex']
+    right['key'] = right['a_intindex'] + right['b_intindex']
+
+    left.sort_values('key', inplace=True)
+    right.sort_values('key', inplace=True)
+
+    transfers = pd.merge_asof(
+        left[['a','b', 'key', 'arrival_time', 'duration', 'model_index']], 
+        right[['departure_time', 'key']], 
+        on='key', direction='forward', tolerance=1e6
+    )
+    # END MERGE GROUPBY
+
     # enables the earliest departure from b, for each arrival at a
     transfers.sort_values('departure_time', ascending=True, inplace=True) 
     transfers = transfers.groupby(['a', 'b', 'arrival_time'], as_index=False).first()
@@ -15,45 +59,20 @@ def time_footpaths(links, footpaths, drop_domiated=False):
     transfers.sort_values('arrival_time', ascending=False, inplace=True)
     transfers = transfers.groupby(['a', 'b', 'departure_time'], as_index=False).first()
 
-
-
-    # discard dominated transfers
-    # il se semble pas y avoir des transferts dominés, mais bon...
-
-    if drop_domiated:
-
-        transfers['negative_time'] =  transfers['arrival_time'] - transfers['departure_time']
-        transfers = transfers.sort_values(['a','b','arrival_time', 'negative_time'], ascending=False)
-        _ab = 'start'
-        kept = []
-        for a, b, departure in transfers[['a', 'b', 'departure_time']].values:
-            keep = False
-            if (a, b) != _ab :
-                _departure = float('inf')
-                _ab = (a, b)
-            if departure < _departure:
-                keep = True
-                _departure = departure
-            kept.append(keep)
-
-        transfers['keep'] = kept
-        transfers = transfers.loc[transfers['keep'] == True]
-
-    transfers[['a', 'b', 'departure_time', 'arrival_time']] = transfers[
-        ['b', 'a', 'arrival_time', 'departure_time']
-    ]
+    transfers[['departure_time', 'arrival_time']]  = transfers[['arrival_time', 'departure_time']]
     transfers['str'] = [str(i) for i in transfers.index]
     transfers['csa_index'] = 'footpath_' + transfers['str']
     transfers['trip_id'] = 'footpath_trip_' + transfers['str']
-
-    return transfers
+    columns = ['a', 'b', 'departure_time', 'arrival_time', 'trip_id', 'csa_index', 'model_index']
+    return transfers[columns]
 
 def time_zone_to_transit(links, zone_to_transit):
     ztt = zone_to_transit
+    ztt['model_index'] = ztt.index
     # access
     left = ztt.loc[ztt['direction'] == 'access']
     df = pd.merge(
-        left[['a','b', 'time']], 
+        left[['a','b', 'time', 'model_index']], 
         links[['a','b', 'departure_time']],
         left_on='b', right_on='a',suffixes=['_ztt', '_link'] 
     )
@@ -68,7 +87,7 @@ def time_zone_to_transit(links, zone_to_transit):
 
     left = ztt.loc[ztt['direction'] != 'access']
     df = pd.merge(
-        ztt[['a','b', 'time']], 
+        ztt[['a','b', 'time', 'model_index']], 
         links[['a','b', 'arrival_time']],
         left_on='a', right_on='b',suffixes=['_ztt', '_link'] 
     )
@@ -82,7 +101,8 @@ def time_zone_to_transit(links, zone_to_transit):
     df['str'] = range(len(df))
     df['csa_index'] = 'ztt_' + df['str'].astype(str)
     df['trip_id'] = 'ztt_trip_' + df['str'].astype(str)
-    return df[['a', 'b', 'departure_time', 'arrival_time', 'trip_id', 'csa_index', 'direction']]
+    return df[['a', 'b', 'departure_time', 'arrival_time', 'trip_id',
+     'csa_index','model_index' ,'direction']]
 
 
 def csa_profile(
