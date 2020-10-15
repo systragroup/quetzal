@@ -2,9 +2,10 @@ from typing import List, Optional, Tuple, TYPE_CHECKING
 import numpy as np
 import gtfs_kit as gk
 import pandas as pd
+from shapely import geometry
 
 
-def restrict(feed, dates=None, service_ids=None, time_range=None, trip_ids=None):
+def restrict(feed, dates=None, service_ids=None, time_range=None, trip_ids=None, polygon_4326=None):
 
     feed = feed.copy()
     # Restrict to dates
@@ -19,6 +20,8 @@ def restrict(feed, dates=None, service_ids=None, time_range=None, trip_ids=None)
     # restrict to time_range
     if time_range is not None:
         feed = restrict_to_timerange(feed, time_range=time_range)
+    if polygon_4326 is not None:
+        feed = restrict_to_area(feed, polygon_4326=polygon_4326)
 
     return feed
 
@@ -234,5 +237,28 @@ def restrict_to_dates(feed, dates):
     feed.calendar_dates = new_calendar_dates
 
     return feed
+
+
+def restrict_to_area(feed, polygon_4326, how='inner'):
+
+    f = feed.copy()
+    stops = f.stops.copy()
+    stops['geometry'] = stops.apply(
+        lambda r: geometry.Point([r['stop_lon'], r['stop_lat']]),
+        axis=1
+    )
+    stops['included'] = stops['geometry'].apply(lambda g: polygon_4326.contains(g))
+    f.stops = f.stops.loc[stops['included'] == True]
+
+    # relations
+    f.stop_times = f.stop_times.loc[f.stop_times['stop_id'].isin(f.stops['stop_id'])]
+    f.transfers = f.transfers.loc[f.transfers['from_stop_id'].isin(f.stops['stop_id'])]
+    f.transfers = f.transfers.loc[f.transfers['to_stop_id'].isin(f.stops['stop_id'])]
+    relevant_trips = (f.stop_times['trip_id'])
+    f = f.restrict(trip_ids=relevant_trips)
+    if how == 'inner':
+        return f
+    else:
+        return feed.restrict(trip_ids=relevant_trips)
 
 

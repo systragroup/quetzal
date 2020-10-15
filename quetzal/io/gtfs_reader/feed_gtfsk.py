@@ -17,7 +17,7 @@ class Feed(gk.feed.Feed):  # Overwrite Feed class
 
     from .filtering import (
         restrict_to_services, restrict_to_timerange, restrict,
-        restrict_to_trips, restrict_to_dates
+        restrict_to_trips, restrict_to_dates, restrict_to_area
         )
 
     def __init__(self, dist_units: str, path=None):
