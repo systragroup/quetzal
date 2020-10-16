@@ -374,6 +374,7 @@ class IntegrityModel:
             * builds: road_links, road_nodes
         """
         if recursive_depth < 1:
+            print('Reached max recursive_depth')
             return
 
         self.road_links = networktools.drop_secondary_components(self.road_links)
