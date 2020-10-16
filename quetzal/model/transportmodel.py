@@ -37,6 +37,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
     @track_args
     def step_distribution(
         self,
+        segmented=False,
         deterrence_matrix=None,
         **od_volume_from_zones_kwargs
     ):
@@ -52,13 +53,53 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             * param power: (int) the gravity exponent
             * param intrazonal: (bool) set the intrazonal distance to 0 if False,
                 compute a characteristic distance otherwise.
+        if segmented=True: all parameters must be given in dict {segment: param}
         """
-        self.volumes = engine.od_volume_from_zones(
-            self.zones,
-            deterrence_matrix,
-            coordinates_unit=self.coordinates_unit,
-            **od_volume_from_zones_kwargs
-        )
+        if segmented:
+
+            self.volumes = pd.DataFrame(columns=['origin', 'destination'])
+            kwargs = od_volume_from_zones_kwargs.copy()
+            if 'deterrence_matrix' not in kwargs.keys():
+                kwargs['deterrence_matrix'] = deterrence_matrix if deterrence_matrix is not None else {}
+            if 'power' not in kwargs.keys():
+                kwargs['power'] = {}
+            if 'intrazonal' not in kwargs.keys():
+                kwargs['intrazonal'] = {}
+    
+            for segment in self.segments:
+                print(segment)
+                cols = ['geometry', (segment, 'emission'), (segment, 'attraction')]
+                if 'area' in self.zones:
+                    cols += ['area']
+                segment_zones = self.zones[cols].rename(
+                    columns={
+                        (segment, 'emission'): 'emission',
+                        (segment, 'attraction'): 'attraction'
+                    }
+                )
+                segment_volumes = engine.od_volume_from_zones(
+                    segment_zones,
+                    deterrence_matrix=kwargs['deterrence_matrix'].get(segment, None),
+                    coordinates_unit=self.coordinates_unit,
+                    power=kwargs['power'].get(segment, 2),
+                    intrazonal=kwargs['intrazonal'].get(segment, False)
+                )
+                segment_volumes.rename(columns={'volume': segment}, inplace=True)
+
+                self.volumes = self.volumes.merge(
+                    segment_volumes,
+                    on=['origin', 'destination'],
+                    how='outer'
+                )
+            self.volumes['all'] = self.volumes[self.segments].T.sum()
+
+        else:
+            self.volumes = engine.od_volume_from_zones(
+                self.zones,
+                deterrence_matrix,
+                coordinates_unit=self.coordinates_unit,
+                **od_volume_from_zones_kwargs
+            )
 
     @track_args
     def step_pathfinder(
