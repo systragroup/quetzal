@@ -175,7 +175,7 @@ def get_path(predecessor, source, maxiter=1000):
 def trip_bit(t, c_in, c_out, trip_connections):
     trip = trip_connections[t]
     left = bisect.bisect_left(trip, c_in)
-    right = bisect.bisect_right(trip, c_out)
+    right = bisect.bisect_left(trip, c_out)
     return trip[left:right]
 
 def path_to_boarding_links_and_boarding_path(csa_path, connection_trip, trip_connections):

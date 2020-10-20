@@ -192,6 +192,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         ]
         df['connection_path'] = [v[0] for v in values]
         df['first_connections'] = [v[1] for v in values]
+        df['last_connections'] = [v[2] for v in values]
 
         # links
         pool = pseudo_connections[['link_index', 'csa_index']].dropna()
