@@ -261,32 +261,14 @@ class TransportModel(optimalmodel.OptimalModel):
         alightings=False,
         transfers=False,
         segmented=False,
-        time_expanded=False,
-        aggregate_los=False,  # setting to True can be a speedup if duplicated paths in los
+        time_expanded=False
         ):
         self.compute_los_volume(time_expanded=time_expanded)
-
-        # speed up time_expanded_model
-        if aggregate_los:
-            los = self.los.copy()
-            los['path_id'] = los['link_path'].apply(str)
-            required_columns = ['link_path']
-            if boardings:
-                required_columns += ['boarding_links', 'boardings']
-            if alightings:
-                required_columns += ['alighting_links', 'alightings']
-            if transfers:
-                required_columns += ['transfers']
-            if segmented:
-                required_columns += self.segments
-            agg = {col: 'first' for col in required_columns}
-            agg.update({'volume': sum})
-            los = los.groupby('path_id').agg(agg)
-        else:
-            los = self.los.copy()
+        los = self.los.copy()
 
         column = 'link_path'
         l = los.dropna(subset=[column])
+        l = los.loc[los['volume'] > 0]
         self.links['volume'] = assign(l['volume'], l[column])
         
         if road:
@@ -620,13 +602,28 @@ class TransportModel(optimalmodel.OptimalModel):
         logit_los[(segment, 'utility')] = u
         logit_los[(segment, 'utility')] = logit_los[(segment, 'utility')].astype(float)
         
-    def analysis_utility(self, segment='root'):
+    def analysis_utility(self, segment='root', time_expanded=False):
+        """
+        * requires: mode_utility, los, utility_values
+        * builds: los
+        """
+        if segment is None:
+            for segment in self.segments:
+                print(segment)
+                self.analysis_mode_utility(how=how, segment=segment, time_expanded=time_expanded)
+            return 
+        if time_expanded:
+            los = self.te_los
+        else:
+            los = self.los
+        
         utility_values = self.utility_values[segment].to_dict()
         u = 0
         for key, value in utility_values.items():
-            u += value * self.los[key]
-        self.los[(segment, 'utility')] = u
-        self.los[(segment, 'utility')] = self.los[(segment, 'utility')].astype(float)
+            u += value * los[key]
+
+        los[(segment, 'utility')] = u
+        los[(segment, 'utility')] = los[(segment, 'utility')].astype(float)
 
     def initialize_logit(self):
         zones = list(self.zones.index)
@@ -634,7 +631,12 @@ class TransportModel(optimalmodel.OptimalModel):
         self.od_probabilities = od.copy()
         self.od_utilities = od.copy()
 
-    def _unique_model_segmented_logit(self, time_expanded=False):
+    def _unique_model_segmented_logit(
+        self, 
+        time_expanded=False,
+        decimals=None, 
+        n_paths_max=None
+        ):
         # assert all logit scales are the same and pick one
         logit_scales = self.logit_scales.T.drop_duplicates().T
         assert len(logit_scales.columns) == 1
@@ -665,7 +667,8 @@ class TransportModel(optimalmodel.OptimalModel):
             od_cols,
             mode_nests=nests,
             phi=nls,
-            verbose=False
+            verbose=False,
+            decimals=decimals, n_paths_max=n_paths_max
         )
 
         pool = l.reset_index().set_index(['segment', 'index'])
@@ -678,13 +681,20 @@ class TransportModel(optimalmodel.OptimalModel):
         self.probabilities = p
         self.utilities = u
 
-    def step_logit(self, segment=None, probabilities=None, utilities=None, time_expanded=False, *args, **kwargs):
+    def step_logit(
+        self, segment=None, probabilities=None, 
+        utilities=None, time_expanded=False, 
+        decimals=None, n_paths_max=None,
+        *args, **kwargs):
         """
         * requires: mode_nests, logit_scales, los
         * builds: los, od_utilities, od_probabilities, path_utilities, path_probabilities
         """
         try:
-            self._unique_model_segmented_logit(time_expanded=time_expanded)
+            self._unique_model_segmented_logit(
+                time_expanded=time_expanded,
+                decimals=decimals, n_paths_max=n_paths_max
+                )
             return 
         except AssertionError:
             print('segment specific logit models')

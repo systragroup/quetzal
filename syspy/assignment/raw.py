@@ -4,7 +4,7 @@ __author__ = 'qchasserieau'
 import pandas as pd
 import itertools
 import collections
-
+from tqdm import tqdm
 
 def ma_fonction_a_tester(a, b):
     return a + b

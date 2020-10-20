@@ -151,6 +151,46 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             )
 
             self.road_to_transit = ntlegs.loc[ntlegs['distance'] < length].copy()
+
+    def preparation_drop_redundant_zone_to_transit(self):
+        self.zone_to_transit.sort_values('time', inplace=True)
+        trips = self.links.groupby('a')['trip_id'].agg(set)
+        df = self.zone_to_transit
+        
+        keep = []
+        # access
+        zones = set(df.loc[df['direction'] == 'access']['a'])
+        for zone in tqdm(set(zones)):
+            ztt = self.zone_to_transit.loc[self.zone_to_transit['a'] == zone]
+            if len(ztt):
+                ztt = ztt[['b']].reset_index()
+                ztt['trips'] = [trips.get(n, set()) for n in ztt['b']]
+                n = 1
+                t = set()
+                while len(ztt) > 0:
+                    ztt['trips'] = [ trips - t for trips in ztt['trips']]
+                    ztt['n_trips'] = [len(trips) for trips in ztt['trips']]
+                    index, t, n = ztt.iloc[0][['index', 'trips', 'n_trips']].values
+                    ztt = ztt.loc[ztt['n_trips'] > 0]
+                    keep.append(index)
+                    
+        # egress      
+        zones = set(df.loc[df['direction'] != 'access']['b'])
+        for zone in tqdm(set(zones)):
+            ztt = self.zone_to_transit.loc[self.zone_to_transit['b'] == zone]
+            if len(ztt):
+                ztt = ztt[['a']].reset_index()
+                ztt['trips'] = [trips.get(n, set()) for n in ztt['a']]
+                n = 1
+                t = set()
+                while n > 0:
+                    ztt['trips'] = [ trips - t for trips in ztt['trips']]
+                    ztt['n_trips'] = [len(trips) for trips in ztt['trips']]
+                    ztt.sort_values('n_trips', ascending=False, inplace=True)
+                    index, t, n = ztt.iloc[0][['index', 'trips', 'n_trips']].values
+                    ztt = ztt.loc[ztt['n_trips'] > 0]
+                    keep.append(index)
+        self.zone_to_transit = self.zone_to_transit.loc[list(set(keep))]
             
 
     @track_args

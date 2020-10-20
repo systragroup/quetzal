@@ -80,7 +80,7 @@ def time_zone_to_transit(links, zone_to_transit):
     df['departure_time'] = df['arrival_time'] - df['time']
     df['a'] = df['a_ztt']
     df['b'] = df['b_ztt']
-    df['direction'] = 'acess'
+    df['direction'] = 'access'
     access = df.copy()
 
     # egress

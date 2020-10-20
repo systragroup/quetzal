@@ -6,7 +6,7 @@ import networkx as nx
 import numpy as np
 from shapely import geometry
 from syspy.spatial import spatial
-
+from tqdm import tqdm
 import warnings
 from functools import wraps
 import shutil
@@ -50,6 +50,7 @@ class TimeExpandedModel(stepmodel.StepModel):
         Create node clusters with an agglomerative clustering approach and a distance threshold.
         For each cluster, compute the average transfer length and corresponding walking duration.
         """
+        #TODO faster transfer length
         # Create clusters
         self.nodes['cluster_id'] = spatial.agglomerative_clustering(
             self.nodes,
@@ -166,20 +167,86 @@ class TimeExpandedModel(stepmodel.StepModel):
 
         self.pt_los = los
     
-    def step_logit(self):
+    def step_logit(self, decimals=None, n_paths_max=None):
         """
         * requires: mode_nests, logit_scales, te_los, los
         * builds: te_los, los, od_utilities, od_probabilities, path_utilities, path_probabilities
         """
         try:
-            self._unique_model_segmented_logit(time_expanded=True)
+            self._unique_model_segmented_logit(
+                time_expanded=True, 
+                decimals=decimals, 
+                n_paths_max=n_paths_max)
             return 
         except AssertionError:
             print('Cannot perform logit with segment specific logits')
             pass
 
+    def step_logit(
+        self, 
+        decimals=None, 
+        n_paths_max=None,
+        nchunks=100, 
+        keep_utililities=False, 
+        keep_probabilities=False
+    ):
 
-    def analysis_paths(self, typed_edges=True, boardings=True, alightings=False, transfers=False, kpis=True, ntlegs_penalty=1e9):
+        worker = type(self)()
+        planner = self.te_los.set_index('origin', drop=False)
+        planner.index.name = 'index'
+        worker.mode_nests = self.mode_nests
+        worker.logit_scales = self.logit_scales
+        worker.segments = self.segments
+        
+        index = list(set(planner.index))
+        groups = [
+            [
+                index[i + nchunks*n ]
+                for n in range(len(index) // nchunks + 1)
+                if i+nchunks*n < len(index)
+            ]
+            for i in range(nchunks)
+        ]
+        
+        # call logit
+        utility_chunks = []
+        probability_chunks = []
+        los_chunks = []
+        for group in tqdm(groups) :
+            worker.te_los = planner.loc[group].reset_index(drop=True)
+            worker._unique_model_segmented_logit(
+                time_expanded=True, 
+                decimals=decimals, 
+                n_paths_max=n_paths_max
+            )
+            
+            # keep data
+            los_chunks.append(worker.te_los)
+            
+            # odt arrays
+            if keep_utililities:
+                utility_chunks.append(worker.utilities)
+            if keep_probabilities:
+                probability_chunks.append(worker.probabilities)
+
+        self.te_los = pd.concat(los_chunks)
+        
+        # odt arrays
+        if keep_utililities:
+            self.utilities = pd.concat(utility_chunks)
+        if keep_probabilities:
+            self.probabilities = pd.concat(probability_chunks)
+
+
+    def analysis_paths(
+        self, 
+        typed_edges=True, 
+        boardings=True, 
+        alightings=False, 
+        transfers=False, 
+        kpis=True, 
+        ntlegs_penalty=1e9
+    ):
         self.pt_los = te_utils.analysis_paths(
             self.pt_los, self.edges, typed_edges=typed_edges
         )
@@ -204,6 +271,7 @@ class TimeExpandedModel(stepmodel.StepModel):
         """
         # index paths
         self.los.index = self.los.index.set_names(['path_id'])
+        self.los.drop('path_id', axis=1, inplace=True, errors='ignore')
         self.los.reset_index(inplace=True)
         # Create te_los
         columns_to_keep = {'origin', 'destination', 'path_id', 'departure_time', 'arrival_time',

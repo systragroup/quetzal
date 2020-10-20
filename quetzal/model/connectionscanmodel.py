@@ -1,5 +1,5 @@
 
-from quetzal.model import stepmodel
+from quetzal.model import timeexpandedmodel
 from quetzal.engine import csa 
 import pandas as pd
 import networkx as nx
@@ -39,12 +39,29 @@ def read_json(folder):
     m = TimeExpandedModel(json_folder=folder)
     return m
 
-class ConnectionScanModel(stepmodel.StepModel):
+class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not 'time_interval' in dir(self):
             self.time_interval = [0, 24*3600-1]
+
+    def lighten_pt_los(self):
+        super(ConnectionScanModel, self).lighten_pt_los()
+        to_drop = ['connection_path', 'path', 'first_connections','last_connection', 'ntransfers']
+        self.pt_los = self.pt_los.drop(to_drop, axis=1, errors='ignore')
+    
+    def lighten_pseudo_connections(self):
+        self.pseudo_connections = self.pseudo_connections[
+            ['csa_index', 'link_index', 'model_index', 'trip_id']
+        ]
+
+    def lighten(self):
+        super(ConnectionScanModel, self).lighten()
+        try:
+            self.lighten_pseudo_connections()
+        except AttributeError:
+            pass
 
     def preparation_build_connection_dataframe(
         self, min_transfer_time=0, 
@@ -88,18 +105,21 @@ class ConnectionScanModel(stepmodel.StepModel):
         
         self.pseudo_connections = pseudo_connections
 
-    def step_pt_pathfinder(self, min_transfer_time=0, time_interval=None, cutoff=np.inf, complete=False):
+    def step_pt_pathfinder(
+        self, min_transfer_time=0, time_interval=None, cutoff=np.inf, complete=False):
         
         time_interval = time_interval if time_interval is not None else self.time_interval
         
         self.preparation_build_connection_dataframe(min_transfer_time=min_transfer_time)
+        seta = set(self.time_expended_zone_to_transit['a'])
+        setb = set(self.time_expended_zone_to_transit['b'])
         pseudo_connections = self.pseudo_connections
 
         # DROP EGRESS
         egress = pseudo_connections.set_index('direction').loc['egress']
         egress_by_zone = egress.groupby(['b'])['csa_index'].agg(set).to_dict()
         drop_egress = {}
-        zone_set = set(self.zones.index)
+        zone_set = set(self.zones.index).intersection(seta).intersection(setb)
         for zone in zone_set:
             drop_egress[zone] = set(egress['csa_index']) - egress_by_zone[zone]
             # for each zone, which egress links are not useful 
@@ -110,7 +130,6 @@ class ConnectionScanModel(stepmodel.StepModel):
         egress_time_dict = egress.groupby('b')['departure_time'].agg(list).to_dict()
         departure_times = list(pseudo_connections['departure_time'])[::-1]
         
-        zone_set = set(self.zones.index)
         stop_set = set(pseudo_connections['a']).union(set(pseudo_connections['b']))
         Ttrip_inf =  {t: float('inf') for t in set(pseudo_connections['trip_id'])}
         columns = ['a', 'b', 'departure_time', 'arrival_time', 'csa_index', 'trip_id']
@@ -151,11 +170,17 @@ class ConnectionScanModel(stepmodel.StepModel):
             'departure_time', 'arrival_time', 'last_connection', 'csa_path']
         )
         
-    def analysis_path(self):
+    def analysis_paths(self):
         pseudo_connections = self.pseudo_connections
         clean = pseudo_connections[['csa_index','trip_id']].dropna()
-        trip_connections = clean.sort_values(by='csa_index').groupby(
-            'trip_id')['csa_index'].apply(list).to_dict()
+        clean.sort_values(by='csa_index', inplace=True)
+        trip_connections = {}
+        for trip, connection in clean[['trip_id', 'csa_index']].values:
+            try :
+                trip_connections[trip].append(connection)
+            except KeyError:
+                trip_connections[trip] = [connection]
+        
         connection_trip =  clean.set_index('csa_index')['trip_id'].to_dict()
         df = self.pt_los
         values = [
@@ -163,7 +188,7 @@ class ConnectionScanModel(stepmodel.StepModel):
                 path,
                 trip_connections=trip_connections, 
                 connection_trip=connection_trip
-            ) for path in df['csa_path']
+            ) for path in tqdm(df['csa_path'])
         ]
         df['connection_path'] = [v[0] for v in values]
         df['first_connections'] = [v[1] for v in values]
@@ -179,7 +204,9 @@ class ConnectionScanModel(stepmodel.StepModel):
             [d[i] for i in p if i in d] 
             for p in df['first_connections']
         ]
-
+        df['ntransfers'] = df['boarding_links'].apply(lambda b: len(b)-1)
+        linka = self.links['a'].to_dict()
+        df['boardings'] = [[linka[b] for b in bl] for bl in df['boarding_links']]
         # model
         pool = pseudo_connections[['model_index', 'csa_index']].dropna()
         d = pool.set_index('csa_index')['model_index'].to_dict()
@@ -187,6 +214,12 @@ class ConnectionScanModel(stepmodel.StepModel):
             [d[i] for i in p if i in d]
             for p in df['connection_path']
         ]
-        df['path'] = df.apply(lambda r: [r['origin']] + r['path'] + [r['destination']], axis=1)
+        df['path'] =  [
+            [o] + p + [d]
+            for o, d, p in 
+            df[['origin', 'destination', 'path']].values
+        ]
         self.pt_los = df
+
+    
 
