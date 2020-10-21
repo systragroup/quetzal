@@ -117,6 +117,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
 
         # DROP EGRESS
         egress = pseudo_connections.set_index('direction').loc['egress']
+        egress_index = set(egress['csa_index'])
         egress_by_zone = egress.groupby(['b'])['csa_index'].agg(set).to_dict()
         drop_egress = {}
         zone_set = set(self.zones.index).intersection(seta).intersection(setb)
@@ -134,6 +135,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         Ttrip_inf =  {t: float('inf') for t in set(pseudo_connections['trip_id'])}
         columns = ['a', 'b', 'departure_time', 'arrival_time', 'csa_index', 'trip_id']
         decreasing_departure_connections = pseudo_connections[columns].to_dict(orient='record')
+        
 
         pareto = []
         for target in tqdm(zone_set):
@@ -155,6 +157,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
                 connections, target=target,
                 stop_set=stop_set, Ttrip=Ttrip_inf.copy()
             )
+            predecessor.update({i : 'root' for i in egress_index})
 
             for source, source_profile in profile.items():
                 if source not in zone_set:
@@ -192,8 +195,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         ]
         df['connection_path'] = [v[0] for v in values]
         df['first_connections'] = [v[1] for v in values]
-        df['last_connections'] = [v[2] for v in values]
-
+        
         # links
         pool = pseudo_connections[['link_index', 'csa_index']].dropna()
         d = pool.set_index('csa_index')['link_index'].to_dict()

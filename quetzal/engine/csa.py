@@ -128,6 +128,7 @@ def csa_profile(
         ########## EVALUATE
         t_min_stop = float('inf')
         if b == target:
+            p = 'root'
             t_min_stop = c['arrival_time']
         else:
             for td, ta, p in reversed(profile[b]):
@@ -142,7 +143,7 @@ def csa_profile(
             t_min = t_min_stop
             
             predecessor[trip_id] = index
-            predecessor[index] = predecessor[b]
+            predecessor[index] = p#predecessor[b]
             
         else :
             t_min = t_min_trip
