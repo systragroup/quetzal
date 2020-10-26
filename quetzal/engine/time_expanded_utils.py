@@ -601,7 +601,7 @@ def build_dense_footpaths(nodes, max_length=1000, walking_speed=3):
 
     # geometry
     footpaths['geometry'] = [
-        geometry.LineString([[xa, ya],[xb, xb]]
+        geometry.LineString([[xa, ya],[xb, yb]]
         ) for xa ,ya, xb, yb in footpaths[
             ['x_origin', 'y_origin', 'x_destination', 'y_destination']
         ].values
