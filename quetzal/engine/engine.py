@@ -53,7 +53,6 @@ def od_volume_from_zones(zones, deterrence_matrix=None, power=2,
         deterrence_matrix = np.power(distance, -power)
 
         deterrence_matrix.replace(float('inf'), 1e9, inplace=True)
-
     # gravitaire doublement contraint
     volume_array = distribution.CalcDoublyConstrained(
         zones['emission'].values,
@@ -124,13 +123,13 @@ def ntlegs_from_centroids_and_nodes(
 
     ntlegs = pd.concat([access, eggress], ignore_index=True)
 
-    if coordinates_unit=='degree':
+    if coordinates_unit == 'degree':
         ntlegs['distance'] = skims.distance_from_geometry(ntlegs['geometry'])
-    elif coordinates_unit=='meter':
+    elif coordinates_unit == 'meter':
         ntlegs['distance'] = ntlegs['geometry'].apply(lambda x: x.length)
     else:
         raise('Invalid coordinates_unit.')
-    
+
     ntlegs['speed_factor'] = np.power(ntlegs['distance'] / threshold, 0.5)
     ntlegs['short_leg_speed'] = short_leg_speed
     ntlegs['long_leg_speed'] = long_leg_speed
@@ -152,7 +151,7 @@ def graph_links(links):
     """
     links = links.copy()
 
-    #links['arrival_time'] = 1
+    # links['arrival_time'] = 1
     links['duration'] = links['time']
     if 'cost' not in links.columns:
         links['cost'] = links['duration'] + links['headway'] / 2
@@ -160,12 +159,12 @@ def graph_links(links):
     links['origin'] = links['a']
     links['destination'] = links['b']
 
-
     # if link_sequence already exists, we do not want two columns
     links.rename(columns={'sequence': 'link_sequence'}, inplace=True)
-    links = links.loc[:,~links.columns.duplicated()]
+    links = links.loc[:, ~links.columns.duplicated()]
 
     return links
+
 
 def multimodal_graph(
     links,
@@ -204,7 +203,7 @@ def multimodal_graph(
     links = links.copy()
     ntlegs = ntlegs.copy()
 
-    links['index'] = links.index # to be consistent with frequency_graph
+    links['index'] = links.index  # to be consistent with frequency_graph
 
     nx_graph, _ = frequency_graph.graphs_from_links(
         links,
@@ -212,7 +211,7 @@ def multimodal_graph(
         include_igraph=False,
         boarding_cost=boarding_cost
     )
-    ntlegs.loc[ntlegs['direction']=='access', 'time'] += ntlegs_penalty
+    ntlegs.loc[ntlegs['direction'] == 'access', 'time'] += ntlegs_penalty
     nx_graph.add_weighted_edges_from(ntlegs[['a', 'b', 'time']].values.tolist())
 
     if footpaths is not None:
@@ -259,7 +258,7 @@ def path_and_duration_from_links_and_ntlegs(
     links = links.copy()
     ntlegs = ntlegs.copy()
 
-    links['index'] = links.index # to be consistent with frequency_graph
+    links['index'] = links.index  # to be consistent with frequency_graph
 
     nx_graph, _ = frequency_graph.graphs_from_links(
         links,
@@ -275,14 +274,14 @@ def path_and_duration_from_links_and_ntlegs(
             footpaths[['a', 'b', 'time']].values.tolist()
         )
 
-    #return nx_graph
+    # return nx_graph
     allpaths = {}
     alllengths = {}
     iterator = tqdm(list(pole_set))
-    
+
     for pole in iterator:
         iterator.desc = str(pole) + ' '
-        olengths, opaths  = nx.single_source_dijkstra(nx_graph, pole)
+        olengths, opaths = nx.single_source_dijkstra(nx_graph, pole)
         opaths = {target: p for target, p in opaths.items() if target in pole_set}
         olengths = {target: p for target, p in olengths.items() if target in pole_set}
         alllengths[pole], allpaths[pole] = olengths, opaths
@@ -420,7 +419,7 @@ def loaded_links_and_nodes(
     link_checkpoints=set(),
     node_checkpoints=set(),
     checkpoints_how='all',
-     **kwargs
+    **kwargs
 ):
     """
     The assignment function. The last step of modelling the demand.
@@ -444,7 +443,7 @@ def loaded_links_and_nodes(
         volumes. Default None
     :return: (links, nodes) a tuple containing the loaded DataFrames
     """
-    # todo: factoriser tout le boarding / alighting / transfer etc
+    # TODO: factoriser tout le boarding / alighting / transfer etc
     checkpoints = node_checkpoints.union(link_checkpoints)
 
     links = links.copy()
@@ -454,7 +453,6 @@ def loaded_links_and_nodes(
     if pivot_column:
         volumes[volume_column] = volumes[volume_column] * volumes[pivot_column]
 
-    # 
     analysis_col = ['transfers', 'boardings', 'alightings', 'alighting_links', 'boarding_links']
 
     # use it in order to add probability to paths
@@ -462,12 +460,11 @@ def loaded_links_and_nodes(
     if path_pivot_column:
         path_finder_stack['pivot'] = path_finder_stack[path_pivot_column]
 
-    # we don't want name collision
+    # we don't want name collision
     merged = pd.merge(
         volumes[['origin', 'destination', volume_column]],
         path_finder_stack[['origin', 'destination', 'pivot', path_column, ] + analysis_col],
         on=['origin', 'destination'])
-
 
     merged[volume_column] = merged[volume_column] * merged['pivot']
     volume_array = merged[volume_column].values
@@ -484,7 +481,7 @@ def loaded_links_and_nodes(
         try:
             link_index = [s for s in list(assigned.index) if s in links.index]
             assigned_links = assigned.loc[link_index]['volume']
-        except KeyError: # None of [...] are in the [index]
+        except KeyError:  # None of [...] are in the [index]
             assigned_links = None
 
         node_index = [s for s in list(assigned.index) if s in nodes.index]
@@ -518,4 +515,3 @@ def loaded_links_and_nodes(
         nodes['transfers'], links['transfers'] = transfer_nodes, transfer_links
 
     return links, nodes
-

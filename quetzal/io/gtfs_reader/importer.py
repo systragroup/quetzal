@@ -1,31 +1,34 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=no-member
 
-import os
 import pandas as pd
 import geopandas as gpd
-import numpy as np
-from shapely.geometry import Point, LineString
+from shapely.geometry import LineString
+from syspy.transitfeed import feed_links
 
-from syspy.spatial import spatial, zoning
-from syspy.transitfeed import feed_links, feed_stops
-from . import frequencies
 from .feed_gtfsk import Feed
 import gtfs_kit as gk
 from . import patterns
-import utm
 
-def get_epsg(lat,lon):
-    return int(32700 - round((45 + lat )/ 90, 0) * 100 + round((183 + lon)/6, 0))
-# seconds
-def to_seconds(time_string):
+
+def get_epsg(lat, lon):
+    return int(
+        32700 - round((45 + lat) / 90, 0) * 100 +
+        round((183 + lon) / 6, 0)
+    )
+
+
+def to_seconds(time_string):  # seconds
     return pd.to_timedelta(time_string).total_seconds()
+
 
 def linestring_geometry(dataframe, point_dict, from_point, to_point):
     df = dataframe.copy()
-    
+
     def geometry(row):
         return LineString(
             (point_dict[row[from_point]], point_dict[row[to_point]]))
+
     return df.apply(geometry, axis=1)
 
 
@@ -37,7 +40,7 @@ class GtfsImporter(Feed):
     from .directions import build_directions
     from .patterns import build_patterns
     from .services import group_services
-    from .frequencies import convert_to_frequencies, compute_pattern_headways  
+    from .frequencies import convert_to_frequencies, compute_pattern_headways
 
     def clean(self):
         feed = super().clean()
@@ -67,7 +70,7 @@ class GtfsImporter(Feed):
         print('Building links and nodes…')
         feed.build_links_and_nodes()
         return feed
-    
+
     def build_links_and_nodes(self, time_expanded=False):
         self.to_seconds()
         self.build_links(time_expanded=time_expanded)
@@ -94,10 +97,10 @@ class GtfsImporter(Feed):
             self.stop_times,
             max_shortcut=1,
             stop_id='stop_id',
-            keep_origin_columns = ['departure_time','pickup_type'],
-            keep_destination_columns = ['arrival_time','drop_off_type'],
-            stop_id_origin = 'origin',
-            stop_id_destination = 'destination',
+            keep_origin_columns=['departure_time', 'pickup_type'],
+            keep_destination_columns=['arrival_time', 'drop_off_type'],
+            stop_id_origin='origin',
+            stop_id_destination='destination',
             out_sequence='link_sequence'
         ).reset_index()
         self.links['time'] = self.links['arrival_time'] - self.links['departure_time']
@@ -113,11 +116,10 @@ class GtfsImporter(Feed):
             self.links = self.links.merge(self.frequencies[['trip_id', 'headway_secs']], on='trip_id')
             self.links.rename(columns={'headway_secs': 'headway'}, inplace=True)
             # Filter on strictly positive headway (Headway = 0 : no trip)
-            self.links = self.links.loc[self.links['headway']>0].reset_index(drop=True)
-    
+            self.links = self.links.loc[self.links['headway'] > 0].reset_index(drop=True)
         links_trips = pd.merge(self.trips, self.routes, on='route_id')
-        self.links = pd.merge(self.links, links_trips, on ='trip_id') 
-        
+        self.links = pd.merge(self.links, links_trips, on='trip_id')
+
     def build_geometries(self, use_utm=True):
         self.nodes = gk.stops.geometrize_stops_0(self.stops)
         if use_utm:
@@ -125,9 +127,9 @@ class GtfsImporter(Feed):
             self.nodes = self.nodes.to_crs(epsg=epsg)
 
         self.links['geometry'] = linestring_geometry(
-            self.links, 
-            self.nodes.set_index('stop_id')['geometry'].to_dict(), 
-            'a', 
+            self.links,
+            self.nodes.set_index('stop_id')['geometry'].to_dict(),
+            'a',
             'b'
         )
         self.links = gpd.GeoDataFrame(self.links)
