@@ -17,6 +17,7 @@ def get_epsg(lat, lon):
         round((183 + lon) / 6, 0)
     )
 
+
 def to_seconds(time_string):  # seconds
     return pd.to_timedelta(time_string).total_seconds()
 
