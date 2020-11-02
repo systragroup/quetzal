@@ -1,3 +1,6 @@
 {
-    "python.linting.enabled": false
+    "python.linting.enabled": true,
+    "python.pythonPath": "C:\\Users\\qchasserieau\\AppData\\Local\\Continuum\\Anaconda3\\envs\\quetzal_env\\python.exe",
+    "python.linting.pylintEnabled": false,
+    "python.linting.flake8Enabled": true
 }

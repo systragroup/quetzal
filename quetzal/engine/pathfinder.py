@@ -28,6 +28,15 @@ def get_path(predecessors, i, j):
         path.append(p)
     return path[::-1][1:] 
 
+def get_reversed_path(predecessors, i, j):
+    path = [j]
+    k = j
+    p = 0
+    while p != -9999:
+        k = p = predecessors[i, k]
+        path.append(p)
+    return path[:-1] 
+
 def path_and_duration_from_graph(
     nx_graph, 
     pole_set,
@@ -135,17 +144,8 @@ def sparse_matrix(edges):
     row, col, data = coefficients
     return csr_matrix((data, (row, col)), shape=(nlen, nlen)), index
 
-def adjacency_matrix(
-    links, 
-    ntlegs, 
-    footpaths,
-    ntlegs_penalty=1e9, 
-    boarding_time=0, 
-    alighting_time=0,
-    **kwargs
-    ):
+def link_edges(links, boarding_time=0, alighting_time=0):
     l = links.copy()
-    ntlegs = ntlegs.copy()
     l['index']= l.index
     l['next'] = l['link_sequence'] + 1
 
@@ -170,13 +170,26 @@ def adjacency_matrix(
         right_on=['trip_id', 'link_sequence'],
     )
     transit_edges = transit[['index_x', 'index_y', 'time']].values.tolist()
+    return boarding_edges + transit_edges + alighting_edges
 
+
+def adjacency_matrix(
+    links, 
+    ntlegs, 
+    footpaths,
+    ntlegs_penalty=1e9, 
+    boarding_time=0, 
+    alighting_time=0,
+    **kwargs
+    ):
+    ntlegs = ntlegs.copy()
+    
     # ntlegs and footpaths
     ntlegs.loc[ntlegs['direction']=='access', 'time'] += ntlegs_penalty
     ntleg_edges =  ntlegs[['a', 'b', 'time']].values.tolist()
     footpaths_edges = footpaths[['a', 'b', 'time']].values.tolist()
 
-    edges = boarding_edges + transit_edges + alighting_edges
+    edges = link_edges(links, boarding_time, alighting_time)
     edges += footpaths_edges + ntleg_edges
     return sparse_matrix(edges)
 
@@ -218,8 +231,6 @@ def los_from_graph(
     df.index.name = 'origin'
 
     stack = df[pole_list].stack()
-
-    stack = df[pole_list].stack()
     stack.name = 'gtime'
     los = stack.reset_index()
 
@@ -239,6 +250,65 @@ def los_from_graph(
 
     los['path'] = paths
     return los
+
+
+def paths_from_graph(
+    csgraph,
+    node_index,
+    sources,
+    targets,
+    od_set=None,
+    cutoff=np.inf
+):
+    reverse = False
+    if len(sources) > len(targets):
+        reverse = True
+        sources, targets, csgraph = targets, sources, csgraph.T
+
+    # INDEX
+    source_indices = [node_index[s] for s in sources]
+    target_indices = [node_index[t] for t in targets]
+    source_index = dict(zip(sources, range(len(sources))))
+    index_node = {v: k for k, v in node_index.items()}
+
+    #  DIKSTRA
+    dist_matrix, predecessors = dijkstra(
+        csgraph=csgraph,
+        directed=True,
+        indices=source_indices,
+        return_predecessors=True,
+        limit=cutoff
+    )
+
+    dist_matrix = dist_matrix.T[target_indices].T
+    df = pd.DataFrame(dist_matrix, index=sources, columns=targets)
+
+    df.columns.name = 'destination'
+    df.index.name = 'origin'
+
+    stack = df.stack()
+    stack.name = 'length'
+    odl = stack.reset_index()
+
+    # BUILD PATHS
+    if od_set is not None:
+        od_list = odl[['origin', 'destination']].values
+        odl = odl.loc[[tuple(od) in od_set for od in od_list]]
+
+    od_list = odl[['origin', 'destination']].values
+    path = get_reversed_path if reverse else get_path
+    paths = [
+        [
+            index_node[i] for i in
+            path(predecessors, source_index[o], node_index[d])
+        ]
+        for o, d in od_list
+    ]
+    odl['path'] = paths
+
+    if reverse:    
+        odl[['origin', 'destination']] = odl[['destination', 'origin']]
+    return odl
 
 class PublicPathFinder:
     def __init__(self, model, walk_on_road=False):

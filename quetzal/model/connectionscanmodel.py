@@ -1,30 +1,28 @@
 
 from quetzal.model import timeexpandedmodel
-from quetzal.engine import csa 
+from quetzal.engine import csa
 import pandas as pd
-import networkx as nx
 import numpy as np
-from shapely import geometry
-from syspy.spatial import spatial
 import bisect
-import warnings
-from functools import wraps
 import shutil
 import ntpath
 import uuid
 from tqdm import tqdm
 
+
 def read_hdf(filepath, *args, **kwargs):
     m = ConnectionScanModel(hdf_database=filepath, *args, **kwargs)
     return m
+
 
 def read_zip(filepath, *args, **kwargs):
     try:
         m = ConnectionScanModel(zip_database=filepath, *args, **kwargs)
         return m
-    except : 
+    except:
         # the zip is a zipped hdf and can not be decompressed
         return read_zipped_hdf(filepath, *args, **kwargs)
+
 
 def read_zipped_hdf(filepath, *args, **kwargs):
     filedir = ntpath.dirname(filepath)
@@ -36,19 +34,23 @@ def read_zipped_hdf(filepath, *args, **kwargs):
 
 
 def read_json(folder):
-    m = TimeExpandedModel(json_folder=folder)
+    m = ConnectionScanModel(json_folder=folder)
     return m
+
 
 class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if not 'time_interval' in dir(self):
+        if 'time_interval' not in dir(self):
             self.time_interval = [0, 24*3600-1]
 
     def lighten_pt_los(self):
         super(ConnectionScanModel, self).lighten_pt_los()
-        to_drop = ['connection_path', 'path', 'first_connections','last_connection', 'ntransfers']
+        to_drop = [
+            'connection_path', 'path', 'first_connections',
+            'last_connection', 'ntransfers'
+        ]
         self.pt_los = self.pt_los.drop(to_drop, axis=1, errors='ignore')
     
     def lighten_pseudo_connections(self):
@@ -149,6 +151,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
                 ti_connections =decreasing_departure_connections[-slice_start:]
             else :
                 ti_connections = decreasing_departure_connections[-slice_start: -slice_end]
+            
             forbidden = drop_egress[target]
             connections = [c for c in ti_connections if c['csa_index'] not in forbidden]
             if complete:
