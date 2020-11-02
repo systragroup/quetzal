@@ -2,7 +2,6 @@ from shapely import geometry
 from syspy.spatial import spatial
 import networkx as nx
 from scipy import interpolate
-
 def get_path(points, road_links, road_nodes, buffer=50, penalty_factor=2, n_neighbors=10):
     
     # create copies for the recursion

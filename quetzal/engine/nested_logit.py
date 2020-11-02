@@ -66,7 +66,15 @@ def plot_nests(nests):
     )
     return plot
 
-def nested_logit_from_paths(paths, od_cols=['origin', 'destination'], mode_nests=None, phi=None, verbose=False):
+def nested_logit_from_paths(
+    paths, 
+    od_cols=['origin', 'destination'], 
+    mode_nests=None, 
+    phi=None, 
+    verbose=False,
+    decimals=None, # minimum probability
+    n_paths_max=None
+):
     if 'segment' not in paths.columns:
         paths['segment'] = 'all'
     
@@ -100,12 +108,14 @@ def nested_logit_from_paths(paths, od_cols=['origin', 'destination'], mode_nests
     # rank_utilities
     paths['rank'] = paths.groupby(
         od_cols + ['route_type', 'segment']
-    )['utility'].rank(method='first') 
-    paths['rank'] = paths['rank'].astype(int) - 1
+    )['utility'].rank('first', ascending=False)
+    paths['rank'] = paths['rank'].astype(int)
+    if n_paths_max is not None:
+        paths = paths.loc[paths['rank'] <= n_paths_max]
     stack = paths.set_index(
         od_cols + ['route_type', 'segment', 'rank']
         )['utility']
-    rank_utilities= stack.unstack(['route_type',  'rank']).sort_index(axis=1).sort_index(axis=0)
+    rank_utilities= stack.unstack(['route_type',  'rank'])#.sort_index(axis=1).sort_index(axis=0)
     rank_utilities.fillna(-np.inf, inplace=True)
     mode_utilities = pd.DataFrame(index=rank_utilities.index)
     mode_utilities.columns.name = 'route_type'
@@ -169,8 +179,12 @@ def nested_logit_from_paths(paths, od_cols=['origin', 'destination'], mode_nests
         )
           
     # merge assignment probablities on paths
-    rank_probabilities_s = rank_probabilities.stack().stack()
-    rank_probabilities_s = rank_probabilities_s.loc[rank_probabilities_s>0]
+    if decimals is not None:
+        rounded = np.round(rank_probabilities, decimals)
+    else: 
+        rounded = rank_probabilities
+    rounded = rounded.replace(0, np.nan)
+    rank_probabilities_s = rounded.stack().stack()
     rank_probabilities_s.name = 'assignment_share'
 
     mode_probabilities_s = mode_probabilities.stack()
@@ -182,7 +196,6 @@ def nested_logit_from_paths(paths, od_cols=['origin', 'destination'], mode_nests
         mode_probabilities_s.reset_index(),
         on=od_cols + ['route_type', 'segment']
     )
-    stack = rank_probabilities_s.reset_index()
     merged['probability'] = merged['assignment_share'] * merged['modal_split_share']
     
     merge_columns = od_cols + ['route_type','segment' ,'rank']

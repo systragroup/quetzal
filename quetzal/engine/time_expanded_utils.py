@@ -4,7 +4,8 @@ import numpy as np
 from syspy.skims import skims
 from shapely import geometry
 import pyproj
-
+from syspy.spatial.spatial import add_geometry_coordinates
+from sklearn.neighbors import NearestNeighbors
 
 def create_connection_boarding_edges(links, boarding_time=0):
     """
@@ -567,21 +568,45 @@ def expand_volumes_with_time(volumes, time_interval, bins, volume_columns):
     return time_volumes
 
 def build_dense_footpaths(nodes, max_length=1000, walking_speed=3):
-    #TODO improve with sklearn function if too slow for large number of nodes
-    footpaths = skims.euclidean(nodes, coordinates_unit='meter')
-    footpaths = footpaths.loc[footpaths['euclidean_distance'] < max_length]
-    footpaths['duration'] = footpaths['euclidean_distance'] / (walking_speed / 3.6) # km/h to m/s
-    footpaths = footpaths.loc[footpaths['origin']!=footpaths['destination']]
-    footpaths['geometry'] = footpaths.apply(
-        lambda x: geometry.LineString(
-            [
-                [x['x_origin'], x['y_origin']],
-                [x['x_destination'], x['y_destination']],
-            ]
-        ),
-        1
+    df_x = df_y = add_geometry_coordinates(nodes.copy(), columns=['x', 'y'])
+    x = df_x[['x','y']].values
+    y = df_y[['x','y']].values
+    nbrs = NearestNeighbors(algorithm='ball_tree', radius=1).fit(x)
+    distances, indices = nbrs.kneighbors(y)
+    distances, indices = nbrs.radius_neighbors(y, max_length, return_distance=True)
+    
+    flat_x = []
+
+    for i in range(len(distances)):
+        a = distances[i]
+        flat_x += [i]*len(a)
+    flat_y = [i for l in indices for i in l]       
+    flat_distance = [d for l in distances for d in l]
+
+    df = pd.DataFrame(
+            {
+                'int_x': flat_x,
+                'int_y': flat_y,
+                'distance': flat_distance,
+        }
     )
-    footpaths = footpaths[['origin', 'destination', 'duration', 'geometry']].rename(
-        columns={'origin': 'a', 'destination': 'b'}
-    )
+
+    df_x.index.name = 'index'
+    index_y = index_x = df_x[['geometry', 'x', 'y']].reset_index()
+    df = pd.merge(index_x, df, left_index=True, right_on='int_x')
+    df = pd.merge(index_y, df, left_index=True, right_on='int_y', suffixes=['_origin', '_destination'])
+    footpaths =  df.loc[df['index_origin'] != df['index_destination']]
+    footpaths['duration'] = footpaths['distance'] / (walking_speed / 3.6)
+
+
+    # geometry
+    footpaths['geometry'] = [
+        geometry.LineString([[xa, ya],[xb, yb]]
+        ) for xa ,ya, xb, yb in footpaths[
+            ['x_origin', 'y_origin', 'x_destination', 'y_destination']
+        ].values
+    ]
+    footpaths = footpaths.rename(
+        columns={'index_origin': 'a', 'index_destination': 'b'}
+    )[['a', 'b', 'duration', 'geometry']]
     return footpaths
