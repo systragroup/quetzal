@@ -286,15 +286,14 @@ def paths_from_graph(
     df.columns.name = 'destination'
     df.index.name = 'origin'
 
+    if od_set is not None:
+        mask_series = pd.Series(0, index=pd.MultiIndex.from_tuples(list(od_set)))
+        mask = mask_series.unstack().loc[sources, targets]
+        df += mask
+
     stack = df.stack()
     stack.name = 'length'
     odl = stack.reset_index()
-
-    # BUILD PATHS
-    if od_set is not None:
-        od_list = odl[['origin', 'destination']].values
-        odl = odl.loc[[tuple(od) in od_set for od in od_list]]
-
     od_list = odl[['origin', 'destination']].values
     path = get_reversed_path if reverse else get_path
     paths = [

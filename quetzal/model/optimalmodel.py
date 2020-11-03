@@ -7,7 +7,7 @@ from quetzal.engine import engine
 from quetzal.engine.pathfinder import PublicPathFinder
 from quetzal.engine.road_pathfinder import RoadPathFinder
 from quetzal.engine import nested_logit, optimal_strategy
-from quetzal.model import model, preparationmodel
+from quetzal.model import preparationmodel
 
 from syspy.assignment import raw as raw_assignment
 from syspy.skims import skims
