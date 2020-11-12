@@ -6,6 +6,7 @@ import os
 
 import geopandas as gpd
 import pandas as pd
+from shapely.geometry import Point
 
 from copy import deepcopy
 from functools import wraps
@@ -25,18 +26,21 @@ def read_hdf(filepath):
     m.read_hdf(filepath)
     return m
 
+
 def log(text, debug=False):
     if debug:
         print(text)
 
+
 def authorized_column(
-    df, 
-    column, 
+    df,
+    column,
     authorized_types=(str, int, float)
 ):
     type_set = set(df[column].dropna().apply(type))
     delta = type_set - set(authorized_types)
     return delta == set()
+
 
 def track_args(method):
 
@@ -44,7 +48,6 @@ def track_args(method):
     # decorated.__name__ = method.__name__ etc...
     @wraps(method)
     def decorated(self,  *args, **kwargs):
-
         """
         All the parameters are stored
         if use_tracked_args=True is passed to a method, the last parameters
@@ -106,11 +109,12 @@ def merge_links_and_nodes(
 
         reindex_series = pd.Series(range(len(nodes)), index=nodes.index)
         reindex_dict = reindex_series.to_dict()
-        reindex_function = lambda n: reindex_dict[n]
+        def reindex_function(n): return reindex_dict[n]
         links['a'] = links['a'].apply(reindex_function).astype(str)
         links['b'] = links['b'].apply(reindex_function).astype(str)
-        nodes.index = pd.Series(nodes.index).apply(reindex_function).astype(str)
-    
+        nodes.index = pd.Series(nodes.index).apply(
+            reindex_function).astype(str)
+
     return links, nodes
 
 
@@ -124,8 +128,8 @@ def merge(
 ):
     assert left.epsg == right.epsg
     # we want to return an object with the same class as left
-    model = left.__class__(epsg=left.epsg, coordinates_unit=left.coordinates_unit) if clear else left.copy()
-    
+    model = left.__class__(
+        epsg=left.epsg, coordinates_unit=left.coordinates_unit) if clear else left.copy()
 
     model.links, model.nodes = merge_links_and_nodes(
         left_links=left.links,
@@ -154,7 +158,6 @@ class Model(IntegrityModel):
         *args,
         **kwargs
     ):
-
         """
         Initialization function, either from a json folder or a json_database representation.
         Args:
@@ -167,20 +170,21 @@ class Model(IntegrityModel):
         super().__init__(*args, **kwargs)
 
         if json_database and json_folder:
-            raise Exception('Only one argument should be given to the init function.')
+            raise Exception(
+                'Only one argument should be given to the init function.')
         elif json_database:
             self.read_json_database(json_database)
         elif json_folder:
             self.read_json(json_folder)
         elif hdf_database:
             self.read_hdf(
-                hdf_database, 
+                hdf_database,
                 omitted_attributes=omitted_attributes,
                 only_attributes=only_attributes
             )
         elif zip_database:
             self.read_zip(
-                zip_database, 
+                zip_database,
                 omitted_attributes=omitted_attributes,
                 only_attributes=only_attributes
             )
@@ -189,30 +193,30 @@ class Model(IntegrityModel):
 
         # Add default coordinates unit and epsg
         if self.epsg is None:
-            #print('Model epsg not defined: setting epsg to default one: 4326')
+            # print('Model epsg not defined: setting epsg to default one: 4326')
             self.epsg = 4326
         if self.coordinates_unit is None:
-            #print('Model coordinates_unit not defined: setting coordinates_unit to default one: degree')
+            # print('Model coordinates_unit not defined: setting coordinates_unit to default one: degree')
             self.coordinates_unit = 'degree'
 
     def plot(
-        self, attribute, ticks=False, 
-        basemap_url=None, zoom=12, 
+        self, attribute, ticks=False,
+        basemap_url=None, zoom=12,
         title=None, fontsize=24,
-        fname=None,  
+        fname=None,
         *args, **kwargs
     ):
         gdf = gpd.GeoDataFrame(self.__dict__[attribute])
         if self.epsg != 3857 and basemap_url is not None:
             gdf.crs = {'init': 'epsg:{}'.format(self.epsg)}
             gdf = gdf.to_crs(epsg=3857)
-        
+
         plot = gdf.plot(*args, **kwargs)
-        if ticks == False:
+        if ticks is False:
             plot.set_xticks([])
             plot.set_yticks([])
 
-        if title: 
+        if title:
             plot.set_title(title, fontsize=fontsize)
 
         if basemap_url is not None:
@@ -254,7 +258,7 @@ class Model(IntegrityModel):
 
         # build a store from the buffer
         with pd.HDFStore(
-            "quetzal-%s.h5"%str(uuid.uuid4()),
+            "quetzal-%s.h5" % str(uuid.uuid4()),
             mode="r",
             driver="H5FD_CORE",
             driver_core_backing_store=0,
@@ -262,12 +266,12 @@ class Model(IntegrityModel):
         ) as store:
             iterator = tqdm(store.keys())
             for key in iterator:
-                
+
                 if key in omitted_attributes:
                     continue
                 if only_attributes is not None and key not in only_attributes:
                     continue
-                    
+
                 value = store[key]
                 if isinstance(value, pd.DataFrame) and 'geometry' in value.columns:
                     value = gpd.GeoDataFrame(value)
@@ -284,12 +288,12 @@ class Model(IntegrityModel):
                 print('coul not read json attributes')
 
     def to_excel(self, filepath, prefix='stack'):
-        l = len(prefix)
+        length = len(prefix)
         stacks = {
-            name[l+1:]: attr for name, attr in self.__dict__.items() 
-            if name[:l] == prefix
+            name[length+1:]: attr for name, attr in self.__dict__.items()
+            if name[:length] == prefix
         }
-        with pd.ExcelWriter(filepath) as writer:  
+        with pd.ExcelWriter(filepath) as writer:
             for name, stack in stacks.items():
                 stack.reset_index().to_excel(writer, sheet_name=name, index=False)
 
@@ -309,7 +313,7 @@ class Model(IntegrityModel):
             elif isinstance(attribute, gpd.GeoSeries):
                 frames[key] = pd.Series(attribute).astype(object)
             elif isinstance(attribute, (pd.DataFrame, pd.Series, gpd.GeoDataFrame)):
-                df=pd.DataFrame(attribute)
+                df = pd.DataFrame(attribute)
                 try:
                     df['geometry'] = df['geometry'].astype(object)
                 except:
@@ -336,7 +340,7 @@ class Model(IntegrityModel):
         export the full model to a hdf database
         """
         try:
-            os.remove(filepath) 
+            os.remove(filepath)
             status = 'overwriting'
         except FileNotFoundError:
             status = 'new file'
@@ -351,11 +355,12 @@ class Model(IntegrityModel):
                 continue
 
             if isinstance(attribute, gpd.GeoDataFrame):
-                df=pd.DataFrame(attribute)
+                df = pd.DataFrame(attribute)
                 df['geometry'] = df['geometry'].astype(object)
                 df.to_hdf(filepath, key=key, mode='a')
             elif isinstance(attribute, gpd.GeoSeries):
-                pd.Series(attribute).astype(object).to_hdf(filepath, key=key, mode='a')
+                pd.Series(attribute).astype(object).to_hdf(
+                    filepath, key=key, mode='a')
             elif isinstance(attribute, (pd.DataFrame, pd.Series)):
                 df = attribute
                 try:
@@ -380,23 +385,22 @@ class Model(IntegrityModel):
         filedir = ntpath.dirname(filepath)
         tempdir = filedir + '/quetzal_temp' + '-' + str(uuid.uuid4())
         os.mkdir(tempdir)
-        hdf_path = tempdir+ r'/model.hdf'
+        hdf_path = tempdir + r'/model.hdf'
         self.to_hdf(hdf_path, *args, **kwargs)
         shutil.make_archive(filepath.split('.zip')[0], 'zip', tempdir)
         shutil.rmtree(tempdir)
 
     @track_args
     def to_json(self, folder, omitted_attributes=(), only_attributes=None, verbose=False):
-        
         """
         export the full model to a hdf database
         """
         try:
-            os.makedirs(folder, exist_ok=True) 
+            os.makedirs(folder, exist_ok=True)
             status = 'overwriting'
         except FileNotFoundError:
             status = 'new file'
-            
+
         jsons = {}
         iterator = tqdm(self.__dict__.items(), desc='to_hdf(%s)' % status)
 
@@ -410,49 +414,53 @@ class Model(IntegrityModel):
             root_name = folder + '/' + key
             geojson_file = root_name + '.geojson'
             json_file = root_name + '.json'
-            
+
             for filename in (geojson_file, json_file):
-                try: 
+                try:
                     os.remove(filename)
                 except OSError:
                     pass
 
             if isinstance(attribute, (pd.DataFrame, pd.Series)):
-                
+
                 msg = 'datframe attributes must have unique index:' + key
                 assert attribute.index.is_unique, msg
                 attribute = pd.DataFrame(attribute)  # copy and type conversion
                 attribute.drop('index', axis=1, errors='ignore', inplace=True)
                 attribute.index.name = 'index'
                 attribute = attribute.reset_index()  # loss of index name
-                attribute.rename(columns={x: str(x) for x in attribute.columns}, inplace=True)
+                attribute.rename(columns={x: str(x)
+                                          for x in attribute.columns}, inplace=True)
 
                 df = attribute
-                geojson_columns = [c for c in df.columns 
-                    if authorized_column(df, c) 
-                    or c in ('index', 'geometry')
-                ] 
-                json_columns = [c for c in df.columns if c not in geojson_columns]
+                geojson_columns = [
+                    c for c in df.columns if authorized_column(df, c) or c in ('index', 'geometry')
+                ]
+                json_columns = [
+                    c for c in df.columns if c not in geojson_columns]
                 try:
                     gpd.GeoDataFrame(attribute[geojson_columns]).to_file(
-                        geojson_file, 
-                        driver='GeoJSON'
+                        geojson_file, driver='GeoJSON'
                     )
                     if len(json_columns):
-                        attribute[json_columns + ['index']].to_json(root_name + '_quetzaldata.json')
-                except (AttributeError, KeyError, ) as e: # "['geometry'] not in index"
+                        attribute[json_columns + ['index']
+                                  ].to_json(root_name + '_quetzaldata.json')
+                # "['geometry'] not in index"
+                except (AttributeError, KeyError, ) as e:
                     if verbose:
                         print(e)
-                    df = pd.DataFrame(attribute).drop('geometry', axis=1, errors='ignore')
-                    df.to_json(root_name + '.json')       
-                except ValueError as e: 
+                    df = pd.DataFrame(attribute).drop(
+                        'geometry', axis=1, errors='ignore')
+                    df.to_json(root_name + '.json')
+                except ValueError as e:
                     if verbose:
                         print(e)
                     # Geometry column cannot contain mutiple geometry types when writing to file.
                     print('could not save geometry from table ' + key)
-                    df = pd.DataFrame(attribute).drop('geometry', axis=1, errors='ignore')
-                    df.to_json(root_name + '.json')     
-                    
+                    df = pd.DataFrame(attribute).drop(
+                        'geometry', axis=1, errors='ignore')
+                    df.to_json(root_name + '.json')
+
             else:
                 try:
                     jsons[key] = json.dumps(attribute)
@@ -461,29 +469,31 @@ class Model(IntegrityModel):
 
         for key in attributeerrors:
             print('could not save attribute: ' + key)
-            
+
         json_series = pd.Series(jsons)
         json_series.name = 'json'
         json_series = json_series.reset_index()
         json_series.to_json(folder + '/' + 'jsons.json')
-    
+
     def read_json(self, folder):
         files = os.listdir(folder)
-        geojson_attributes = [file.split('.geojson')[0] for file in files if '.geojson' in file]
-        json_attributes = [file.split('.json')[0] for file in files if '.json' in file]
-        
+        geojson_attributes = [file.split('.geojson')[0]
+                              for file in files if '.geojson' in file]
+        json_attributes = [file.split('.json')[0]
+                           for file in files if '.json' in file]
+
         for key in json_attributes:
 
             value = pd.read_json('%s/%s.json' % (folder, key))
             value.set_index('index', inplace=True)
             self.__setattr__(key, value)
-            
+
         for key in geojson_attributes:
-            
+
             value = gpd.read_file('%s/%s.geojson' % (folder, key))
             value.set_index('index', inplace=True)
             self.__setattr__(key, pd.DataFrame(value))
-            
+
         # some attributes may have been store in the json_series
             try:
                 json_dict = self.jsons['json'].to_dict()
@@ -498,7 +508,8 @@ class Model(IntegrityModel):
             if '_quetzaldata' in key:
                 key_to_set = key.split('_quetzaldata')[0]
                 left = self.__getattribute__(key_to_set)
-                merged = pd.merge(left, data, left_index=True, right_index=True)
+                merged = pd.merge(
+                    left, data, left_index=True, right_index=True)
                 self.__setattr__(key_to_set, merged)
                 to_delete.append(key)
         for key in to_delete:
@@ -530,7 +541,7 @@ class Model(IntegrityModel):
         # Create json_database object
         json_database = {
             'geojson': {},
-            'pd_json':{},
+            'pd_json': {},
             'json': {}
         }
 
@@ -540,17 +551,18 @@ class Model(IntegrityModel):
             if isinstance(attribute, (pd.DataFrame, pd.Series)):
                 # Check index
                 assert attribute.index.is_unique, 'DataFrame attributes must have unique index'
-                attribute = pd.DataFrame(attribute) # copy and type conversion
+                attribute = pd.DataFrame(attribute)  # copy and type conversion
                 attribute.drop('index', axis=1, errors='ignore', inplace=True)
                 attribute.index.name = 'index'
-                attribute = attribute.reset_index() # loss of index name
+                attribute = attribute.reset_index()  # loss of index name
 
                 try:
                     geojson_to_store = gpd.GeoDataFrame(attribute).to_json()
                     json_database['geojson'].update({key: geojson_to_store})
 
                 except KeyError:
-                    df = pd.DataFrame(attribute).drop('geometry', axis=1, errors='ignore')
+                    df = pd.DataFrame(attribute).drop(
+                        'geometry', axis=1, errors='ignore')
                     json_to_store = df.to_json()
                     json_database['pd_json'].update({key: json_to_store})
 
@@ -572,7 +584,7 @@ class Model(IntegrityModel):
         Args:
             stepmodel
             json_database (json): the json_database model representation
-        
+
         Returns:
             None
         """
@@ -582,13 +594,13 @@ class Model(IntegrityModel):
         # Geojson objects
         for key, attr in json_database['geojson'].items():
             value = gpd.GeoDataFrame.from_features(json.loads(attr))
-            value.set_index('index', inplace=True)  
+            value.set_index('index', inplace=True)
             self.__setattr__(key, pd.DataFrame(value))
 
         # Dataframe objects
         for key, attr in json_database['pd_json'].items():
             value = pd.read_json(attr)
-            value.set_index('index', inplace=True)  
+            value.set_index('index', inplace=True)
             self.__setattr__(key, pd.DataFrame(value))
 
         # Parameters
@@ -602,14 +614,14 @@ class Model(IntegrityModel):
     def merge(self, *args, **kwargs):
         return merge(left=self, *args, **kwargs)
 
-
     @track_args
     def change_epsg(self, epsg, coordinates_unit):
 
         projected_model = self.copy()
         iterator = tqdm(
             projected_model.__dict__.items(),
-            desc='Reprojecting model from epsg {} to epsg {}'.format(self.epsg, epsg)
+            desc='Reprojecting model from epsg {} to epsg {}'.format(
+                self.epsg, epsg)
         )
         failed = []
 
@@ -619,26 +631,25 @@ class Model(IntegrityModel):
                     attribute.crs = {'init': 'epsg:{}'.format(self.epsg)}
                     attribute = attribute.to_crs(epsg=epsg)
                     projected_model.__setattr__(key, attribute)
-                except RuntimeError: 
-                #b'tolerance condition error', b'latitude or longitude exceeded limits'
+                except RuntimeError:
+                    # b'tolerance condition error', b'latitude or longitude exceeded limits'
                     failed.append(key)
             elif isinstance(attribute, pd.DataFrame):
                 if 'geometry' in attribute.columns:
                     try:
                         # print('Converting {}'.format(key))
                         temp = gpd.GeoDataFrame(attribute)
-                        temp.crs =  {'init': 'epsg:{}'.format(self.epsg)}
+                        temp.crs = {'init': 'epsg:{}'.format(self.epsg)}
                         attribute = pd.DataFrame(temp.to_crs(epsg=epsg))
                         projected_model.__setattr__(key, attribute)
-                    except RuntimeError: 
-                    #b'tolerance condition error', b'latitude or longitude exceeded limits'
+                    except RuntimeError:
+                        # b'tolerance condition error', b'latitude or longitude exceeded limits'
                         failed.append(key)
-
 
             elif isinstance(attribute, pd.Series):
                 try:
                     temp = gpd.GeoSeries(attribute)
-                    temp.crs =  {'init': 'epsg:{}'.format(self.epsg)}
+                    temp.crs = {'init': 'epsg:{}'.format(self.epsg)}
                     attribute = pd.Series(temp.to_crs(epsg=epsg))
                     projected_model.__setattr__(key, attribute)
                 except:
@@ -652,3 +663,30 @@ class Model(IntegrityModel):
             print(failed)
 
         return projected_model
+
+    def describe(self):
+        data = []
+        # general case
+        for attr, value in self.__dict__.items():
+            if isinstance(value, bool):
+                desc = value
+            elif isinstance(value, str):
+                desc = value
+            elif isinstance(value, int):
+                desc = value
+            elif isinstance(value, gpd.GeoDataFrame) and value.centroid.equals(gpd.GeoSeries({0: Point(0, 0)})):
+                continue
+            elif isinstance(value, pd.DataFrame) and value.empty:
+                continue
+            elif isinstance(value, list) and len(value) < 4:
+                desc = value
+            elif isinstance(value, dict) and len(value) < 4:
+                desc = value
+            else:
+                try:
+                    desc = len(value)
+                except TypeError:
+                    desc = None
+            data.append([attr, type(value), desc])
+        # specific cases
+        return pd.DataFrame(data=data, columns=['name', 'type', 'desc']).set_index('name').sort_index()
