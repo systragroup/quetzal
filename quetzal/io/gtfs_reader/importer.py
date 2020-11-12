@@ -17,7 +17,6 @@ def get_epsg(lat, lon):
         round((183 + lon) / 6, 0)
     )
 
-
 def to_seconds(time_string):  # seconds
     return pd.to_timedelta(time_string).total_seconds()
 
@@ -34,8 +33,9 @@ def linestring_geometry(dataframe, point_dict, from_point, to_point):
 
 class GtfsImporter(Feed):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, epsg=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.epsg = epsg
 
     from .directions import build_directions
     from .patterns import build_patterns

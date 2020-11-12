@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# pylint: disable=no-member
 
 import pandas as pd
 from collections import OrderedDict
@@ -66,6 +68,39 @@ class Feed(gk.feed.Feed):  # Overwrite Feed class
             gj = self.__getattribute__(method)()
             with open(folder + name + '.geojson', 'w') as f:
                 dump(gj, f)
+
+    def build_stops_timetable(self, stop_ids, dates):
+        return build_stops_timetable(self, stop_ids, dates)
+
+    def drop_unused(self):
+        # drop stops without stop_times
+        stop_set = list(self.stop_times.stop_id.unique())
+        stop_set += list(self.stops.loc[self.stops.stop_id.isin(stop_set), 'parent_station'].values)
+        self.stops = self.stops.loc[self.stops.stop_id.isin(stop_set)]
+
+        # drops trips without stop_times
+        trip_set = list(self.stop_times.trip_id.unique())
+        self.trips = self.trips.loc[self.trips.trip_id.isin(trip_set)]
+
+        # drops routes without trips
+        route_set = list(self.trips.route_id.unique())
+        self.routes = self.routes.set_index('route_id').loc[route_set].reset_index()
+
+        # drops shapes without trips
+        if self.shapes is not None:
+            shape_set = list(self.trips.shape_id.unique())
+            self.shapes = self.shapes.loc[self.shapes.shape_id.isin(shape_set)]
+
+        # drop calendar without trips
+        service_set = list(self.trips.service_id.unique())
+        if self.calendar is not None:
+            self.calendar = self.calendar.loc[self.calendar.service_id.isin(service_set)]
+        if self.calendar_dates is not None:
+            self.calendar_dates = self.calendar_dates.loc[self.calendar_dates.service_id.isin(service_set)]
+
+        # drops agency without routes
+        agency_set = list(self.routes.agency_id)
+        self.agency = self.agency.loc[self.agency.agency_id.isin(agency_set)]
 
 
 def read_gtfs(*args, **kwargs) -> dict:
@@ -259,3 +294,35 @@ def map_stops(feed, stop_ids, stop_style=STOP_STYLE):
     my_map.fit_bounds(bounds, padding=[1, 1])
 
     return my_map
+
+
+def build_stops_timetable(feed, stop_ids, dates):
+    """
+    Return a DataFrame containing the timetable for the given stop IDs
+    and dates (YYYYMMDD date strings)
+
+    Return a DataFrame whose columns are all those in ``feed.trips`` plus those in
+    ``feed.stop_times`` plus ``'date'``, and the stop IDs are restricted to the given
+    stop IDs.
+    The result is sorted by date then departure time.
+    """
+    dates = feed.subset_dates(dates)
+    if not dates:
+        return pd.DataFrame()
+
+    t = pd.merge(feed.trips, feed.stop_times)
+    t = t[t["stop_id"].isin(stop_ids)].copy()
+    a = feed.compute_trip_activity(dates)
+
+    frames = []
+    for date in dates:
+        # Slice to stops active on date
+        ids = a.loc[a[date] == 1, "trip_id"]
+        f = t[t["trip_id"].isin(ids)].copy()
+        f["date"] = date
+        frames.append(f)
+
+    f = pd.concat(frames)
+    return f.sort_values(["date", "departure_time"])
+
+
