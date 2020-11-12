@@ -568,8 +568,9 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         * builds: los
         """
         if segment is None:
+
             for segment in self.segments:
-                print(segment)
+
                 self.analysis_mode_utility(how=how, segment=segment, time_expanded=time_expanded)
             return 
         if time_expanded:

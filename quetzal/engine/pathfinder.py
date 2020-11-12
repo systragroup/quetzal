@@ -86,6 +86,8 @@ def sparse_los_from_nx_graph(
 ):
 
     sources = pole_set if sources is None else sources
+    if od_set is not None:
+        sources = {o for o, d in od_set if o in sources}
     # INDEX
     pole_list = sorted(list(pole_set)) # fix order
     source_list = [zone for zone in pole_list if zone in sources]
@@ -203,6 +205,8 @@ def los_from_graph(
     ntlegs_penalty=1e9
 ):
     sources = pole_set if sources is None else sources
+    if od_set is not None:
+        sources = {o for o, d in od_set if o in sources}
     # INDEX
     pole_list = sorted(list(pole_set)) # fix order
     source_list = [zone for zone in pole_list if zone in sources]
@@ -261,6 +265,12 @@ def paths_from_graph(
     cutoff=np.inf
 ):
     reverse = False
+    if od_set:
+        o_set = {o for o, d in od_set}
+        d_set = {d for o, d in od_set}
+        sources = [s for s in sources if s in o_set]
+        targets = [t for t in targets if t in d_set]
+
     if len(sources) > len(targets):
         reverse = True
         sources, targets, csgraph = targets, sources, csgraph.T

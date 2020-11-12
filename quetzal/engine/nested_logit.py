@@ -135,7 +135,7 @@ def nested_logit_from_paths(
         )
 
     # propagate utilities to higher modes (bottom -> up)
-    for mode in ascending_modes :
+    for mode in ascending_modes:
         children = list(nx.neighbors(g, mode))
         if len(children):
             if verbose:

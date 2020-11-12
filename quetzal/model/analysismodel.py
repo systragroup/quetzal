@@ -158,7 +158,7 @@ class AnalysisModel(summarymodel.SummaryModel):
             lambda p: ('car',) + tuple({route_type_dict[l] for l in p})
             )
             self.pr_los['route_type'] = self.pr_los['route_types'].apply(higher_route_type)
-        except AttributeError:
+        except (AttributeError, KeyError):
             pass
 
     def analysis_car_los(self):
