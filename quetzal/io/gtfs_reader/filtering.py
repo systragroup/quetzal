@@ -269,8 +269,9 @@ def restrict_to_area(feed, polygon_4326, how='inner', drop_unused=True):
 
     # relations
     f.stop_times = f.stop_times.loc[f.stop_times['stop_id'].isin(f.stops['stop_id'])]
-    f.transfers = f.transfers.loc[f.transfers['from_stop_id'].isin(f.stops['stop_id'])]
-    f.transfers = f.transfers.loc[f.transfers['to_stop_id'].isin(f.stops['stop_id'])]
+    if f.transfers is not None:
+        f.transfers = f.transfers.loc[f.transfers['from_stop_id'].isin(f.stops['stop_id'])]
+        f.transfers = f.transfers.loc[f.transfers['to_stop_id'].isin(f.stops['stop_id'])]
     relevant_trips = (f.stop_times['trip_id'])
     f = f.restrict(trip_ids=relevant_trips)
 
