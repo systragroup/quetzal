@@ -221,7 +221,7 @@ class RoadPathFinder:
     ):
         if all_or_nothing:
             self.aon_road_pathfinder(*args, **kwargs)
-            return 
+            return
             
         if reset_jam_time:
             self.road_links['flow'] = 0

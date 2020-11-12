@@ -92,24 +92,18 @@ class ParkRideModel(preparationmodel.PreparationModel):
 
     def build_park_ride_shortcuts(
         self, pr_nodes,
-        boarding_time=0, alighting_time=0
+        boarding_time=0, alighting_time=0,
+        reverse=False
     ):
         # MORNING
-        ntz = self.get_node_transit_zone(
-            pr_nodes=pr_nodes, reverse=False,
+        self.node_transit_zone = self.get_node_transit_zone(
+            pr_nodes=pr_nodes, reverse=reverse,
             boarding_time=boarding_time, alighting_time=alighting_time
         )
-        zrn = self.get_zone_road_node(pr_nodes=pr_nodes, reverse=False)
-
-        # EVENING
-        ntz_r = self.get_node_transit_zone(
-            pr_nodes=pr_nodes, reverse=True,
-            boarding_time=boarding_time, alighting_time=alighting_time
+        self.zone_road_node = self.get_zone_road_node(
+            pr_nodes=pr_nodes, reverse=reverse
         )
-        zrn_r = self.get_zone_road_node(pr_nodes=pr_nodes, reverse=True)
 
-        self.node_transit_zone = pd.concat([ntz, ntz_r])
-        self.zone_road_node = pd.concat([zrn, zrn_r])
 
     def combine_shortcuts(
         self,
@@ -178,3 +172,39 @@ class ParkRideModel(preparationmodel.PreparationModel):
         paths = paths.loc[paths['time'] <= cutoff]
         paths['parking_node'] = [path[1] for path in paths['shortcut_path']]
         self.pr_los = paths
+
+    def get_pr_paths(self, od_set, pr_nodes, length_spread_max=0, reverse=False):
+        parking_times = self.nodes.loc[pr_nodes, 'parking_time'].to_dict()
+
+        zrn = self.zone_road_node.loc[self.zone_road_node['reverse'] == reverse]
+        ntz = self.node_transit_zone.loc[self.node_transit_zone['reverse'] == reverse]
+
+        c = ['origin', 'destination', 'length', 'path']
+        left, right = (ntz[c],  zrn[c]) if reverse else (zrn[c], ntz[c])
+        left = pd.merge(
+            left, pd.Series(parking_times, name='parking_time'), 
+            left_on='destination', right_index=True
+        )
+        
+        left.rename(columns={'destination': 'parking_node'}, inplace=True)
+        right.rename(columns={'origin': 'parking_node'}, inplace=True)
+
+        hinge = pd.DataFrame(od_set, columns=['origin', 'destination'])
+        left = pd.merge(left, hinge, on=['origin'])
+        paths = pd.merge(
+            left, right, on=['parking_node', 'destination'],
+            suffixes=['_left', '_right']
+        ) 
+
+        paths['length'] = paths['length_left'] + paths['length_right'] + paths['parking_time']
+        lengths = paths.groupby(['origin', 'destination'], as_index=False)['length'].min()
+        paths = pd.merge(
+            paths, lengths, on=['origin', 'destination'],
+            suffixes=['', '_min']
+        )
+        paths['length_spread'] = paths['length'] - paths['length_min']
+        paths = paths.loc[paths['length_spread'] <= length_spread_max]
+        paths['path'] = paths['path_left'] + paths['path_right']
+        paths.drop(['path_left', 'path_right'], axis=1, inplace=True)
+        paths['reverse'] = reverse
+        return paths

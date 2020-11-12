@@ -158,19 +158,19 @@ def path_analysis_od_matrix(
             vertex_type[v] = vtype
     link_dict = links.to_dict()
 
-
     analysis_path_list = [
         analysis_path(p, vertex_type) 
         for p in tqdm(list(od_matrix['path']), desc='path_analysis')
     ]
 
-    analysis_path_dataframe =  pd.DataFrame(
-        analysis_path_list, 
+    analysis_path_dataframe = pd.DataFrame(
+        analysis_path_list,
         index=od_matrix.index
     )
 
     df = pd.concat([od_matrix, analysis_path_dataframe], axis=1)
     df['all_walk'] = df['link_path'].apply(lambda p: len(p) == 0)
+    df['ntransfers'] = df['boarding_links'].apply(lambda x: max(len(x)-1, 0))
 
     for key, extensive_columns in agg.items():
         for column in extensive_columns:
