@@ -203,3 +203,95 @@ def path_to_boarding_links_and_boarding_path(csa_path, connection_trip, trip_con
         
     link_path = list(dict.fromkeys(link_path))
     return link_path, boarding_links
+
+def pathfinder(
+    time_expended_zone_to_transit, 
+    pseudo_connections,
+    zone_set,
+    min_transfer_time=0, time_interval=None, cutoff=np.inf, 
+    targets=None, workers=1
+):
+
+    targets = list(set(targets))
+    if workers > 1:
+        results = {}
+        chunksize = len(targets) // workers
+        if len(targets) % workers > 0:
+            chunksize += 1
+        slices = [[i*chunksize, (i+1)*chunksize] for i in range(workers)]
+        target_slices = [
+            targets[s[0]: min(s[1], len(targets))]
+            for s in slices
+        ]
+
+        with ProcessPoolExecutor(max_workers=workers) as executor:
+            for i in range(workers):
+                results[i] = executor.submit(
+                    pathfinder,
+                    targets=target_slices[i],
+                    time_expended_zone_to_transit=time_expended_zone_to_transit,
+                    pseudo_connections=pseudo_connections,
+                    zone_set=zone_set,
+                    min_transfer_time=min_transfer_time,
+                    time_interval=time_interval,
+                    cutoff=cutoff,
+                    workers=1
+                )
+        to_return = pd.concat([r.result() for r in results.values()])
+        return to_return.reset_index(drop=True)
+
+    # DROP EGRESS
+    egress = pseudo_connections.set_index('direction').loc['egress']
+    egress_index = set(egress['csa_index'])
+    egress_by_zone = egress.groupby(['b'])['csa_index'].agg(set).to_dict()
+    all_egress = set(egress['csa_index'])
+
+    # TIME FILTER
+    # all links reaching b
+    egress_time_dict = egress.groupby('b')['departure_time'].agg(list).to_dict()
+    departure_times = list(pseudo_connections['departure_time'])[::-1]
+
+    stop_set = set(pseudo_connections['a']).union(set(pseudo_connections['b']))
+    Ttrip_inf = {t: float('inf') for t in set(pseudo_connections['trip_id'])}
+    columns = ['a', 'b', 'departure_time', 'arrival_time', 'csa_index', 'trip_id']
+    decreasing_departure_connections = pseudo_connections[columns].to_dict(orient='record')
+
+    pareto = []
+    targets = zone_set if targets is None else zone_set.intersection(targets)
+    for target in tqdm(targets):
+
+        # BUILD CONNECTIONS
+        start, end = time_interval[0], time_interval[1] + cutoff
+        slice_end = bisect.bisect_left(departure_times, start)
+        end = max([t for t in egress_time_dict[target] if t <= end] + [0]) 
+        slice_start = bisect.bisect_right(departure_times, end)
+        if slice_end == 0:
+            ti_connections = decreasing_departure_connections[-slice_start:]
+        else:
+            ti_connections = decreasing_departure_connections[-slice_start: -slice_end]
+
+        forbidden = all_egress - egress_by_zone[target]
+        connections = [c for c in ti_connections if c['csa_index'] not in forbidden]
+
+        profile, predecessor = csa_profile(
+            connections, target=target,
+            stop_set=stop_set, Ttrip=Ttrip_inf.copy()
+        )
+        predecessor.update({i: 'root' for i in egress_index})
+
+        for source, source_profile in profile.items():
+            if source not in zone_set:
+                continue
+            for departure, arrival, c in source_profile:
+                path = get_path(predecessor, c)
+                path = [source] + path + [target]
+                pareto.append((source, target, departure, arrival, c, path))
+
+    pt_los = pd.DataFrame(
+        pareto,
+        columns=[
+            'origin', 'destination',
+            'departure_time', 'arrival_time', 'last_connection', 'csa_path'
+        ]
+    )
+    return pt_los
