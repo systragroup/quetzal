@@ -107,73 +107,35 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         
         self.pseudo_connections = pseudo_connections
 
-    def step_pt_pathfinder(
-        self, min_transfer_time=0, time_interval=None, cutoff=np.inf, complete=False):
-        
+   def step_pt_pathfinder(
+        self,
+        min_transfer_time=0,
+        time_interval=None,
+        cutoff=np.inf,
+        build_connections=True,
+        targets=None,
+        workers=1,
+    ):
+
         time_interval = time_interval if time_interval is not None else self.time_interval
-        
-        self.preparation_build_connection_dataframe(min_transfer_time=min_transfer_time)
+
+        if build_connections:
+            self.preparation_build_connection_dataframe(
+                min_transfer_time=min_transfer_time
+            )
         seta = set(self.time_expended_zone_to_transit['a'])
         setb = set(self.time_expended_zone_to_transit['b'])
-        pseudo_connections = self.pseudo_connections
-
-        # DROP EGRESS
-        egress = pseudo_connections.set_index('direction').loc['egress']
-        egress_index = set(egress['csa_index'])
-        egress_by_zone = egress.groupby(['b'])['csa_index'].agg(set).to_dict()
-        drop_egress = {}
         zone_set = set(self.zones.index).intersection(seta).intersection(setb)
-        for zone in zone_set:
-            drop_egress[zone] = set(egress['csa_index']) - egress_by_zone[zone]
-            # for each zone, which egress links are not useful 
-            # we want to drop all of them but the ones leading to the zone
 
-        # TIME FILTER
-        # all links reaching b
-        egress_time_dict = egress.groupby('b')['departure_time'].agg(list).to_dict()
-        departure_times = list(pseudo_connections['departure_time'])[::-1]
-        
-        stop_set = set(pseudo_connections['a']).union(set(pseudo_connections['b']))
-        Ttrip_inf =  {t: float('inf') for t in set(pseudo_connections['trip_id'])}
-        columns = ['a', 'b', 'departure_time', 'arrival_time', 'csa_index', 'trip_id']
-        decreasing_departure_connections = pseudo_connections[columns].to_dict(orient='record')
-        
-
-        pareto = []
-        for target in tqdm(zone_set):
-            
-            # BUILD CONNECTIONS
-            start, end = time_interval[0], time_interval[1] + cutoff
-            slice_end = bisect.bisect_left(departure_times, start)
-            end = max([t for t in egress_time_dict[target] if t <= end] + [0]) 
-            slice_start = bisect.bisect_right(departure_times, end)
-            if slice_end == 0:
-                ti_connections =decreasing_departure_connections[-slice_start:]
-            else :
-                ti_connections = decreasing_departure_connections[-slice_start: -slice_end]
-            
-            forbidden = drop_egress[target]
-            connections = [c for c in ti_connections if c['csa_index'] not in forbidden]
-            if complete:
-                connections = decreasing_departure_connections[:]
-            profile, predecessor = csa.csa_profile(
-                connections, target=target,
-                stop_set=stop_set, Ttrip=Ttrip_inf.copy()
-            )
-            predecessor.update({i : 'root' for i in egress_index})
-
-            for source, source_profile in profile.items():
-                if source not in zone_set:
-                    continue
-                for departure, arrival, c in source_profile:
-                    path = csa.get_path(predecessor, c) 
-                    path = [source] + path + [target]
-                    pareto.append((source, target, departure, arrival, c, path))
-
-        self.pt_los = pd.DataFrame(
-            pareto, 
-            columns=['origin', 'destination', 
-            'departure_time', 'arrival_time', 'last_connection', 'csa_path']
+        self.pt_los = csa.pathfinder(
+            time_expended_zone_to_transit=self.time_expended_zone_to_transit,
+            pseudo_connections=self.pseudo_connections,
+            zone_set=zone_set,
+            targets=zone_set,
+            min_transfer_time=min_transfer_time,
+            time_interval=time_interval,
+            cutoff=cutoff,
+            workers=workers
         )
         
     def analysis_paths(self):
