@@ -1,12 +1,16 @@
 import pandas as pd
 import bisect
+import numpy as np
+from tqdm import tqdm
+from concurrent.futures import ProcessPoolExecutor
+
 
 def time_footpaths(links, footpaths):
     footpaths['model_index'] = footpaths.index
 
     left = pd.merge(
-        links[[ 'b', 'arrival_time']], 
-        footpaths[['a', 'b', 'duration', 'model_index']], 
+        links[['b', 'arrival_time']],
+        footpaths[['a', 'b', 'duration', 'model_index']],
         left_on='b', right_on='a', suffixes=['_link', '']
     )
 
@@ -30,7 +34,7 @@ def time_footpaths(links, footpaths):
     i = 0
     for k in sorted(set(left['kb']).union(set(right['kb']))):
         i += 1
-        b_intindex[k] = i 
+        b_intindex[k] = i
 
     left['a_intindex'] = [a_intindex[v] for v in left['ka']]
     right['a_intindex'] = [a_intindex[v] for v in right['ka']]
@@ -46,7 +50,7 @@ def time_footpaths(links, footpaths):
 
     transfers = pd.merge_asof(
         left[['a','b', 'key', 'arrival_time', 'duration', 'model_index']], 
-        right[['departure_time', 'key']], 
+        right[['departure_time', 'key']],
         on='key', direction='forward', tolerance=1e6
     )
     # END MERGE GROUPBY
@@ -59,12 +63,15 @@ def time_footpaths(links, footpaths):
     transfers.sort_values('arrival_time', ascending=False, inplace=True)
     transfers = transfers.groupby(['a', 'b', 'departure_time'], as_index=False).first()
 
-    transfers[['departure_time', 'arrival_time']]  = transfers[['arrival_time', 'departure_time']]
+    transfers[['departure_time', 'arrival_time']] = transfers[
+        ['arrival_time', 'departure_time']]
     transfers['str'] = [str(i) for i in transfers.index]
     transfers['csa_index'] = 'footpath_' + transfers['str']
     transfers['trip_id'] = 'footpath_trip_' + transfers['str']
-    columns = ['a', 'b', 'departure_time', 'arrival_time', 'trip_id', 'csa_index', 'model_index']
+    columns = ['a', 'b', 'departure_time', 'arrival_time', 'trip_id',
+     'csa_index', 'model_index']
     return transfers[columns]
+
 
 def time_zone_to_transit(links, zone_to_transit):
     ztt = zone_to_transit
@@ -72,9 +79,9 @@ def time_zone_to_transit(links, zone_to_transit):
     # access
     left = ztt.loc[ztt['direction'] == 'access']
     df = pd.merge(
-        left[['a','b', 'time', 'model_index']], 
-        links[['a','b', 'departure_time']],
-        left_on='b', right_on='a',suffixes=['_ztt', '_link'] 
+        left[['a', 'b', 'time', 'model_index']],
+        links[['a', 'b', 'departure_time']],
+        left_on='b', right_on='a', suffixes=['_ztt', '_link'] 
     )
     df['arrival_time'] = df['departure_time']
     df['departure_time'] = df['arrival_time'] - df['time']
@@ -87,8 +94,8 @@ def time_zone_to_transit(links, zone_to_transit):
 
     left = ztt.loc[ztt['direction'] != 'access']
     df = pd.merge(
-        ztt[['a','b', 'time', 'model_index']], 
-        links[['a','b', 'arrival_time']],
+        ztt[['a', 'b', 'time', 'model_index']], 
+        links[['a', 'b', 'arrival_time']],
         left_on='a', right_on='b',suffixes=['_ztt', '_link'] 
     )
     df['departure_time'] = df['arrival_time'] 
@@ -106,25 +113,25 @@ def time_zone_to_transit(links, zone_to_transit):
 
 
 def csa_profile(
-    connections, 
+    connections,
     target,
     stop_set=None,
     Ttrip=None,
-    ):
-    
+):
+
     if stop_set is None:
         stop_set = {c['a'] for c in connections}.union({c['b'] for c in connections})
     if Ttrip is None:
         Ttrip = {c['trip_id']: float('inf') for c in connections}
-        
+
     profile = {stop: [[0, float('inf'), 'root']] for stop in stop_set}
     profile[target] =[[0, 0]]
     predecessor = {target: 'root'}
-    
+
     for c in connections:
-    ############## SCAN
+        ############## SCAN
         a, b, index, trip_id = c['a'], c['b'], c['csa_index'], c['trip_id']
-        
+
         ########## EVALUATE
         t_min_stop = float('inf')
         if b == target:
@@ -135,31 +142,32 @@ def csa_profile(
                 if td >= c['arrival_time']:
                     t_min_stop = ta
                     break
-            
+
         t_min_trip = Ttrip[trip_id]
-        
+
         if t_min_stop < t_min_trip:
             Ttrip[trip_id] = t_min_stop
             t_min = t_min_stop
-            
+
             predecessor[trip_id] = index
-            predecessor[index] = p#predecessor[b]
-            
-        else :
+            predecessor[index] = p
+
+        else:
             t_min = t_min_trip
             predecessor[index] = predecessor.get(trip_id, trip_id)
         ########## END EVALUATE
-            
+
         ########## UPDATE
-        if  t_min < profile[a][-1][1]:
+        if t_min < profile[a][-1][1]:
             profile[a].append([c['departure_time'], t_min, index])
             predecessor[a] = index
         ########## END UPDATE
-        
+
     ############## END SCAN
-    
+
     profile = {k: v[1:] for k, v in profile.items() if len(v) > 1}
     return profile, predecessor
+
 
 def get_path(predecessor, source, maxiter=1000):
     path = []
@@ -168,9 +176,8 @@ def get_path(predecessor, source, maxiter=1000):
         try:
             path.append(current)
             current = predecessor[current] 
-        except KeyError: # root
+        except KeyError:  # root
             return path[:-1]
-
 
 
 def trip_bit(t, c_in, c_out, trip_connections):
@@ -179,18 +186,22 @@ def trip_bit(t, c_in, c_out, trip_connections):
     right = bisect.bisect_left(trip, c_out)
     return trip[left:right]
 
-def path_to_boarding_links_and_boarding_path(csa_path, connection_trip, trip_connections):
+
+def path_to_boarding_links_and_boarding_path(
+    csa_path, 
+    connection_trip, 
+    trip_connections
+):
     link_path = []
     trips = set()
     boarding_links = []
-    
+
     for i in range(len(csa_path) -2):
-        
 
         c_in, c_out = csa_path[i: i+2]
-        
+
         try:
-            trip_in =  connection_trip[c_in]
+            trip_in = connection_trip[c_in]
             link_path.append(c_in)
             if trip_in not in trips:
                 trips.add(trip_in)
@@ -204,11 +215,12 @@ def path_to_boarding_links_and_boarding_path(csa_path, connection_trip, trip_con
     link_path = list(dict.fromkeys(link_path))
     return link_path, boarding_links
 
+
 def pathfinder(
-    time_expended_zone_to_transit, 
+    time_expended_zone_to_transit,
     pseudo_connections,
     zone_set,
-    min_transfer_time=0, time_interval=None, cutoff=np.inf, 
+    min_transfer_time=0, time_interval=None, cutoff=np.inf,
     targets=None, workers=1
 ):
 
@@ -253,7 +265,8 @@ def pathfinder(
 
     stop_set = set(pseudo_connections['a']).union(set(pseudo_connections['b']))
     Ttrip_inf = {t: float('inf') for t in set(pseudo_connections['trip_id'])}
-    columns = ['a', 'b', 'departure_time', 'arrival_time', 'csa_index', 'trip_id']
+    columns = ['a', 'b', 'departure_time', 'arrival_time',
+    'csa_index', 'trip_id']
     decreasing_departure_connections = pseudo_connections[columns].to_dict(orient='record')
 
     pareto = []
