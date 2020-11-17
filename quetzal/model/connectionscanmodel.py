@@ -107,7 +107,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         
         self.pseudo_connections = pseudo_connections
 
-   def step_pt_pathfinder(
+    def step_pt_pathfinder(
         self,
         min_transfer_time=0,
         time_interval=None,
