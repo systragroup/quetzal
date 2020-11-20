@@ -166,23 +166,8 @@ class TimeExpandedModel(stepmodel.StepModel):
         los['ntransfers'] = los['ntransfers'].clip(0)
 
         self.pt_los = los
-    
-    def step_logit(self, decimals=None, n_paths_max=None):
-        """
-        * requires: mode_nests, logit_scales, te_los, los
-        * builds: te_los, los, od_utilities, od_probabilities, path_utilities, path_probabilities
-        """
-        try:
-            self._unique_model_segmented_logit(
-                time_expanded=True, 
-                decimals=decimals, 
-                n_paths_max=n_paths_max)
-            return 
-        except AssertionError:
-            print('Cannot perform logit with segment specific logits')
-            pass
 
-    def step_logit(
+    def no_step_logit(
         self, 
         decimals=None, 
         n_paths_max=None,
