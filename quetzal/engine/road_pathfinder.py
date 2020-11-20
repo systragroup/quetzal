@@ -41,20 +41,20 @@ def find_phi(links, inf=0, sup=1, tolerance=1e-6):
         sup = m
     return find_phi(links, inf, sup, tolerance)
 
+
 class RoadPathFinder:
-    def  __init__(self, model):
+    def __init__(self, model):
         self.zones = model.zones.copy()
         self.road_links = model.road_links.copy()
         self.zone_to_road = model.zone_to_road.copy()
-        try :
+        try:
             self.volumes = model.volumes.copy()
         except AttributeError:
             pass
-        
 
     def aon_road_pathfinder(
-        self, 
-        time='time', 
+        self,
+        time='time',
         ntleg_penalty=1e9,
         cutoff=np.inf,
         **kwargs,
@@ -64,23 +64,18 @@ class RoadPathFinder:
         indexed = road_links.set_index(['a', 'b']).sort_index()
         ab_indexed_dict = indexed['index'].to_dict()
 
-        def node_path_to_link_path(road_node_list, ab_indexed_dict):
-            tuples = [
-                (road_node_list[i], road_node_list[i+1]) 
-                for i in range(len(road_node_list)-1)
-            ]
-            road_link_list = [ab_indexed_dict.get(t, 0)for t in tuples]
-            return road_link_list
-
         road_graph = nx.DiGraph()
         road_graph.add_weighted_edges_from(
             self.road_links[['a', 'b', time]].values.tolist()
         )
-        zone_to_road = self.zone_to_road[['a', 'b','direction', 'time']].copy()
+        zone_to_road = self.zone_to_road[
+            ['a', 'b', 'direction', 'time']
+        ].copy()
         zone_to_road.loc[zone_to_road['direction'] == 'access', 'time'] += ntleg_penalty
         road_graph.add_weighted_edges_from(
             zone_to_road[['a', 'b', 'time']].values.tolist()
         )
+
         def node_path_to_link_path(road_node_list, ab_indexed_dict):
             tuples = list(zip(road_node_list[:-1], road_node_list[1:]))
             road_link_list = [ab_indexed_dict[t] for t in tuples]
@@ -90,16 +85,18 @@ class RoadPathFinder:
             try:
                 return [(path[0], path[1]), (path[-2], path[-1])]
             except IndexError:
-                return  []
-            
+                return []
+
         los = sparse_los_from_nx_graph(
-            road_graph, 
+            road_graph,
             pole_set=set(self.zones.index), 
             cutoff=cutoff+ntleg_penalty,
             **kwargs
         )
         los['node_path'] = los['path'].apply(lambda p: p[1:-1])
-        los['link_path'] = los['node_path'].apply(lambda p:node_path_to_link_path(p,ab_indexed_dict ))
+        los['link_path'] = los['node_path'].apply(
+            lambda p: node_path_to_link_path(p, ab_indexed_dict)
+        )
         los['ntlegs'] = los['path'].apply(path_to_ntlegs)
         los.loc[los['origin'] != los['destination'], 'gtime'] -= ntleg_penalty
         self.car_los = los.rename(columns={'gtime': 'time'})

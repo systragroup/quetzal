@@ -637,7 +637,9 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         self, 
         time_expanded=False,
         decimals=None, 
-        n_paths_max=None
+        n_paths_max=None,
+        nchunks=100,
+        workers=1
         ):
         # assert all logit scales are the same and pick one
         logit_scales = self.logit_scales.T.drop_duplicates().T
@@ -667,10 +669,10 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         l, u, p = nested_logit.nested_logit_from_paths(
             segmented_paths, 
             od_cols,
-            mode_nests=nests,
-            phi=nls,
+            mode_nests=nests, phi=nls,
             verbose=False,
-            decimals=decimals, n_paths_max=n_paths_max
+            decimals=decimals, n_paths_max=n_paths_max,
+            nchunks=nchunks, workers=workers,
         )
 
         pool = l.reset_index().set_index(['segment', 'index'])
@@ -686,7 +688,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
     def step_logit(
         self, segment=None, probabilities=None, 
         utilities=None, time_expanded=False, 
-        decimals=None, n_paths_max=None,
+        decimals=None, n_paths_max=None, nchunks=100, workers=1,
         *args, **kwargs):
         """
         * requires: mode_nests, logit_scales, los
@@ -695,7 +697,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         try:
             self._unique_model_segmented_logit(
                 time_expanded=time_expanded,
-                decimals=decimals, n_paths_max=n_paths_max
+                decimals=decimals, n_paths_max=n_paths_max,
+                nchunks=nchunks, workers=workers
                 )
             return 
         except AssertionError:
