@@ -72,19 +72,32 @@ class Feed(gk.feed.Feed):  # Overwrite Feed class
     def build_stops_timetable(self, stop_ids, dates):
         return build_stops_timetable(self, stop_ids, dates)
 
-    def drop_unused(self):
-        # drop stops without stop_times
-        stop_set = list(self.stop_times.stop_id.unique())
-        stop_set += list(self.stops.loc[self.stops.stop_id.isin(stop_set), 'parent_station'].values)
+    def drop_unused(self, recursive_depth=2):
+
+        if recursive_depth < 1:
+            return
+        
+        # drop stops without stop_times or stop_time without stop_id
+        stop_set_st = set(self.stop_times.stop_id.unique())
+        stop_set_st = stop_set_st.union(
+            set(self.stops.loc[self.stops.stop_id.isin(stop_set_st), 'parent_station'].values)
+        )
+        stop_set_s = set(self.stops.stop_id.unique())
+        stop_set = stop_set_st.intersection(stop_set_s)
+        self.stop_times = self.stop_times.loc[self.stop_times.stop_id.isin(stop_set)]
         self.stops = self.stops.loc[self.stops.stop_id.isin(stop_set)]
 
-        # drops trips without stop_times
+        # drops trips without stop_times or stop_times without trips
         trip_set = list(self.stop_times.trip_id.unique())
         self.trips = self.trips.loc[self.trips.trip_id.isin(trip_set)]
+        trip_set = self.trips.trip_id.unique()
+        self.stop_times = self.stop_times.loc[self.stop_times.trip_id.isin(trip_set)]
 
-        # drops routes without trips
+        # drops routes without trips or trips without routes
         route_set = list(self.trips.route_id.unique())
-        self.routes = self.routes.set_index('route_id').loc[route_set].reset_index()
+        self.routes = self.routes.loc[self.routes.route_id.isin(route_set)]
+        route_set = self.routes.route_id.unique()
+        self.trips = self.trips.loc[self.trips.route_id.isin(route_set)]
 
         # drops shapes without trips
         if self.shapes is not None:
@@ -101,6 +114,9 @@ class Feed(gk.feed.Feed):  # Overwrite Feed class
         # drops agency without routes
         agency_set = list(self.routes.agency_id)
         self.agency = self.agency.loc[self.agency.agency_id.isin(agency_set)]
+
+        
+        self.drop_unused(recursive_depth=recursive_depth - 1)
 
 
 def read_gtfs(*args, **kwargs) -> dict:
