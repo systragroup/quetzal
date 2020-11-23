@@ -207,4 +207,83 @@ class ParkRideModel(preparationmodel.PreparationModel):
         paths['path'] = paths['path_left'] + paths['path_right']
         paths.drop(['path_left', 'path_right'], axis=1, inplace=True)
         paths['reverse'] = reverse
+        paths['gtime'] = paths['length']
         return paths
+
+
+    def lighten_pr_los(self):
+
+        time_columns = ['access_time', 'in_vehicle_time', 'time']
+        length_columns = ['access_length', 'in_vehicle_length', 'length']
+        path_columns = ['path', 'link_path', 'node_path', 'ntlegs']
+        pt_columns = ['boardings', 'alightings', 'boarding_links', 
+            'alighting_links', 'footpaths']
+        to_drop = []
+        for clist in [time_columns, length_columns, path_columns, pt_columns]:
+            for c in clist:
+                to_drop.append(c)
+                to_drop.append(c +  '_car')
+                to_drop.append(c +  '_transit')
+        self.pr_los.drop(to_drop, axis=1, errors='ignore', inplace=True)
+
+
+    def analysis_pr_los(
+        self, 
+        reverse=False, 
+        analysis_time=False, 
+        analysis_length=False,
+        boarding_time=0,
+    ):
+
+        time_columns = ['access_time', 'in_vehicle_time', 'time']
+        length_columns = ['access_length', 'in_vehicle_length', 'length']
+        path_columns = ['path', 'link_path', 'node_path', 'ntlegs']
+        pt_columns = ['boardings', 'alightings', 'boarding_links', 
+            'alighting_links', 'footpaths']
+        
+        # node_transit_zone
+        s = self.copy()
+        self.lighten_pr_los()
+        s.pt_los = s.node_transit_zone.rename(columns={'length': 'gtime'})
+        s.car_los = s.zone_road_node.rename(columns={'length': 'gtime'})
+        
+        s.analysis_pt_los(walk_on_road=True)
+        s.zone_to_road = pd.concat([s.zone_to_road, s.road_to_transit])
+        s.analysis_car_los()
+        
+        if analysis_time:
+            s.analysis_pt_time(boarding_time=boarding_time, walk_on_road=True)
+            s.analysis_car_time()
+            
+        if analysis_length:
+            s.analysis_pt_length(walk_on_road=True)
+            s.analysis_car_length()
+
+        s.car_los['parking_node'] = s.car_los['destination']
+        s.car_los.loc[s.car_los['reverse'] == True, 'parking_node'] = s.car_los['origin']
+
+        s.pt_los['parking_node'] = s.pt_los['origin']
+        s.pt_los.loc[s.pt_los['reverse'] == True, 'parking_node'] = s.pt_los['destination']
+
+        on = ['destination' if reverse else 'origin', 'parking_node', 'reverse'] 
+        columns = on + time_columns + length_columns + path_columns 
+        columns = [c for c in columns if c in s.car_los]
+        right = s.car_los[columns] 
+        merged = pd.merge(s.pr_los, right, on=on, suffixes=['_total', ''])
+
+        on = ['origin' if reverse else 'destination', 'parking_node', 'reverse']
+        
+        columns = on + time_columns + length_columns + path_columns + pt_columns
+        columns = [c for c in columns if c in s.pt_los]
+        right = s.pt_los[columns] 
+        pr_los = pd.merge(merged, right, on=on, suffixes=['_car', '_transit'])
+        
+        for c in time_columns + length_columns + path_columns:
+            ca, cb = c + '_car', c + '_transit'
+            if reverse:
+                ca, cb = cb, ca
+            try:
+                pr_los[c] = pr_los[ca] + pr_los[cb] 
+            except KeyError:
+                pass
+        self.pr_los = pr_los

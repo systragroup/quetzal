@@ -183,22 +183,13 @@ class AnalysisModel(summarymodel.SummaryModel):
         los['ntlegs'] = los['path'].apply(path_to_ntlegs)
         self.car_los = los
 
-    def analysis_pr_los(self):
-        analysis_nodes = pd.concat([self.nodes, self.road_nodes])
-        analysis_links = pd.concat([self.links, self.road_links])
-        self.pr_los = analysis.path_analysis_od_matrix(
-            od_matrix=self.pr_los,
-            links=self.links,
-            nodes=analysis_nodes,
-            centroids=self.centroids,
-        )
     def analysis_pt_los(self, walk_on_road=False):
         analysis_nodes = pd.concat([self.nodes, self.road_nodes]) if walk_on_road else self.nodes
         self.pt_los = analysis.path_analysis_od_matrix(
             od_matrix=self.pt_los,
             links=self.links,
             nodes=analysis_nodes,
-            centroids=self.centroids,
+            centroids=self.zones,
         )
 
     def lighten_car_los(self):
@@ -210,11 +201,7 @@ class AnalysisModel(summarymodel.SummaryModel):
         'footpaths','length_link_path','link_path','node_path','ntlegs',
         'time_link_path','transfers']
         self.pt_los = self.pt_los.drop(to_drop, axis=1, errors='ignore')
-    def lighten_pr_los(self):
-        to_drop = ['alighting_links','alightings','all_walk','boarding_links','boardings',
-        'footpaths','length_link_path','link_path','node_path','ntlegs',
-        'time_link_path','transfers']
-        self.pr_los = self.pr_los.drop(to_drop, axis=1, errors='ignore')
+
     def lighten_los(self):
         try:
             self.lighten_pt_los()
