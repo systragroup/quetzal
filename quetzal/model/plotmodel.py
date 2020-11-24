@@ -108,6 +108,7 @@ class PlotModel(summarymodel.SummaryModel):
             **kwargs,
     ):
         styles = self.get_geometries()
+        styles = styles.groupby(styles.index).first()
         paths = self.pt_los.set_index(['origin', 'destination']).loc[origin, destination]
         if paths.ndim == 1: # their is only one path 
             paths = pd.DataFrame(data=paths).T 
@@ -129,7 +130,9 @@ class PlotModel(summarymodel.SummaryModel):
         for p, t in tqdm(list(paths[['path', 'title']].values.tolist())):
             ax = self.od_basemap(origin,  destination, ax=axes[i])
             ax = plot_one_path(p, styles, ax=ax)
-            gpd.GeoDataFrame(styles.loc[g_id_set]).plot(alpha=0, ax=ax)
+            gpd.GeoDataFrame(
+                styles.reindex(g_id_set).dropna(subset=['color'])
+            ).plot(alpha=0, ax=ax)
             if len(t):
                 ax.set_title(t)
             ax.set_xticks([])
