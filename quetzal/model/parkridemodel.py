@@ -10,8 +10,8 @@ class ParkRideModel(preparationmodel.PreparationModel):
         self,
         pr_nodes,
         reverse=False,
-        boarding_time=0,
-        alighting_time=0
+        boarding_time=None,
+        alighting_time=None
     ):
         # link edges
         edges = pathfinder.link_edges(
@@ -32,7 +32,7 @@ class ParkRideModel(preparationmodel.PreparationModel):
 
     def get_node_transit_zone(
         self, pr_nodes, reverse=False,
-        boarding_time=0, alighting_time=0
+        boarding_time=None, alighting_time=None
     ):
 
         ntz_edges = self.node_transit_zone_edges(
@@ -92,7 +92,7 @@ class ParkRideModel(preparationmodel.PreparationModel):
 
     def build_park_ride_shortcuts(
         self, pr_nodes,
-        boarding_time=0, alighting_time=0,
+        boarding_time=None, alighting_time=None,
         reverse=False
     ):
         # MORNING
@@ -232,7 +232,7 @@ class ParkRideModel(preparationmodel.PreparationModel):
         reverse=False, 
         analysis_time=False, 
         analysis_length=False,
-        boarding_time=0,
+        boarding_time=None,
     ):
 
         time_columns = ['access_time', 'in_vehicle_time', 'time']

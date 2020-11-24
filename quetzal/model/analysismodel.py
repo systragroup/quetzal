@@ -223,7 +223,7 @@ class AnalysisModel(summarymodel.SummaryModel):
         self.car_los['route_types'] = [tuple(['car']) for i in self.car_los.index]
         self.car_los['route_type'] = 'car'
 
-    def analysis_pr_time(self, boarding_time=0):
+    def analysis_pr_time(self, boarding_time=None):
         footpaths = self.footpaths
         road_links = self.road_links.copy()
         road_to_transit = self.road_to_transit.copy()
@@ -285,7 +285,17 @@ class AnalysisModel(summarymodel.SummaryModel):
         ].T.sum()
 
 
-    def analysis_pt_time(self, boarding_time=0, walk_on_road=False):
+    def analysis_pt_time(
+        self, 
+        boarding_time=None, 
+        alighting_time=None,
+        walk_on_road=False,
+    ):
+        assert not (boarding_time is not None and 'boarding_time' in self.links.columns)
+        boarding_time = 0 if boarding_time is None else boarding_time
+
+        assert alighting_time is None, 'cannot perform analysis_pt_time with alighting_time'
+            
         footpaths = self.footpaths
         access = self.zone_to_transit
 
@@ -311,8 +321,15 @@ class AnalysisModel(summarymodel.SummaryModel):
         d = self.links['headway'].to_dict()
         self.pt_los['waiting_time'] = self.pt_los['boarding_links'].apply(
             lambda l: sum([d[t] / 2 for t in l]))
-        self.pt_los['boarding_time'] = self.pt_los['boarding_links'].apply(
-            lambda t: len(t)*boarding_time)
+
+        if 'boarding_time' in self.links.columns:
+            d = self.links['boarding_time'].to_dict()
+            self.pt_los['boarding_time'] = self.pt_los['boarding_links'].apply(
+            lambda l: sum([d[t] for t in l]))
+        else:
+            self.pt_los['boarding_time'] = self.pt_los['boarding_links'].apply(
+                lambda t: len(t)*boarding_time)
+
         self.pt_los['time'] = self.pt_los[
             ['access_time', 'footpath_time', 'waiting_time', 'boarding_time', 'in_vehicle_time']
         ].T.sum()

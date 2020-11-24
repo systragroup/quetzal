@@ -148,7 +148,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         broken_modes=True, 
         route_column='route_id',
         mode_column='route_type',
-        boarding_time=0,
+        boarding_time=None,
         speedup=False,
         walk_on_road=False, 
         # keep_graph=False,

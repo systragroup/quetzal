@@ -146,7 +146,14 @@ def sparse_matrix(edges):
     row, col, data = coefficients
     return csr_matrix((data, (row, col)), shape=(nlen, nlen)), index
 
-def link_edges(links, boarding_time=0, alighting_time=0):
+def link_edges(links, boarding_time=None, alighting_time=None):
+
+    assert not (boarding_time is not None and 'boarding_time' in links.columns)
+    boarding_time = 0 if boarding_time is None else boarding_time
+
+    assert not (alighting_time is not None and 'alighting_time' in links.columns)
+    alighting_time = 0 if alighting_time is None else alighting_time
+
     l = links.copy()
     l['index']= l.index
     l['next'] = l['link_sequence'] + 1
@@ -180,8 +187,8 @@ def adjacency_matrix(
     ntlegs, 
     footpaths,
     ntlegs_penalty=1e9, 
-    boarding_time=0, 
-    alighting_time=0,
+    boarding_time=None, 
+    alighting_time=None,
     **kwargs
     ):
     ntlegs = ntlegs.copy()
@@ -412,7 +419,7 @@ class PublicPathFinder:
         od_set=None, 
         cutoff=np.inf, 
         ntlegs_penalty=1e9, 
-        boarding_time=0,
+        boarding_time=None,
         **kwargs
     ):
         pole_set=set(self.zones.index)
@@ -444,7 +451,7 @@ class PublicPathFinder:
         cutoff=np.inf, 
         route_column='route_id',
         ntlegs_penalty=1e9, 
-        boarding_time=0,
+        boarding_time=None,
         speedup=True,
         **kwargs
         
@@ -503,7 +510,7 @@ class PublicPathFinder:
         cutoff=np.inf, 
         mode_column='mode_type',
         ntlegs_penalty=1e9, 
-        boarding_time=0,
+        boarding_time=None,
         **kwargs
     ):
         pole_set=set(self.zones.index)
@@ -545,7 +552,7 @@ class PublicPathFinder:
         speedup=True,
         cutoff=np.inf,
         od_set=None,
-        boarding_time=0,
+        boarding_time=None,
         **kwargs
     ):
         
