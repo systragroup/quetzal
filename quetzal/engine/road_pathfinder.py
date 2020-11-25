@@ -57,6 +57,7 @@ class RoadPathFinder:
         time='time',
         ntleg_penalty=1e9,
         cutoff=np.inf,
+        access_time='time',
         **kwargs,
     ):
         road_links = self.road_links
@@ -68,9 +69,9 @@ class RoadPathFinder:
         road_graph.add_weighted_edges_from(
             self.road_links[['a', 'b', time]].values.tolist()
         )
-        zone_to_road = self.zone_to_road[
-            ['a', 'b', 'direction', 'time']
-        ].copy()
+        zone_to_road = self.zone_to_road.copy()
+        zone_to_road['time'] = zone_to_road[access_time]
+        zone_to_road = zone_to_road[['a', 'b', 'direction', 'time']]
         zone_to_road.loc[zone_to_road['direction'] == 'access', 'time'] += ntleg_penalty
         road_graph.add_weighted_edges_from(
             zone_to_road[['a', 'b', 'time']].values.tolist()

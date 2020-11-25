@@ -249,7 +249,7 @@ class ParkRideModel(preparationmodel.PreparationModel):
         zrn_access_time='time',
     ):
 
-        time_columns = ['access_time', 'in_vehicle_time', 'time']
+        time_columns = ['access_time', 'in_vehicle_time', 'time', 'gtime']
         length_columns = ['access_length', 'in_vehicle_length', 'length']
         path_columns = ['path', 'link_path', 'node_path', 'ntlegs']
         pt_columns = ['boardings', 'alightings', 'boarding_links', 
