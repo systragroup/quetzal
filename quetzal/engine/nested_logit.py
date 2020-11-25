@@ -99,6 +99,7 @@ def nested_logit_from_paths(
     groups = [g for g in groups if len(g)]
 
     if workers > 1:
+        #print('%i workers' % workers)
 
         results = []
         with ProcessPoolExecutor(max_workers=workers) as executor:
@@ -116,8 +117,8 @@ def nested_logit_from_paths(
 
         results = [r.result() for r in results]
         paths = pd.concat([t[0] for t in results])
-        mode_utilities = pd.concat([t[0] for t in results])
-        mode_probabilities = pd.concat([t[0] for t in results])
+        mode_utilities = pd.concat([t[1] for t in results])
+        mode_probabilities = pd.concat([t[2] for t in results])
 
     else:
         p_list = []

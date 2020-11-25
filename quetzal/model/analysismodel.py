@@ -286,7 +286,7 @@ class AnalysisModel(summarymodel.SummaryModel):
 
 
     def analysis_pt_time(
-        self, 
+        self,
         boarding_time=None, 
         alighting_time=None,
         walk_on_road=False,
@@ -359,8 +359,8 @@ class AnalysisModel(summarymodel.SummaryModel):
             ['access_length', 'footpath_length',  'in_vehicle_length']
         ].T.sum()
 
-    def analysis_car_time(self):
-        d = self.zone_to_road.set_index(['a', 'b'])['time'].to_dict()
+    def analysis_car_time(self, access_time='time'):
+        d = self.zone_to_road.set_index(['a', 'b'])[access_time].to_dict()
         self.car_los['access_time'] = self.car_los['ntlegs'].apply(
             lambda l: sum([d[t] for t in l]))   
         d = self.road_links['time'].to_dict()

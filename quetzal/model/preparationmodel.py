@@ -124,6 +124,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 n_neighbors=n_ntlegs,
                 coordinates_unit=self.coordinates_unit
             )
+            ntlegs['walk_time'] = ntlegs['time']
             self.zone_to_transit = ntlegs.loc[ntlegs['distance'] < length].copy()
 
         if zone_to_road:
@@ -138,6 +139,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 n_neighbors=n_ntlegs,
                 coordinates_unit=self.coordinates_unit
             )
+            ntlegs['walk_time'] = ntlegs['time']
             self.zone_to_road = ntlegs.loc[ntlegs['distance'] < length].copy()
 
             ntlegs = engine.ntlegs_from_centroids_and_nodes(
@@ -149,6 +151,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 n_neighbors=n_ntlegs,
                 coordinates_unit=self.coordinates_unit
             )
+            ntlegs['walk_time'] = ntlegs['time']
 
             self.road_to_transit = ntlegs.loc[ntlegs['distance'] < length].copy()
 
@@ -168,7 +171,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 n = 1
                 t = set()
                 while len(ztt) > 0:
-                    ztt['trips'] = [ trips - t for trips in ztt['trips']]
+                    ztt['trips'] = [trips - t for trips in ztt['trips']]
                     ztt['n_trips'] = [len(trips) for trips in ztt['trips']]
                     index, t, n = ztt.iloc[0][['index', 'trips', 'n_trips']].values
                     ztt = ztt.loc[ztt['n_trips'] > 0]

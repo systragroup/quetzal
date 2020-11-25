@@ -3,5 +3,5 @@
     "python.linting.flake8Args": [
         "--max-line-length=120"
     ],
-    "python.pythonPath": "C:\\Users\\rgoix\\AppData\\Local\\Continuum\\anaconda3\\envs\\quetzal_env\\python.exe"
+    "python.pythonPath": "C:\\Users\\qchasserieau\\AppData\\Local\\Continuum\\Anaconda3\\envs\\quetzal_env\\python.exe"
 }
