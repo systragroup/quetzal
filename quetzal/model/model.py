@@ -251,6 +251,10 @@ class Model(IntegrityModel):
             print('coul not read json attributes')
 
     def read_zip(self, filepath, omitted_attributes=(), only_attributes=None):
+        if only_attributes is not None:
+            only_attributes = {'/' + a for a in only_attributes}.union(only_attributes)
+        omitted_attributes = {'/' + a for a in omitted_attributes}.union(omitted_attributes)
+        
         # read the zip in a buffer
         with open(filepath, 'rb') as file:
             data = file.read()
@@ -271,7 +275,7 @@ class Model(IntegrityModel):
                     continue
                 if only_attributes is not None and key not in only_attributes:
                     continue
-
+                
                 value = store[key]
                 if isinstance(value, pd.DataFrame) and 'geometry' in value.columns:
                     value = gpd.GeoDataFrame(value)

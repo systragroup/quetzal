@@ -274,9 +274,10 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         
         if road:
             self.road_links[('volume', 'car')] = assign(l['volume'], l[column])
+            to_assign = self.links.dropna(subset=['volume'])
             self.road_links[('volume', 'pt')] = assign(
-                self.links['volume'], 
-                self.links['road_link_list']
+                to_assign['volume'], 
+                to_assign['road_link_list']
             )
             
         if boardings:
@@ -702,7 +703,6 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 )
             return 
         except AssertionError:
-            print('segment specific logit models')
             pass
 
         if segment is None:

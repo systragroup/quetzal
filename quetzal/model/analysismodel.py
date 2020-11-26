@@ -594,7 +594,10 @@ class AnalysisModel(summarymodel.SummaryModel):
 
         # focus on fares rules that are given with unique within a route
         df = self.fare_rules.dropna(subset=['route_id'])
-        df = df.loc[df['origin_id'].isnull() & df['destination_id'].isnull()]
+        try:
+            df = df.loc[df['origin_id'].isnull() & df['destination_id'].isnull()]
+        except KeyError:  # KeyError: 'origin_id'
+            pass
         df = df.drop_duplicates(subset=['route_id'])
         route_fare_dict = {route_id: np.nan for route_id in route_dict.values()}
         route_update = df.set_index('route_id')['fare_id'].to_dict()
@@ -656,10 +659,22 @@ class AnalysisModel(summarymodel.SummaryModel):
 
         self.pt_los['route_fares'] = self.pt_los['arod_list'].apply(route_price_breakdown)
     
-    def analysis_pt_fare(self, keep_intermediate_results=True, consecutive=False):
-        self.compute_arod_list()
-        self.compute_od_fares()
-        self.compute_route_fares(consecutive)
+    def analysis_pt_fare(
+        self, 
+        keep_intermediate_results=True, 
+        consecutive=False, 
+        od_fares=True, 
+        route_fares=True
+    ):
+        self.pt_los['route_fares'] = [dict()] * len(self.pt_los)
+        self.pt_los['od_fares'] = [dict()] * len(self.pt_los)
+
+        if od_fares:
+            self.compute_arod_list()
+            self.compute_od_fares()
+
+        if route_fares:
+            self.compute_route_fares(consecutive)
         
         values = self.pt_los[['route_fares', 'od_fares']].values
         self.pt_los['price'] = [

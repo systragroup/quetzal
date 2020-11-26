@@ -80,7 +80,7 @@ def nested_logit_from_paths(
     verbose=False,
     decimals=None,  # minimum probability
     n_paths_max=None,
-    nchunks=100,
+    nchunks=10,
     workers=1,
 ):
     paths['index'] = paths.index
