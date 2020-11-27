@@ -19,58 +19,37 @@ class SummaryModel(transportmodel.TransportModel):
         """
         summarize earnings by fare_id and by segment
         """
-        segments = self.segments
-        df = pd.merge(self.volumes[['origin', 'destination'] + list(segments)], self.pt_los)
-
-        for segment in segments:
-            df[segment] =  df[segment] * df[(segment, 'probability')]
-
-        df = df.dropna(subset=['price_breakdown'])
+        df = self.los
+        
+        df.dropna(subset=['route_fares'], inplace=True)
         df['fare_id_tuple'] = df['route_fares'].apply(
             lambda d: tuple(d.items())
         ) + df['od_fares'].apply(
             lambda d: tuple(d.items())
         )
-        agg_dict = {segment: 'sum' for segment in segments}
-        
+
+        agg_dict = {'volume': sum}
         agg_dict['route_fares'] = 'first'
         agg_dict['od_fares'] = 'first'
-        
+
         temp = df.groupby('fare_id_tuple').agg(agg_dict)
-        
-        fare_id_set = set(self.fare_rules['fare_id'])
-        fare_revenue_dict = {
-            segment :{f:0 for f in fare_id_set}
-            for segment in segments
-        }
-        
-        agency_id_set = set(self.fare_attributes['agency_id'])
-        agency_revenue_dict = {
-            segment :{f:0 for f in agency_id_set}
-            for segment in segments
-        }
-        
+
         agency_dict = self.fare_attributes.set_index(['fare_id'])['agency_id']
+        fare_revenue_dict = {f:0 for f in set(self.fare_rules['fare_id'])}
+        agency_revenue_dict = {f:0 for f in set(self.fare_attributes['agency_id'])}
 
-        def row_revenue(row, segment):
-            for key, value in row['route_fares'].items():
-                fare_revenue_dict[segment][key] += value * row[segment]
-                agency_revenue_dict[segment][agency_dict[key]] += value * row[segment]
-            for key, value in row['od_fares'].items():
-                agency_revenue_dict[segment][key] += value * row[segment]
-
-
-        for segment in segments:
-            _ = temp.apply(row_revenue, axis=1, segment=segment)
-
-
-
-        fare_stack = pd.DataFrame(fare_revenue_dict).stack()
-        agency_stack = pd.DataFrame(agency_revenue_dict).stack()
+        for volume, route_fares, od_fares in temp[['volume', 'route_fares', 'od_fares']].values:
+            for fare_id, fare in route_fares.items():
+                fare_revenue_dict[fare_id] += volume * fare
+                agency_revenue_dict[agency_dict[fare_id]] += fare * volume
+            for agency_id, fare in od_fares:
+                agency_revenue_dict[agency_id] += volume * fare
+                
+        fare_stack = pd.Series(fare_revenue_dict)
+        agency_stack = pd.Series(agency_revenue_dict)
         stack = pd.concat([fare_stack, agency_stack])
-        stack.index.names = ['fare_id', 'segment']
+        stack.index.name = 'fare_id'
         stack.name = 'sum'
-        stack = densify(stack) if dense else stack
         if inplace:
             self.stack_earning = stack
         else:
@@ -84,43 +63,14 @@ class SummaryModel(transportmodel.TransportModel):
         summarize 'time', 'in_vehicle_time', 'in_vehicle_length', 
         'count', 'price', 'ntransfers' by segment and route_type
         """
-        segments = self.segments
-
-        try:
-            left = pd.concat([self.car_los, self.pt_los])
-        except AttributeError:
-            try:
-                left =self.pt_los
-            except AttributeError:
-                left =self.car_los
-            
-        right = self.volumes[['origin', 'destination'] + list(segments)]
-        df = pd.merge(left, right, on=['origin', 'destination'])
-        
-        df.reset_index(drop=True)
-
-        df['count'] = 1
+        df = self.los
         columns = [
             'time', 'in_vehicle_time', 'in_vehicle_length', 
-            'count', 'price', 'ntransfers', 'length'
-        ]
-        idf = df[['route_type']]
-
-        to_concat = []
-        for segment in segments:
-            df[(segment, 'volume')] = df[(segment, 'probability')] * df[segment]
-            pool = pd.DataFrame(
-                df[columns].apply(lambda c: c*df[(segment, 'volume')]),
-            )
-            pool.columns = [(segment, c) for c in columns]
-            to_concat.append(pool)
+            'volume', 'price', 'ntransfers', 'length', 'route_type'
             
-        idf = pd.concat([idf] + to_concat, axis=1)
-        frame = idf.fillna(0).groupby('route_type').sum().T.sort_index()
-        frame.index = pd.MultiIndex.from_tuples(frame.index)
-        frame.index.names = ['segment', 'indicator']
-
-        stack = frame.stack()
+        ]
+        stack = df[columns].groupby('route_type').sum().stack()
+        stack.index.names = ['route_type', 'indicator']
         stack.name = 'sum'
         stack = densify(stack) if dense else stack
         if inplace:
@@ -136,29 +86,9 @@ class SummaryModel(transportmodel.TransportModel):
         summarize 'boardings' and 'length' 
         by segment, route_type, route_id and trip_id
         """
-        segments = self.segments
-    
-        df = self.loaded_links.copy()
-        columns = []
-        for segment in segments:
-            columns += [(segment, c) for c in ['boardings']]
-
-        to_concat = [
-            df[columns + ['route_type', route_label,'trip_id'] ]]
-        
-        columns = ['length', 'time']
-        
-        for segment in segments:
-            pool = df[columns].apply(lambda c: c*df[segment])
-            pool.columns = [(segment, c) for c in columns]
-            to_concat.append(pool)
-            
-        idf = pd.concat(to_concat, axis=1)
-
-        g = idf.groupby(['route_type', route_label,'trip_id']).sum()
-        g.columns = pd.MultiIndex.from_tuples(g.columns)
-        stack = g.stack().stack()
-        stack.index.names = ['route_type', route_label,'trip_id', 'indicator', 'segment']
+        df = self.links[['length', 'boardings', 'time', 'route_type', route_label, 'trip_id']]
+        stack = df.groupby(['route_type', route_label, 'trip_id']).sum().stack()
+        stack.index.names = ['route_type', route_label, 'trip_id', 'indicator']
         stack.name = 'sum'
         stack = densify(stack) if dense else stack
         if inplace:
@@ -173,12 +103,11 @@ class SummaryModel(transportmodel.TransportModel):
         calculate maximum demand
         by segment, route_type, route_id and trip_id
         """
-        segments = list(self.segments)
-        df = self.loaded_links
+        df = self.links
         stack = df[
-            ['route_type', route_label,'trip_id'] + segments
-        ].groupby(['route_type', route_label,'trip_id']).max().stack()
-        stack.index.names = ['route_type', route_label,'trip_id', 'segment']
+            ['route_type', route_label, 'trip_id', 'volume']
+        ].groupby(['route_type', route_label, 'trip_id']).max().stack()
+        stack.index.names = ['route_type', route_label, 'trip_id', 'segment']
         stack.name = 'max'
         stack = densify(stack) if dense else stack
         if inplace:

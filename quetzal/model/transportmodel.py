@@ -634,26 +634,18 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         self.od_probabilities = od.copy()
         self.od_utilities = od.copy()
 
-    def _unique_model_segmented_logit(
+    def step_logit(
         self, 
         time_expanded=False,
         decimals=None, 
         n_paths_max=None,
-        nchunks=100,
+        nchunks=10,
         workers=1
-        ):
-        # assert all logit scales are the same and pick one
-        logit_scales = self.logit_scales.T.drop_duplicates().T
-        assert len(logit_scales.columns) == 1
-        logit_scales.columns = ['root']
-        nls = logit_scales['root'].to_dict()
-
-        # assert all mode_nests are the same and pick one
-        mode_nests = self.mode_nests.T.drop_duplicates().T
-        assert len(mode_nests.columns) == 1
-        mode_nests.columns = ['root']
-        nests = mode_nests.reset_index().groupby('root')['route_type'].agg(
-            lambda s: list(s)).to_dict()
+    ):
+        """
+        * requires: mode_nests, logit_scales, los
+        * builds: los, od_utilities, od_probabilities, path_utilities, path_probabilities
+        """
 
         # concatenate paths
         od_cols = ['origin', 'destination']
@@ -667,85 +659,66 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             to_concat.append(paths[od_cols + ['route_type', 'utility', 'segment']])
         segmented_paths = pd.concat(to_concat)
 
-        l, u, p = nested_logit.nested_logit_from_paths(
-            segmented_paths, 
-            od_cols,
-            mode_nests=nests, phi=nls,
-            verbose=False,
-            decimals=decimals, n_paths_max=n_paths_max,
-            nchunks=nchunks, workers=workers,
-        )
+        try: # all the segments can be proccessed together
+            # assert all logit scales are the same and pick one
+            logit_scales = self.logit_scales.T.drop_duplicates().T
+            assert len(logit_scales.columns) == 1
+            logit_scales.columns = ['root']
+            nls = logit_scales['root'].to_dict()
 
-        pool = l.reset_index().set_index(['segment', 'index'])
+            # assert all mode_nests are the same and pick one
+            mode_nests = self.mode_nests.T.drop_duplicates().T
+            assert len(mode_nests.columns) == 1
+            mode_nests.columns = ['root']
+            nests = mode_nests.reset_index().groupby('root')['route_type'].agg(
+                lambda s: list(s)).to_dict()
+
+            p, mu, mp = nested_logit.nested_logit_from_paths(
+                segmented_paths, 
+                od_cols,
+                mode_nests=nests, phi=nls,
+                verbose=False,
+                decimals=decimals, n_paths_max=n_paths_max,
+                nchunks=nchunks, workers=workers,
+            )
+
+        except AssertionError:
+            p_list = []
+            mu_list = []
+            mp_list = []
+            for segment in self.segments:
+                mode_nests = self.mode_nests.reset_index().groupby(segment)['route_type'].agg(
+                        lambda s: list(s)).to_dict()
+                nls = self.logit_scales[segment].to_dict()
+                paths = segmented_paths.loc[segmented_paths['segment'] == segment]
+                p, mu, mp = nested_logit.nested_logit_from_paths(
+                    paths, 
+                    mode_nests=mode_nests,
+                    phi=nls,
+                    od_cols=od_cols,
+                    decimals=decimals,
+                    n_paths_max=n_paths_max,
+
+                )
+                p_list.append(p)
+                mu_list.append(mu)
+                mp_list.append(mp)
+                
+            p = pd.concat(p_list)
+            mu = pd.concat(mu_list, ignore_index=True)
+            mp = pd.concat(mp_list, ignore_index=True)
+
+        pool = p.reset_index().set_index(['segment', 'index'])
         for segment in self.segments:
             if time_expanded:
                 self.te_los[(segment, 'probability')] = pool.loc[segment]['probability']
             else:
                 self.los[(segment, 'probability')] = pool.loc[segment]['probability']
         
-        self.probabilities = p
-        self.utilities = u
+        self.probabilities = mp
+        self.utilities = mu
 
-    def step_logit(
-        self, segment=None, probabilities=None, 
-        utilities=None, time_expanded=False, 
-        decimals=None, n_paths_max=None, nchunks=100, workers=1,
-        *args, **kwargs):
-        """
-        * requires: mode_nests, logit_scales, los
-        * builds: los, od_utilities, od_probabilities, path_utilities, path_probabilities
-        """
-        try:
-            self._unique_model_segmented_logit(
-                time_expanded=time_expanded,
-                decimals=decimals, n_paths_max=n_paths_max,
-                nchunks=nchunks, workers=workers
-                )
-            return 
-        except AssertionError:
-            pass
-
-        if segment is None:
-            probabilities = []
-            utilities = []
-            for segment in self.segments:
-                self.step_logit(
-                    segment=segment, 
-                    probabilities=probabilities, utilities=utilities,
-                    *args, **kwargs
-                )
-            self.od_probabilities = pd.concat(probabilities, axis=1)
-            self.od_utilities = pd.concat(utilities, axis=1)
-            return 
-
-        mode_nests = self.mode_nests.reset_index().groupby(segment)['route_type'].agg(
-            lambda s: list(s)).to_dict()
-        nls = self.logit_scales[segment].to_dict()
-
-        paths = self.los
-        paths['utility'] = paths[(segment, 'utility')]
-
-        l, u, p = nested_logit.nested_logit_from_paths(
-            paths, 
-            mode_nests=mode_nests,
-            phi=nls,
-            *args,
-            **kwargs
-        )
-
-        l = l[['probability']]
-        u = u.set_index(['origin', 'destination'])
-        p = p.set_index(['origin', 'destination'])
-
-        for df in l, u, p:
-            df.columns = [(segment, c) for c in df.columns]
-
-        self.los.drop(l.columns, axis=1, errors='ignore', inplace=True)
-        self.los = pd.concat([self.los, l], axis=1)
-        probabilities.append(p)
-        utilities.append(u)
-
-
+    
 def get_combined_mode_utility(route_types, mode_utility,  how='min',):
     utilities = [mode_utility[mode] for mode in route_types]
     if not len(utilities):
