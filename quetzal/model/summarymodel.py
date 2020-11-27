@@ -63,13 +63,16 @@ class SummaryModel(transportmodel.TransportModel):
         summarize 'time', 'in_vehicle_time', 'in_vehicle_length', 
         'count', 'price', 'ntransfers' by segment and route_type
         """
-        df = self.los
+        df = self.los.copy()
+        df['count'] = 1
         columns = [
             'time', 'in_vehicle_time', 'in_vehicle_length', 
-            'volume', 'price', 'ntransfers', 'length', 'route_type'
-            
+            'price', 'ntransfers', 'length', 'count'
+
         ]
-        stack = df[columns].groupby('route_type').sum().stack()
+        for c in columns:
+            df[c] = df[c] * df['volume']
+        stack = df.groupby('route_type')[columns].sum().stack()
         stack.index.names = ['route_type', 'indicator']
         stack.name = 'sum'
         stack = densify(stack) if dense else stack
@@ -96,14 +99,16 @@ class SummaryModel(transportmodel.TransportModel):
         else:
             return stack
 
-    def summary_link_max(self, route_label='route_id', segments=('root',), inplace=False, dense=False):
+    def summary_link_max(
+        self, route_label='route_id', segments=('root',), inplace=False, dense=False
+    ):
         """
         focuses on network use
         processes self.loaded_links
         calculate maximum demand
         by segment, route_type, route_id and trip_id
         """
-        df = self.links
+        df = self.links.copy()
         stack = df[
             ['route_type', route_label, 'trip_id', 'volume']
         ].groupby(['route_type', route_label, 'trip_id']).max().stack()
@@ -116,10 +121,9 @@ class SummaryModel(transportmodel.TransportModel):
             return stack
     
     def summary_path_average(self, inplace=False, dense=False, complete=True):
-        segments = self.segments
-        s = self.summary_path_sum() if complete else self.stack_path_sum
-        us = s.unstack('indicator')
+        us = self.summary_path_sum().unstack('indicator')
         us = us.apply(lambda c: c/us['count'])
+        us = us.drop('count', axis=1)
         stack = us.fillna(0).stack()
         stack.name = 'average'
         stack = densify(stack) if dense else stack
@@ -128,17 +132,22 @@ class SummaryModel(transportmodel.TransportModel):
         else:
             return stack
 
-    def summary_aggregated_path_average(self, inplace=False, dense=False,  pt_route_types=set(),complete=True):
+    def summary_aggregated_path_average(
+        self, inplace=False, dense=False,  pt_route_types=set(), complete=True):
         """
         focuses on user perception
         by route_type
         """
-        segments = self.segments
-        stack = self.summary_path_sum() if complete else self.stack_path_sum
+        stack = self.summary_path_sum()
         stack = stack.reset_index()
         stack['route_type'] = stack['route_type'].apply(
             lambda rt: 'pt' if rt in pt_route_types else rt)
 
+        total = stack.groupby(
+            ['route_type', 'indicator']
+        ).sum()
+
+        us = total['sum'].unstack('indicator')
         total = stack.groupby(
             ['route_type', 'indicator']
         ).sum()
