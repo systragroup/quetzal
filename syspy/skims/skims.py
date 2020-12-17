@@ -24,7 +24,7 @@ from syspy.spatial import spatial
 from tqdm import tqdm
 
 
-wgs84 = pyproj.Proj("+init=EPSG:4326")
+wgs84 = pyproj.Proj("EPSG:4326")
 
 
 def dist_from_row(row, projection=wgs84):

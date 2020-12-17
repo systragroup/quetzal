@@ -3,6 +3,7 @@
 import json
 import zlib
 import os
+import sys
 
 import geopandas as gpd
 import pandas as pd
@@ -145,6 +146,17 @@ def merge(
     return model
 
 
+def obj_size_fmt(num):
+    if num < 10**3:
+        return "{:.2f}{}".format(num, "B")
+    elif ((num >= 10**3) & (num < 10**6)):
+        return "{:.2f}{}".format(num/(1.024*10**3), "KB")
+    elif ((num >= 10**6) & (num < 10**9)):
+        return "{:.2f}{}".format(num/(1.024*10**6), "MB")
+    else:
+        return "{:.2f}{}".format(num/(1.024*10**9), "GB")
+
+
 class Model(IntegrityModel):
 
     def __init__(
@@ -198,6 +210,15 @@ class Model(IntegrityModel):
         if self.coordinates_unit is None:
             # print('Model coordinates_unit not defined: setting coordinates_unit to default one: degree')
             self.coordinates_unit = 'degree'
+
+    def memory_usage(model, head=10):
+        memory_usage_by_variable = pd.DataFrame(
+            {k: sys.getsizeof(v) for (k, v) in model.__dict__.items()},index=['Size']
+            )
+        memory_usage_by_variable = memory_usage_by_variable.T
+        memory_usage_by_variable = memory_usage_by_variable.sort_values(by='Size',ascending=False)
+        memory_usage_by_variable['Size'] = memory_usage_by_variable['Size'].apply(lambda x: obj_size_fmt(x))
+        return memory_usage_by_variable
 
     def plot(
         self, attribute, ticks=False,
@@ -270,6 +291,8 @@ class Model(IntegrityModel):
         ) as store:
             iterator = tqdm(store.keys())
             for key in iterator:
+                skey = key.split(r'/')[-1]
+                iterator.desc = skey
 
                 if key in omitted_attributes:
                     continue
@@ -279,9 +302,9 @@ class Model(IntegrityModel):
                 value = store[key]
                 if isinstance(value, pd.DataFrame) and 'geometry' in value.columns:
                     value = gpd.GeoDataFrame(value)
-                skey = key.split(r'/')[-1]
-                iterator.desc = skey
+                
                 self.__setattr__(skey, value)
+                value = None
 
             # some attributes may have been store in the json_series
             try:
@@ -331,9 +354,9 @@ class Model(IntegrityModel):
         frames['jsons'] = pd.Series(jsons)
         return frames
 
-    def to_zip(self, filepath, *args, **kwargs):
+    def to_zip(self, filepath, complevel=None, *args, **kwargs):
         frames = self.to_frames(*args, **kwargs)
-        buffer = hdf_io.write_hdf_to_buffer(frames)
+        buffer = hdf_io.write_hdf_to_buffer(frames, complevel=complevel)
         smallbuffer = zlib.compress(buffer)
         with open(filepath, 'wb') as file:
             file.write(smallbuffer)

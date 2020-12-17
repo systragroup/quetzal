@@ -39,8 +39,8 @@ import collections
 
 
 def convert_geometry(geometry, epsg1=None, epsg2=None, p1=None, p2=None):
-    p1 = pyproj.Proj("+init=EPSG:" + str(epsg1)) if epsg1 else p1
-    p2 = pyproj.Proj("+init=EPSG:" + str(epsg2)) if epsg1 else p2
+    p1 = pyproj.Proj("EPSG:" + str(epsg1)) if epsg1 else p1
+    p2 = pyproj.Proj("EPSG:" + str(epsg2)) if epsg1 else p2
 
     if isinstance(geometry, shapely.geometry.polygon.Polygon):
         return type(geometry)([pyproj.transform(p1, p2, longlat[0], longlat[1]) for longlat in geometry.boundary.coords])
