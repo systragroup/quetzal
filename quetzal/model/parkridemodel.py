@@ -226,7 +226,7 @@ class ParkRideModel(preparationmodel.PreparationModel):
 
     def lighten_pr_los(self):
 
-        time_columns = ['access_time', 'in_vehicle_time', 'time']
+        time_columns = ['access_time', 'in_vehicle_time', 'time', 'gtime']
         length_columns = ['access_length', 'in_vehicle_length', 'length']
         path_columns = ['path', 'link_path', 'node_path', 'ntlegs']
         pt_columns = ['boardings', 'alightings', 'boarding_links', 
@@ -256,12 +256,15 @@ class ParkRideModel(preparationmodel.PreparationModel):
             'alighting_links', 'footpaths']
         
         # node_transit_zone
+        
         s = self.copy()
-        self.lighten_pr_los()
+        s.lighten_pr_los()
         s.pt_los = s.node_transit_zone.rename(columns={'length': 'gtime'})
+        s.pt_los['path'] = [['to_strip'] + p for p in s.pt_los['path']]
         s.car_los = s.zone_road_node.rename(columns={'length': 'gtime'})
         
         s.analysis_pt_los(walk_on_road=True)
+        
         s.zone_to_road = pd.concat([s.zone_to_road, s.road_to_transit])
         s.analysis_car_los()
         

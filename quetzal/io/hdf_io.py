@@ -25,6 +25,7 @@ def pickle_protocol(level):
 
 
 def write_hdf_to_buffer(frames, level=4, complevel=None):
+    print('testa')
     with pickle_protocol(level):
         with pd.HDFStore(
                 "quetzal.h5",
@@ -35,8 +36,11 @@ def write_hdf_to_buffer(frames, level=4, complevel=None):
                 ) as out:
             iterator = tqdm(frames.items())
             for key, df in iterator:
+                f, dc = 'fixed', None
+                if key == 'pt_los':
+                    f, dc = 'table', ['departure_time']
                 iterator.desc = key
-                out[key] = df
+                out.put(key, df, format=f, data_columns=dc)
             return out._handle.get_file_image()
 
 

@@ -299,7 +299,7 @@ class Model(IntegrityModel):
                 if only_attributes is not None and key not in only_attributes:
                     continue
                 
-                value = store[key]
+                value = store.select(key)
                 if isinstance(value, pd.DataFrame) and 'geometry' in value.columns:
                     value = gpd.GeoDataFrame(value)
                 
