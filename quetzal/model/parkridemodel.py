@@ -262,7 +262,7 @@ class ParkRideModel(preparationmodel.PreparationModel):
         s.pt_los = s.node_transit_zone.rename(columns={'length': 'gtime'})
         s.car_los = s.zone_road_node.rename(columns={'length': 'gtime'})
         s.pt_los['path'] = [['to_strip'] + p for p in s.pt_los['path']]
-        s.car_los['path'] = [['to_strip'] + p for p in s.car_los['path']]
+        #s.car_los['path'] = [['to_strip'] + p for p in s.car_los['path']]
         
         s.analysis_pt_los(walk_on_road=True)
         
@@ -295,9 +295,6 @@ class ParkRideModel(preparationmodel.PreparationModel):
         columns = [c for c in columns if c in s.pt_los]
         right = s.pt_los[columns] 
         pr_los = pd.merge(merged, right, on=on, suffixes=['_car', '_transit'])
-        
-        s.pt_los['path'] = [p[1:] for p in s.pt_los['path']]
-        s.car_los['path'] = [p[1:] for p in s.car_los['path']]
 
         for c in time_columns + length_columns + path_columns:
             ca, cb = c + '_car', c + '_transit'
