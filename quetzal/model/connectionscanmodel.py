@@ -38,6 +38,11 @@ def read_json(folder):
     return m
 
 
+def read_zippedpickles(folder, *args, **kwargs):
+    m = ConnectionScanModel(zippedpickles_folder=folder, *args, **kwargs)
+    return m
+
+
 class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
 
     def __init__(self, *args, **kwargs):

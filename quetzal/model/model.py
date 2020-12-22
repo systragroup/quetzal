@@ -4,6 +4,7 @@ import json
 import zlib
 import os
 import sys
+import pickle
 
 import geopandas as gpd
 import pandas as pd
@@ -18,7 +19,7 @@ import ntpath
 from quetzal.io import hdf_io
 
 from syspy.syspy_utils.data_visualization import add_basemap
-
+from concurrent.futures import ProcessPoolExecutor
 from quetzal.model.integritymodel import IntegrityModel
 
 
@@ -165,6 +166,7 @@ class Model(IntegrityModel):
         json_folder=None,
         hdf_database=None,
         zip_database=None,
+        zippedpickles_folder=None,
         omitted_attributes=(),
         only_attributes=None,
         *args,
@@ -197,6 +199,12 @@ class Model(IntegrityModel):
         elif zip_database:
             self.read_zip(
                 zip_database,
+                omitted_attributes=omitted_attributes,
+                only_attributes=only_attributes
+            )
+        elif zippedpickles_folder:
+            self.read_zippedpickles(
+                zippedpickles_folder,
                 omitted_attributes=omitted_attributes,
                 only_attributes=only_attributes
             )
@@ -247,6 +255,85 @@ class Model(IntegrityModel):
             fig.savefig(fname, bbox_inches='tight')
 
         return plot
+
+    def split_attribute(self, attr, by, drop=True):
+        # attr = pt_los
+        # split self.pt_los in several attributes self.pt_los_1, self.pt_los_2 etc
+        pool = self.__getattribute__(attr).set_index(by, append=True, drop=drop).swaplevel()
+        self.__delattr__(attr)
+        keys = set(pool.index.levels[0])
+        for k in keys:
+            self.__setattr__('%s_%s' % (attr, str(k)), pool.loc[k])
+
+    def merge_attribute(self, attr, keys=None):
+        # attr = pt_los
+        # merge several attributes self.pt_los_1, self.pt_los_2 etc in self.pt_los
+        if keys is None:
+            keys = [
+                s.split(attr + '_')[1] for s in self.__dict__.keys()
+                if s.startswith(attr + '_')
+            ]
+        to_concat = []
+        for key in keys:
+            to_concat.append(self.__getattribute__(attr + '_' + key))
+            self.__delattr__(attr + '_' + key)
+        self.__setattr__(attr, pd.concat(to_concat))  
+
+    def to_zippedpickles(
+        self,
+        folder,
+        omitted_attributes=(),
+        only_attributes=None,
+        max_workers=1,
+        complevel=-1,
+        
+    ):
+        os.makedirs(folder, exist_ok=True)
+        if max_workers == 1:
+            iterator = tqdm(self.__dict__.items())
+            for key, value in iterator:
+                iterator.desc = key
+                if key in omitted_attributes:
+                    continue
+                if only_attributes is not None and key not in only_attributes:
+                    continue
+                hdf_io.to_zippedpickle(
+                    value, '%s/%s.zippedpickle' % (folder, key),
+                    complevel=complevel
+                )
+        else:
+            with ProcessPoolExecutor(max_workers=max_workers) as executor:
+                for key, value in self.__dict__.items():
+                    if key in omitted_attributes:
+                        continue
+                    if only_attributes is not None and key not in only_attributes:
+                        continue
+                    executor.submit(
+                        hdf_io.to_zippedpickle, 
+                        value, 
+                        r'%s/%s.zippedpickle' % (folder, key),
+                        complevel=complevel
+                    )
+                
+    def read_zippedpickles(self, folder, omitted_attributes=(), only_attributes=None):
+        files = os.listdir(folder)
+        keys = [
+            file.split('.zippedpickle')[0] 
+            for file in files 
+            if '.zippedpickle' in file
+        ]
+        iterator = tqdm(keys)
+        for key in iterator:
+            if key in omitted_attributes:
+                continue
+            if only_attributes is not None and key not in only_attributes:
+                continue
+                
+            iterator.desc = key
+            with open ('%s/%s.zippedpickle' % (folder, key), 'rb') as file:
+                buffer = file.read()
+                bigbuffer = zlib.decompress(buffer)
+                self.__setattr__(key, pickle.loads(bigbuffer))
 
     def read_hdf(self, filepath, omitted_attributes=(), only_attributes=None):
         with pd.HDFStore(filepath) as hdf:
@@ -312,7 +399,7 @@ class Model(IntegrityModel):
                 for key, value in json_dict.items():
                     self.__setattr__(key, json.loads(value))
             except AttributeError:
-                print('coul not read json attributes')
+                print('could not read json attributes')
 
     def to_excel(self, filepath, prefix='stack'):
         length = len(prefix)

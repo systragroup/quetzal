@@ -5,6 +5,7 @@ import importlib
 import pickle
 import zlib
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 class PickleProtocol:
     def __init__(self, level):
@@ -25,10 +26,9 @@ def pickle_protocol(level):
 
 
 def write_hdf_to_buffer(frames, level=4, complevel=None):
-    print('testa')
     with pickle_protocol(level):
         with pd.HDFStore(
-                "quetzal.h5",
+                "quetzal-%s.h5" % str(uuid.uuid4()),
                 mode="a",
                 driver="H5FD_CORE",
                 driver_core_backing_store=0,
@@ -36,13 +36,17 @@ def write_hdf_to_buffer(frames, level=4, complevel=None):
                 ) as out:
             iterator = tqdm(frames.items())
             for key, df in iterator:
-                f, dc = 'fixed', None
-                if key == 'pt_los':
-                    f, dc = 'table', ['departure_time']
                 iterator.desc = key
-                out.put(key, df, format=f, data_columns=dc)
+                out[key] = df
             return out._handle.get_file_image()
 
+
+def to_zippedpickle(frame, filepath, pickle_protocol_level=4, complevel=-1):
+    with pickle_protocol(pickle_protocol_level):
+        buffer = pickle.dumps(frame)
+        smallbuffer = zlib.compress(buffer, level=complevel)
+        with open(filepath, 'wb') as file:
+            file.write(smallbuffer)
 
 def frame_to_zip(frame, filepath, level=4, complevel=None):
     with pickle_protocol(level):
