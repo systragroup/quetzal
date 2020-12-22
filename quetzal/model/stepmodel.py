@@ -48,6 +48,9 @@ def read_zipped_hdf(filepath, *args, **kwargs):
 def read_json(folder):
     m = StepModel(json_folder=folder)
     return m
+def read_zippedpickles(folder, *args, **kwarg):
+    m = StepModel(zippedpickles_folder=folder, *args, **kwarg)
+    return m
 
 
 class StepModel(
