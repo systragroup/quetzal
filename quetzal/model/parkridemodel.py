@@ -289,18 +289,18 @@ class ParkRideModel(preparationmodel.PreparationModel):
 
         on = ['destination' if reverse else 'origin', 'parking_node', 'reverse'] 
         columns = on + time_columns + length_columns + path_columns
-        columns = [c for c in columns if c in s.car_los]
+        columns = [c for c in set(columns) if c in s.car_los]
         right = s.car_los[columns] 
         merged = pd.merge(s.pr_los, right, on=on, suffixes=['_total', ''])
 
         on = ['origin' if reverse else 'destination', 'parking_node', 'reverse']
         
         columns = on + time_columns + length_columns + path_columns + pt_columns
-        columns = [c for c in columns if c in s.pt_los]
+        columns = [c for c in set(columns) if c in s.pt_los]
         right = s.pt_los[columns] 
         pr_los = pd.merge(merged, right, on=on, suffixes=['_car', '_transit'])
         s.pt_los['path'] = [p[1:-1] for p in s.pt_los['path']]
-        for c in time_columns + length_columns + path_columns:
+        for c in set(time_columns + length_columns + path_columns):
             ca, cb = c + '_car', c + '_transit'
             if reverse:
                 ca, cb = cb, ca
