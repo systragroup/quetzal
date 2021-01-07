@@ -39,7 +39,6 @@ class GtfsImporter(Feed):
 
     from .directions import build_directions
     from .patterns import build_patterns
-    from .services import group_services
     from .frequencies import convert_to_frequencies, compute_pattern_headways
 
     def clean(self):

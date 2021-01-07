@@ -232,8 +232,9 @@ def get_active_services(feed, dates, drop_unused=True):
 
 
 def restrict_to_dates(feed, dates, drop_unused=True):
-
-    # Restrict calendar to dates: no calendar, but one row in calendar_dates per date
+    """
+    Restrict calendar to dates: no calendar, but one row in calendar_dates per date
+    """
     new_calendar_dates = pd.DataFrame(columns=['service_id', 'date', 'exception_type'])
     active_services = set()
     for date in dates:
@@ -258,6 +259,11 @@ def restrict_to_dates(feed, dates, drop_unused=True):
 
 def restrict_to_area(feed, polygon_4326, how='inner', drop_unused=True):
 
+    """
+    Restrict the feed to a given perimeter:
+    - if how == 'inner', only the stops within the perimeter are kept
+    - if how == 'outer', all trips intersecting the perimeter are kept
+    """
     f = feed.copy()
     stops = f.stops.copy()
     stops['geometry'] = stops.apply(
@@ -280,5 +286,7 @@ def restrict_to_area(feed, polygon_4326, how='inner', drop_unused=True):
 
     if how == 'inner':
         return f
-    else:
+    elif how == 'outer':
         return feed.restrict(trip_ids=relevant_trips)
+    else:
+        raise ValueError('Undefined value for parameter how')

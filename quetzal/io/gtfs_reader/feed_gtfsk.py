@@ -20,6 +20,7 @@ class Feed(gk.feed.Feed):  # Overwrite Feed class
         restrict_to_services, restrict_to_timerange, restrict,
         restrict_to_trips, restrict_to_dates, restrict_to_area
         )
+    from .services import group_services
 
     def __init__(self, dist_units: str, path=None):
         if path is not None:
@@ -79,9 +80,10 @@ class Feed(gk.feed.Feed):  # Overwrite Feed class
         
         # drop stops without stop_times or stop_time without stop_id
         stop_set_st = set(self.stop_times.stop_id.unique())
-        stop_set_st = stop_set_st.union(
-            set(self.stops.loc[self.stops.stop_id.isin(stop_set_st), 'parent_station'].values)
-        )
+        if 'parent_station' in self.stops.columns:
+            stop_set_st = stop_set_st.union(
+                set(self.stops.loc[self.stops.stop_id.isin(stop_set_st), 'parent_station'].values)
+            )
         stop_set_s = set(self.stops.stop_id.unique())
         stop_set = stop_set_st.intersection(stop_set_s)
         self.stop_times = self.stop_times.loc[self.stop_times.stop_id.isin(stop_set)]
