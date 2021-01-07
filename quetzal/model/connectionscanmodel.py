@@ -131,12 +131,13 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         seta = set(self.time_expended_zone_to_transit['a'])
         setb = set(self.time_expended_zone_to_transit['b'])
         zone_set = set(self.zones.index).intersection(seta).intersection(setb)
+        targets = zone_set if targets is None else set(targets).intersection(zone_set)
 
         self.pt_los = csa.pathfinder(
             time_expended_zone_to_transit=self.time_expended_zone_to_transit,
             pseudo_connections=self.pseudo_connections,
             zone_set=zone_set,
-            targets=zone_set,
+            targets=targets,
             min_transfer_time=min_transfer_time,
             time_interval=time_interval,
             cutoff=cutoff,

@@ -1,9 +1,26 @@
 import os
-from subprocess import Popen, PIPE
+from subprocess import Popen
 import time
 import json
 import uuid
 import shutil
+
+
+def add_freeze_support(file):
+    with open(file, 'r') as pyfile:
+        lines = pyfile.readlines()
+    top = [
+        "def main():\n"
+    ]
+    bottom = [
+        "from multiprocessing import freeze_support\n"
+        "if __name__ == '__main__':\n"
+        "    freeze_support()\n"
+        "    main()\n"
+    ]
+    lines = top + ['    ' + line for line in lines] + bottom
+    with open(file, 'w') as pyfile:
+        pyfile.writelines(lines)
 
 def parallel_call_notebook(
     notebook,
@@ -13,11 +30,14 @@ def parallel_call_notebook(
     workers=2,
     sleep=1,
     leave=False,
-    errout_suffix=False
+    errout_suffix=False,
+    freeze_support=True,
 ):
     start = time.time()
     os.system('jupyter nbconvert --to python %s' % notebook)
     file = notebook.replace('.ipynb', '.py')
+    if freeze_support:
+        add_freeze_support(file)
     popens = {}
     
     for i in range(len(arg_list)):
