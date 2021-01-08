@@ -82,10 +82,12 @@ def nested_logit_from_paths(
     n_paths_max=None,
     nchunks=10,
     workers=1,
+    return_od_tables=True,
 ):
     paths['index'] = paths.index
-    planner = paths.set_index(od_cols[0], drop=False)
-    planner.index.name = 'index'
+    paths.set_index(od_cols[0], drop=False, inplace=True)
+    paths.index.name = 'index'
+    planner = paths
 
     index = list(set(planner.index))
     groups = [
@@ -112,13 +114,24 @@ def nested_logit_from_paths(
                     od_cols=od_cols,
                     decimals=decimals,
                     n_paths_max=n_paths_max,
+                    return_od_tables=return_od_tables,
+
                 )
             )    
 
-        results = [r.result() for r in results]
-        paths = pd.concat([t[0] for t in results])
-        mode_utilities = pd.concat([t[1] for t in results])
-        mode_probabilities = pd.concat([t[2] for t in results])
+        paths_list = []
+        mode_utilities_list = []
+        mode_probabilities_list = []
+
+        for i in range(len(results)):
+            t = results.pop().result()
+            paths_list.append(t[0])
+            mode_utilities_list.append(t[1])
+            mode_probabilities_list.append(t[2])
+
+        paths = pd.concat(paths_list)
+        mode_utilities = pd.concat(mode_utilities_list)
+        mode_probabilities = pd.concat(mode_probabilities_list)
 
     else:
         p_list = []
@@ -151,6 +164,7 @@ def one_block_nested_logit_from_paths(
     verbose=False,
     decimals=None,  #  minimum probability
     n_paths_max=None,
+    return_od_tables=True
 ):
     
     if 'segment' not in paths.columns:
@@ -286,4 +300,7 @@ def one_block_nested_logit_from_paths(
         suffixes=['_old',  ''],
         how='left'
     ).set_index('index')
+    if not return_od_tables:
+        mode_utilities = pd.DataFrame()
+        mode_probabilities = pd.DataFrame()
     return paths,  mode_utilities.reset_index(), mode_probabilities.reset_index()

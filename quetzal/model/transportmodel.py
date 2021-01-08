@@ -466,21 +466,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         Requires computed path probabilities in pt_los for each segment.
         """
         segments = self.segments
-	# Merge conflict: should we modify pt_los here 
-	# or let the modeller check
-        # index_columns = ['pathfinder_session', 'route_types', 'path']
-        # for segment in segments:
-            # self.pt_los.drop((segment, 'probability'), axis=1, inplace=True, errors='ignore')
-            # right = self.los.set_index(index_columns)[[(segment, 'probability')]]
-            # msg = 'self.los cannot have several rows with the same combination of ' 
-            # msg += str(index_columns)
-            # assert right.index.is_unique, msg
-            # self.pt_los = pd.merge(
-            #    self.pt_los, 
-            #     right,
-            #     left_on=index_columns,
-            #     right_index=True
-            # )
+
 
         iterator = tqdm(segments)
         for segment in iterator:
@@ -640,7 +626,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         decimals=None, 
         n_paths_max=None,
         nchunks=10,
-        workers=1
+        workers=1,
+        keep_od_tables=True
     ):
         """
         * requires: mode_nests, logit_scales, los
@@ -653,10 +640,15 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             od_cols.append('wished_departure_time')
         to_concat = []
         for segment in self.segments:
-            paths = self.los.copy() if not time_expanded else self.te_los.copy()
-            paths['utility'] = paths[(segment, 'utility')]
+            keep_columns = od_cols + ['route_type',  (segment, 'utility')]
+            if time_expanded:
+                paths = self.te_los[keep_columns]
+            else:
+                paths = self.los[keep_columns]
+
+            paths.rename(columns={(segment, 'utility'): 'utility'}, inplace=True)
             paths['segment'] = segment
-            to_concat.append(paths[od_cols + ['route_type', 'utility', 'segment']])
+            to_concat.append(paths)
         segmented_paths = pd.concat(to_concat)
 
         try: # all the segments can be proccessed together
@@ -680,6 +672,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 verbose=False,
                 decimals=decimals, n_paths_max=n_paths_max,
                 nchunks=nchunks, workers=workers,
+                return_od_tables=keep_od_tables
             )
 
         except AssertionError:
@@ -708,12 +701,13 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             mu = pd.concat(mu_list, ignore_index=True)
             mp = pd.concat(mp_list, ignore_index=True)
 
-        pool = p.reset_index().set_index(['segment', 'index'])
+        p.reset_index(inplace=True)
+        p.set_index(['segment', 'index'], inplace=True)
         for segment in self.segments:
             if time_expanded:
-                self.te_los[(segment, 'probability')] = pool.loc[segment]['probability']
+                self.te_los[(segment, 'probability')] = p.loc[segment]['probability']
             else:
-                self.los[(segment, 'probability')] = pool.loc[segment]['probability']
+                self.los[(segment, 'probability')] = p.loc[segment]['probability']
         
         self.probabilities = mp
         self.utilities = mu
