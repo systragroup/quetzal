@@ -556,7 +556,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         """
         if segment is None:
 
-            for segment in self.segments:
+            for segment in tqdm(self.segments):
 
                 self.analysis_mode_utility(how=how, segment=segment, time_expanded=time_expanded)
             return 
@@ -565,31 +565,22 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         else:
             logit_los = self.los
         mode_utility = self.mode_utility[segment].to_dict()
-        route_types = logit_los['route_types'].unique()
-        route_types = pd.DataFrame(route_types, columns=['route_types'])
-        route_types['mode_utility'] = route_types['route_types'].apply(
-            get_combined_mode_utility, how=how, mode_utility=mode_utility)
-        
-        route_types['rt_string'] = route_types['route_types'].astype(str)
-        los = logit_los.copy()
-        los['rt_string'] = los['route_types'].astype(str)
-        los['index'] = los.index
-        
-        merged = pd.merge(
-            los[['rt_string', 'index']], 
-            route_types[['rt_string', 'mode_utility']], 
-            on=['rt_string'], 
-        ).set_index('index')
-        
-        los['mode_utility'] = merged['mode_utility']
+        # route type utilities
+        rtu = {
+            rt: get_combined_mode_utility(
+                rt, how=how, mode_utility=mode_utility
+                )
+            for rt in logit_los['route_types'].unique()
+        }
+        logit_los['mode_utility'] = logit_los['route_types'].map(rtu.get)
         
         utility_values = self.utility_values[segment].to_dict()
         u = 0
         for key, value in utility_values.items():
-            u += value * los[key]
+            u += value * logit_los[key]
 
         logit_los[(segment, 'utility')] = u
-        logit_los[(segment, 'utility')] = logit_los[(segment, 'utility')].astype(float)
+        logit_los[(segment, 'utility')] = logit_los[(segment, 'utility')]
         
     def analysis_utility(self, segment='root', time_expanded=False):
         """
