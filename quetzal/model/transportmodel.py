@@ -231,7 +231,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         self.shared = shared
 
-    def compute_los_volume(self, time_expanded=False):
+    def compute_los_volume(self, time_expanded=False, keep_segments=True):
 
         los = self.los if not time_expanded else self.te_los
     
@@ -245,21 +245,25 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         left['index'] = left.index
         df = pd.merge(left, self.volumes, on=on).set_index('index')
         values = df[probabilities].values * df[segments].values
-        right = pd.DataFrame(values, index=df.index, columns=segments)
+        i = 0
         for segment in segments:
-            los[segment] = right[segment]
-        los['volume'] = right.T.sum() 
+            los[segment] = values.T[i]
+            i += 1
+        los['volume'] = np.nansum(values, axis=1)
 
         if time_expanded:
             los_volumes = self.te_los.groupby('path_id')[['volume'] + segments].sum()
-            self.los.drop(['volume'] + segments, axis=1, inplace=True, errors='ignore')
-            self.los = self.los.merge(los_volumes, on='path_id')
+            path_id_list = list(self.los['path_id'])
+            volume_values = los_volumes.loc[path_id_list].values
+            self.los.loc[:, los_volumes.columns] = volume_values
 
     def step_assignment(
         self, 
         road=False, 
         boardings=False, 
+        boarding_links=False,
         alightings=False,
+        alighting_links=False,
         transfers=False,
         segmented=False,
         time_expanded=False
@@ -280,20 +284,24 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 to_assign['road_link_list']
             )
             
-        if boardings:
+        if boardings and not boarding_links:
+            print('to assign boardings on links pass boarding_links=True')
+        if boarding_links:
             column = 'boarding_links'
             l = los.dropna(subset=[column])
-            self.links[ 'boardings'] = assign(l['volume'], l[column])
-            
+            self.links['boardings'] = assign(l['volume'], l[column])
+        
+        if boardings:
             column = 'boardings'
             l = los.dropna(subset=[column])
             self.nodes['boardings'] = assign(l['volume'], l[column])
             
-        if alightings:
+        if alighting_links:
             column = 'alighting_links'
             l = los.dropna(subset=[column])
             self.links['alightings'] = assign(l['volume'], l[column])
-            
+
+        if alightings:
             column = 'alightings'
             l = los.dropna(subset=[column])
             self.nodes['alightings'] = assign(l['volume'], l[column])
@@ -638,6 +646,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 paths = self.los[keep_columns]
 
             paths.rename(columns={(segment, 'utility'): 'utility'}, inplace=True)
+            paths = paths.dropna(subset=['utility'])
             paths['segment'] = segment
             to_concat.append(paths)
         segmented_paths = pd.concat(to_concat)

@@ -154,7 +154,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
                 trip_connections[trip].append(connection)
             except KeyError:
                 trip_connections[trip] = [connection]
-        
+
         connection_trip =  clean.set_index('csa_index')['trip_id'].to_dict()
         df = self.pt_los
         values = [
@@ -166,7 +166,17 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         ]
         df['connection_path'] = [v[0] for v in values]
         df['first_connections'] = [v[1] for v in values]
-        
+        del values
+
+        # model
+        pool = pseudo_connections[['model_index', 'csa_index']].dropna()
+        d = pool.set_index('csa_index')['model_index'].to_dict()
+        df['path'] = [
+            [origin] + [d[i] for i in p if i in d] + [destination]
+            for origin, destination, p in 
+            df[['origin', 'destination', 'connection_path']].values
+        ]
+
         # links
         pool = pseudo_connections[['link_index', 'csa_index']].dropna()
         d = pool.set_index('csa_index')['link_index'].to_dict()
@@ -174,25 +184,18 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             [d[i] for i in p if i in d]
             for p in df['connection_path']
         ]
+        del df['connection_path']
+
         df['boarding_links'] = [
             [d[i] for i in p if i in d] 
             for p in df['first_connections']
         ]
+        del df['first_connections']
+
         df['ntransfers'] = df['boarding_links'].apply(lambda b: len(b)-1)
         linka = self.links['a'].to_dict()
         df['boardings'] = [[linka[b] for b in bl] for bl in df['boarding_links']]
-        # model
-        pool = pseudo_connections[['model_index', 'csa_index']].dropna()
-        d = pool.set_index('csa_index')['model_index'].to_dict()
-        df['path'] = [
-            [d[i] for i in p if i in d]
-            for p in df['connection_path']
-        ]
-        df['path'] =  [
-            [o] + p + [d]
-            for o, d, p in 
-            df[['origin', 'destination', 'path']].values
-        ]
+
         self.pt_los = df
 
     
