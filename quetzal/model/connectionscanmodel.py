@@ -8,7 +8,7 @@ import shutil
 import ntpath
 import uuid
 from tqdm import tqdm
-
+from quetzal.engine import parallelization
 
 def read_hdf(filepath, *args, **kwargs):
     m = ConnectionScanModel(hdf_database=filepath, *args, **kwargs)
@@ -144,26 +144,29 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             workers=workers
         )
         
-    def analysis_paths(self):
+    def analysis_paths(self, workers=1):
         pseudo_connections = self.pseudo_connections
-        clean = pseudo_connections[['csa_index','trip_id']].dropna()
+        clean = pseudo_connections[['csa_index', 'trip_id']].dropna()
         clean.sort_values(by='csa_index', inplace=True)
         trip_connections = {}
         for trip, connection in clean[['trip_id', 'csa_index']].values:
-            try :
+            try:
                 trip_connections[trip].append(connection)
             except KeyError:
                 trip_connections[trip] = [connection]
 
         connection_trip =  clean.set_index('csa_index')['trip_id'].to_dict()
         df = self.pt_los
-        values = [
-            csa.path_to_boarding_links_and_boarding_path(
-                path,
-                trip_connections=trip_connections, 
-                connection_trip=connection_trip
-            ) for path in tqdm(df['csa_path'])
-        ]
+        paths = list(df['csa_path'])
+        kwargs = {
+            'trip_connections': trip_connections,
+            'connection_trip': connection_trip,
+        }
+        values = parallelization.parallel_map_kwargs(
+            csa.path_to_boarding_links_and_boarding_path,
+            paths, workers=workers, show_progress=True, **kwargs
+
+        )
         df['connection_path'] = [v[0] for v in values]
         df['first_connections'] = [v[1] for v in values]
         del values

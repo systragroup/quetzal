@@ -249,7 +249,7 @@ class TimeExpandedModel(stepmodel.StepModel):
             )
             self.pt_los = te_utils.analysis_durations(self.pt_los, self.edges, ntlegs_penalty)
     
-    def build_te_los(self):
+    def build_te_los(self, time_shift_max_before=None, time_shift_max_after=None):
         """
         Requires time expanded volumes.
         Expand los as in time expanded volumes
@@ -259,13 +259,27 @@ class TimeExpandedModel(stepmodel.StepModel):
         self.los.drop('path_id', axis=1, inplace=True, errors='ignore')
         self.los.reset_index(inplace=True)
         # Create te_los
-        columns_to_keep = {'origin', 'destination', 'path_id', 'departure_time', 'arrival_time',
-            'transfers', 'route_types', 'route_type', 'ntransfers', 'time', 'price'}
+        columns_to_keep = {
+            'origin', 'destination', 'path_id', 'departure_time', 'arrival_time',
+            'transfers', 'route_types', 'route_type', 'ntransfers', 'time', 'price'
+        }
         columns = list(set(self.los.columns).intersection(columns_to_keep))
         self.te_los = self.volumes[['origin', 'destination', 'wished_departure_time']].merge(
             self.los[columns],
             on=['origin', 'destination']
         )
+        if time_shift_max_after is not None:
+            self.te_los['delta'] = self.te_los['departure_time'] - self.te_los['wished_departure_time']
+            self.te_los = self.te_los.loc[
+                self.te_los['delta'] < time_shift_max_after
+            ]
+        if time_shift_max_before is not None:
+            self.te_los['delta'] = self.te_los['wished_departure_time'] - self.te_los['departure_time']
+            self.te_los = self.te_los.loc[
+                self.te_los['delta'] < time_shift_max_before
+            ]
+        self.te_los.drop('delta', axis=1, errors='ignore', inplace=True)
+        
 
     def analysis_time_shift(self, threshold=0):
         def time_shift(departure_time, wished_time, threshold=threshold):

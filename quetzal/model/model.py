@@ -256,14 +256,27 @@ class Model(IntegrityModel):
 
         return plot
 
-    def split_attribute(self, attr, by, drop=True):
+    def split_attribute(self, attr, by=None, nchunks=None, drop=True):
         # attr = pt_los
         # split self.pt_los in several attributes self.pt_los_1, self.pt_los_2 etc
-        pool = self.__getattribute__(attr).set_index(by, append=True, drop=drop).swaplevel()
-        self.__delattr__(attr)
-        keys = set(pool.index.levels[0])
-        for k in keys:
-            self.__setattr__('%s_%s' % (attr, str(k)), pool.loc[k])
+        if by is not None:
+            pool = self.__getattribute__(attr).set_index(by, append=True, drop=drop).swaplevel()
+            self.__delattr__(attr)
+            keys = set(pool.index.levels[0])
+            for k in keys:
+                self.__setattr__('%s_%s' % (attr, str(k)), pool.loc[k])
+
+        elif nchunks is not None:
+            pool = self.__getattribute__(attr)
+            self.__delattr__(attr)
+            length = len(pool)
+            chunk_size = length // nchunks + 1
+            pd.Series(range(length)) // chunk_size
+            for i in range(nchunks):
+                self.__setattr__(
+                    '%s_%s' % (attr, str(i)), 
+                    pool.iloc[i*chunk_size: (i+1)*chunk_size]
+                )
 
     def merge_attribute(self, attr, keys=None):
         # attr = pt_los
