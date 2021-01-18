@@ -5,7 +5,6 @@ import zlib
 import os
 import sys
 import pickle
-
 import geopandas as gpd
 import pandas as pd
 from shapely.geometry import Point
@@ -299,8 +298,11 @@ class Model(IntegrityModel):
         only_attributes=None,
         max_workers=1,
         complevel=-1,
+        remove_first=True
         
     ):
+        if remove_first:
+            shutil.rmtree(folder, ignore_errors=True)
         os.makedirs(folder, exist_ok=True)
         if max_workers == 1:
             iterator = tqdm(self.__dict__.items())

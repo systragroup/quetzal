@@ -33,4 +33,5 @@ def parallel_map_kwargs(func, iterables, workers=1, **kwargs):
     for i in range(len(results)):
         r = results.pop(0)
         to_return += r.result()
+        del r
     return to_return

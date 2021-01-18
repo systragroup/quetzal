@@ -266,9 +266,12 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         alighting_links=False,
         transfers=False,
         segmented=False,
-        time_expanded=False
+        time_expanded=False,
+        compute_los_volume=True
         ):
-        self.compute_los_volume(time_expanded=time_expanded)
+
+        if compute_los_volume:
+            self.compute_los_volume(time_expanded=time_expanded)
         los = self.los.copy()
 
         column = 'link_path'
