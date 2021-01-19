@@ -215,6 +215,7 @@ class AnalysisModel(summarymodel.SummaryModel):
             self.lighten_car_los()
         except AttributeError:
             pass
+        
     def lighten(self):
         # to be completed
         self.lighten_los()
