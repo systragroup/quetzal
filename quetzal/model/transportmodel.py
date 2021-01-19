@@ -255,6 +255,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             los_volumes = self.te_los.groupby('path_id')[['volume'] + segments].sum()
             path_id_list = list(self.los['path_id'])
             volume_values = los_volumes.reindex(path_id_list).fillna(0).values
+            for c in los_volumes.columns:
+                self.los[c] = np.nan  # create_columns
             self.los.loc[:, los_volumes.columns] = volume_values
 
     def step_assignment(

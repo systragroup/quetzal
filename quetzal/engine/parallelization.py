@@ -32,6 +32,10 @@ def parallel_map_kwargs(func, iterables, workers=1, **kwargs):
     to_return = []
     for i in range(len(results)):
         r = results.pop(0)
-        to_return += r.result()
+        try:
+            to_return += r.result()
+        except TypeError:  # 'NoneType' object is not subscriptable
+            print('error')
+            pass
         del r
     return to_return

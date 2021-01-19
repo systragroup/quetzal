@@ -44,8 +44,8 @@ def parallel_call_notebook(
         arg = arg_list[i]
         suffix = arg if errout_suffix else ''
         suffix += '_' + notebook.split('.')[0]
-        mode =  'w' if errout_suffix else 'a+'
-        print(i,file, arg)
+        mode = 'w' if errout_suffix else 'a+'
+        print(i, file, arg)
         with open(stdout_path.replace('.txt', '_' + suffix + '.txt'), mode) as stdout:
             with open(stderr_path.replace('.txt', '_' + suffix + '.txt'), mode) as stderr:
 
