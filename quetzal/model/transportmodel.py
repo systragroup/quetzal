@@ -244,6 +244,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         left = los[on + probabilities]
         left['index'] = left.index
         df = pd.merge(left, self.volumes, on=on).set_index('index')
+        df = df.reindex(los.index)
         values = df[probabilities].values * df[segments].values
         i = 0
         for segment in segments:

@@ -293,7 +293,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         time=-1,
         price=-1,
         transfers=-1,
-        time_shift=None # for time expanded model
+        time_shift=None, # for time expanded model
+        route_types=None
     ):
         """
         * requires: 
@@ -324,8 +325,9 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         self.utility_values.index.name = 'value'
         self.utility_values.columns.name = 'segment'
 
-
-        route_types = set(self.links['route_type'].unique()).union({'car', 'walk', 'root'})
+        if route_types is None:
+            link_rt = set(self.links['route_type'].unique())
+            route_types = link_rt.union({'car', 'walk', 'root'})
 
         # mode_utility
         self.mode_utility = pd.DataFrame(
