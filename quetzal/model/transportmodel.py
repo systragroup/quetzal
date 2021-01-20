@@ -279,7 +279,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         column = 'link_path'
         l = los.dropna(subset=[column])
-        l = los.loc[los['volume'] > 0]
+        l = l.loc[l['volume'] > 0]
         self.links['volume'] = assign(l['volume'], l[column])
         
         if road:
