@@ -284,11 +284,12 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         
         if road:
             self.road_links[('volume', 'car')] = assign(l['volume'], l[column])
-            to_assign = self.links.dropna(subset=['volume'])
-            self.road_links[('volume', 'pt')] = assign(
-                to_assign['volume'], 
-                to_assign['road_link_list']
-            )
+            if 'road_link_list' in self.links.columns:
+                to_assign = self.links.dropna(subset=['volume', 'road_link_list'])
+                self.road_links[('volume', 'pt')] = assign(
+                    to_assign['volume'], 
+                    to_assign['road_link_list']
+                )
             
         if boardings and not boarding_links:
             print('to assign boardings on links pass boarding_links=True')

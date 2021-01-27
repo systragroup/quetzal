@@ -155,7 +155,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             except KeyError:
                 trip_connections[trip] = [connection]
 
-        connection_trip =  clean.set_index('csa_index')['trip_id'].to_dict()
+        connection_trip = clean.set_index('csa_index')['trip_id'].to_dict()
         df = self.pt_los
         paths = list(df['csa_path'])
         kwargs = {
@@ -196,6 +196,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         del df['first_connections']
 
         df['ntransfers'] = df['boarding_links'].apply(lambda b: len(b)-1)
+        df['ntransfers'] = np.clip(df['ntransfers'], 0, a_max=None)
         linka = self.links['a'].to_dict()
         df['boardings'] = [[linka[b] for b in bl] for bl in df['boarding_links']]
 
