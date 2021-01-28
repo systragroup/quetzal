@@ -221,7 +221,7 @@ def pathfinder(
     pseudo_connections,
     zone_set,
     min_transfer_time=0, time_interval=None, cutoff=np.inf,
-    targets=None, workers=1
+    targets=None, workers=1, od_set=None
 ):
 
     targets = list(set(targets))
@@ -247,7 +247,8 @@ def pathfinder(
                     min_transfer_time=min_transfer_time,
                     time_interval=time_interval,
                     cutoff=cutoff,
-                    workers=1
+                    workers=1,
+                    od_set=od_set
                 )
         to_return = pd.concat([r.result() for r in results.values()])
         return to_return.reset_index(drop=True)
@@ -257,6 +258,30 @@ def pathfinder(
     egress_index = set(egress['csa_index'])
     egress_by_zone = egress.groupby(['b'])['csa_index'].agg(set).to_dict()
     all_egress = set(egress['csa_index'])
+
+    # OD SET ACCESS FILTER
+    targets = zone_set if targets is None else zone_set.intersection(targets)
+    if od_set is not None:
+        if targets is None:
+            targets = {d for o, d in od_set}
+        else:
+            od_set = {(o, d) for o, d in od_set if d in targets}
+            targets = {d for o, d in od_set}.intersection(targets)
+
+        target_sources = {t:[] for t in targets}
+        for o, d in od_set:
+            target_sources[d].append(o)
+
+        access = pseudo_connections.set_index('direction').loc['access']
+        access_by_zone = access.groupby(['a'])['csa_index'].agg(set).to_dict()
+        all_access = set(access['csa_index'])
+        access_by_target = {t: set() for t in targets}
+        for t in targets:
+            for source in target_sources[t]:
+                try:
+                    access_by_target[t].update(access_by_zone[source])
+                except KeyError:
+                    pass
 
     # TIME FILTER
     # all links reaching b
@@ -270,7 +295,7 @@ def pathfinder(
     decreasing_departure_connections = pseudo_connections[columns].to_dict(orient='record')
 
     pareto = []
-    targets = zone_set if targets is None else zone_set.intersection(targets)
+    
     for target in tqdm(targets):
 
         # BUILD CONNECTIONS
@@ -284,6 +309,8 @@ def pathfinder(
             ti_connections = decreasing_departure_connections[-slice_start: -slice_end]
 
         forbidden = all_egress - egress_by_zone[target]
+        if od_set is not None:
+            forbidden.update(all_access - access_by_target[target])
         connections = [c for c in ti_connections if c['csa_index'] not in forbidden]
 
         profile, predecessor = csa_profile(

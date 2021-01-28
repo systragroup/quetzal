@@ -119,6 +119,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         cutoff=np.inf,
         build_connections=True,
         targets=None,
+        od_set=None,
         workers=1,
     ):
 
@@ -138,6 +139,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             pseudo_connections=self.pseudo_connections,
             zone_set=zone_set,
             targets=targets,
+            od_set=od_set,
             min_transfer_time=min_transfer_time,
             time_interval=time_interval,
             cutoff=cutoff,

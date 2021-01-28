@@ -39,14 +39,22 @@ def parallel_call_jobs(jobs, mode='w', leave=False, workers=1, sleep=1):
                         p.wait()
                         
         time.sleep(sleep)
-    if not leave:
-        os.remove(file)
-    check_list = [t[-1] for t in jobs]
-    for stder_file in check_list:
+
+
+    for i, file, arg, stdout_file, stderr_file in jobs:
+        subprocess_name = str(file) + str(i)
+        if not leave:
+            try:
+                os.remove(file)
+            except FileNotFoundError:
+                pass
         with open(stderr_file, 'r') as stderr:
             content = stderr.read()
             if 'Error' in content and "end_of_notebook" not in content:
-                print("subprocess **{} {}** terminated with an error.".format(i, arg))
+                print("subprocess **{} {}** terminated with an error.".format(
+                    subprocess_name, arg
+                    )
+                )
 
 def parallel_call_notebooks(
     *notebook_arg_list_tuples,
