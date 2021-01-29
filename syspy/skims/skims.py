@@ -14,6 +14,7 @@ import warnings
 
 import pandas as pd
 import numpy as np
+
 try:
     from geopy.distance import geodesic  # works for geopy version >=2
 except ImportError:
