@@ -7,3 +7,4 @@ tests/data/out/
 .eggs/
 *.egg-info/
 .venv/
+.idea/

@@ -29,6 +29,14 @@ def read_hdf(filepath, *args, **kwargs):
     return m
 
 def read_zip(filepath, *args, **kwargs):
+    try:
+        m = StepModel(zip_database=filepath, *args, **kwargs)
+        return m
+    except : 
+        # the zip is a zipped hdf and can not be decompressed
+        return read_zipped_hdf(filepath, *args, **kwargs)
+
+def read_zipped_hdf(filepath, *args, **kwargs):
     filedir = ntpath.dirname(filepath)
     tempdir = filedir + '/quetzal_temp' + '-' + str(uuid.uuid4())
     shutil.unpack_archive(filepath, tempdir)
@@ -40,13 +48,15 @@ def read_zip(filepath, *args, **kwargs):
 def read_json(folder):
     m = StepModel(json_folder=folder)
     return m
+def read_zippedpickles(folder, *args, **kwarg):
+    m = StepModel(zippedpickles_folder=folder, *args, **kwarg)
+    return m
 
 
 class StepModel(
     plotmodel.PlotModel,
     analysismodel.AnalysisModel, 
     docmodel.DocModel,
-    
     ):
 
     def __init__(self, *args, **kwargs):
@@ -56,10 +66,8 @@ class StepModel(
 # DEPRECATION
 
 # deprecation method will be replaced by other data flow
-StepModel.step_build_los = deprecated_method(StepModel.step_build_los)
 StepModel.step_modal_split = deprecated_method(StepModel.step_modal_split)
 StepModel.step_pathfinder = deprecated_method(StepModel.step_pathfinder)
-StepModel.step_assignment = deprecated_method(StepModel.step_pt_assignment)
 
 # moved to analysismodel
 StepModel.checkpoints = deprecated_method(StepModel.analysis_checkpoints)

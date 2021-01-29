@@ -1,9 +1,8 @@
+from .filtering import restrict_to_timerange
 import collections
-import numpy as np
 import pandas as pd
 from tqdm import tqdm
 tqdm.pandas()
-from .filtering import restrict_to_timerange
 
 
 def convert_to_frequencies(feed, time_range, pattern_column='pattern_id'):
@@ -20,14 +19,14 @@ def convert_to_frequencies(feed, time_range, pattern_column='pattern_id'):
         or one service before converting to frequencies.
     """.format(n_services)
     assert n_services == 1, error_message
-        
+
     # Make a restricted copy
     feed = restrict_to_timerange(feed, time_range)
 
     # Compute pattern headway
     pattern_headways = compute_pattern_headways(feed, time_range)
 
-    # One trip per pattern
+    # One trip per pattern
     to_replace_all = feed.trips.set_index('trip_id')[pattern_column].to_dict()
     feed.trips = feed.trips.groupby(pattern_column, as_index=False).first()
     to_replace_first = feed.trips.set_index('trip_id')[pattern_column].to_dict()
@@ -46,6 +45,7 @@ def convert_to_frequencies(feed, time_range, pattern_column='pattern_id'):
     feed = feed.clean()
 
     return feed
+
 
 def compute_pattern_headways(feed, time_range):
     """
@@ -79,7 +79,7 @@ def compute_pattern_headways(feed, time_range):
     pattern_headways['headway_secs'] = pattern_headways['trip_id'].progress_apply(
         lambda x: freq_conv.compute_average_headway(x, time_range_sec)
     )
-    
+
     return pattern_headways[['headway_secs']]
 
 
@@ -91,17 +91,16 @@ class GTFS_frequencies_utils():
     >>> GTFS_frequencies_utils = frequencies.GTFS_frequencies_utils(frequencies, trips)
     >>> GTFS_frequencies_utils.compute_average_headway(['trip_1', 'trip_2'], [36000, 39600], ['JOB'])
     --> return 300
-    
+
     """
 
     def __init__(self, frequencies, trips):
         self.frequencies = frequencies
         self.frequencies['start_time_sec'] = self.frequencies['start_time'].apply(hhmmss_to_seconds_since_midnight)
         self.frequencies['end_time_sec'] = self.frequencies['end_time'].apply(hhmmss_to_seconds_since_midnight)
- 
+
         self.trips = trips
 
-    
     def compute_average_headway(self, trip_ids, time_range, service_ids=None):
         """
         Compute the average headway over different time ranges for a specified
@@ -133,7 +132,6 @@ class GTFS_frequencies_utils():
         # print(aggregated_headways)
         return average_headway_over_time(aggregated_headways, time_range[0], time_range[1])
 
-
     def aggregate_headways_with_time(self, trip_ids, time_range, service_ids=None):
         """
         Compute the total headway over a given time range with specified times, for a specified
@@ -156,7 +154,7 @@ class GTFS_frequencies_utils():
         """
         if not trip_ids or not service_ids:
             return {times[0]: 0}
-    
+
         if service_ids:
             if isinstance(service_ids, int):
                 service_ids = [service_ids]
@@ -165,17 +163,17 @@ class GTFS_frequencies_utils():
 
         # Select the intersecting timetables
         intersecting_timetables = self.frequencies[
-            (self.frequencies['trip_id'].isin(trip_ids)) &\
-            (self.frequencies['start_time_sec'] < time_range[1]) &\
-            (self.frequencies['end_time_sec'] > time_range[0]) &\
+            (self.frequencies['trip_id'].isin(trip_ids)) &
+            (self.frequencies['start_time_sec'] < time_range[1]) &
+            (self.frequencies['end_time_sec'] > time_range[0]) &
             (self.frequencies['headway_secs'] > 0)
         ]
         # print('intersecting_timetables', intersecting_timetables)
 
         intersecting_null_timetables = self.frequencies[
-            (self.frequencies['trip_id'].isin(trip_ids)) &\
-            (self.frequencies['start_time_sec'] < time_range[1]) &\
-            (self.frequencies['end_time_sec'] >= time_range[0]) &\
+            (self.frequencies['trip_id'].isin(trip_ids)) &
+            (self.frequencies['start_time_sec'] < time_range[1]) &
+            (self.frequencies['end_time_sec'] >= time_range[0]) &
             (self.frequencies['headway_secs'] == 0)
         ]
         # print('intersecting_null_timetables', intersecting_null_timetables)
@@ -217,20 +215,19 @@ class GTFS_frequencies_utils():
         return result
 
 
-
 def hhmmss_to_seconds_since_midnight(time_int):
-        """
+    """
         Convert  HH:MM:SS into seconds since midnight.
         For example "01:02:03" returns 3723. The leading zero of the hours may be
         omitted. HH may be more than 23 if the time is on the following day.
         :param time_int: HH:MM:SS string. HH may be more than 23 if the time is on the following day.
         :return: int number of seconds since midnight
         """
-        time_int = int(''.join(time_int.split(':')))
-        hour = time_int // 10000
-        minute = (time_int - hour * 10000) // 100
-        second = time_int % 100
-        return hour * 3600 + minute * 60 + second
+    time_int = int(''.join(time_int.split(':')))
+    hour = time_int // 10000
+    minute = (time_int - hour * 10000) // 100
+    second = time_int % 100
+    return hour * 3600 + minute * 60 + second
 
 
 def compute_avg_headway(headways):

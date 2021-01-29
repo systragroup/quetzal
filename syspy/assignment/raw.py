@@ -4,7 +4,7 @@ __author__ = 'qchasserieau'
 import pandas as pd
 import itertools
 import collections
-
+from tqdm import tqdm
 
 def ma_fonction_a_tester(a, b):
     return a + b
@@ -13,6 +13,17 @@ def ma_fonction_a_tester(a, b):
 def nested_list(volume_array, paths):
     return [[volume_array[i]]*len(paths[i]) for i in range(len(volume_array))]
 
+def fast_assign(volume_array, paths):
+    
+    z = zip(volume_array, paths)
+    d = {}
+    for volume, path in list(z):
+        for key in path:
+            try:
+                d[key] += volume
+            except KeyError:
+                d[key] = volume
+    return pd.Series(d)
 
 def assign(volume_array, paths, checkpoints=None, checkpoints_how='all'):
 
@@ -27,29 +38,28 @@ def assign(volume_array, paths, checkpoints=None, checkpoints_how='all'):
         else:
             print('checkpoints failed')
 
-    nested_row_indices = [[i]*len(paths[i]) for i in range(len(volume_array))]
-    row_indices = list(itertools.chain.from_iterable(nested_row_indices))
     column_indices = list(itertools.chain.from_iterable(paths))
+    if len(column_indices)==0:
+        return pd.DataFrame(columns=['volume', 'link']).set_index('link')
     nested_volumes = nested_list(volume_array, paths)
     volumes = list(itertools.chain.from_iterable(nested_volumes))
     try:
         # volumes_array is an ndarray
         assert isinstance(volumes[0], collections.Iterable)
         sparse = pd.concat(
-            (pd.DataFrame({'od': row_indices, 'link': column_indices}),
+            (pd.DataFrame({'link': column_indices}),
              pd.DataFrame(volumes)),
             axis=1
         )
     except AssertionError:  # volume_array is actually a 1d vector
         sparse = pd.DataFrame(
             {
-                'od': row_indices,
                 'link': column_indices,
                 'volume': volumes
             }
         )
 
-    return sparse.drop('od', axis=1).groupby('link').sum()
+    return sparse.groupby('link').sum()
 
 
 def remove_ab_prefix(df):

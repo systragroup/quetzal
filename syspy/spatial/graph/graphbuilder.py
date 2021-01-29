@@ -187,14 +187,18 @@ class GraphBuilder():
 
 
 
-def clean_geometries(links, nodes):
+def clean_geometries(links, nodes, decimal_threshold=9):
     links = links.copy()
     ng = nodes['geometry'].to_dict()
 
     def directed(row):
-        return list(ng[row['a']].coords)[0] == list(row['geometry'].coords)[0]
+        a = tuple([round(x, decimal_threshold) for x in list(ng[row['a']].coords)[0]])
+        b = tuple([round(x, decimal_threshold) for x in list(row['geometry'].coords)[0]])
+        return a == b
     def return_directed(row):
-        return list(ng[row['a']].coords)[0] == list(row['geometry'].coords)[-1]
+        a = tuple([round(x, decimal_threshold) for x in list(ng[row['a']].coords)[0]])
+        b = tuple([round(x, decimal_threshold) for x in list(row['geometry'].coords)[-1]])
+        return a == b
 
     reverse = links.apply(
         return_directed,

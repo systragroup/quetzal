@@ -124,6 +124,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 n_neighbors=n_ntlegs,
                 coordinates_unit=self.coordinates_unit
             )
+            ntlegs['walk_time'] = ntlegs['time']
             self.zone_to_transit = ntlegs.loc[ntlegs['distance'] < length].copy()
 
         if zone_to_road:
@@ -138,6 +139,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 n_neighbors=n_ntlegs,
                 coordinates_unit=self.coordinates_unit
             )
+            ntlegs['walk_time'] = ntlegs['time']
             self.zone_to_road = ntlegs.loc[ntlegs['distance'] < length].copy()
 
             ntlegs = engine.ntlegs_from_centroids_and_nodes(
@@ -149,8 +151,49 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 n_neighbors=n_ntlegs,
                 coordinates_unit=self.coordinates_unit
             )
+            ntlegs['walk_time'] = ntlegs['time']
 
             self.road_to_transit = ntlegs.loc[ntlegs['distance'] < length].copy()
+
+    def preparation_drop_redundant_zone_to_transit(self):
+        self.zone_to_transit.sort_values('time', inplace=True)
+        trips = self.links.groupby('a')['trip_id'].agg(set)
+        df = self.zone_to_transit
+        
+        keep = []
+        # access
+        zones = set(df.loc[df['direction'] == 'access']['a'])
+        for zone in tqdm(set(zones)):
+            ztt = self.zone_to_transit.loc[self.zone_to_transit['a'] == zone]
+            if len(ztt):
+                ztt = ztt[['b']].reset_index()
+                ztt['trips'] = [trips.get(n, set()) for n in ztt['b']]
+                n = 1
+                t = set()
+                while len(ztt) > 0:
+                    ztt['trips'] = [trips - t for trips in ztt['trips']]
+                    ztt['n_trips'] = [len(trips) for trips in ztt['trips']]
+                    index, t, n = ztt.iloc[0][['index', 'trips', 'n_trips']].values
+                    ztt = ztt.loc[ztt['n_trips'] > 0]
+                    keep.append(index)
+                    
+        # egress      
+        zones = set(df.loc[df['direction'] != 'access']['b'])
+        for zone in tqdm(set(zones)):
+            ztt = self.zone_to_transit.loc[self.zone_to_transit['b'] == zone]
+            if len(ztt):
+                ztt = ztt[['a']].reset_index()
+                ztt['trips'] = [trips.get(n, set()) for n in ztt['a']]
+                n = 1
+                t = set()
+                while n > 0:
+                    ztt['trips'] = [ trips - t for trips in ztt['trips']]
+                    ztt['n_trips'] = [len(trips) for trips in ztt['trips']]
+                    ztt.sort_values('n_trips', ascending=False, inplace=True)
+                    index, t, n = ztt.iloc[0][['index', 'trips', 'n_trips']].values
+                    ztt = ztt.loc[ztt['n_trips'] > 0]
+                    keep.append(index)
+        self.zone_to_transit = self.zone_to_transit.loc[list(set(keep))]
             
 
     @track_args
@@ -249,7 +292,9 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         segments=[],
         time=-1,
         price=-1,
-        transfers=-1
+        transfers=-1,
+        time_shift=None, # for time expanded model
+        route_types=None
     ):
         """
         * requires: 
@@ -269,14 +314,20 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         #TODO : move to preparation
         
         # utility values
-        self.utility_values = pd.DataFrame(
-            {'root': pd.Series( {'time':time,'price':price,'ntransfers':transfers,'mode_utility':1})}
-        )
+        if time_shift is None:
+            self.utility_values = pd.DataFrame(
+                {'root': pd.Series( {'time': time, 'price': price, 'ntransfers': transfers, 'mode_utility': 1})}
+            )
+        else:
+            self.utility_values = pd.DataFrame(
+                {'root': pd.Series( {'time': time, 'price': price, 'ntransfers': transfers, 'mode_utility': 1, 'time_shift': time_shift})}
+            )
         self.utility_values.index.name = 'value'
         self.utility_values.columns.name = 'segment'
 
-
-        route_types = set(self.links['route_type'].unique()).union({'car', 'walk', 'root'})
+        if route_types is None:
+            link_rt = set(self.links['route_type'].unique())
+            route_types = link_rt.union({'car', 'walk', 'root'})
 
         # mode_utility
         self.mode_utility = pd.DataFrame(
@@ -301,7 +352,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         # logit_scales
         self.logit_scales = self.mode_nests.copy()
         self.logit_scales['root'] = pt_path
-        self.logit_scales.loc[['car', 'walk'], 'root'] = 0.01
+        self.logit_scales.loc[['car', 'walk'], 'root'] = 0
         self.logit_scales.loc[['pt'], 'root'] = pt_mode
         self.logit_scales.loc[['root'], 'root'] = mode
 
@@ -310,7 +361,10 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 df[segment] = df['root']
 
     @track_args
-    def preparation_clusterize_zones(self, max_zones=500, cluster_column=None, is_od_stack=False):
+    def preparation_clusterize_zones(
+        self, max_zones=500, cluster_column=None,
+        is_od_stack=False, **kwargs
+        ):
         """
         clusterize zones
             * requires: zones, volumes
@@ -327,14 +381,16 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 self.micro_volumes,
                 self.micro_od_stack,
                 max_zones,
-                cluster_column
+                cluster_column,
+                **kwargs
             )
         else:
             self.zones, self.volumes, self.cluster_series = renumber.renumber(
                 self.micro_zones,
                 self.micro_volumes,
                 max_zones,
-                cluster_column
+                cluster_column,
+                **kwargs
             )
             
     @track_args

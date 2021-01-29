@@ -1,7 +1,7 @@
-import json
+# -*- coding: utf-8 -*-
+# pylint: disable=no-member
+
 import pandas as pd
-import numpy as np
-from pathlib import Path
 from collections import OrderedDict
 from copy import deepcopy
 import gtfs_kit as gk
@@ -11,13 +11,14 @@ from geojson import dump
 from tqdm import tqdm
 
 # See documentation of this library here: https://mrcagney.github.io/gtfs_kit_docs/index.html#document-index
-# This file overwrites / customizes some methods of the library
+# This file overwrites / customizes some methods of the library
 
-class Feed(gk.feed.Feed):  # Overwrite Feed class 
+
+class Feed(gk.feed.Feed):  # Overwrite Feed class
 
     from .filtering import (
         restrict_to_services, restrict_to_timerange, restrict,
-        restrict_to_trips, restrict_to_dates
+        restrict_to_trips, restrict_to_dates, restrict_to_area
         )
 
     def __init__(self, dist_units: str, path=None):
@@ -30,7 +31,7 @@ class Feed(gk.feed.Feed):  # Overwrite Feed class
 
     def describe(self, sample_date=None):
         return describe(self, sample_date)
-    
+
     def get_trips(self, date=None, time=None):
         return get_trips(self, date=date, time=time)
 
@@ -56,7 +57,7 @@ class Feed(gk.feed.Feed):  # Overwrite Feed class
             return embed_map(gk.map_routes(self, *args, **kwargs))
         else:
             return gk.map_routes(self, *args, **kwargs)
-    
+
     def write_geojson(self, folder):
         to_export = {
             'routes_to_geojson': 'routes',
@@ -68,18 +69,51 @@ class Feed(gk.feed.Feed):  # Overwrite Feed class
             with open(folder + name + '.geojson', 'w') as f:
                 dump(gj, f)
 
+    def build_stops_timetable(self, stop_ids, dates):
+        return build_stops_timetable(self, stop_ids, dates)
+
+    def drop_unused(self):
+        # drop stops without stop_times
+        stop_set = list(self.stop_times.stop_id.unique())
+        stop_set += list(self.stops.loc[self.stops.stop_id.isin(stop_set), 'parent_station'].values)
+        self.stops = self.stops.loc[self.stops.stop_id.isin(stop_set)]
+
+        # drops trips without stop_times
+        trip_set = list(self.stop_times.trip_id.unique())
+        self.trips = self.trips.loc[self.trips.trip_id.isin(trip_set)]
+
+        # drops routes without trips
+        route_set = list(self.trips.route_id.unique())
+        self.routes = self.routes.set_index('route_id').loc[route_set].reset_index()
+
+        # drops shapes without trips
+        if self.shapes is not None:
+            shape_set = list(self.trips.shape_id.unique())
+            self.shapes = self.shapes.loc[self.shapes.shape_id.isin(shape_set)]
+
+        # drop calendar without trips
+        service_set = list(self.trips.service_id.unique())
+        if self.calendar is not None:
+            self.calendar = self.calendar.loc[self.calendar.service_id.isin(service_set)]
+        if self.calendar_dates is not None:
+            self.calendar_dates = self.calendar_dates.loc[self.calendar_dates.service_id.isin(service_set)]
+
+        # drops agency without routes
+        agency_set = list(self.routes.agency_id)
+        self.agency = self.agency.loc[self.agency.agency_id.isin(agency_set)]
+
 
 def read_gtfs(*args, **kwargs) -> dict:
     try:
         temp = gk.feed.read_gtfs(*args, **kwargs)
-    except: 
+    except:
         temp = gk.feed.read_feed(*args, **kwargs)
     init_temp = {key: value for key, value in temp.__dict__.items() if key in gk.constants.FEED_ATTRS_1}
     init_temp['calendar'] = temp.calendar
     init_temp['calendar_dates'] = temp.calendar_dates
     init_temp['trips'] = temp.trips
     init_temp['dist_units'] = temp.dist_units
-    return init_temp  
+    return init_temp
 
 
 def get_trips(feed: "Feed", date=None, time=None):
@@ -91,7 +125,7 @@ def get_trips(feed: "Feed", date=None, time=None):
     then further subset the result to trips in service at that time or within that time.
     """
 
-    #TODO: filtering on time
+    # TODO: filtering on time
     # DATE FILTERING
     filtered = feed.trips.copy()
     if date is not None:
@@ -99,30 +133,30 @@ def get_trips(feed: "Feed", date=None, time=None):
             weekday_str = gk.helpers.weekday_to_str(gk.helpers.datestr_to_date(date).weekday())
             services = set(
                 feed.calendar[
-                    (feed.calendar['start_date'] <= date)&
-                    (feed.calendar['end_date'] >= date)&
-                    (feed.calendar[weekday_str]==1)
+                    (feed.calendar['start_date'] <= date) &
+                    (feed.calendar['end_date'] >= date) &
+                    (feed.calendar[weekday_str] == 1)
                 ]['service_id'].values
             )
         else:
-            services = set() 
+            services = set()
         if feed.calendar_dates is not None:
             to_add = set(
                 feed.calendar_dates[
-                    (feed.calendar_dates['date']==date)&
-                    (feed.calendar_dates['exception_type']==1)
+                    (feed.calendar_dates['date'] == date) &
+                    (feed.calendar_dates['exception_type'] == 1)
                 ]['service_id'].values
             )
             to_delete = set(
                 feed.calendar_dates[
-                    (feed.calendar_dates['date']==date)&
-                    (feed.calendar_dates['exception_type']==2)
+                    (feed.calendar_dates['date'] == date) &
+                    (feed.calendar_dates['exception_type'] == 2)
                 ]['service_id'].values
             )
             services = services.union(to_add).difference(to_delete)
 
         filtered = feed.trips[feed.trips['service_id'].isin(services)]
-    
+
     return filtered
 
 
@@ -158,7 +192,7 @@ def describe(feed: "Feed", sample_date: str = None) -> pd.DataFrame:
         d["num_frequencies"] = feed.frequencies.shape[0]
     else:
         d["num_frequencies"] = 0
-    
+
     if sample_date is not None:
         d["sample_date"] = sample_date
         d["num_routes_active_on_sample_date"] = feed.get_routes(sample_date).shape[
@@ -167,7 +201,7 @@ def describe(feed: "Feed", sample_date: str = None) -> pd.DataFrame:
         trips = feed.get_trips(sample_date)
         d["num_trips_active_on_sample_date"] = trips.shape[0]
         d["num_stops_active_on_sample_date"] = feed.get_stops(sample_date).shape[0]
-    
+
     f = pd.DataFrame(list(d.items()), columns=["indicator", "value"])
     return f
 
@@ -178,13 +212,13 @@ def get_active_services(feed: "Feed") -> list:
         'friday', 'saturday', 'sunday'
     ]
     if feed.calendar is not None:
-        services = set(feed.calendar[feed.calendar[cols].T.sum()>0]['service_id'])
+        services = set(feed.calendar[feed.calendar[cols].T.sum() > 0]['service_id'])
     else:
         services = set()
     if feed.calendar_dates is not None:
         to_add = set(
             feed.calendar_dates[
-                feed.calendar_dates['exception_type']==1
+                feed.calendar_dates['exception_type'] == 1
             ]['service_id'].values
         )
         services = services.union(to_add)
@@ -199,6 +233,7 @@ STOP_STYLE = {
     "fillOpacity": 0.75,
 }
 
+
 def embed_map(m):
     """
     Workaround taken from https://github.com/python-visualization/folium/issues/812
@@ -207,23 +242,24 @@ def embed_map(m):
     from IPython.display import IFrame
     import os
     i = 1
-    filename='index_1.html'
+    filename = 'index_1.html'
     while os.path.exists(filename):
         i += 1
         filename = 'index_{}.html'.format(i)
     m.save(filename)
     return IFrame(filename, width='100%', height='750px')
 
+
 def map_stops(feed, stop_ids, stop_style=STOP_STYLE):
     """
     Return a Folium map showing the given stops of this Feed.
-    If some of the given stop IDs are not found in the feed, then raise a ValueError.    
+    If some of the given stop IDs are not found in the feed, then raise a ValueError.
     """
     # Initialize map
     my_map = fl.Map(tiles="cartodbpositron")
 
     # Create a feature group for the stops and add it to the map
-    group = fl.FeatureGroup(name="Stops")
+    # group = fl.FeatureGroup(name="Stops")
 
     # Add stops to feature group
     stops = feed.stops.loc[lambda x: x.stop_id.isin(stop_ids)].fillna("n/a")
@@ -258,3 +294,35 @@ def map_stops(feed, stop_ids, stop_style=STOP_STYLE):
     my_map.fit_bounds(bounds, padding=[1, 1])
 
     return my_map
+
+
+def build_stops_timetable(feed, stop_ids, dates):
+    """
+    Return a DataFrame containing the timetable for the given stop IDs
+    and dates (YYYYMMDD date strings)
+
+    Return a DataFrame whose columns are all those in ``feed.trips`` plus those in
+    ``feed.stop_times`` plus ``'date'``, and the stop IDs are restricted to the given
+    stop IDs.
+    The result is sorted by date then departure time.
+    """
+    dates = feed.subset_dates(dates)
+    if not dates:
+        return pd.DataFrame()
+
+    t = pd.merge(feed.trips, feed.stop_times)
+    t = t[t["stop_id"].isin(stop_ids)].copy()
+    a = feed.compute_trip_activity(dates)
+
+    frames = []
+    for date in dates:
+        # Slice to stops active on date
+        ids = a.loc[a[date] == 1, "trip_id"]
+        f = t[t["trip_id"].isin(ids)].copy()
+        f["date"] = date
+        frames.append(f)
+
+    f = pd.concat(frames)
+    return f.sort_values(["date", "departure_time"])
+
+

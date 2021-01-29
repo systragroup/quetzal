@@ -83,13 +83,7 @@ def tp_summary(links, shared):
     lines['color'] = lines['line_color']
     return lines
 
-def analysis_path(path, vertex_sets):
-
-    def vertex_type(vertex):
-        for vtype, vset in vertex_sets.items():
-            if vertex in vset:
-                return vtype
-        return 'unknown'
+def analysis_path(path, vertex_type):
 
     boarding_links = []
     alighting_links = []
@@ -106,9 +100,9 @@ def analysis_path(path, vertex_sets):
         node = path[i]
         to_node = path[i+1]
 
-        from_vtype = vertex_type(from_node)
-        vtype = vertex_type(node)
-        to_vtype = vertex_type(to_node)
+        from_vtype = vertex_type.get(from_node)
+        vtype = vertex_type.get(node)
+        to_vtype = vertex_type.get(to_node)
 
         if vtype == 'link':
             link_path.append(node)
@@ -158,20 +152,25 @@ def path_analysis_od_matrix(
         'link': set(links.index),
         'centroid': set(centroids.index)
     }
+    vertex_type = {}
+    for vtype, vset in vertex_sets.items():
+        for v in vset:
+            vertex_type[v] = vtype
     link_dict = links.to_dict()
 
     analysis_path_list = [
-        analysis_path(p, vertex_sets) 
+        analysis_path(p, vertex_type) 
         for p in tqdm(list(od_matrix['path']), desc='path_analysis')
     ]
 
-    analysis_path_dataframe =  pd.DataFrame(
-        analysis_path_list, 
+    analysis_path_dataframe = pd.DataFrame(
+        analysis_path_list,
         index=od_matrix.index
     )
 
     df = pd.concat([od_matrix, analysis_path_dataframe], axis=1)
     df['all_walk'] = df['link_path'].apply(lambda p: len(p) == 0)
+    df['ntransfers'] = df['boarding_links'].apply(lambda x: max(len(x)-1, 0))
 
     for key, extensive_columns in agg.items():
         for column in extensive_columns:

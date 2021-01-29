@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import geopandas as gpd
 from syspy.syspy_utils.data_visualization import trim_axs
 from syspy.syspy_utils import data_visualization
+from quetzal.io import export_utils
+import matplotlib.pyplot as plt
 
 styles = {
     'zones': {'color': 'grey', 'alpha': 0},
@@ -20,8 +22,11 @@ def plot_one_path(path, styles=styles, ax=None):
     df = styles.loc[[k for k in path if k in styles.index]]
     geometries = list(df['geometry'])
     coord_list = list(geometries[0].centroid.coords) # origin
-    for g in list(geometries[1:-1]): 
-        coord_list += list(g.coords)
+    for g in list(geometries[1:-1]):
+        try:
+            coord_list += list(g.coords)
+        except NotImplementedError: # In case a zone is in the path
+            coord_list += list(g.centroid.coords)
     coord_list += list(geometries[-1].centroid.coords) # destination
     full_path = geometry.LineString(coord_list)
     
@@ -90,19 +95,20 @@ class PlotModel(summarymodel.SummaryModel):
         return ax
 
     def plot_separated_paths(
-        self, 
-        origin, 
-        destination, 
-        ax=None,
-        rows=1,
-        title=None,
-        basemap_url=None,
-        zoom=9,
-        resize=False,
-        *args,
-        **kwargs,
+            self, 
+            origin, 
+            destination, 
+            ax=None,
+            rows=1,
+            title=None,
+            basemap_url=None,
+            zoom=9,
+            resize=False,
+            *args,
+            **kwargs,
     ):
         styles = self.get_geometries()
+        styles = styles.groupby(styles.index).first()
         paths = self.pt_los.set_index(['origin', 'destination']).loc[origin, destination]
         if paths.ndim == 1: # their is only one path 
             paths = pd.DataFrame(data=paths).T 
@@ -124,7 +130,9 @@ class PlotModel(summarymodel.SummaryModel):
         for p, t in tqdm(list(paths[['path', 'title']].values.tolist())):
             ax = self.od_basemap(origin,  destination, ax=axes[i])
             ax = plot_one_path(p, styles, ax=ax)
-            gpd.GeoDataFrame(styles.loc[g_id_set]).plot(alpha=0, ax=ax)
+            gpd.GeoDataFrame(
+                styles.reindex(g_id_set).dropna(subset=['color'])
+            ).plot(alpha=0, ax=ax)
             if len(t):
                 ax.set_title(t)
             ax.set_xticks([])
@@ -143,5 +151,91 @@ class PlotModel(summarymodel.SummaryModel):
             fig.set_size_inches(bbox.width*columns, rows*(bbox.height))
             fig.constrained_layout = True
 
-            
         return fig, axes
+
+
+    def plot_load_ba_graph(
+        self, route, by='route_id', stop_name_column=None, graph_direction='both',
+        max_value=None, yticks=None, reverse_direction=False,
+        title=''
+    ):
+        """
+        Plot line graph with load, boardings and alightings
+
+        :param route: name of line to plot. Must be a value of the param 'by' column
+        :param by (route_id): name of column to search route from:
+        :param stop_name_column (None): column of nodes dataframe containing stop names
+        :param graph_direction: 
+            *both (default): try to plot the two directions in the same graphe
+            *single: one graph per direction
+        :param reverse_direction (False): plot directions in reversed order
+
+        Returns fig, axes
+        """
+
+        df = self.loaded_links.loc[
+            self.loaded_links[by]==route,
+            ['a', 'b', 'direction_id', 'link_sequence', 'boardings', 'alightings', 'load']
+        ]
+
+        directions = df['direction_id'].unique()
+        if reverse_direction:
+            directions = directions[::-1]
+
+        if max_value is None:
+            max_value = df['load'].max()
+
+        if stop_name_column is not None:
+            df = df.merge(self.nodes[[stop_name_column]], left_on='a', right_index=True)
+            df = df.merge(self.nodes[[stop_name_column]], left_on='b', right_index=True, suffixes=('_a', '_b'))
+            df = df.drop(['a', 'b'], 1).sort_values(['direction_id', 'link_sequence']).rename(
+                columns={
+                    'stop_name_a': 'a',
+                    'stop_name_b': 'b'
+                }
+            )
+        if graph_direction == 'both':
+            if not _both_directions_graph_possible(df):
+                print('Cannot plot bidirectional graph')
+                graph_direction = 'single'
+            else:
+                both = export_utils.directional_loads_to_station_bidirection_load(
+                    df.loc[df['direction_id']==directions[0]],
+                    df.loc[df['direction_id']==directions[1]]
+                )
+                fig, axes = export_utils.create_two_directions_load_b_a_graph(both)
+                fig.suptitle(title)
+                plt.setp(axes, ylim=[-max_value, max_value])
+                if yticks is not None:
+                    yticks = sorted(set(yticks).union(-yticks))
+                    plt.setp(axes, yticks=yticks, yticklabels=map(abs,yticks))
+
+        if graph_direction == 'single':
+            fig, ax_array = plt.subplots(2,1)
+            axes = fig.get_axes()
+            export_utils.plot_load_b_a_for_loadedlinks(df.loc[df['direction_id']==directions[0]], ax=axes[0])
+            axes[0].set_title('direction {}'.format(directions[0]))
+            export_utils.plot_load_b_a_for_loadedlinks(df.loc[df['direction_id']==directions[0]], ax=axes[1])
+            axes[1].set_title('direction {}'.format(directions[1]))
+            fig.suptitle(title)
+            plt.setp(axes, ylim=[0,max_value])
+            if yticks is not None:
+                plt.setp(axes, yticks=yticks)
+
+        return fig, axes
+
+
+def _both_directions_graph_possible(df):
+    try:
+        directions = df['direction_id'].value_counts()
+        assert(len(directions)==2), 'Cannot plot both directions'
+        assert(directions.iloc[0] == directions.iloc[1]), 'Cannot plot both directions'
+        d0 = df[df['direction_id']==directions.keys()[0]][['a','b']].apply(lambda x: tuple(sorted(x)), 1).values
+        d1 = df[df['direction_id']==directions.keys()[1]][['b','a']].apply(lambda x: tuple(sorted(x)), 1).values
+        assert(set(d0)==set(d1)), 'Cannot plot both directions'
+        return True
+    except AssertionError as e:
+        if str(e) == 'Cannot plot both directions':
+            return False
+        else:
+            raise(e)

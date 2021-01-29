@@ -10,16 +10,22 @@ import time
 import json
 import requests
 from random import random
+import warnings
 
 import pandas as pd
 import numpy as np
-from geopy.distance import geodesic as vincenty
+
+try:
+    from geopy.distance import geodesic  # works for geopy version >=2
+except ImportError:
+    warnings.warn('Your geopy version is <2 while the latest available version is >=2', FutureWarning)
+    from geopy.distance import vincenty as geodesic  # works for geopy version <2
 
 from syspy.spatial import spatial
 from tqdm import tqdm
 
 
-wgs84 = pyproj.Proj("+init=EPSG:4326")
+wgs84 = pyproj.Proj("EPSG:4326")
 
 
 def dist_from_row(row, projection=wgs84):
@@ -39,7 +45,7 @@ def dist_from_row(row, projection=wgs84):
     coordinates_destination = (pyproj.transform(projection, wgs84, row['x_destination'], row['y_destination']))
     coordinates_destination = (coordinates_destination[1], coordinates_destination[0])
 
-    return vincenty(coordinates_origin, coordinates_destination).m
+    return geodesic(coordinates_origin, coordinates_destination).m
 
 
 def euclidean(zones, coordinates_unit='degree', projection=wgs84, epsg=False, method='numpy', origins=False, destinations=False,

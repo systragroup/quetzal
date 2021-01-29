@@ -5,6 +5,7 @@ from syspy.assignment import raw as raw_assignment
 from tqdm import tqdm
 import networkx as nx
 import numpy as np
+from quetzal.engine.pathfinder import sparse_los_from_nx_graph
 
 
 def jam_time(links, ref_time='time', flow='load', alpha=0.15, beta=4, capacity=1500):
@@ -40,64 +41,66 @@ def find_phi(links, inf=0, sup=1, tolerance=1e-6):
         sup = m
     return find_phi(links, inf, sup, tolerance)
 
+
 class RoadPathFinder:
-    def  __init__(self, model):
+    def __init__(self, model):
         self.zones = model.zones.copy()
         self.road_links = model.road_links.copy()
         self.zone_to_road = model.zone_to_road.copy()
-        try :
+        try:
             self.volumes = model.volumes.copy()
         except AttributeError:
             pass
-        
 
-    def aon_road_pathfinder(self, time='time', **kwargs):
-        """
-        * requires: zones, road_links, zone_to_road
-        * builds: road_paths
-        """
+    def aon_road_pathfinder(
+        self,
+        time='time',
+        ntleg_penalty=1e9,
+        cutoff=np.inf,
+        access_time='time',
+        **kwargs,
+    ):
         road_links = self.road_links
         road_links['index'] = road_links.index
         indexed = road_links.set_index(['a', 'b']).sort_index()
         ab_indexed_dict = indexed['index'].to_dict()
 
-        def node_path_to_link_path(road_node_list, ab_indexed_dict):
-            tuples = [
-                (road_node_list[i], road_node_list[i+1]) 
-                for i in range(len(road_node_list)-1)
-            ]
-            road_link_list = [ab_indexed_dict[t] for t in tuples]
-            return road_link_list
-
         road_graph = nx.DiGraph()
         road_graph.add_weighted_edges_from(
             self.road_links[['a', 'b', time]].values.tolist()
         )
+        zone_to_road = self.zone_to_road.copy()
+        zone_to_road['time'] = zone_to_road[access_time]
+        zone_to_road = zone_to_road[['a', 'b', 'direction', 'time']]
+        zone_to_road.loc[zone_to_road['direction'] == 'access', 'time'] += ntleg_penalty
         road_graph.add_weighted_edges_from(
-            self.zone_to_road[['a', 'b', 'time']].values.tolist()
+            zone_to_road[['a', 'b', 'time']].values.tolist()
         )
 
-        l = []
-        for origin in tqdm(list(self.zones.index)):
-            lengths, paths = nx.single_source_dijkstra(road_graph, origin)
-            for destination in list(self.zones.index):
-                try:
-                    length = lengths[destination]
-                    path = paths[destination]
-                    node_path = path[1:-1]
-                    link_path = node_path_to_link_path(node_path, ab_indexed_dict)
-                    try:
-                        ntlegs = [(path[0], path[1]), (path[-2], path[-1])]
-                    except IndexError:
-                        ntlegs = []
-                    l.append( [origin, destination, path, node_path, link_path, ntlegs, length])
-                except KeyError:
-                    l.append( [origin, destination, path, node_path, link_path, ntlegs, length])
-                    
-        self.car_los = pd.DataFrame(
-            l, 
-            columns=['origin', 'destination', 'path','node_path', 'link_path', 'ntlegs', 'time']
+        def node_path_to_link_path(road_node_list, ab_indexed_dict):
+            tuples = list(zip(road_node_list[:-1], road_node_list[1:]))
+            road_link_list = [ab_indexed_dict[t] for t in tuples]
+            return road_link_list
+
+        def path_to_ntlegs(path):
+            try:
+                return [(path[0], path[1]), (path[-2], path[-1])]
+            except IndexError:
+                return []
+
+        los = sparse_los_from_nx_graph(
+            road_graph,
+            pole_set=set(self.zones.index), 
+            cutoff=cutoff+ntleg_penalty,
+            **kwargs
         )
+        los['node_path'] = los['path'].apply(lambda p: p[1:-1])
+        los['link_path'] = los['node_path'].apply(
+            lambda p: node_path_to_link_path(p, ab_indexed_dict)
+        )
+        los['ntlegs'] = los['path'].apply(path_to_ntlegs)
+        los.loc[los['origin'] != los['destination'], 'gtime'] -= ntleg_penalty
+        self.car_los = los.rename(columns={'gtime': 'time'})
 
     def frank_wolfe_step(
         self, 
@@ -216,7 +219,7 @@ class RoadPathFinder:
     ):
         if all_or_nothing:
             self.aon_road_pathfinder(*args, **kwargs)
-            return 
+            return
             
         if reset_jam_time:
             self.road_links['flow'] = 0
