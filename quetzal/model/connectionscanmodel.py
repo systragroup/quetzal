@@ -43,6 +43,25 @@ def read_zippedpickles(folder, *args, **kwargs):
     return m
 
 
+def get_alighting_links(link_path, link_trip_dict):
+    try:
+        if len(link_path) == 0:
+            return []
+    except TypeError:  # object of type 'float' has no len()
+        return []
+    alighting_links = []
+    trip = link_trip_dict[link_path[0]]
+    former_link = link_path[0]
+    for link in link_path[0:]:
+        link_trip = link_trip_dict[link]
+        if link_trip != trip:
+            trip = link_trip
+            alighting_links.append(former_link)
+        former_link = link
+    alighting_links.append(link)
+    return alighting_links
+
+
 class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
 
     def __init__(self, *args, **kwargs):
@@ -146,7 +165,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             workers=workers
         )
         
-    def analysis_paths(self, workers=1):
+    def analysis_paths(self, workers=1, alighting_links=True, alightings=True):
         pseudo_connections = self.pseudo_connections
         clean = pseudo_connections[['csa_index', 'trip_id']].dropna()
         clean.sort_values(by='csa_index', inplace=True)
@@ -201,6 +220,16 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         df['ntransfers'] = np.clip(df['ntransfers'], 0, a_max=None)
         linka = self.links['a'].to_dict()
         df['boardings'] = [[linka[b] for b in bl] for bl in df['boarding_links']]
+
+        if alighting_links or alightings:
+            link_trip_dict = self.links['trip_id'].to_dict()
+
+            df['alighting_links'] = df['link_path'].apply(
+                get_alighting_links, link_trip_dict=link_trip_dict
+            )
+        if alightings:
+            linkb = self.links['b'].to_dict()
+            df['alightings'] = [[linkb[a] for a in al] for al in df['alighting_links']]
 
         self.pt_los = df
 
