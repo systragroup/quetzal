@@ -91,7 +91,8 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
 
     def preparation_build_connection_dataframe(
         self, min_transfer_time=0, 
-        time_interval=None, cutoff=np.inf
+        time_interval=None, cutoff=np.inf,
+        reindex=True,
         ):
         time_interval = time_interval if time_interval is not None else self.time_interval
 
@@ -126,7 +127,12 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
 
         # connections of each trip are consecutive
         pseudo_connections.sort_values(by=['trip_id', 'link_sequence'], inplace=True)
-        pseudo_connections['csa_index'] = range(len(pseudo_connections)) # use int as index
+        if reindex:
+            pseudo_connections['csa_index'] = range(len(pseudo_connections)) # use int as index
+        else: 
+            pseudo_connections['csa_index'] = pseudo_connections['csa_index'].fillna(
+                pseudo_connections['model_index']
+            )
         pseudo_connections.sort_values('departure_time', ascending=False, inplace=True)
         
         self.pseudo_connections = pseudo_connections
@@ -140,13 +146,17 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         targets=None,
         od_set=None,
         workers=1,
+        reindex=True
     ):
 
         time_interval = time_interval if time_interval is not None else self.time_interval
 
         if build_connections:
             self.preparation_build_connection_dataframe(
-                min_transfer_time=min_transfer_time
+                min_transfer_time=min_transfer_time, 
+                time_interval=time_interval,
+                cutoff=cutoff,
+                reindex=reindex,
             )
         seta = set(self.time_expended_zone_to_transit['a'])
         setb = set(self.time_expended_zone_to_transit['b'])

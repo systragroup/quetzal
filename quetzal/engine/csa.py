@@ -73,7 +73,7 @@ def time_footpaths(links, footpaths):
     return transfers[columns]
 
 
-def time_zone_to_transit(links, zone_to_transit):
+def time_zone_to_transit(links, zone_to_transit, reindex=False):
     ztt = zone_to_transit
     ztt['model_index'] = ztt.index
     # access
@@ -105,11 +105,16 @@ def time_zone_to_transit(links, zone_to_transit):
     df['direction'] = 'egress'
     egress = df.copy()
     df = pd.concat([access, egress])
+
     df['str'] = range(len(df))
-    df['csa_index'] = 'ztt_' + df['str'].astype(str)
+    if reindex:
+        df['csa_index'] = 'ztt_' + df['str'].astype(str)
+    else:
+        df['csa_index'] = 'ztt_' + df['model_index'] + '_' + df['str'].astype(str)
+
     df['trip_id'] = 'ztt_trip_' + df['str'].astype(str)
     return df[['a', 'b', 'departure_time', 'arrival_time', 'trip_id',
-     'csa_index','model_index' ,'direction']]
+        'csa_index', 'model_index', 'direction']]
 
 
 def csa_profile(
