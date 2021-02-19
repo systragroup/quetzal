@@ -175,7 +175,11 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             workers=workers
         )
         
-    def analysis_paths(self, workers=1, alighting_links=True, alightings=True):
+    def analysis_paths(
+        self, workers=1, 
+        alighting_links=True, alightings=True, 
+        keep_connection_path=False
+    ):
         pseudo_connections = self.pseudo_connections
         clean = pseudo_connections[['csa_index', 'trip_id']].dropna()
         clean.sort_values(by='csa_index', inplace=True)
@@ -218,13 +222,15 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             [d[i] for i in p if i in d]
             for p in df['connection_path']
         ]
-        del df['connection_path']
+        if not keep_connection_path:
+            del df['connection_path']
 
         df['boarding_links'] = [
             [d[i] for i in p if i in d] 
             for p in df['first_connections']
         ]
-        del df['first_connections']
+        if not keep_connection_path:
+            del df['first_connections']
 
         df['ntransfers'] = df['boarding_links'].apply(lambda b: len(b)-1)
         df['ntransfers'] = np.clip(df['ntransfers'], 0, a_max=None)
