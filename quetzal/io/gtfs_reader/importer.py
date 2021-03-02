@@ -125,6 +125,7 @@ class GtfsImporter(Feed):
         self.nodes = gk.stops.geometrize_stops_0(self.stops)
         if use_utm:
             epsg = get_epsg(self.stops.iloc[1]['stop_lat'], self.stops.iloc[1]['stop_lon'])
+            print('export geometries in epsg:', epsg)
             self.nodes = self.nodes.to_crs(epsg=epsg)
 
         self.links['geometry'] = linestring_geometry(
@@ -134,3 +135,4 @@ class GtfsImporter(Feed):
             'b'
         )
         self.links = gpd.GeoDataFrame(self.links)
+        self.links.crs = self.nodes.crs
