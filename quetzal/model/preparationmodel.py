@@ -415,7 +415,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
 
     def preparation_map_tracks(
         self, 
-        agg={'gps_speed': lambda s: s.mean() * 3.6}, 
+        agg={'speed': lambda s: s.mean() * 3.6}, 
         buffer=50, 
         smoothing_span=100, 
         *args, **kwargs
@@ -441,7 +441,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         indexed = self.road_links.reset_index().set_index(['a', 'b'])['index'].to_dict()
         concatenated = pd.concat(to_concat)
         concatenated['road_link'] = concatenated.apply(lambda r: indexed[(r['a'], r['b'])], axis=1) 
-        aggregated = concatenated.groupby(['road_link'])['speed'].agg(agg)
+        aggregated = concatenated.groupby(['road_link']).agg(agg)
         
         for c in aggregated.columns:
             self.road_links[c] = aggregated[c]

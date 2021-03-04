@@ -45,6 +45,7 @@ def get_path(points, road_links, road_nodes, buffer=50, penalty_factor=2, n_neig
 def get_times(points, road_links, road_nodes, smoothing_span=None, *args, **kwargs):
     
     path = get_path(points, road_links, road_nodes, *args, **kwargs)
+    path = [i for i in path if i in road_nodes.index]
     checkpoints = road_nodes.loc[path].dropna(subset=['geometry'])
     linestring = geometry.LineString(list(checkpoints['geometry']))
     # interpolate
