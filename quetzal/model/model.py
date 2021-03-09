@@ -17,7 +17,8 @@ import uuid
 import ntpath
 from quetzal.io import hdf_io
 
-from syspy.syspy_utils.data_visualization import add_basemap
+from syspy.syspy_utils.data_visualization import add_basemap, add_north, add_raster
+from syspy.syspy_utils.data_visualization import add_north, add_scalebar
 from concurrent.futures import ProcessPoolExecutor
 from quetzal.model.integritymodel import IntegrityModel
 
@@ -232,6 +233,10 @@ class Model(IntegrityModel):
         basemap_url=None, zoom=12,
         title=None, fontsize=24,
         fname=None,
+        basemap_raster=None,
+        keep_ax_limits=True,
+        north_arrow=None,
+        scalebar=None,
         *args, **kwargs
     ):
         gdf = gpd.GeoDataFrame(self.__dict__[attribute])
@@ -249,6 +254,12 @@ class Model(IntegrityModel):
 
         if basemap_url is not None:
             add_basemap(plot, zoom=zoom, url=basemap_url)
+        if basemap_raster is not None:
+            add_raster(plot, basemap_raster, keep_ax_limits=keep_ax_limits)
+        if north_arrow is not None:
+            add_north(plot)
+        if scalebar is not None:
+            add_scalebar(plot)
         if fname:
             fig = plot.get_figure()
             fig.savefig(fname, bbox_inches='tight')

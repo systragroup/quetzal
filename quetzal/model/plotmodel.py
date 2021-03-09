@@ -102,6 +102,9 @@ class PlotModel(summarymodel.SummaryModel):
             rows=1,
             title=None,
             basemap_url=None,
+            basemap_raster=None,
+            north_arrow=None,
+            scalebar=None,
             zoom=9,
             resize=False,
             *args,
@@ -143,6 +146,19 @@ class PlotModel(summarymodel.SummaryModel):
             assert self.epsg == 3857
             for ax in axes:
                 data_visualization.add_basemap(ax, url=basemap_url, zoom=zoom)
+
+
+        if north_arrow is not None:
+            for ax in axes:
+                data_visualization.add_north(ax)
+        if scalebar is not None:
+            for ax in axes:
+                data_visualization.add_scalebar(ax)
+                
+        if basemap_raster is not None:
+            for ax in axes:
+                data_visualization.add_raster(ax, raster=basemap_raster)
+
 
         if resize:
 

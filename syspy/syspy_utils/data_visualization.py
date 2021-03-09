@@ -25,7 +25,7 @@ example:
 __author__ = 'qchasserieau'
 
 import six
-
+import rasterio
 import pandas as pd
 import numpy as np
 from sklearn import linear_model
@@ -371,6 +371,36 @@ def render_mpl_table(
 spectral = list(reversed(['#9e0142','#d53e4f','#f46d43','#fdae61','#fee08b','#e6f598','#abdda4','#66c2a5','#3288bd','#5e4fa2']))
 
 from shapely import geometry
+
+def add_raster(ax, raster, keep_ax_limits=True, adjust='linear', cmap='gray'):
+    xlim, ylim = ax.get_xlim(), ax.get_ylim()
+    rasterio.plot.show(raster, ax=ax, adjust=adjust, cmap=cmap, with_bounds=True)
+    if keep_ax_limits:
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+        
+def add_north(ax, fontsize=14):
+    x, y, arrow_length = 0.99, 0.99, 0.05
+    ax.annotate(
+        'N', xy=(x, y), xytext=(x, y-arrow_length),
+        arrowprops=dict(facecolor='black', width=2, headwidth=7),
+        ha='center', va='top', fontsize=fontsize, xycoords=ax.transAxes)
+
+def add_scalebar(ax, fontsize=14):
+    from matplotlib_scalebar.scalebar import ScaleBar
+    ax.add_artist(
+        ScaleBar(
+            1, location='lower left', pad=1, frameon=False, 
+            scale_loc='top', font_properties={'size':fontsize}, 
+            length_fraction=0.1,
+            height_fraction=0.01
+        )
+    )
+
+def add_north_and_scalebar(ax, fontsize=14):
+    add_north(ax, fontsize)
+    add_scalebar(ax, fontsize)
+
 def bandwidth(
     gdf, value_column, max_value=None, power=1, legend=True, legend_values=None, legend_length=1/3,
     label_column=None,  max_linewidth_meters=100, variable_width=True, line_offset=True, cmap=spectral,
