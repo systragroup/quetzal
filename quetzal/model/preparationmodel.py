@@ -392,32 +392,40 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 cluster_column,
                 **kwargs
             )
-            
+
     @track_args
-    def preparation_clusterize_nodes(self, n_clusters, **kwargs):
+    def preparation_clusterize_nodes(self, n_clusters=None, adaptive_clustering=False, **kwargs):
         """
         clusterize nodes
             * requires: nodes
             * builds: links, nodes
         """
         self.disaggregated_nodes = self.nodes.copy()
-        if len(self.nodes) <= n_clusters:
-            return
-        
-        self.links, self.nodes,  self.node_clusters, self.node_parenthood = connectivity.node_clustering(
-        self.links, self.nodes, n_clusters, **kwargs)
+        if not adaptive_clustering:
+            assert n_clusters is not None, 'n_clusters must be defined if adaptive_clustering is False'
+            if len(self.nodes) <= n_clusters:
+                return
+
+        if adaptive_clustering:
+            self.nodes = connectivity.adaptive_clustering(self.nodes, self.zones, **kwargs)
+            self.links, self.nodes,  self.node_clusters, self.node_parenthood = connectivity.node_clustering(
+                self.links, self.nodes, n_clusters, group_id='adaptive_cluster_id'
+            )
+        else:
+            self.links, self.nodes,  self.node_clusters, self.node_parenthood = connectivity.node_clustering(
+                self.links, self.nodes, n_clusters, **kwargs
+            )
 
         self.node_parenthood = self.node_parenthood[['cluster', 'geometry']]
         self.node_clusters['geometry'] = self.node_clusters[
             'geometry'
         ].apply(lambda g: g.buffer(1e-9))
 
-
     def preparation_map_tracks(
-        self, 
-        agg={'gps_speed': lambda s: s.mean() * 3.6}, 
-        buffer=50, 
-        smoothing_span=100, 
+        self,
+        agg={'gps_speed': lambda s: s.mean() * 3.6},
+        buffer=50,
+        smoothing_span=100,
         *args, **kwargs
     ):
         # agg = ['mean', 'min', 'max', 'std', list] for extensive description of speeds
