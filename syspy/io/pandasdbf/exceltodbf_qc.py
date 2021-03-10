@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
-
-from syspy.io.pandasdbf import dbf_qc as dbf
-import xlrd
-import tkinter as Tkinter
 import os.path
+import tkinter as Tkinter
+
+import xlrd
+from syspy.io.pandasdbf import dbf_qc as dbf
 
 _encoding = 'cp850'
 
@@ -28,7 +27,7 @@ class exceltodbf:
         self.encoding = encoding
         self.convert(outfile)
 
-    def convert(self, outfile ,event=None):
+    def convert(self, outfile, event=None):
         if os.path.isfile(outfile):
             os.remove(outfile)
 
@@ -37,8 +36,6 @@ class exceltodbf:
         data = [[convert_value(sheet.cell_value(row, col), self.encoding) for col in range(sheet.ncols)] for row in range(1, sheet.nrows)]
         dbf.dbfwriter(outfile, fieldnames, data)
         self.exit()
-    
+
     def exit(self):
         self.mainWin.destroy()
-
-    

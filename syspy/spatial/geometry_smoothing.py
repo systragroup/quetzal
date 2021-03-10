@@ -1,17 +1,11 @@
-# -*- coding: utf-8 -*-
-
-# -*- coding: utf-8 -*-
-#
-#  Adapted and simplified from https://github.com/GeographicaGS/GeoSmoothing
-
+# Adapted and simplified from https://github.com/GeographicaGS/GeoSmoothing
 
 import numpy as np
-from scipy.interpolate import splprep, splev
+from scipy.interpolate import splev, splprep
 from shapely.geometry import LineString, Polygon
 
 
 class Splines():
-
     def compSplineKnots(self, x, y, s, k, nest=-1):
         """
         Computed with Scipy splprep. Find the B-spline representation of
@@ -22,13 +16,11 @@ class Splines():
         :nest - estimate of number of knots needed (-1 = maximal)
         """
 
-        tck_u, fp, ier, msg = splprep([x,y], s=s, k=k, nest=nest, full_output=1)
+        tck_u, fp, ier, msg = splprep([x, y], s=s, k=k, nest=nest, full_output=1)
 
         if ier > 0:
             print("{}. ier={}".format(msg, ier))
-
         return(tck_u, fp)
-
 
     def compSplineEv(self, x, tck, zoom=10):
         """
@@ -39,15 +31,14 @@ class Splines():
         :tck - A tuple (t,c,k) containing the vector of knots,
              the B-spline coefficients, and the degree of the spline.
         """
-
         n_coords = len(x)
         n_len = n_coords * zoom
         x_ip, y_ip = splev(np.linspace(0, 1, n_len), tck)
 
         return(x_ip, y_ip)
 
-class GeoSmoothing():
 
+class GeoSmoothing():
     def __init__(self, spl_smpar=0, spl_order=2, verbose=True):
         """
         spl_smpar: smoothness parameter
@@ -55,7 +46,7 @@ class GeoSmoothing():
         """
         self.spl_smpar = spl_smpar
         self.spl_order = spl_order
-        self.verbose=verbose
+        self.verbose = verbose
 
     def get_coordinates(self, geom):
         """
@@ -68,7 +59,6 @@ class GeoSmoothing():
         elif isinstance(geom, Polygon):
             x = np.array(geom.exterior.coords.xy[0])
             y = np.array(geom.exterior.coords.xy[1])
-
         return(x, y)
 
     def geom_from_coords(self, coords_ip, geom):
@@ -79,7 +69,6 @@ class GeoSmoothing():
 
         elif isinstance(geom, Polygon):
             geom_ip = Polygon(coords_ip.T)
-
         return geom_ip
 
     def smooth_geom(self, geom):
@@ -94,5 +83,4 @@ class GeoSmoothing():
         x_ip, y_ip = spl.compSplineEv(x, tck_u[0])
 
         coords_ip = np.array([x_ip, y_ip])
-
         return self.geom_from_coords(coords_ip, geom)

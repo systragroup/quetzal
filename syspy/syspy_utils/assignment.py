@@ -1,16 +1,16 @@
-# -*- coding: utf-8 -*-
-
 __author__ = 'qchasserieau'
-import pandas as pd
+
 import itertools
+
+import pandas as pd
 
 
 def nested_list(volume_array, paths):
-        return [[volume_array[i]]*len(paths[i]) for i in range(len(volume_array))]
+    return [[volume_array[i]] * len(paths[i]) for i in range(len(volume_array))]
 
 
 def assign(volume_array, paths):
-    nested_row_indices = [[i]*len(paths[i]) for i in range(len(volume_array))]
+    nested_row_indices = [[i] * len(paths[i]) for i in range(len(volume_array))]
     row_indices = list(itertools.chain.from_iterable(nested_row_indices))
     column_indices = list(itertools.chain.from_iterable(paths))
     nested_volumes = nested_list(volume_array, paths)
@@ -31,7 +31,4 @@ def assign(volume_array, paths):
         )
     except IndexError:  # volume_array is actually a 1d vector
         sparse = (pd.DataFrame({'od': row_indices, 'link': column_indices, 'volume': volumes}))
-
     return sparse.drop('od', axis=1).groupby('link').sum()
-
-

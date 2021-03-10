@@ -1,7 +1,10 @@
-from .filtering import restrict_to_timerange
 import collections
+
 import pandas as pd
 from tqdm import tqdm
+
+from .filtering import restrict_to_timerange
+
 tqdm.pandas()
 
 
@@ -43,7 +46,6 @@ def convert_to_frequencies(feed, time_range, pattern_column='pattern_id'):
     # Clean
     feed = feed.restrict_to_trips(feed.trips.trip_id)
     feed = feed.clean()
-
     return feed
 
 
@@ -93,7 +95,6 @@ class GTFS_frequencies_utils():
     --> return 300
 
     """
-
     def __init__(self, frequencies, trips):
         self.frequencies = frequencies
         self.frequencies['start_time_sec'] = self.frequencies['start_time'].apply(hhmmss_to_seconds_since_midnight)
@@ -153,7 +154,7 @@ class GTFS_frequencies_utils():
         - For each interval, compute the average headway.
         """
         if not trip_ids or not service_ids:
-            return {times[0]: 0}
+            return {time_range[0]: 0}
 
         if service_ids:
             if isinstance(service_ids, int):
@@ -163,26 +164,26 @@ class GTFS_frequencies_utils():
 
         # Select the intersecting timetables
         intersecting_timetables = self.frequencies[
-            (self.frequencies['trip_id'].isin(trip_ids)) &
-            (self.frequencies['start_time_sec'] < time_range[1]) &
-            (self.frequencies['end_time_sec'] > time_range[0]) &
-            (self.frequencies['headway_secs'] > 0)
+            (self.frequencies['trip_id'].isin(trip_ids))
+            & (self.frequencies['start_time_sec'] < time_range[1])
+            & (self.frequencies['end_time_sec'] > time_range[0])
+            & (self.frequencies['headway_secs'] > 0)
         ]
         # print('intersecting_timetables', intersecting_timetables)
 
         intersecting_null_timetables = self.frequencies[
-            (self.frequencies['trip_id'].isin(trip_ids)) &
-            (self.frequencies['start_time_sec'] < time_range[1]) &
-            (self.frequencies['end_time_sec'] >= time_range[0]) &
-            (self.frequencies['headway_secs'] == 0)
+            (self.frequencies['trip_id'].isin(trip_ids))
+            & (self.frequencies['start_time_sec'] < time_range[1])
+            & (self.frequencies['end_time_sec'] >= time_range[0])
+            & (self.frequencies['headway_secs'] == 0)
         ]
         # print('intersecting_null_timetables', intersecting_null_timetables)
 
         # Time range separation
         time_list = list(intersecting_timetables['start_time_sec'].values) +\
-                    list(intersecting_timetables['end_time_sec'].values) +\
-                    list(intersecting_null_timetables['start_time_sec'].values) +\
-                    list(intersecting_null_timetables['end_time_sec'].values)
+            list(intersecting_timetables['end_time_sec'].values) +\
+            list(intersecting_null_timetables['start_time_sec'].values) +\
+            list(intersecting_null_timetables['end_time_sec'].values)
         time_list = list(set(time_list))
         time_list = [a for a in time_list if a > time_range[0] and a < time_range[1]]
         intervals = sorted([time_range[0]] + time_list + [time_range[1]])
@@ -200,17 +201,18 @@ class GTFS_frequencies_utils():
         for i in range(len(intervals) - 1):
             headways_to_include = []
             # Taking into account not null or 0 headways
-            intersecting_timetables.apply(lambda x: append_headway_if_included(
-                x, headways_to_include, [intervals[i], intervals[i+1]]
+            intersecting_timetables.apply(
+                lambda x: append_headway_if_included(
+                    x, headways_to_include, [intervals[i], intervals[i + 1]]
                 ), 1
             )
             # Taking into account NULL or 0 headways
             # In this case, it means one vehicle starts a trip at start_time
-            intersecting_null_timetables.apply(lambda x: append_null_headway_if_included(
-                x, headways_to_include, [intervals[i], intervals[i+1]]
+            intersecting_null_timetables.apply(
+                lambda x: append_null_headway_if_included(
+                    x, headways_to_include, [intervals[i], intervals[i + 1]]
                 ), 1
             )
-
             result[intervals[i]] = compute_avg_headway(headways_to_include)
         return result
 
@@ -306,5 +308,4 @@ def average_headway_over_time(aggregated_headways, start_time, end_time):
         averaged_headway = (end_time - start_time) / nb_trips
     else:
         averaged_headway = 0
-
     return round(averaged_headway)

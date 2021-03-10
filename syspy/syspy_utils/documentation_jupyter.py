@@ -1,11 +1,8 @@
-# -*- coding: utf-8 -*-
-
 __author__ = 'qchasserieau'
 
-
-import os
 import itertools
 import json
+import os
 
 
 def list_files(path, patterns):
@@ -16,7 +13,6 @@ def list_files(path, patterns):
 
 
 def makedoc(folder=os.getcwd(), doc_file=os.getcwd() + r'/doc.ipynb', old=None):
-
     """
     creates a .ipynb that gather all the documentation written in the firt cells of the notebooks of a given folder
 
@@ -29,7 +25,6 @@ def makedoc(folder=os.getcwd(), doc_file=os.getcwd() + r'/doc.ipynb', old=None):
 
     :return: None
     """
-
     files = [f.replace(folder, '') for f in list_files(folder, ['ipynb']) if 'checkpoint' not in f]
     text = ''
 

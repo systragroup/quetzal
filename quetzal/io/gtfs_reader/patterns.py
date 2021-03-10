@@ -1,7 +1,7 @@
 import gtfs_kit as gk
+import numpy as np
 import pandas as pd
 from syspy.spatial import spatial
-import numpy as np
 
 
 def build_stop_clusters(
@@ -24,7 +24,7 @@ def build_stop_clusters(
         )
         temp = gdf.dissolve('dissolve', as_index=False)
         temp.geometry = temp.geometry.centroid
-     
+
     temp[col] = spatial.agglomerative_clustering(
         temp, distance_threshold=distance_threshold
     )
@@ -32,8 +32,8 @@ def build_stop_clusters(
     if use_parent_station:
         temp = gdf.merge(temp[['dissolve', col]], on='dissolve', how='left')
         temp.drop('dissolve', 1, inplace=True)
-
     return gk.stops.ungeometrize_stops_0(temp)
+
 
 def build_patterns(
     feed, group=['route_id'], on='stop_id'
@@ -46,8 +46,8 @@ def build_patterns(
         patterns[['trip_id', 'pattern_id']], on='trip_id'
     )
 
-def get_trip_stop_list(stop_times, stops=None, on='stop_id'):
 
+def get_trip_stop_list(stop_times, stops=None, on='stop_id'):
     trip_stops = stop_times.copy()
     if on != 'stop_id':
         s_to_c = stops.set_index('stop_id')[on].reset_index()
@@ -58,12 +58,13 @@ def get_trip_stop_list(stop_times, stops=None, on='stop_id'):
 
     return trip_stops
 
+
 def get_trip_footprints(feed, on='stop_id'):
     """
     Build each trip's footprint.
-    The footprint is a String that will be used to derive the trip 
-    patterns: it must allow to identify trips that will be grouped 
-    and to distinguish trips that will not. Here we use the ordered 
+    The footprint is a String that will be used to derive the trip
+    patterns: it must allow to identify trips that will be grouped
+    and to distinguish trips that will not. Here we use the ordered
     list of stops or clusters to build each trip footprint.
     """
     trip_stops = get_trip_stop_list(feed.stop_times, feed.stops, on=on)
@@ -71,7 +72,8 @@ def get_trip_footprints(feed, on='stop_id'):
     trip_footprints['footprint'] = trip_footprints['footprint'].map(str)
     return trip_footprints
 
-def get_patterns(trips, trip_footprints, group=['route_id']): # we can add direction, it can also be on route_short_name, …
+
+def get_patterns(trips, trip_footprints, group=['route_id']):  # we can add direction, it can also be on route_short_name, …
     patterns = trip_footprints.copy()
     patterns = patterns.merge(
         trips.set_index('trip_id')[group],

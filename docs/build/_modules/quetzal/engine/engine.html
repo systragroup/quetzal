@@ -1,51 +1,53 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <title>quetzal.engine.engine &mdash; quetzal  documentation</title>
   
 
   
+  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
   
 
   
 
   
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
+      <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
 
-  
-
-  
-  
-    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-    <link rel="top" title="quetzal  documentation" href="../../../index.html"/>
-        <link rel="up" title="Module code" href="../../index.html"/> 
-
-  
-  <script src="../../../_static/js/modernizr.min.js"></script>
-
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
+   
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -72,11 +74,15 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
             
-                <ul>
+              
+            
+            
+              <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../quetzal.engine.html">quetzal.engine package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.html">quetzal.model package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../quetzal.io.html">quetzal.io package</a></li>
@@ -86,40 +92,61 @@
             
           
         </div>
+        
       </div>
     </nav>
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="../../../index.html">quetzal</a>
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">quetzal</a>
+        
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="../../../index.html">Docs</a> &raquo;</li>
-      
+    
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
           <li><a href="../../index.html">Module code</a> &raquo;</li>
-      
-    <li>quetzal.engine.engine</li>
+        
+      <li>quetzal.engine.engine</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
-        
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -132,21 +159,21 @@
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
 
-<span class="kn">from</span> <span class="nn">syspy.distribution</span> <span class="k">import</span> <span class="n">distribution</span>
-<span class="kn">from</span> <span class="nn">syspy.skims</span> <span class="k">import</span> <span class="n">skims</span>
-<span class="kn">from</span> <span class="nn">syspy.spatial</span> <span class="k">import</span> <span class="n">spatial</span>
-<span class="kn">from</span> <span class="nn">syspy.routing.frequency</span> <span class="k">import</span> <span class="n">graph</span> <span class="k">as</span> <span class="n">frequency_graph</span>
+<span class="kn">from</span> <span class="nn">syspy.distribution</span> <span class="kn">import</span> <span class="n">distribution</span>
+<span class="kn">from</span> <span class="nn">syspy.skims</span> <span class="kn">import</span> <span class="n">skims</span>
+<span class="kn">from</span> <span class="nn">syspy.spatial</span> <span class="kn">import</span> <span class="n">spatial</span>
+<span class="kn">from</span> <span class="nn">syspy.routing.frequency</span> <span class="kn">import</span> <span class="n">graph</span> <span class="k">as</span> <span class="n">frequency_graph</span>
 <span class="kn">import</span> <span class="nn">syspy.assignment.raw</span> <span class="k">as</span> <span class="nn">assignment_raw</span>
-<span class="kn">from</span> <span class="nn">tqdm</span> <span class="k">import</span> <span class="n">tqdm</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
 
 
-<div class="viewcode-block" id="od_volume_from_zones"><a class="viewcode-back" href="../../../quetzal.engine.engine.html#quetzal.engine.engine.od_volume_from_zones">[docs]</a><span class="k">def</span> <span class="nf">od_volume_from_zones</span><span class="p">(</span><span class="n">zones</span><span class="p">,</span> <span class="n">impedance_matrix</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<div class="viewcode-block" id="od_volume_from_zones"><a class="viewcode-back" href="../../../quetzal.engine.engine.html#quetzal.engine.engine.od_volume_from_zones">[docs]</a><span class="k">def</span> <span class="nf">od_volume_from_zones</span><span class="p">(</span><span class="n">zones</span><span class="p">,</span> <span class="n">deterrence_matrix</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
                          <span class="n">coordinates_unit</span><span class="o">=</span><span class="s1">&#39;degree&#39;</span><span class="p">,</span> <span class="n">intrazonal</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Use this function to build an Origin -&gt; Destination demand matrix.</span>
-<span class="sd">        * an impedance matrix can be provided, if not:</span>
+<span class="sd">        * a deterrence matrix can be provided, if not:</span>
 <span class="sd">            * The euclidean distance matrix will be calculated automatically.</span>
-<span class="sd">            * The friction matrix will be calculated from the distance matrix</span>
+<span class="sd">            * The deterrence matrix will be calculated from the distance matrix</span>
 <span class="sd">                (elevated to a given power)</span>
 <span class="sd">        * A doubly constrained distribution will be performed in the end,</span>
 <span class="sd">            it is based on zones[&#39;emission&#39;] and zones[&#39;attraction&#39;]</span>
@@ -158,8 +185,8 @@
 
 <span class="sd">    :param zones: zoning GeoDataFrame, indexed by the zones numeric</span>
 <span class="sd">        contains a geometry column named &#39;geometry&#39;, productions and attractions</span>
-<span class="sd">    :param impedance_matrix: Default None. The impedance matrix used to compute</span>
-<span class="sd">        the distribution. If not provided, an impedance matrix will automatically</span>
+<span class="sd">    :param deterrence_matrix: Default None. The deterrence matrix used to compute</span>
+<span class="sd">        the distribution. If not provided, a deterrence matrix will automatically</span>
 <span class="sd">        be computed from the euclidean distance elevated to a given power.</span>
 <span class="sd">    :param power: the friction curve used in the gravity model is equal to</span>
 <span class="sd">        the euclidean distance to the power of this exponent</span>
@@ -169,7 +196,7 @@
 <span class="sd">    :return: volumes, a DataFrame with the following columns</span>
 <span class="sd">        [&#39;origin&#39;, &#39;destination&#39;, &#39;volume&#39;]</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">impedance_matrix</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">deterrence_matrix</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">euclidean</span> <span class="o">=</span> <span class="n">skims</span><span class="o">.</span><span class="n">euclidean</span><span class="p">(</span><span class="n">zones</span><span class="p">,</span> <span class="n">coordinates_unit</span><span class="o">=</span><span class="n">coordinates_unit</span><span class="p">,</span> <span class="n">intrazonal</span><span class="o">=</span><span class="n">intrazonal</span><span class="p">)</span>
         <span class="n">distance</span> <span class="o">=</span> <span class="n">euclidean</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span>
             <span class="p">[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">])[</span><span class="s1">&#39;euclidean_distance&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unstack</span><span class="p">(</span><span class="s1">&#39;destination&#39;</span><span class="p">)</span>
@@ -178,18 +205,14 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">intrazonal</span><span class="p">:</span>
             <span class="c1"># friction the impedance matrix</span>
             <span class="n">distance</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">1e9</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">friction</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">distance</span><span class="p">,</span> <span class="o">-</span><span class="n">power</span><span class="p">)</span>
+        <span class="n">deterrence_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">distance</span><span class="p">,</span> <span class="o">-</span><span class="n">power</span><span class="p">)</span>
 
-        <span class="n">friction</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">),</span> <span class="mf">1e9</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">friction</span> <span class="o">=</span> <span class="n">impedance_matrix</span>
-
+        <span class="n">deterrence_matrix</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">),</span> <span class="mf">1e9</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="c1"># gravitaire doublement contraint</span>
     <span class="n">volume_array</span> <span class="o">=</span> <span class="n">distribution</span><span class="o">.</span><span class="n">CalcDoublyConstrained</span><span class="p">(</span>
         <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;emission&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
         <span class="n">zones</span><span class="p">[</span><span class="s1">&#39;attraction&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
-        <span class="n">friction</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">deterrence_matrix</span><span class="o">.</span><span class="n">values</span>
     <span class="p">)</span>
 
     <span class="n">volumes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
@@ -255,13 +278,13 @@
 
     <span class="n">ntlegs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">access</span><span class="p">,</span> <span class="n">eggress</span><span class="p">],</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">coordinates_unit</span><span class="o">==</span><span class="s1">&#39;degree&#39;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">coordinates_unit</span> <span class="o">==</span> <span class="s1">&#39;degree&#39;</span><span class="p">:</span>
         <span class="n">ntlegs</span><span class="p">[</span><span class="s1">&#39;distance&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">skims</span><span class="o">.</span><span class="n">distance_from_geometry</span><span class="p">(</span><span class="n">ntlegs</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">])</span>
-    <span class="k">elif</span> <span class="n">coordinates_unit</span><span class="o">==</span><span class="s1">&#39;meter&#39;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">coordinates_unit</span> <span class="o">==</span> <span class="s1">&#39;meter&#39;</span><span class="p">:</span>
         <span class="n">ntlegs</span><span class="p">[</span><span class="s1">&#39;distance&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ntlegs</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">length</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">raise</span><span class="p">(</span><span class="s1">&#39;Invalid coordinates_unit.&#39;</span><span class="p">)</span>
-    
+
     <span class="n">ntlegs</span><span class="p">[</span><span class="s1">&#39;speed_factor&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">ntlegs</span><span class="p">[</span><span class="s1">&#39;distance&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">threshold</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
     <span class="n">ntlegs</span><span class="p">[</span><span class="s1">&#39;short_leg_speed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">short_leg_speed</span>
     <span class="n">ntlegs</span><span class="p">[</span><span class="s1">&#39;long_leg_speed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">long_leg_speed</span>
@@ -283,7 +306,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">links</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
-    <span class="c1">#links[&#39;arrival_time&#39;] = 1</span>
+    <span class="c1"># links[&#39;arrival_time&#39;] = 1</span>
     <span class="n">links</span><span class="p">[</span><span class="s1">&#39;duration&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span>
     <span class="k">if</span> <span class="s1">&#39;cost&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">links</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
         <span class="n">links</span><span class="p">[</span><span class="s1">&#39;cost&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;duration&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;headway&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">2</span>
@@ -291,49 +314,20 @@
     <span class="n">links</span><span class="p">[</span><span class="s1">&#39;origin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">]</span>
     <span class="n">links</span><span class="p">[</span><span class="s1">&#39;destination&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;b&#39;</span><span class="p">]</span>
 
-
     <span class="c1"># if link_sequence already exists, we do not want two columns</span>
     <span class="n">links</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;sequence&#39;</span><span class="p">:</span> <span class="s1">&#39;link_sequence&#39;</span><span class="p">},</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">links</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span><span class="o">~</span><span class="n">links</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">duplicated</span><span class="p">()]</span>
+    <span class="n">links</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="o">~</span><span class="n">links</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">duplicated</span><span class="p">()]</span>
 
     <span class="k">return</span> <span class="n">links</span></div>
+
 
 <div class="viewcode-block" id="multimodal_graph"><a class="viewcode-back" href="../../../quetzal.engine.engine.html#quetzal.engine.engine.multimodal_graph">[docs]</a><span class="k">def</span> <span class="nf">multimodal_graph</span><span class="p">(</span>
     <span class="n">links</span><span class="p">,</span>
     <span class="n">ntlegs</span><span class="p">,</span>
     <span class="n">pole_set</span><span class="p">,</span>
+    <span class="n">footpaths</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">boarding_cost</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
-    <span class="n">footpaths</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-    <span class="p">):</span>
-    
-    <span class="n">pole_set</span> <span class="o">=</span> <span class="n">pole_set</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">ntlegs</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">]))</span>
-    <span class="n">accegg</span> <span class="o">=</span> <span class="n">assignment_raw</span><span class="o">.</span><span class="n">build_ntlinks</span><span class="p">(</span><span class="n">ntlegs</span><span class="p">)[[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">]]</span>
-    <span class="n">links</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-
-    <span class="n">links</span><span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">index</span> <span class="c1"># to be consistent with frequency_graph</span>
-
-    <span class="n">nx_graph</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">frequency_graph</span><span class="o">.</span><span class="n">graphs_from_links</span><span class="p">(</span>
-        <span class="n">links</span><span class="p">,</span>
-        <span class="n">include_edges</span><span class="o">=</span><span class="p">[],</span>
-        <span class="n">include_igraph</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">boarding_cost</span><span class="o">=</span><span class="n">boarding_cost</span>
-        <span class="p">)</span>
-
-    <span class="n">nx_graph</span><span class="o">.</span><span class="n">add_weighted_edges_from</span><span class="p">(</span><span class="n">accegg</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
-
-    <span class="k">if</span> <span class="n">footpaths</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">nx_graph</span><span class="o">.</span><span class="n">add_weighted_edges_from</span><span class="p">(</span>
-            <span class="n">footpaths</span><span class="p">[[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-        <span class="p">)</span>
-    <span class="k">return</span> <span class="n">nx_graph</span></div>
-
-
-<div class="viewcode-block" id="path_and_duration_from_links_and_ntlegs"><a class="viewcode-back" href="../../../quetzal.engine.engine.html#quetzal.engine.engine.path_and_duration_from_links_and_ntlegs">[docs]</a><span class="k">def</span> <span class="nf">path_and_duration_from_links_and_ntlegs</span><span class="p">(</span>
-    <span class="n">links</span><span class="p">,</span>
-    <span class="n">ntlegs</span><span class="p">,</span>
-    <span class="n">pole_set</span><span class="p">,</span>
-    <span class="n">footpaths</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-    <span class="n">boarding_cost</span><span class="o">=</span><span class="mi">300</span>
+    <span class="n">ntlegs_penalty</span><span class="o">=</span><span class="mf">1e9</span><span class="p">,</span>
 <span class="p">):</span>
 
     <span class="sd">&quot;&quot;&quot;</span>
@@ -355,12 +349,16 @@
 <span class="sd">    :param ntlegs: ntlegs DataFrame built;</span>
 <span class="sd">    :param boarding_cost: an artificial cost to add the boarding edges</span>
 <span class="sd">        of the frequency graph (seconds);</span>
+<span class="sd">    :param ntlegs_penalty: (default 1e9) high time penalty in seconds to ensure</span>
+<span class="sd">        ntlegs are used only once for access and once for eggress;</span>
 <span class="sd">    :return: Origin-&gt;Destination stack matrix with path and duration;</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">boarding_cost</span><span class="p">)</span>
     <span class="n">pole_set</span> <span class="o">=</span> <span class="n">pole_set</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">ntlegs</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">]))</span>
     <span class="n">links</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">ntlegs</span> <span class="o">=</span> <span class="n">ntlegs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
-    <span class="n">links</span><span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">index</span> <span class="c1"># to be consistent with frequency_graph</span>
+    <span class="n">links</span><span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">index</span>  <span class="c1"># to be consistent with frequency_graph</span>
 
     <span class="n">nx_graph</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">frequency_graph</span><span class="o">.</span><span class="n">graphs_from_links</span><span class="p">(</span>
         <span class="n">links</span><span class="p">,</span>
@@ -368,7 +366,7 @@
         <span class="n">include_igraph</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">boarding_cost</span><span class="o">=</span><span class="n">boarding_cost</span>
     <span class="p">)</span>
-
+    <span class="n">ntlegs</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">ntlegs</span><span class="p">[</span><span class="s1">&#39;direction&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;access&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">ntlegs_penalty</span>
     <span class="n">nx_graph</span><span class="o">.</span><span class="n">add_weighted_edges_from</span><span class="p">(</span><span class="n">ntlegs</span><span class="p">[[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
 
     <span class="k">if</span> <span class="n">footpaths</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -376,22 +374,84 @@
             <span class="n">footpaths</span><span class="p">[[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
         <span class="p">)</span>
 
-    <span class="c1">#return nx_graph</span>
+    <span class="k">return</span> <span class="n">nx_graph</span></div>
+
+
+<div class="viewcode-block" id="path_and_duration_from_links_and_ntlegs"><a class="viewcode-back" href="../../../quetzal.engine.engine.html#quetzal.engine.engine.path_and_duration_from_links_and_ntlegs">[docs]</a><span class="k">def</span> <span class="nf">path_and_duration_from_links_and_ntlegs</span><span class="p">(</span>
+    <span class="n">links</span><span class="p">,</span>
+    <span class="n">ntlegs</span><span class="p">,</span>
+    <span class="n">pole_set</span><span class="p">,</span>
+    <span class="n">footpaths</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">boarding_cost</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+    <span class="n">ntlegs_penalty</span><span class="o">=</span><span class="mf">1e9</span>
+<span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This is a graph builder and a pathfinder wrapper</span>
+<span class="sd">        * Builds a public transport frequency graph from links;</span>
+<span class="sd">        * Adds access and eggress to the graph (accegg) using the ntlegs;</span>
+<span class="sd">        * Search for shortest paths in the time graph;</span>
+<span class="sd">        * Returns an Origin-&gt;Destination stack matrix with path and duration;</span>
+
+<span class="sd">    example:</span>
+<span class="sd">    ::</span>
+<span class="sd">        links = engine.graph_links(links) # links is a LineDraft export</span>
+<span class="sd">        path_finder_stack = engine.path_and_duration_from_links_and_ntlegs(</span>
+<span class="sd">            links,</span>
+<span class="sd">            ntlegs</span>
+<span class="sd">        )</span>
+
+<span class="sd">    :param links: link DataFrame, built with graph_links;</span>
+<span class="sd">    :param ntlegs: ntlegs DataFrame built;</span>
+<span class="sd">    :param boarding_cost: an artificial cost to add the boarding edges</span>
+<span class="sd">        of the frequency graph (seconds);</span>
+<span class="sd">    :param ntlegs_penalty: (default 1e9) high time penalty in seconds to ensure</span>
+<span class="sd">        ntlegs are used only once for access and once for eggress;</span>
+<span class="sd">    :return: Origin-&gt;Destination stack matrix with path and duration;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pole_set</span> <span class="o">=</span> <span class="n">pole_set</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">ntlegs</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">]))</span>
+    <span class="n">links</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">ntlegs</span> <span class="o">=</span> <span class="n">ntlegs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="n">links</span><span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">index</span>  <span class="c1"># to be consistent with frequency_graph</span>
+
+    <span class="n">nx_graph</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">frequency_graph</span><span class="o">.</span><span class="n">graphs_from_links</span><span class="p">(</span>
+        <span class="n">links</span><span class="p">,</span>
+        <span class="n">include_edges</span><span class="o">=</span><span class="p">[],</span>
+        <span class="n">include_igraph</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">boarding_cost</span><span class="o">=</span><span class="n">boarding_cost</span>
+    <span class="p">)</span>
+    <span class="n">ntlegs</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">ntlegs_penalty</span>
+    <span class="n">nx_graph</span><span class="o">.</span><span class="n">add_weighted_edges_from</span><span class="p">(</span><span class="n">ntlegs</span><span class="p">[[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+
+    <span class="k">if</span> <span class="n">footpaths</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">nx_graph</span><span class="o">.</span><span class="n">add_weighted_edges_from</span><span class="p">(</span>
+            <span class="n">footpaths</span><span class="p">[[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="p">)</span>
+
+    <span class="c1"># return nx_graph</span>
     <span class="n">allpaths</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="n">alllengths</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="n">iterator</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">pole_set</span><span class="p">))</span>
+
     <span class="k">for</span> <span class="n">pole</span> <span class="ow">in</span> <span class="n">iterator</span><span class="p">:</span>
         <span class="n">iterator</span><span class="o">.</span><span class="n">desc</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">pole</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span>
-        
-        <span class="n">alllengths</span><span class="p">[</span><span class="n">pole</span><span class="p">],</span> <span class="n">allpaths</span><span class="p">[</span><span class="n">pole</span><span class="p">]</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">single_source_dijkstra</span><span class="p">(</span>
-            <span class="n">nx_graph</span><span class="p">,</span> <span class="n">pole</span><span class="p">)</span>
+        <span class="n">olengths</span><span class="p">,</span> <span class="n">opaths</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">single_source_dijkstra</span><span class="p">(</span><span class="n">nx_graph</span><span class="p">,</span> <span class="n">pole</span><span class="p">)</span>
+        <span class="n">opaths</span> <span class="o">=</span> <span class="p">{</span><span class="n">target</span><span class="p">:</span> <span class="n">p</span> <span class="k">for</span> <span class="n">target</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">opaths</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">target</span> <span class="ow">in</span> <span class="n">pole_set</span><span class="p">}</span>
+        <span class="n">olengths</span> <span class="o">=</span> <span class="p">{</span><span class="n">target</span><span class="p">:</span> <span class="n">p</span> <span class="k">for</span> <span class="n">target</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">olengths</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">target</span> <span class="ow">in</span> <span class="n">pole_set</span><span class="p">}</span>
+        <span class="n">alllengths</span><span class="p">[</span><span class="n">pole</span><span class="p">],</span> <span class="n">allpaths</span><span class="p">[</span><span class="n">pole</span><span class="p">]</span> <span class="o">=</span> <span class="n">olengths</span><span class="p">,</span> <span class="n">opaths</span>
 
     <span class="n">duration_stack</span> <span class="o">=</span> <span class="n">assignment_raw</span><span class="o">.</span><span class="n">nested_dict_to_stack_matrix</span><span class="p">(</span>
         <span class="n">alllengths</span><span class="p">,</span> <span class="n">pole_set</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;gtime&#39;</span><span class="p">)</span>
+    <span class="c1"># Remove access and egress ntlegs penalty</span>
+    <span class="n">duration_stack</span><span class="p">[</span><span class="s1">&#39;gtime&#39;</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">2</span><span class="o">*</span><span class="n">ntlegs_penalty</span>
+    <span class="n">duration_stack</span><span class="p">[</span><span class="s1">&#39;gtime&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">duration_stack</span><span class="p">[</span><span class="s1">&#39;gtime&#39;</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
     <span class="n">path_stack</span> <span class="o">=</span> <span class="n">assignment_raw</span><span class="o">.</span><span class="n">nested_dict_to_stack_matrix</span><span class="p">(</span>
         <span class="n">allpaths</span><span class="p">,</span> <span class="n">pole_set</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;path&#39;</span><span class="p">)</span>
 
     <span class="n">los</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">duration_stack</span><span class="p">,</span> <span class="n">path_stack</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">])</span>
+    <span class="n">los</span><span class="p">[</span><span class="s1">&#39;path&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">los</span><span class="p">[</span><span class="s1">&#39;path&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="nb">tuple</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">los</span><span class="p">,</span> <span class="n">nx_graph</span></div>
 
@@ -507,12 +567,14 @@
     <span class="n">volume_column</span><span class="o">=</span><span class="s1">&#39;volume&#39;</span><span class="p">,</span>
     <span class="n">path_column</span><span class="o">=</span><span class="s1">&#39;path&#39;</span><span class="p">,</span>
     <span class="n">pivot_column</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">path_pivot_column</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">boardings</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">alightings</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">transfers</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">link_checkpoints</span><span class="o">=</span><span class="nb">set</span><span class="p">(),</span>
     <span class="n">node_checkpoints</span><span class="o">=</span><span class="nb">set</span><span class="p">(),</span>
-    <span class="n">checkpoints_how</span><span class="o">=</span><span class="s1">&#39;all&#39;</span>
+    <span class="n">checkpoints_how</span><span class="o">=</span><span class="s1">&#39;all&#39;</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span>
 <span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The assignment function. The last step of modelling the demand.</span>
@@ -536,7 +598,7 @@
 <span class="sd">        volumes. Default None</span>
 <span class="sd">    :return: (links, nodes) a tuple containing the loaded DataFrames</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># todo: factoriser tout le boarding / alighting / transfer etc</span>
+    <span class="c1"># TODO: factoriser tout le boarding / alighting / transfer etc</span>
     <span class="n">checkpoints</span> <span class="o">=</span> <span class="n">node_checkpoints</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">link_checkpoints</span><span class="p">)</span>
 
     <span class="n">links</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
@@ -546,22 +608,24 @@
     <span class="k">if</span> <span class="n">pivot_column</span><span class="p">:</span>
         <span class="n">volumes</span><span class="p">[</span><span class="n">volume_column</span><span class="p">]</span> <span class="o">=</span> <span class="n">volumes</span><span class="p">[</span><span class="n">volume_column</span><span class="p">]</span> <span class="o">*</span> <span class="n">volumes</span><span class="p">[</span><span class="n">pivot_column</span><span class="p">]</span>
 
-    <span class="c1"># </span>
     <span class="n">analysis_col</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;transfers&#39;</span><span class="p">,</span> <span class="s1">&#39;boardings&#39;</span><span class="p">,</span> <span class="s1">&#39;alightings&#39;</span><span class="p">,</span> <span class="s1">&#39;alighting_links&#39;</span><span class="p">,</span> <span class="s1">&#39;boarding_links&#39;</span><span class="p">]</span>
 
-    <span class="c1"># we don&#39;t want name collision</span>
+    <span class="c1"># use it in order to add probability to paths</span>
+    <span class="n">path_finder_stack</span><span class="p">[</span><span class="s1">&#39;pivot&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="n">path_pivot_column</span><span class="p">:</span>
+        <span class="n">path_finder_stack</span><span class="p">[</span><span class="s1">&#39;pivot&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">path_finder_stack</span><span class="p">[</span><span class="n">path_pivot_column</span><span class="p">]</span>
+
+    <span class="c1"># we don&#39;t want name collision</span>
     <span class="n">merged</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
         <span class="n">volumes</span><span class="p">[[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">,</span> <span class="n">volume_column</span><span class="p">]],</span>
-        <span class="n">path_finder_stack</span><span class="p">[[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">,</span> <span class="n">path_column</span><span class="p">]</span> <span class="o">+</span> <span class="n">analysis_col</span><span class="p">],</span>
+        <span class="n">path_finder_stack</span><span class="p">[[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">,</span> <span class="s1">&#39;pivot&#39;</span><span class="p">,</span> <span class="n">path_column</span><span class="p">,</span> <span class="p">]</span> <span class="o">+</span> <span class="n">analysis_col</span><span class="p">],</span>
         <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">])</span>
 
-
+    <span class="n">merged</span><span class="p">[</span><span class="n">volume_column</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged</span><span class="p">[</span><span class="n">volume_column</span><span class="p">]</span> <span class="o">*</span> <span class="n">merged</span><span class="p">[</span><span class="s1">&#39;pivot&#39;</span><span class="p">]</span>
     <span class="n">volume_array</span> <span class="o">=</span> <span class="n">merged</span><span class="p">[</span><span class="n">volume_column</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
     <span class="n">paths</span> <span class="o">=</span> <span class="n">merged</span><span class="p">[</span><span class="n">path_column</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
 
     <span class="k">def</span> <span class="nf">assigned_node_links</span><span class="p">(</span><span class="n">paths</span><span class="p">):</span>
-        
-
         <span class="n">assigned</span> <span class="o">=</span> <span class="n">assignment_raw</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span>
             <span class="n">volume_array</span><span class="p">,</span>
             <span class="n">paths</span><span class="p">,</span>
@@ -572,7 +636,7 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="n">link_index</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">assigned</span><span class="o">.</span><span class="n">index</span><span class="p">)</span> <span class="k">if</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">links</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
             <span class="n">assigned_links</span> <span class="o">=</span> <span class="n">assigned</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">link_index</span><span class="p">][</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span>
-        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span> <span class="c1"># None of [...] are in the [index]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>  <span class="c1"># None of [...] are in the [index]</span>
             <span class="n">assigned_links</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="n">node_index</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">assigned</span><span class="o">.</span><span class="n">index</span><span class="p">)</span> <span class="k">if</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">nodes</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
@@ -605,29 +669,32 @@
         <span class="n">transfer_nodes</span><span class="p">,</span> <span class="n">transfer_links</span> <span class="o">=</span> <span class="n">assigned_node_links</span><span class="p">(</span><span class="n">paths_transfers</span><span class="p">)</span>
         <span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;transfers&#39;</span><span class="p">],</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;transfers&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">transfer_nodes</span><span class="p">,</span> <span class="n">transfer_links</span>
 
-    <span class="n">nodes</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
     <span class="k">return</span> <span class="n">links</span><span class="p">,</span> <span class="n">nodes</span></div>
-
 </pre></div>
 
            </div>
+           
           </div>
           <footer>
-  
 
   <hr/>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2018, Systra.
+        &#169; Copyright 2018, Systra.
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
-
         </div>
       </div>
 
@@ -636,36 +703,15 @@
   </div>
   
 
-
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'../../../',
-            VERSION:'',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
-        };
-    </script>
-      <script type="text/javascript" src="../../../_static/jquery.js"></script>
-      <script type="text/javascript" src="../../../_static/underscore.js"></script>
-      <script type="text/javascript" src="../../../_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>

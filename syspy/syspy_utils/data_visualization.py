@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
-
 """
-
 **data_visualization provides tool for easily manipulate color scales and plot linear regressions**
 
 
@@ -21,25 +18,20 @@ example:
     fig.savefig('Q:/conteos_car_before.png', bbox_inches='tight')
 
 """
-
 __author__ = 'qchasserieau'
 
-import six
-import rasterio
-import pandas as pd
-import numpy as np
-from sklearn import linear_model
+import itertools
 
-import matplotlib.pyplot as plt
 import branca.colormap as cm
-
 import geopandas as gpd
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import rasterio
+import six
+from shapely import geometry
+from sklearn import linear_model
 from tqdm import tqdm
-
-# -*- coding: utf-8 -*-
-
-
 
 """
 The following colors are mentioned in Systra's graphical charter: \n
@@ -49,9 +41,6 @@ rainbow shades : spot colors, vivid and highly contrasted \n
 sorted colors advised for word documents \n
 secondary colors \n
 """
-
-import itertools
-
 
 # Couleurs d'accompagnement de la charte graphique
 rainbow_shades = ["#D22328", "#559BB4", "#91A564", "#DC9100", "#8C4B7D", "#A08C69",
@@ -66,7 +55,7 @@ red_shades = ['#691214', '#9d1a1e', '#d22328', '#e8777a', '#f0a4a6', '#f7d2d3']
 grey_shades = ['#303032', '#5a5a5a', '#7f7f7f', '#a6a5a5', '#c7c7c8', '#e3e3e4']
 
 
-# Couleurs ordonné dans le sens des préconisations de la charte graphique 
+# Couleurs ordonné dans le sens des préconisations de la charte graphique
 sorted_colors = ['#d22328', '#7f7f7f', '#691214', '#f0a4a6']
 
 # Couleurs secondaires
@@ -78,18 +67,23 @@ secondary_colors = ['#643c5a', '#9e1b16', '#64421e', '#647d6e', '#5b7382', '#549
 linedraft_shades = ["#1f77b4", "#2ca02c", "#d62728", "#9467bd", "#ff7f0e", "#8c564b",
                     "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"]
 
+
 def itercolors(color_list, repetition):
-    return list(itertools.chain(*[[color]*repetition for color in color_list]))
+    return list(itertools.chain(*[[color] * repetition for color in color_list]))
+
 
 _NUMERALS = '0123456789abcdefABCDEF'
-_HEXDEC = {v: int(v, 16) for v in (x+y for x in _NUMERALS for y in _NUMERALS)}
+_HEXDEC = {v: int(v, 16) for v in (x + y for x in _NUMERALS for y in _NUMERALS)}
 LOWERCASE, UPPERCASE = 'x', 'X'
+
 
 def rgb(triplet):
     return _HEXDEC[triplet[1:][0:2]], _HEXDEC[triplet[1:][2:4]], _HEXDEC[triplet[1:][4:6]]
 
+
 def triplet(rgb, lettercase=LOWERCASE):
-    return '#'+(format(rgb[0]<<16 | rgb[1]<<8 | rgb[2], '06'+lettercase)).upper()
+    return '#' + (format(rgb[0] << 16 | rgb[1] << 8 | rgb[2], '06' + lettercase)).upper()
+
 
 def clear(rgb, x=50):
     (r, g, b) = rgb
@@ -98,29 +92,28 @@ def clear(rgb, x=50):
     _b = round(((100 - x) * b + x * 255) / 100)
     return (_r, _g, _b)
 
+
 def clear_shades():
     return [triplet(clear(rgb(shade))) for shade in rainbow_shades]
 
 
 d = {
-    'marron' : 8,
-    'orange' : 5,
-    'rouge' : 0,
-    'bleue' : 1,
-    'verte' : 2,
-    'jaune' : 3,
-    'violette' : 4,
+    'marron': 8,
+    'orange': 5,
+    'rouge': 0,
+    'bleue': 1,
+    'verte': 2,
+    'jaune': 3,
+    'violette': 4,
     'rose': 9
 }
+
 
 def in_string(name):
     for c in d.keys():
         if c in name:
             return rainbow_shades[d[c]]
     return rainbow_shades[7]
-
-
-
 
 
 def width_series(value_series, outer_average_width=5, max_value=None, method='linear'):
@@ -132,12 +125,11 @@ def width_series(value_series, outer_average_width=5, max_value=None, method='li
     :return: width_series: pd.Series that contains the widths corresponding to the values
     :rtype: pd.Series
     """
-
     max_value = max_value if max_value else np.max(list(value_series.values))
     if method == 'linear':
-        serie = value_series.apply(lambda x: x/max_value*outer_average_width)
+        serie = value_series.apply(lambda x: x / max_value * outer_average_width)
     elif method == 'surface':
-        serie = value_series.apply(lambda x: np.sqrt(x/max_value)*outer_average_width)
+        serie = value_series.apply(lambda x: np.sqrt(x / max_value) * outer_average_width)
     return serie
 
 
@@ -150,7 +142,6 @@ def color_series(
     method='linear',
     reversed_colors=False
 ):
-
     """
     :param value_series: the pd.Series that contain the values
     :param colors: list containing the colors used to build the color scale ['red', 'blue']
@@ -190,20 +181,18 @@ def color_series(
 
         bar plot with color series
     """
-
     colors = list(reversed(colors)) if reversed_colors else colors
     max_value = max_value if max_value else np.max(list(value_series.values))
     min_value = min_value if min_value else np.min(list(value_series.values))
 
     if method == 'linear':
-        if index == None:
+        if index is None:
             index = np.linspace(min_value, max_value, len(colors))
         colormap = cm.LinearColormap(colors, index=index)
     else:
-        if index == None:
+        if index is None:
             index = value_series.quantile(np.linspace(0, 1, len(colors))).values
         colormap = cm.StepColormap(colors, index=index)
-
     return value_series.apply(lambda x: colormap(max(min(x, max_value), min_value)))
 
 
@@ -261,15 +250,14 @@ def linear_plot(
         linear regression plot
 
     """
-
     plt.clf()
     pool = df.copy()
 
     pool['distance'] = color_series(
-        np.absolute((pool[y_column]-pool[x_column])/(pool[y_column]+pool[x_column])).fillna(0),
+        np.absolute((pool[y_column] - pool[x_column]) / (pool[y_column] + pool[x_column])).fillna(0),
         colors=[clear_shades()[1], clear_shades()[0]],
     )
-    pool['size'] = width_series(np.absolute(np.power(np.maximum(pool[y_column],pool[x_column]), 0.3)), box_size)
+    pool['size'] = width_series(np.absolute(np.power(np.maximum(pool[y_column], pool[x_column]), 0.3)), box_size)
 
     x_array = np.array(pool[x_column])
     y_array = np.array(pool[y_column])
@@ -289,13 +277,13 @@ def linear_plot(
             c = c if dynamic_color else clear_shades()[1]
             plt.annotate(
                 label,
-                xy=(x, y), xytext = (-10, 10),
-                textcoords = 'offset points', ha = 'right', va = 'bottom', size=d,
-                bbox = dict(boxstyle='round, pad=0.5', fc=c, alpha=1),
-                arrowprops = dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
+                xy=(x, y), xytext=(-10, 10),
+                textcoords='offset points', ha='right', va='bottom', size=d,
+                bbox=dict(boxstyle='round, pad=0.5', fc=c, alpha=1),
+                arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
 
     regr = linear_model.LinearRegression(fit_intercept=fit_intercept)
-    regr.fit(x_array[:,np.newaxis], y_array)
+    regr.fit(x_array[:, np.newaxis], y_array)
 
     linspace = np.linspace(np.min(x_array), np.max(x_array), 1000)
 
@@ -308,46 +296,45 @@ def linear_plot(
     plt.title('%s \n y = %f x + %f —— R^2 = %f' % (title,
                                                    regr.coef_[0],
                                                    regr.intercept_,
-                                                   regr.score(x_array[:,np.newaxis],y_array)))
+                                                   regr.score(x_array[:, np.newaxis], y_array)))
 
-    _slope_kwargs={'color':rainbow_shades[0], 'linewidth':3}
+    _slope_kwargs = {'color': rainbow_shades[0], 'linewidth': 3}
     _slope_kwargs.update(slope_kwargs)
 
     if plot_identity:
         plt.plot(linspace, linspace, color=rainbow_shades[2])[0]
 
     if beam_prediction:
-        plt.plot(linspace, regr.predict(linspace[:, np.newaxis])*beam_prediction, **_slope_kwargs)
-        plt.plot(linspace, regr.predict(linspace[:, np.newaxis])/beam_prediction, **_slope_kwargs)
+        plt.plot(linspace, regr.predict(linspace[:, np.newaxis]) * beam_prediction, **_slope_kwargs)
+        plt.plot(linspace, regr.predict(linspace[:, np.newaxis]) / beam_prediction, **_slope_kwargs)
 
     if beam_identity:
-        plt.plot(linspace, linspace*beam_identity, color=rainbow_shades[2], linestyle='dashed')
-        plt.plot(linspace, linspace/beam_identity, color=rainbow_shades[2], linestyle='dashed')
+        plt.plot(linspace, linspace * beam_identity, color=rainbow_shades[2], linestyle='dashed')
+        plt.plot(linspace, linspace / beam_identity, color=rainbow_shades[2], linestyle='dashed')
 
-    
     plot = plt.plot(linspace, regr.predict(linspace[:, np.newaxis]), **_slope_kwargs)[0]
-
     return plot
 
+
 def render_mpl_table(
-    data, 
-    col_width=3.0, 
-    row_height=0.625, 
+    data,
+    col_width=3.0,
+    row_height=0.625,
     font_size=14,
-    header_color=red_shades[1], 
-    row_colors=['#f1f1f2', 'w'], 
+    header_color=red_shades[1],
+    row_colors=['#f1f1f2', 'w'],
     edge_color='w',
-    bbox=[0, 0, 1, 1], 
+    bbox=[0, 0, 1, 1],
     header_columns=0,
     figsize=None,
-    ax=None, 
+    ax=None,
     dpi=96,
     **kwargs
 ):
     if figsize:
         col_width = figsize[0] / len(data.T)
-        row_height = figsize[1] / (len(data) +1)
-        
+        row_height = figsize[1] / (len(data) + 1)
+
     if ax is None:
         size = (np.array(data.shape[::-1]) + np.array([0, 1])) * np.array([col_width, row_height])
         fig, ax = plt.subplots(figsize=size, dpi=dpi)
@@ -358,19 +345,20 @@ def render_mpl_table(
     mpl_table.auto_set_font_size(False)
     mpl_table.set_fontsize(font_size)
 
-    for k, cell in  six.iteritems(mpl_table._cells):
+    for k, cell in six.iteritems(mpl_table._cells):
         cell.set_edgecolor(edge_color)
         if k[0] == 0 or k[1] < header_columns:
             cell.set_text_props(weight='bold', color='w')
             cell.set_facecolor(header_color)
         else:
-            cell.set_facecolor(row_colors[k[0]%len(row_colors) ])
+            cell.set_facecolor(row_colors[k[0] % len(row_colors)])
     return ax
 
 
-spectral = list(reversed(['#9e0142','#d53e4f','#f46d43','#fdae61','#fee08b','#e6f598','#abdda4','#66c2a5','#3288bd','#5e4fa2']))
+spectral = list(reversed([
+    '#9e0142', '#d53e4f', '#f46d43', '#fdae61', '#fee08b', '#e6f598', '#abdda4', '#66c2a5', '#3288bd', '#5e4fa2'
+]))
 
-from shapely import geometry
 
 def add_raster(ax, raster, keep_ax_limits=True, adjust='linear', cmap='gray'):
     xlim, ylim = ax.get_xlim(), ax.get_ylim()
@@ -378,54 +366,58 @@ def add_raster(ax, raster, keep_ax_limits=True, adjust='linear', cmap='gray'):
     if keep_ax_limits:
         ax.set_xlim(xlim)
         ax.set_ylim(ylim)
-        
+
+
 def add_north(ax, fontsize=14):
     x, y, arrow_length = 0.99, 0.99, 0.05
     ax.annotate(
-        'N', xy=(x, y), xytext=(x, y-arrow_length),
+        'N', xy=(x, y), xytext=(x, y - arrow_length),
         arrowprops=dict(facecolor='black', width=2, headwidth=7),
         ha='center', va='top', fontsize=fontsize, xycoords=ax.transAxes)
+
 
 def add_scalebar(ax, fontsize=14):
     from matplotlib_scalebar.scalebar import ScaleBar
     ax.add_artist(
         ScaleBar(
-            1, location='lower left', pad=1, frameon=False, 
-            scale_loc='top', font_properties={'size':fontsize}, 
+            1, location='lower left', pad=1, frameon=False,
+            scale_loc='top', font_properties={'size': fontsize},
             length_fraction=0.1,
             height_fraction=0.01
         )
     )
 
+
 def add_north_and_scalebar(ax, fontsize=14):
     add_north(ax, fontsize)
     add_scalebar(ax, fontsize)
 
+
 def bandwidth(
-    gdf, value_column, max_value=None, power=1, legend=True, legend_values=None, legend_length=1/3,
-    label_column=None,  max_linewidth_meters=100, variable_width=True, line_offset=True, cmap=spectral,
-    geographical_bounds=None, label_kwargs={'size':12}, *args, **kwargs
-    ):
-    # TODO: 
+    gdf, value_column, max_value=None, power=1, legend=True, legend_values=None, legend_length=1 / 3,
+    label_column=None, max_linewidth_meters=100, variable_width=True, line_offset=True, cmap=spectral,
+    geographical_bounds=None, label_kwargs={'size': 12}, *args, **kwargs
+):
+    # TODO:
     # 1. add to plot model
     # 2. add arrows?
 
     # Can only plot valid LineString
-    df = gdf[gdf.length>0].sort_values(value_column).copy()
+    df = gdf[gdf.length > 0].sort_values(value_column).copy()
     df = df[df.geometry.type == 'LineString']
 
     if label_column is None:  # Then it is 'label'
         df.drop('label', 1, errors='ignore', inplace=True)
         label_column = 'label'
-    # Create base plot        
+    # Create base plot
     plot = base_plot(df, geographical_bounds, *args, **kwargs)
 
     # Handle legend
     if legend:
         if legend_values is None:
             s = df[value_column].copy()
-            r = int(np.log10(s.mean())) 
-            legend_values = [np.round(s.quantile(i/5), -r) for i in range(6)]    
+            r = int(np.log10(s.mean()))
+            legend_values = [np.round(s.quantile(i / 5), -r) for i in range(6)]
         legend_df = create_legend_geodataframe(
             plot, legend_values=legend_values, relative_width=legend_length,
             label_column=label_column, value_column=value_column
@@ -447,10 +439,10 @@ def bandwidth(
     # Offset
     if line_offset:
         df['geometry'] = df.apply(
-            lambda x: x['geometry'].parallel_offset(x['geographical_width']*0.5, 'right'), 1
+            lambda x: x['geometry'].parallel_offset(x['geographical_width'] * 0.5, 'right'), 1
         )
         df = df[df.geometry.type == 'LineString']
-        df = df[df.length>0] # offset can create empty LineString
+        df = df[df.length > 0]  # offset can create empty LineString
         # For some reason, right offset reverse the coordinates sequence
         # https://github.com/Toblerity/Shapely/issues/284
         df['geometry'] = df.geometry.apply(lambda x: geometry.LineString(x.coords[::-1]))
@@ -467,7 +459,7 @@ def bandwidth(
             textcoords='offset pixels',
             rotation=x['label_angle'],
             rotation_mode='anchor',
-            ha='center',va=x['va'],
+            ha='center', va=x['va'],
             **label_kwargs
         ),
         axis=1
@@ -475,16 +467,16 @@ def bandwidth(
 
     plt.xticks([])
     plt.yticks([])
-
     return plot
 
+
 def add_basemap(
-    ax, 
-    zoom, 
+    ax,
+    zoom,
     url='http://tile.stamen.com/terrain-background/tileZ/tileX/tileY.png',
     errors='ignore',
-    ):
-    #TODO : move to another file
+):
+    # TODO: move to another file
     try:
         import contextily as ctx
         xmin, xmax, ymin, ymax = ax.axis()
@@ -497,6 +489,7 @@ def add_basemap(
         if errors != 'ignore':
             assert False
 
+
 def trim_axs(axs, N):
     """little helper to massage the axs list to have correct length..."""
     axs = axs.flat
@@ -504,10 +497,11 @@ def trim_axs(axs, N):
         ax.remove()
     return axs[:N]
 
+
 def create_legend_geodataframe(
         plot, legend_values, relative_width=0.3,
         value_column='value', label_column='label'
-    ):
+):
     """
     Create a GeoDataFrame with legend data, geolocated at the right bottom of the plot.
     - plot: the matplotlib plot that will include the legend
@@ -515,14 +509,14 @@ def create_legend_geodataframe(
     - relative_width (float between 0 and 1): legend length (1=entire axis length)
     - value_column: column name for values
     - label_column: column name for labels
-    
+
     returns:
     GeoDataFrame with columns value_column, label_column, 'geometry'
     """
     # Get plot bounds
     ylims = plot.get_ylim()
     xlims = plot.get_xlim()
-    
+
     # Place legend
     plot_width = xlims[1] - xlims[0]
     plot_height = ylims[1] - ylims[0]
@@ -531,8 +525,8 @@ def create_legend_geodataframe(
     data = []
     for v in reversed(legend_values):
         g = geometry.LineString([
-            ( xlims[1] - plot_width/100 - rank * dx, ylims[0] + plot_height/100),
-            ( xlims[1] - plot_width/100 - (rank + 1)*dx, ylims[0] + plot_height/100)]
+            (xlims[1] - plot_width / 100 - rank * dx, ylims[0] + plot_height / 100),
+            (xlims[1] - plot_width / 100 - (rank + 1) * dx, ylims[0] + plot_height / 100)]
         )
         rank += 1
         data.append([v, g, str(v)])
@@ -540,13 +534,14 @@ def create_legend_geodataframe(
 
     return legend_df
 
+
 def base_plot(df, geographical_bounds, *args, **kwargs):
     """
     Create a basic plot of a GeoDataFrame with specific geographical bounds.
     """
     def _set_bandwidth_geographical_bounds(plot, xmin, ymin, xmax, ymax, offset=0.01):
-        x_offset= (xmax - xmin) * offset
-        y_offset= (ymax - ymin) * offset
+        x_offset = (xmax - xmin) * offset
+        y_offset = (ymax - ymin) * offset
         plot.set_xlim(xmin - x_offset, xmax + x_offset)
         plot.set_ylim(ymin - y_offset, ymax + y_offset)
     # Light geometry plot
@@ -554,8 +549,8 @@ def base_plot(df, geographical_bounds, *args, **kwargs):
     # Set bounds geographical bounds
     if geographical_bounds is not None:
         _set_bandwidth_geographical_bounds(plot, *geographical_bounds)
-
     return plot
+
 
 def linewidth_from_data_units(linewidth, axis, reference='y'):
     """
@@ -589,43 +584,45 @@ def linewidth_from_data_units(linewidth, axis, reference='y'):
     # Scale linewidth to value range
     return linewidth * (length / value_range)
 
+
 def get_normal(linestring):
     try:
         c = linestring.coords[:]
         v = (-(c[1][1] - c[0][1]), c[1][0] - c[0][0])
-        return v / np.sqrt(v[1]*v[1] + v[0]*v[0])
-    except IndexError: # list index out of range
+        return v / np.sqrt(v[1] * v[1] + v[0] * v[0])
+    except IndexError:  # list index out of range
         # it is a point
         return 0
     except NotImplementedError:  # MultiLineString
         c = linestring[0].coords[:]
         v = (-(c[1][1] - c[0][1]), c[1][0] - c[0][0])
-        return v / np.sqrt(v[1]*v[1] + v[0]*v[0])
+        return v / np.sqrt(v[1] * v[1] + v[0] * v[0])
 
-def get_label_angle_alignment_offset(row, linewidth_column='linewidth'): 
+
+def get_label_angle_alignment_offset(row, linewidth_column='linewidth'):
     try:
         x = [row.geometry.coords[0], row.geometry.coords[-1]]
-        angle = (np.arccos((x[1][0] - x[0][0])/row.geometry.length) * 180/3.14) + 180
+        angle = (np.arccos((x[1][0] - x[0][0]) / row.geometry.length) * 180 / 3.14) + 180
         angle *= np.sign(x[1][1] - x[0][1])
     except NotImplementedError:  # MultiLineString
         x = row.geometry[0].coords[:]
-        angle = (np.arccos((x[1][0] - x[0][0])/row.geometry.length) * 180/3.14) + 180
+        angle = (np.arccos((x[1][0] - x[0][0]) / row.geometry.length) * 180 / 3.14) + 180
         angle *= np.sign(x[1][1] - x[0][1])
     except IndexError:
-        angle =  0
-        
+        angle = 0
+
     va = 'bottom'
     if linewidth_column is None:
         label_offset = 1
     else:
         label_offset = row[linewidth_column]
-
     return pd.Series(
         {
-            'va': va, 'label_angle': angle, 
-            'label_offset': -label_offset/4 * row['normal']
+            'va': va, 'label_angle': angle,
+            'label_offset': -label_offset / 4 * row['normal']
         }
     )
+
 
 def create_label_dataframe(df, label_column='label', linewidth_column='linewidth'):
     cols = ['geometry', label_column]
@@ -633,6 +630,6 @@ def create_label_dataframe(df, label_column='label', linewidth_column='linewidth
         cols += [linewidth_column]
     label_df = df[cols].dropna(subset=[label_column])
     label_df['normal'] = label_df.geometry.apply(get_normal)
-    columns = ['label_angle',  'label_offset', 'va']
+    columns = ['label_angle', 'label_offset', 'va']
     label_df[columns] = label_df.apply(get_label_angle_alignment_offset, 1)[columns]
     return label_df

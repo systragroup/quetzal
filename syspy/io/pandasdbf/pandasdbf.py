@@ -1,14 +1,13 @@
-# -*- coding: utf-8 -*-
-
 __author__ = 'qchasserieau'
 
 import os
+
 import pandas as pd
 from simpledbf import Dbf5
 from syspy.io.pandasdbf import exceltodbf_qc
 
-def read_dbf(path, encoding='utf-8'):
 
+def read_dbf(path, encoding='utf-8'):
     """
     read a .dbf file, temporary write it as a csv and return a pandas.core.frame.DataFrame object.
 
@@ -21,9 +20,8 @@ def read_dbf(path, encoding='utf-8'):
 
     .. warnings:: not all encodings are handled by this function
     """
-
     dbf_instance = Dbf5(path, codec=encoding)
-    csv_name = path[:-4] + '_from_dbf'+'.csv'
+    csv_name = path[:-4] + '_from_dbf' + '.csv'
 
     # clear the folder from the temporary csv if necessary
     if os.path.isfile(csv_name):
@@ -65,12 +63,11 @@ def normalize(frame):
     df = frame.copy().astype(float)
     for column in df.columns:
         weight = df[column].interpolate().sum()
-        df[column] = df[column].interpolate()/weight
+        df[column] = df[column].interpolate() / weight
     return df
 
 
 def convert_bytes_to_string(df, debug=False, encoding='utf-8'):
-
     """
     returns a pandas.core.frame.DataFrame where all bytes columns are converted to string
 
@@ -79,18 +76,18 @@ def convert_bytes_to_string(df, debug=False, encoding='utf-8'):
     :return: inner_df
     :rtype: pandas.core.frame.DataFrame
     """
-
     inner_df = df.copy()
     bytes_columns = [column for column in inner_df.columns if type(inner_df[column].iloc[0]) in {bytes, str}]
-    if debug == True:
+    if debug:
         print('bytes_columns converted to string:' + str(bytes_columns))
-    for column in bytes_columns :
+    for column in bytes_columns:
         try:
             inner_df[column] = inner_df[column].apply(to_str, args={encoding})
         except AttributeError:
-            print('fail: column:', column)
+            print('fail: column:', column)
             pass
     return inner_df
+
 
 def to_str(bor, encoding):
     if type(bor) == str:
@@ -98,8 +95,8 @@ def to_str(bor, encoding):
     else:
         return bor.decode(encoding=encoding, errors='strict')
 
-def convert_stringy_things_to_string(df, debug=False):
 
+def convert_stringy_things_to_string(df, debug=False):
     """
     returns a pandas.core.frame.DataFrame where all bytes columns are converted to string
 
@@ -108,13 +105,13 @@ def convert_stringy_things_to_string(df, debug=False):
     :return: inner_df
     :rtype: pandas.core.frame.DataFrame
     """
-
     inner_df = convert_bytes_to_string(df).copy()
-    stringy_columns = [column for column in inner_df.columns if type(inner_df[column].iloc[0]) == str ]
-    if debug == True:
+    stringy_columns = [column for column in inner_df.columns if type(inner_df[column].iloc[0]) == str]
+    if debug:
         print('stringy_columns converted to string:' + str(stringy_columns))
     inner_df[stringy_columns] = inner_df[stringy_columns].astype(str)
     return inner_df
+
 
 def clean_dbf(path):
     write_dbf(read_dbf(path), path, pre_process=True)

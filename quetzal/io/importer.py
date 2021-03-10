@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
-
-from syspy.spatial import spatial
-from syspy.syspy_utils.syscolors import rainbow_shades, linedraft_shades
 import pandas as pd
 import shapely
+from syspy.spatial import spatial
+from syspy.syspy_utils.syscolors import linedraft_shades, rainbow_shades
+
 
 def from_linedraft(
     links,
@@ -58,13 +57,11 @@ def from_linedraft(
 
 
 def links_and_nodes(linestring, node_index=0):
-    
     nodes = []
     for c in linestring.coords:
         g = shapely.geometry.Point(c)
         nodes.append((node_index, g))
-        node_index += 1 
-
+        node_index += 1
 
     links = []
     sequence = 0
@@ -72,7 +69,7 @@ def links_and_nodes(linestring, node_index=0):
     for node_index_b, node_b in nodes[1:]:
         g = shapely.geometry.LineString([node_a, node_b])
         links.append((node_index_a, node_index_b, sequence, 0, g))
-        node_index_a = node_index_b 
+        node_index_a = node_index_b
         node_a = node_b
         sequence += 1
 
@@ -81,23 +78,23 @@ def links_and_nodes(linestring, node_index=0):
     node_index_a, node_a = nodes[0]
     for node_index_b, node_b in nodes[1:]:
         g = shapely.geometry.LineString([node_a, node_b])
-        links.append((node_index_a, node_index_b, sequence, 1,  g))
-        node_index_a = node_index_b 
+        links.append((node_index_a, node_index_b, sequence, 1, g))
+        node_index_a = node_index_b
         node_a = node_b
         sequence += 1
-        
+
     nodes = pd.DataFrame(nodes, columns=['n', 'geometry']).set_index('n')
     links = pd.DataFrame(
-        links, 
-        columns=['a', 'b', 'link_sequence', 'direction_id' ,'geometry']
+        links,
+        columns=['a', 'b', 'link_sequence', 'direction_id', 'geometry']
     )
     return links, nodes
+
 
 def from_lines(lines, node_index=0, add_return=True):
     """
     lines index is used, links and nodes are returned
     if add_return = True, return lines are created
-    
     """
 
     lines = lines.copy()
@@ -114,7 +111,6 @@ def from_lines(lines, node_index=0, add_return=True):
         if not add_return:
             links = links[links['direction_id'] == 0]
         else:
-
             links.loc[links['direction_id'] == 0, 'trip_id'] += '_bis'
 
         to_concat_nodes.append(nodes)

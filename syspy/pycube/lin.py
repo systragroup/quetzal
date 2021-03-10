@@ -1,10 +1,5 @@
-# -*- coding: utf-8 -*-
-
 """
-
 **This package provides tools for editing and analysing CUBE .LIN files**
-
-
 
 example:
 ::
@@ -23,31 +18,27 @@ example:
     with open('Q:/my_lines_pruned.LIN', 'w') as lin:
         lin.write(pruned_text)
 """
-
 __author__ = 'qchasserieau'
 
-
-
-from IPython.html.widgets import FloatProgress
-from IPython.display import display
 import itertools
 import re
-import pandas as pd
-import networkx as nx
-import shapely
-import numpy as np
 
+import networkx as nx
+import numpy as np
+import pandas as pd
+import shapely
+from IPython.display import display
+from IPython.html.widgets import FloatProgress
+from syspy.io.pandasshp import pandasshp
 from syspy.pycube._line import Line
 from syspy.pycube.dijkstra import DijkstraMonkey
-from syspy.syspy_utils import syscolors
-from syspy.io.pandasshp import pandasshp
 from syspy.spatial import spatial
+from syspy.syspy_utils import syscolors
 
 
 class Lin:
-
     """
-    Joins a .LIN to a zoning and a network.
+    Joins a .LIN to a zoning and a network.
 
     example:
     ::
@@ -83,7 +74,7 @@ class Lin:
 
         equal = re.compile('[ ]*[=]+[ ]*')
         coma = re.compile('[ ]*[,]+[ ]*')
-        lower_text = text.lower().replace('n=', 'N=').replace('rt=', 'RT=').replace('<<pt>>','<<pt>>')
+        lower_text = text.lower().replace('n=', 'N=').replace('rt=', 'RT=').replace('<<pt>>', '<<pt>>')
         self.text = coma.sub(', ', equal.sub('=', lower_text.replace('"', "'")))  #: raw text of the .LIN (str)
 
         stop_list = _stop_list(self.text)
@@ -94,7 +85,6 @@ class Lin:
         self.line_names = [line_name(c) for c in self.lin_chunks]
         self.line_names = [name for name in self.line_names if name != 'not_a_line']
 
-
         if zones is not None:
 
             zone_stops = _zone_stops(zones, nodes, stop_list, leg_type)
@@ -102,35 +92,35 @@ class Lin:
             zone_lines = _zone_lines(zone_stops, stop_list, stop_lines)
             hubs = _hubs(zone_stops, stop_lines, zone_lines)
 
-            self.zone_stops = zone_stops  #: dictionary of the stops of each zone {zone: [stops that are in the zone]}
-            self.stop_lines = stop_lines  #: dictionary of the lines of each stop {stop: [lines that stop]}
-            self.zone_lines = zone_lines  #: dictionary of the lines of each zone {zone: [lines that stop in the zone]}
-            self.hubs = hubs  #:  minimal set of nodes that are necessary to keep the keep zone_lines stable while pruning zone_stops
+            self.zone_stops = zone_stops  #: dictionary of the stops of each zone {zone: [stops that are in the zone]}
+            self.stop_lines = stop_lines  #: dictionary of the lines of each stop {stop: [lines that stop]}
+            self.zone_lines = zone_lines  #: dictionary of the lines of each zone {zone: [lines that stop in the zone]}
+            self.hubs = hubs  #: minimal set of nodes that are necessary to keep the keep zone_lines stable while pruning zone_stops
             self.hubs_and_terminus = self.hubs.union(self.find_endpoints())
             self.transitlegs = _transitlegs(self.stop_lines)  #: list of stop<->line links (based on self.stop_lines)
             self.nontransitlegs = _nontransitlegs(self.zone_stops)  #: list of zone<->stop links (based on self.zone_stops)
-
-
-
 
         self.stop_list = stop_list
         self.zones = zones  #: GeoDataFrame of the zones : str
         self.prj = prj
         self.nodes = nodes  #: GeoDataFrame of the nodes
-        self.line_count = _line_count(text) #: line count by node
+        self.line_count = _line_count(text)  #: line count by node
         self.data = self.geo_dataframe(geometry=False)  #: data organized as a dataframe
 
         progress.value += 1
 
         if build_graph:
-            self.connection_graph = nx.Graph(self.transitlegs + self.nontransitlegs) #: nx.Graph built with self.nontransitlegs and self.transitlegs
-            self.path_matrix = _path_matrix(self.connection_graph, self.zones)  #: OD matrix that contains the path and the skims of each OD pair in the zoning (base on path_matrix)
+            #: nx.Graph built with self.nontransitlegs and self.transitlegs
+            self.connection_graph = nx.Graph(self.transitlegs + self.nontransitlegs)
+            #: OD matrix that contains the path and the skims of each OD pair in the zoning (base on path_matrix)
+            self.path_matrix = _path_matrix(self.connection_graph, self.zones)
 
         progress.value += 1
 
         if build_geometries:
             geometries = pandasshp.od_matrix(zones)
-            self.path_matrix_geometries = pd.merge(self.path_matrix, geometries, on=['origin', 'destination'])  #: OD matrix that contains the path and the skims of each OD pair in the zoning + the geometry
+            #: OD matrix that contains the path and the skims of each OD pair in the zoning + the geometry
+            self.path_matrix_geometries = pd.merge(self.path_matrix, geometries, on=['origin', 'destination'])
 
         progress.value += 1
 
@@ -140,7 +130,7 @@ class Lin:
         progress.value += 1
 
     def _to_dict(self):
-        self.line_dict = {line_name(c):  Line(c) for c in self.text.split(self.sep)}
+        self.line_dict = {line_name(c): Line(c) for c in self.text.split(self.sep)}
 
     def _to_text(self, format_chunks=True):
         _lines = [self.line_dict[n] for n in self.line_names]
@@ -271,10 +261,9 @@ class Lin:
         elif node_list is not None:
             chunk_length = 0
             for node in node_list:
-                chunk += 'N=%s, ' %(str(node))
+                chunk += 'N=%s, ' % (str(node))
                 chunk_length += 1
-                chunk += 'RT=%s, ' % (str(round(line_length(chunk, nodes)/speed, 2)) if chunk_length > 1 else '0')
-
+                chunk += 'RT=%s, ' % (str(round(line_length(chunk, nodes) / speed, 2)) if chunk_length > 1 else '0')
 
         self.line_names.append(name)
         self.line_dict[name] = Line(chunk[:-2])
@@ -286,20 +275,18 @@ class Lin:
 
         :param to_drop: the name or a collection of names of the modes to drop
         """
-
         geo = self.geo_dataframe(geometry=False)
 
         to_drop = to_drop if type(to_drop) in [set, list] else ([to_drop] if to_drop else to_drop)
         all_but = all_but if type(all_but) in [set, list] else ([all_but] if all_but else all_but)
 
-        modes = list(set(geo['mode'].unique())-set(all_but) if all_but else to_drop)
-        line_names = list(geo[ geo['mode'].isin(modes)]['name'])
+        modes = list(set(geo['mode'].unique()) - set(all_but) if all_but else to_drop)
+        line_names = list(geo[geo['mode'].isin(modes)]['name'])
         self.drop_line(line_names)
         self._to_text()
 
     def merge_lines(self, left_name, right_name, delete_right=True, start='left'):
         """
-
         :param left_name: name of the line to edit
         :param right_name: name of the line to merge on the left line
         :param delete_right: if True, the right line will be deleted
@@ -311,8 +298,6 @@ class Lin:
             lines.merge_lines('ligne violette', 'ruta_bis 67',)  #  merge the lines and deletes 'ruta_bis 67'
             lines.change_time('ruta 67', 0.5, 0)
             lines.merge_lines('ligne violette_bis', 'ruta 67', start='right')
-
-
         """
         self.line_dict[left_name].add_line(self.line_dict[right_name], start=start)
         if delete_right:
@@ -337,7 +322,6 @@ class Lin:
     def set_direct(self, to_set, from_stop, to_stop):
         """
         remove the stops between from_stop and to_stop (and reverse)
-
         """
         if type(to_set) in [set, list]:
             for entity in to_set:
@@ -345,7 +329,6 @@ class Lin:
         else:
             self.line_dict[to_set].set_direct(from_stop, to_stop)
             self._to_text(format_chunks=False)
-
 
     def drop_checkpoints(self, to_drop):
 
@@ -365,7 +348,6 @@ class Lin:
             self.line_dict[to_change].change_stop(from_stop, to_stop)
             if to_text:
                 self.to_text()
-
 
     def find_endpoints(self, mode=None):
         """
@@ -395,7 +377,6 @@ class Lin:
             return _prune_text(self.text, stop_list)
 
     def geo_dataframe(self, mode_split_string='mode=', geometry=True, all_nodes=True):
-
         """
         Returns a pd.DataFrame that contains the name, the mode, the headway and the geometry of the lines. It may be
         used to dump the Lin to a .shp
@@ -409,29 +390,31 @@ class Lin:
             pandasshp.write_shp(sig_path+'lin_2045', geo, projection_string=epsg_32614)
         """
         chunks = self.text.split(self.sep)
-
-        if geometry :
-            df = pd.DataFrame({'name': pd.Series([line_name(c) for c in chunks ]),
-                             'mode': pd.Series([line_mode(c, split_string=mode_split_string) for c in chunks]),
-                             'headway': pd.Series([line_headway(c) for c in chunks]),
-                             'time': pd.Series([line_time(c) for c in chunks]),
-                             'geometry': pd.Series([line_geometry(c, self.nodes, all_nodes) for c in chunks]),
-                             'stops':pd.Series([str(_stop_list(c)) for c in chunks]),
-                             'nodes':pd.Series([str(_node_list(c)) for c in chunks]),
-                             'nstops': pd.Series([len(_stop_list(c)) for c in chunks])})
+        if geometry:
+            df = pd.DataFrame({
+                'name': pd.Series([line_name(c) for c in chunks]),
+                'mode': pd.Series([line_mode(c, split_string=mode_split_string) for c in chunks]),
+                'headway': pd.Series([line_headway(c) for c in chunks]),
+                'time': pd.Series([line_time(c) for c in chunks]),
+                'geometry': pd.Series([line_geometry(c, self.nodes, all_nodes) for c in chunks]),
+                'stops': pd.Series([str(_stop_list(c)) for c in chunks]),
+                'nodes': pd.Series([str(_node_list(c)) for c in chunks]),
+                'nstops': pd.Series([len(_stop_list(c)) for c in chunks])
+            })
             df.dropna(inplace=True)
             df['length'] = df['geometry'].apply(lambda g: g.length)
-            df['speed'] = df['length']/df['time']
+            df['speed'] = df['length'] / df['time']
         else:
 
-            df = pd.DataFrame({'name': pd.Series([line_name(c) for c in chunks ]),
-                                 'mode': pd.Series([line_mode(c, split_string=mode_split_string) for c in chunks]),
-                                 'headway': pd.Series([line_headway(c) for c in chunks]),
-                                 'time': pd.Series([line_time(c) for c in chunks]),
-                             'stops':pd.Series([str(_stop_list(c)) for c in chunks]),
-                             'nodes':pd.Series([str(_node_list(c)) for c in chunks]),
-                             'nstops': pd.Series([len(_stop_list(c)) for c in chunks])})
-
+            df = pd.DataFrame({
+                'name': pd.Series([line_name(c) for c in chunks]),
+                'mode': pd.Series([line_mode(c, split_string=mode_split_string) for c in chunks]),
+                'headway': pd.Series([line_headway(c) for c in chunks]),
+                'time': pd.Series([line_time(c) for c in chunks]),
+                'stops': pd.Series([str(_stop_list(c)) for c in chunks]),
+                'nodes': pd.Series([str(_node_list(c)) for c in chunks]),
+                'nstops': pd.Series([len(_stop_list(c)) for c in chunks])
+            })
         return df.dropna()
 
     def to_shape(self, stop_file=None, link_file=None, all_nodes=True):
@@ -446,7 +429,6 @@ class Lin:
         if bool(stop_file):
             stops = pd.merge(self.nodes, self.line_count, left_index=True, right_index=True).reset_index()
             pandasshp.write_shp(stop_file, stops, projection_string=self.prj)
-
 
     def nontransitleg_geometries(self):
         """
@@ -473,15 +455,14 @@ class Lin:
         else:
             line_stops = _stop_list(self.line_dict[to_links].chunk)
             _line_links = [[line_stops[i], line_stops[i + 1]] for i in range(len(line_stops) - 1)]
-            return  pd.DataFrame(_line_links, columns=['a', 'b']).drop_duplicates()
-
+            return pd.DataFrame(_line_links, columns=['a', 'b']).drop_duplicates()
 
 
 regex_time = 'RT=[0-9]{1,6}[.]?[0-9]{0,6}'
 time_re = re.compile(regex_time)
 
-def find_hubs(zones, nodes, text):
 
+def find_hubs(zones, nodes, text):
     stop_list = _stop_list(text)
     lin_chunks = ['LINE Name' + chunk for chunk in text.split('LINE Name')]
 
@@ -489,7 +470,6 @@ def find_hubs(zones, nodes, text):
     stop_lines = _stop_lines(stop_list, lin_chunks)
     zone_lines = _zone_lines(zone_stops, stop_list, stop_lines)
     hubs = _hubs(zone_stops, stop_lines, zone_lines)
-
     return hubs
 
 
@@ -498,21 +478,21 @@ def line_length(chunk, nodes):
 
 
 def line_speed(chunk, nodes):
-    return line_length(chunk, nodes)/line_time(chunk)
+    return line_length(chunk, nodes) / line_time(chunk)
 
 
 def line_geometry(chunk, nodes, all_nodes=True):
     point_list = _node_list(chunk) if all_nodes else _stop_list(chunk)
-    try :
+    try:
         return shapely.geometry.LineString([nodes.loc[node, 'geometry'] for node in point_list])
-    except :
+    except Exception:
         return np.nan
 
 
 def line_time(chunk):
     try:
         return float(time_re.findall(chunk)[-1].split('RT=')[1])
-    except:
+    except Exception:
         return np.nan
 
 
@@ -521,32 +501,31 @@ def line_stops(chunk):
 
 
 def line_name(lin_chunk):
-    try :
+    try:
         return lin_chunk.split("'")[1]
-    except:
+    except Exception:
         return 'not_a_line'
 
 
 def line_mode(lin_chunk, split_string='mode='):
-    try :
+    try:
         return int(lin_chunk.split(split_string)[1].split(',')[0])
-    except:
+    except Exception:
         return 'not_a_line'
+
 
 def line_headway(lin_chunk, split_string='headway='):
-    try :
+    try:
         return float(lin_chunk.lower().replace(' ', '').split(split_string)[1].split(',')[0])
-    except:
+    except Exception:
         return 'not_a_line'
-
 
 
 def _zone_stops(zones, nodes, stop_list, leg_type='contains'):
-
     if leg_type == 'contains':
         progress = FloatProgress(
-            min=0, max=len(list(zones.iterrows())), width=975, height = 10, color=syscolors.rainbow_shades[1], margin=5)
-        progress.value=0
+            min=0, max=len(list(zones.iterrows())), width=975, height=10, color=syscolors.rainbow_shades[1], margin=5)
+        progress.value = 0
         display(progress)
         zone_stops = {}
         for zone_id, zone in zones.iterrows():
@@ -554,7 +533,7 @@ def _zone_stops(zones, nodes, stop_list, leg_type='contains'):
             for stop_id, stop in nodes.loc[stop_list].iterrows():
                 if zone['geometry'].contains(stop['geometry']):
                     zone_stops[zone_id].append(stop_id)
-            progress.value +=1
+            progress.value += 1
 
     if leg_type == 'nearest':
         centroids = zones.copy()
@@ -565,15 +544,14 @@ def _zone_stops(zones, nodes, stop_list, leg_type='contains'):
         links_b = spatial.nearest(centroids, stops).rename(columns={'ix_one': 'zone', 'ix_many': 'stop'})
         links = pd.concat([links_a, links_b]).drop_duplicates()
         zone_stops = dict(links.groupby('zone')['stop'].agg(lambda s: list(s)))
-
     return zone_stops
-
 
 
 def _stop_lines(stop_list, lin_chunks):
     progress = FloatProgress(
-        min=0, max=len(stop_list), width=975, height=10, color=syscolors.rainbow_shades[1], margin=5)
-    progress.value=0
+        min=0, max=len(stop_list), width=975, height=10, color=syscolors.rainbow_shades[1], margin=5
+    )
+    progress.value = 0
     display(progress)
     stop_lines = {}
     for stop in stop_list:
@@ -600,12 +578,11 @@ def _hubs(zone_stops, stop_lines, zone_lines):
     for zone in list(zone_lines.keys()):
         to_keep[zone] = []
         while len(pop_zone_lines[zone]):
-
             dict_intersection = {len(pop_zone_lines[zone].intersection(stop_lines[stop])): stop for stop in zone_stops[zone]}
             max_intersection = sorted(dict_intersection.keys())[-1]
             max_stop = dict_intersection[max_intersection]
             to_keep[zone].append(max_stop)
-            pop_zone_lines[zone] = pop_zone_lines[zone]-stop_lines[max_stop]
+            pop_zone_lines[zone] = pop_zone_lines[zone] - stop_lines[max_stop]
 
     hubs = set(itertools.chain(*list(to_keep.values())))
     return hubs
@@ -626,12 +603,10 @@ def _endpoints(lin_chunk):
 
 
 def _nontransitlegs(zone_stops):
-
     nontransitlegs = []
     for zone in zone_stops.keys():
         for stop in zone_stops[zone]:
             nontransitlegs.append((stop, zone))
-
     return list(set(nontransitlegs))
 
 
@@ -640,7 +615,6 @@ def _transitlegs(stop_lines):
     for stop in stop_lines.keys():
         for line in stop_lines[stop]:
             transitlegs.append((stop, line))
-
     return list(set(transitlegs))
 
 
@@ -651,19 +625,18 @@ def _line_count(text):
 def _mode_stops(mode, text, regex='N=[0-9]{4,6}', sep='LINE NAME'):
     stop_re = re.compile(regex)
     lin_chunks = [sep + chunk for chunk in text.split(sep)]
-    mode_chunks = [chunk for chunk in lin_chunks if 'mode='+str(mode) in chunk]
+    mode_chunks = [chunk for chunk in lin_chunks if 'mode=' + str(mode) in chunk]
     mode_find = stop_re.findall(''.join(mode_chunks))
     return [int(f[2:]) for f in mode_find]
 
 
 def _find_endpoints(text, mode=None, sep='LINE NAME'):
     lin_chunks = [sep + chunk for chunk in text.split(sep)[1:]]
-    lin_chunks = [chunk for chunk in lin_chunks if 'mode='+str(mode) in chunk] if mode else lin_chunks
+    lin_chunks = [chunk for chunk in lin_chunks if 'mode=' + str(mode) in chunk] if mode else lin_chunks
     return list(itertools.chain(*[_endpoints(chunk) for chunk in lin_chunks]))
 
 
 def _prune_text(text, stops):
-
     pruned_text = text.replace('N=', 'N=-')
     pruned_text = re.sub('[-]+', '-', pruned_text)
 
@@ -671,7 +644,6 @@ def _prune_text(text, stops):
         before = 'N=-' + str(stop)
         after = 'N=' + str(stop)
         pruned_text = pruned_text.replace(before, after)
-
     return pruned_text
 
 
@@ -679,7 +651,6 @@ def _prune_text(text, stops):
 
 
 def connection_graph(zones, nodes, text):
-
     lin_chunks = ['LINE Name' + chunk for chunk in text.split('LINE Name')]
     stop_list = _stop_list(text)
     zone_stops = _zone_stops(zones, nodes, stop_list)
@@ -696,13 +667,11 @@ def connection_graph(zones, nodes, text):
             transitlegs.append((stop, line))
 
     g = nx.Graph(transitlegs + nontransitlegs)
-
     return g
 
 
 def path_matrix(zones, nodes, text):
     """
-
     :param zones:
     :param nodes:
     :param text:
@@ -729,7 +698,6 @@ def path_matrix(zones, nodes, text):
 
         OD that require 2 transfers in Monterrey (Mexico)
     """
-
     g = connection_graph(zones, nodes, text)
     paths = nx.shortest_path(g)
 
@@ -737,14 +705,13 @@ def path_matrix(zones, nodes, text):
     for o in list(zones.index):
         for d in list(zones.index):
             try:
-                od_list.append({'origin':o, 'destination':d, 'path_len':len(paths[o][d]), 'path':paths[o][d]})
-            except:
+                od_list.append({'origin': o, 'destination': d, 'path_len': len(paths[o][d]), 'path': paths[o][d]})
+            except Exception:
                 pass
 
     od = pd.DataFrame(od_list)
     od['lines'] = od['path'].apply(lambda path: [leg for leg in path if type(leg) == str])
     od['connections'] = od['lines'].apply(lambda l: len(l))
-
     return od
 
 
@@ -755,21 +722,11 @@ def _path_matrix(g, zones):
     for o in list(zones.index):
         for d in list(zones.index):
             try:
-                od_list.append({'origin':o, 'destination':d, 'path_len':len(paths[o][d]), 'path':paths[o][d]})
-            except:
+                od_list.append({'origin': o, 'destination': d, 'path_len': len(paths[o][d]), 'path': paths[o][d]})
+            except Exception:
                 pass
 
     od = pd.DataFrame(od_list)
     od['lines'] = od['path'].apply(lambda path: [leg for leg in path if type(leg) == str])
     od['connections'] = od['lines'].apply(lambda l: len(l))
-
     return od
-
-
-
-
-
-
-
-
-
