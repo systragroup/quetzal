@@ -16,7 +16,8 @@ def node_clustering(links, nodes, n_clusters, prefixe='', group_id=None,**kwargs
             **kwargs
         )
     else:
-        clusters = nodes.groupby(group_id).first()
+        clusters = gpd.GeoDataFrame(nodes).dissolve(group_id)['geometry'].apply(lambda x: x.convex_hull)
+        clusters = pd.DataFrame(clusters)
         cluster_series = nodes[group_id] 
     
     cluster_dict = cluster_series.to_dict()
