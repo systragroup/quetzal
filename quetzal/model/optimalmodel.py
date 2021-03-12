@@ -37,6 +37,8 @@ class OptimalModel(preparationmodel.PreparationModel):
         # boarding edges
         links.index = 'boarding_' + links['index'].astype(str)
         links['f'] = 1 / links['headway'] / alpha
+        if 'boarding_stochastic_utility' in links.columns:
+            links['f'] *= np.exp(links['boarding_stochastic_utility'])
         links['c'] = boarding_cost
         boarding_edges = links[['a', 'i', 'f' ,'c' ]].reset_index().values.tolist()
 
@@ -61,7 +63,7 @@ class OptimalModel(preparationmodel.PreparationModel):
         footpaths['c'] = footpaths['time']
         footpaths_edges = footpaths[['a', 'b', 'f' ,'c']].reset_index().values.tolist()
 
-        edges = boarding_edges + transit_edges + alighting_edges + access_edges + footpaths_edges
+        edges = access_edges + boarding_edges + transit_edges + alighting_edges +  footpaths_edges
         edges = [tuple(e) for e in edges]
         
         return edges
@@ -71,8 +73,10 @@ class OptimalModel(preparationmodel.PreparationModel):
         s_dict = {}
         node_df_list = []
 
+        all_edges = self.get_optimal_strategy_edges(*args, **kwargs)
         for destination in tqdm(self.zones.index):
-            edges = self.get_optimal_strategy_edges(target=destination, *args, **kwargs)
+            forbidden = set(self.zones.index) - {destination}
+            edges = [e for e in all_edges if e[2] not in forbidden]
             strategy, u, f = optimal_strategy.find_optimal_strategy(edges, destination)
             s_dict[destination] = strategy
             node_df = pd.DataFrame({'f': pd.Series(f), 'u':pd.Series(u)})

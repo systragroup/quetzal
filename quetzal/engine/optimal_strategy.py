@@ -1,3 +1,5 @@
+
+import bisect
 def find_optimal_strategy(edges, destination, inf=1e9):
     
     zero= 1 / inf
@@ -19,9 +21,22 @@ def find_optimal_strategy(edges, destination, inf=1e9):
     
     edge_data = {ix: (i, j, fa, ca) for ix, i, j, fa, ca in edges}
     distance = {ix : u[j] + ca for ix, i, j, fa, ca in j_edges[destination]}
-    while(len(distance)):
-        # Get next link
-        ix = min(distance, key=distance.get)
+    
+    distance_tuples = sorted((v, k) for k, v in distance.items())
+    seen = set()
+    def get_next_link():
+        # get first tuple of (distance, ix) tuples 
+        # if ix has not been visited yet
+        while len(distance_tuples):
+            ix = distance_tuples.pop(0)[1]
+            if ix not in seen:
+                seen.add(ix)
+                return ix
+            
+    while(len(distance_tuples)):
+        ix = get_next_link()
+        if ix is None:
+            break
         a = i, j, fa, ca = edge_data[ix]
         
         # Update node label
@@ -30,10 +45,11 @@ def find_optimal_strategy(edges, destination, inf=1e9):
             f[i] = f[i] + fa
             strategy.add(ix)
             for ixa, i, j, fa, ca in j_edges[i]:
-                distance[ixa] = u[j] + ca    
-        distance.pop(ix)
-              
+                distance[ixa] = u[j] + ca  
+                bisect.insort(distance_tuples, (u[j] + ca, ixa))
+                
     return strategy, u, f
+
 
 def assign_optimal_strategy(sources, edges, u, f):
     
