@@ -1,5 +1,7 @@
 
 import bisect
+import heapq
+import heapq
 def find_optimal_strategy(edges, destination, inf=1e9):
     
     zero= 1 / inf
@@ -20,33 +22,35 @@ def find_optimal_strategy(edges, destination, inf=1e9):
     strategy = set()
     
     edge_data = {ix: (i, j, fa, ca) for ix, i, j, fa, ca in edges}
-    distance = {ix : u[j] + ca for ix, i, j, fa, ca in j_edges[destination]}
-    
-    distance_tuples = sorted((v, k) for k, v in distance.items())
+    heap = [(u[j] + ca, ix ) for ix, i, j, fa, ca in j_edges[destination]]
+    heapq.heapify(heap)
     seen = set()
+    
     def get_next_link():
         # get first tuple of (distance, ix) tuples 
         # if ix has not been visited yet
-        while len(distance_tuples):
-            ix = distance_tuples.pop(0)[1]
-            if ix not in seen:
-                seen.add(ix)
-                return ix
-            
-    while(len(distance_tuples)):
+        while True:
+            try:
+                ix = heapq.heappop(heap)[1]
+                if ix not in seen:
+                    seen.add(ix)
+                    return ix
+            except IndexError:
+                return 
+
+    while(len(heap)):
         ix = get_next_link()
         if ix is None:
             break
-        a = i, j, fa, ca = edge_data[ix]
+        i, j, fa, ca = edge_data[ix]
         
         # Update node label
         if u.get(i, inf) >= u[j] + ca:
             u[i] = (f[i] * u.get(i, inf) + fa * (u[j] + ca)) / (f[i] + fa)
             f[i] = f[i] + fa
             strategy.add(ix)
-            for ixa, i, j, fa, ca in j_edges[i]:
-                distance[ixa] = u[j] + ca  
-                bisect.insort(distance_tuples, (u[j] + ca, ixa))
+            for ixa, i, j, fa, ca in j_edges[i]: 
+                heapq.heappush(heap, (u[j] + ca, ixa))
                 
     return strategy, u, f
 
