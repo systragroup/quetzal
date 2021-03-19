@@ -18,6 +18,7 @@ import ntpath
 from quetzal.io import hdf_io
 
 from syspy.syspy_utils.data_visualization import add_basemap
+from syspy.io.geojson_utils import set_geojson_crs
 from concurrent.futures import ProcessPoolExecutor
 from quetzal.model.integritymodel import IntegrityModel
 
@@ -552,7 +553,7 @@ class Model(IntegrityModel):
 
             if isinstance(attribute, (pd.DataFrame, pd.Series)):
 
-                msg = 'datframe attributes must have unique index:' + key
+                msg = 'dataframe attributes must have unique index:' + key
                 assert attribute.index.is_unique, msg
                 attribute = pd.DataFrame(attribute)  # copy and type conversion
                 attribute.drop('index', axis=1, errors='ignore', inplace=True)
@@ -571,6 +572,7 @@ class Model(IntegrityModel):
                     gpd.GeoDataFrame(attribute[geojson_columns]).to_file(
                         geojson_file, driver='GeoJSON'
                     )
+                    set_geojson_crs(geojson_file, "urn:ogc:def:crs:EPSG::{}".format(self.epsg))
                     if len(json_columns):
                         attribute[json_columns + ['index']
                                   ].to_json(root_name + '_quetzaldata.json')
