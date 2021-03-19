@@ -94,6 +94,42 @@ class PlotModel(summarymodel.SummaryModel):
         
         return ax
 
+    def plot_car_paths(
+        self, 
+        origin, 
+        destination, 
+        ax=None,
+        separated=False,
+        basemap_url=None,
+        zoom=9,
+        *args,
+        **kwargs
+    ):
+
+        styles = self.get_geometries()
+        ax = self.od_basemap(origin,  destination, *args, **kwargs)
+        paths = self.car_los.set_index(['origin', 'destination']).loc[origin, destination]
+        if paths.ndim == 1: # their is only one path 
+            paths = pd.DataFrame(data=paths).T 
+            
+        # the path is added to the ax
+        for p in tqdm(list(paths['path'])):
+            ax = plot_one_path(p, styles, ax=ax)
+            ax.set_xticks([])
+            ax.set_yticks([])
+
+        for p in tqdm(list(paths['link_path'])):
+            ax = plot_one_path(p, styles, ax=ax)
+            ax.set_xticks([])
+            ax.set_yticks([])
+
+        if basemap_url is not None:
+            assert self.epsg == 3857
+            data_visualization.add_basemap(ax, url=basemap_url, zoom=zoom)
+        
+        return ax
+
+
     def plot_separated_paths(
             self, 
             origin, 
