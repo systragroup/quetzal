@@ -280,11 +280,16 @@ class PlotModel(summarymodel.SummaryModel):
         scalebar=None,
         *args, **kwargs
     ):
-        self.volumes['dummy'] = 0
-        self.volumes.loc[
-            (self.volumes['origin'] == origin) & 
-            (self.volumes['destination'] == destination), 'dummy'
-        ] = 1 
+
+        try:
+            volumes = self.volumes.copy()
+            restore = True
+        except AttributeError:
+            restore = False
+            pass
+        self.volumes = pd.DataFrame(
+            data=[[origin, destination, 1]], 
+            columns=['origin', 'destination', 'dummy'])
         self.step_strategy_assignment('dummy', road=road)
         
         self.volumes.drop('dummy', inplace=True, axis=1)
@@ -339,6 +344,8 @@ class PlotModel(summarymodel.SummaryModel):
         if basemap_raster is not None:
             data_visualization.add_raster(ax, raster=basemap_raster)
 
+        if restore:
+            self.volumes = volumes.copy()
         return ax
 
 
