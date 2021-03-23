@@ -222,7 +222,7 @@ def los_from_graph(
     source_index = dict(zip(source_list, range(len(source_list))))
     zone_index = dict(zip(pole_list, range(len(pole_list))))
 
-    # SPARSE GRAPH
+    # SPARSE GRAPH
     dist_matrix, predecessors = dijkstra(
         csgraph=csgraph, 
         directed=True, 
@@ -600,5 +600,3 @@ class PublicPathFinder:
 
         if drop_duplicates:
             self.paths.drop_duplicates(subset=['path'], inplace=True)
-
-
