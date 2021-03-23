@@ -8,6 +8,13 @@ from syspy.syspy_utils.data_visualization import trim_axs
 from syspy.syspy_utils import data_visualization
 from quetzal.io import export_utils
 import matplotlib.pyplot as plt
+from tqdm import tqdm
+from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
+from matplotlib.colors import TwoSlopeNorm
+import networkx as nx
+from graphviz import Source
+import numpy as np
+from IPython.core import display
 
 styles = {
     'zones': {'color': 'grey', 'alpha': 0},
@@ -239,6 +246,100 @@ class PlotModel(summarymodel.SummaryModel):
                 plt.setp(axes, yticks=yticks)
 
         return fig, axes
+
+
+    def display_aggregated_edges(self, origin, destination, ranksep=0.1 ,rankdir='LR', *args, **kwargs):
+        a = self.get_aggregated_edges(origin, destination, *args, **kwargs)
+        a['l'] = 'p=' + np.round(a['p'], 2).astype(str) #+ '\nh:' + a['h'].astype(str)
+        a.loc[a['p'] == 1, 'l'] = ''
+
+        odg = nx.DiGraph()
+        for e in a.to_dict(orient='records'):
+            odg.add_edge(e['i'], e['j'], label=e['l'])
+        name='test'
+        
+        header = """
+        ratio = fill; 
+        node [style="filled,rounded" ,shape="record", fontname = "calibri", fontsize=24,];
+        edge[ fontname = "calibri", fontsize=24];
+        ranksep = "%s";
+        rankdir="%s";
+        """%(str(ranksep), rankdir)
+        dot_string = nx.nx_pydot.to_pydot(odg).to_string().replace('{', '{' + header)
+        src = Source(dot_string,format='png')
+        
+        return display.Image(filename=src.render(name))
+        
+
+    def plot_strategy(
+        self, origin, destination, road=False, 
+        color='red', cmap='Reds', legend='right', 
+        legend_kwds=None, walk_on_road=False, 
+        basemap_raster=None,
+        north_arrow=None,
+        scalebar=None,
+        *args, **kwargs
+    ):
+        self.volumes['dummy'] = 0
+        self.volumes.loc[
+            (self.volumes['origin'] == origin) & 
+            (self.volumes['destination'] == destination), 'dummy'
+        ] = 1 
+        self.step_strategy_assignment('dummy', road=road)
+        
+        self.volumes.drop('dummy', inplace=True, axis=1)
+        
+        try:
+            loc = set(self.loaded_edges.loc[self.loaded_edges['dummy'] > 0].index)
+            access = pd.concat([self.road_links, self.zone_to_road, self.road_to_transit])
+            loc = loc.intersection(access.index)
+            access = access.loc[loc]
+            assert len(access) > 0
+        except AssertionError:
+            loc = set(self.loaded_edges.loc[self.loaded_edges['dummy'] > 0].index)
+            access = self.zone_to_transit
+            loc = loc.intersection(access.index)
+            access = access.loc[loc]
+        
+        links = self.road_links if road else self.links
+            
+        links=links.dropna(subset=['dummy'])
+        links = links.loc[links['dummy'] > 0]
+
+        norm = TwoSlopeNorm(vmin=0, vcenter=0.5, vmax=1)
+        ax = self.od_basemap(origin, destination, *args, **kwargs)
+        
+        #access['dummy'] = 1
+        access.plot(ax=ax, alpha=1, color='black', linewidth=2)
+        links.plot(ax=ax, alpha=1, color='white', linewidth=7, zorder=3)
+        links.plot(ax=ax, alpha=1, color='black', linewidth=6, zorder=4)
+        if road:
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes(legend, size="2%", pad=0.05)
+            links.plot(
+                zorder=5,
+                ax=ax, alpha=1, column='dummy', linewidth=5, cmap=cmap, norm=norm, 
+                legend=bool(legend), cax=cax, legend_kwds=legend_kwds)
+        else:
+            
+            links.plot(ax=ax, alpha=1, color='white', linewidth=5)
+            for alpha in set(links['dummy']):
+                links.loc[links['dummy'] == alpha].plot(color=color, ax=ax, alpha=alpha, linewidth=5)
+        ax.set_yticks([])
+        ax.set_xticks([])
+        
+        nodes = self.nodes.dropna(subset=['boardings', 'alightings'], how='all').fillna(0)
+        nodes.plot(ax=ax, marker=10, markersize=200, zorder=10, column='boardings', cmap=cmap, norm=norm, linewidth=0)
+        nodes.plot(ax=ax, marker=11, markersize=200, zorder=10, column='alightings',cmap=cmap, norm=norm, linewidth=0)
+
+        if north_arrow is not None:
+            data_visualization.add_north(ax)
+        if scalebar is not None:
+            data_visualization.add_scalebar(ax) 
+        if basemap_raster is not None:
+            data_visualization.add_raster(ax, raster=basemap_raster)
+
+        return ax
 
 
 def _both_directions_graph_possible(df):
