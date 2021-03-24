@@ -61,7 +61,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 kwargs['power'] = {}
             if 'intrazonal' not in kwargs.keys():
                 kwargs['intrazonal'] = {}
-    
+
             for segment in self.segments:
                 print(segment)
                 cols = ['geometry', (segment, 'emission'), (segment, 'attraction')]

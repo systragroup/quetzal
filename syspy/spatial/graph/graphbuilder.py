@@ -202,7 +202,7 @@ def clean_geometries(links, nodes, decimal_threshold=9):
         axis=1
     )
 
-    loc = (reverse is True, 'geometry')
+    loc = (reverse == True, 'geometry')
 
     links.loc[loc] = links.loc[loc].apply(
         reversed_polyline
