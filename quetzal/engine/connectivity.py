@@ -167,9 +167,11 @@ def adaptive_clustering(nodes, zones, mean_distance_threshold=None, distance_col
         zone_df['distance_threshold'] = zone_df[distance_col]
     else:
         zone_df['distance_threshold'] = zone_df['geometry'].area ** 0.5
-
+        
         if mean_distance_threshold is not None:
             zone_df['distance_threshold'] *= mean_distance_threshold / zone_df['distance_threshold'].mean()
+    
+    print('Mean distance threshold is {}'.format(int(zone_df['distance_threshold'].mean())))
 
     #  take twice max value for outer zones
     d_max = zone_df['distance_threshold'].max() * 2

@@ -407,7 +407,9 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 return
 
         if adaptive_clustering:
-            self.nodes = connectivity.adaptive_clustering(self.nodes, self.zones, **kwargs)
+            if 'clustering_zones' not in self.__dict__.keys():
+                self.clustering_zones = self.zones.copy()
+            self.nodes = connectivity.adaptive_clustering(self.nodes, self.clustering_zones, **kwargs)
             self.links, self.nodes,  self.node_clusters, self.node_parenthood = connectivity.node_clustering(
                 self.links, self.nodes, n_clusters, group_id='adaptive_cluster_id'
             )
