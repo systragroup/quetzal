@@ -13,7 +13,6 @@ def get_epsg(lat, lon):
     return int(32700 - round((45 + lat) / 90, 0) * 100 + round((183 + lon) / 6, 0))
 
 
-
 def to_seconds(time_string):  # seconds
     return pd.to_timedelta(time_string).total_seconds()
 
