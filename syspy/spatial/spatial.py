@@ -1,21 +1,20 @@
-# -*- coding: utf-8 -*-
-
 """
 This module provides tools for spatial analysis.
 """
 __author__ = 'qchasserieau'
 
 import warnings
+
+import geopandas as gpd
 import numpy as np
 import pandas as pd
-import geopandas as gpd
 import shapely
-from shapely.ops import polygonize
-import shapely.geometry.polygon
 import shapely.geometry.linestring
-from sklearn.cluster import KMeans, AgglomerativeClustering
-from sklearn.neighbors import NearestNeighbors
+import shapely.geometry.polygon
 from scipy.spatial import Voronoi, voronoi_plot_2d
+from shapely.ops import polygonize
+from sklearn.cluster import AgglomerativeClustering, KMeans
+from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
 
 
@@ -39,22 +38,19 @@ def total_bounds(df):
 
 def add_centroid(zones_shp):
     """Returns a DataFrame with centroid attributes from a zonig pandas.DataFrame """
-
     zones = zones_shp.copy()
 
     zones['centroid_geometry'] = zones['geometry'].apply(lambda g: g.centroid)
     zones['centroid_coordinates'] = zones['geometry'].apply(lambda g: g.centroid.coords[0])
     zones['latitude'] = zones['geometry'].apply(lambda g: g.centroid.y)
     zones['longitude'] = zones['geometry'].apply(lambda g: g.centroid.x)
-
     return zones
 
 
 def od_matrix(zones, centroids=False):
-
     _zones = zones.copy() if centroids else add_centroid(zones.copy())
     pos = _zones[['latitude', 'longitude']]  #: the {centroid: [latitude, longitude]} dictionary
-    iterate = [pos.index]*2
+    iterate = [pos.index] * 2
 
     #: the od column matrix
     od = pd.DataFrame(index=pd.MultiIndex.from_product(iterate, names=['origin', 'destination'])).reset_index()
@@ -88,17 +84,16 @@ def buffer_until_polygon(g, b=1e-6, step=5):
     else:
         return buffer_until_polygon(
             simplify_then_buffer(g, b),
-            b*step,
-
+            b * step,
             step
         )
 
 
 def zone_clusters(
-    zones,  
+    zones,
     n_clusters=10,
-    buffer=None, 
-    cluster_column=None, 
+    buffer=None,
+    cluster_column=None,
     geo_union_method=union_geometry,
     geo_join_method=lambda g: g.convex_hull
 ):
@@ -118,10 +113,9 @@ def zone_clusters(
 
     cluster_series.name = 'cluster'
 
-    geo = df.dissolve('cluster')['geometry']#.agg(union_geometry)
+    geo = df.dissolve('cluster')['geometry']  # .agg(union_geometry)
 
     clusters = pd.DataFrame(geo.apply(geo_join_method))
-
     return clusters, cluster_series
 
 
@@ -139,7 +133,6 @@ def agglomerative_clustering(
         n_clusters=None,
         distance_threshold=distance_threshold
     ).fit(df[['x', 'y']].values)
-
     return c.labels_
 
 
@@ -164,7 +157,7 @@ def _join_geometry(link_row, one, many):
 def add_geometry_coordinates(df, columns=['x_geometry', 'y_geometry']):
     df = df.copy()
 
-    # if the geometry is not a point...
+    # if the geometry is not a point...
     centroids = df['geometry'].apply(lambda g: g.centroid)
 
     df[columns[0]] = centroids.apply(lambda g: g.coords[0][0])
@@ -173,7 +166,6 @@ def add_geometry_coordinates(df, columns=['x_geometry', 'y_geometry']):
 
 
 def nearest(one, many, geometry=False, n_neighbors=1):
-
     try:
         assert many.index.is_unique
         assert one.index.is_unique
@@ -185,8 +177,8 @@ def nearest(one, many, geometry=False, n_neighbors=1):
     df_many = add_geometry_coordinates(many.copy(), columns=['x_geometry', 'y_geometry'])
     df_one = add_geometry_coordinates(one.copy(), columns=['x_geometry', 'y_geometry'])
 
-    x = df_many[['x_geometry','y_geometry']].values
-    y = df_one[['x_geometry','y_geometry']].values
+    x = df_many[['x_geometry', 'y_geometry']].values
+    y = df_one[['x_geometry', 'y_geometry']].values
 
     nbrs = NearestNeighbors(n_neighbors=n_neighbors, algorithm='ball_tree').fit(x)
     distances, indices = nbrs.kneighbors(y)
@@ -198,7 +190,7 @@ def nearest(one, many, geometry=False, n_neighbors=1):
     for i in range(n_neighbors):
 
         links = pd.merge(index_one, pd.DataFrame(
-                indices[:, i], columns=['index_nn']), left_index=True, right_index=True)
+            indices[:, i], columns=['index_nn']), left_index=True, right_index=True)
 
         links = pd.merge(links, index_many, left_on='index_nn', right_index=True)
 
@@ -220,11 +212,12 @@ def nearest(one, many, geometry=False, n_neighbors=1):
 
     return links
 
+
 def nearest_geometry(
-    one, 
-    many, 
-    geometry=False, 
-    n_neighbors=1, 
+    one,
+    many,
+    geometry=False,
+    n_neighbors=1,
     n_neighbors_centroid=10
 ):
 
@@ -267,19 +260,18 @@ def nearest_geometry(
             'nearest_link'
         )
     ]
-    
+
     actual_nearest.sort_values(
         ['ix_one', 'actual_distance'],
         inplace=True
     )
-    
+
     ranks = list(range(n_neighbors_centroid)) * len(one)
     actual_nearest['actual_rank'] = ranks
-    return actual_nearest.loc[actual_nearest['actual_rank']< n_neighbors]
+    return actual_nearest.loc[actual_nearest['actual_rank'] < n_neighbors]
 
 
 def zones_in_influence_area(zones, area=None, links=None, cut_buffer=0.02):
-
     if not area:
         union_links = union_geometry(links['geometry'])
         area = union_links.buffer(cut_buffer)
@@ -291,43 +283,40 @@ def zones_in_influence_area(zones, area=None, links=None, cut_buffer=0.02):
     }
     return pd.DataFrame(keep).T.reset_index(drop=True)
 
+
 def voronoi_diagram_dataframes(points, **kwargs):
     items = list(dict(points).items())
     key_dict = {}
     key_list = []
     values = []
-    
+
     for i in range(len(items)):
         key_dict[i] = items[i][0]
         key_list.append(items[i][0])
         values.append(items[i][1])
 
-    # if not, we have less polygons than centroids, 
-    # centroids may be really close
-    assert len(key_list) == len(values) 
+    # if not, we have less polygons than centroids,
+    # centroids may be really close
+    assert len(key_list) == len(values)
 
     polygons, ridges = voronoi_diagram(values)
     polygon_dataframe = pd.DataFrame(
-        polygons, 
-        index=key_list, 
+        polygons,
+        index=key_list,
         columns=['geometry']
     )
 
     ridge_dataframe = pd.DataFrame(
-        ridges, 
+        ridges,
         columns=['a', 'b', 'geometry']
     )
 
     ridge_dataframe['a'] = ridge_dataframe['a'].apply(lambda x: key_dict[x])
     ridge_dataframe['b'] = ridge_dataframe['b'].apply(lambda x: key_dict[x])
-
     return polygon_dataframe, ridge_dataframe
 
 
-
-
 def voronoi_diagram(points, plot=False, size=None, method='box'):
-
     multi = shapely.geometry.multipoint.MultiPoint(points)
     if method == 'box':
         g = shapely.geometry.box(*multi.bounds)
@@ -350,7 +339,7 @@ def voronoi_diagram(points, plot=False, size=None, method='box'):
     ]
 
     polygons = [
-        poly.intersection(g.buffer(size/10))
+        poly.intersection(g.buffer(size / 10))
         for poly in polygonize(lines)
     ]
 
@@ -358,10 +347,9 @@ def voronoi_diagram(points, plot=False, size=None, method='box'):
         voronoi_plot_2d(vor)
 
     ridges = pd.DataFrame(vor.ridge_points, columns=['a', 'b'])
-    ridges = ridges[(ridges['a'] < len(points)) & (ridges['b'] < len(points)) ] 
+    ridges = ridges[(ridges['a'] < len(points)) & (ridges['b'] < len(points))]
     ridges['geometry'] = ridges.apply(
         lambda r: shapely.geometry.LineString([points[r['a']], points[r['b']]]),
         axis=1
     )
     return polygons, ridges[['a', 'b', 'geometry']].values.tolist()
-

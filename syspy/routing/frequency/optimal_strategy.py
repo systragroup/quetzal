@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
-
 __author__ = 'qchasserieau'
 
 import operator
+
 import pandas as pd
 from syspy.routing.frequency import graph
 
@@ -25,11 +24,10 @@ def group_optimal_strategy(name, group,):
     for i in range(len(group) - 1):
         challenger = tuple(group.iloc[i][['actual_cost', 'key_headway']])
         skim = couple_optimal_strategy(skim, challenger)
-    return {'stop': name, 'best': skim[0], 'headway': skim[1], 'expected': skim[0] + skim[1]*0.5 }
+    return {'stop': name, 'best': skim[0], 'headway': skim[1], 'expected': skim[0] + skim[1] * 0.5}
 
 
 def single_source_optimal_strategy(label_dataframe, headways):
-
     """
     * Works on the raw result of a single source multi_path graph search.
       Such result is provided as a label_dataframe all the labels of the graph
@@ -82,33 +80,32 @@ def single_source_optimal_strategy(label_dataframe, headways):
     def key_tuple(route):
         headways_slice = {k: v for k, v in headways.items() if k in route}
         max_item = max(headways_slice.items(), key=operator.itemgetter(1))
-        return {'key_route': max_item[0], 'key_headway':  max_item[1]}
+        return {'key_route': max_item[0], 'key_headway': max_item[1]}
 
     # drop_dominated: only a few labels are likely to lower the best expected cost
     paths.reset_index(drop=True, inplace=True)
-    paths[['key_headway','key_route']] = pd.DataFrame(list(paths['route'].apply(key_tuple)))
-    paths['actual_cost'] = paths['cumulative'] - paths['key_headway']/2
+    paths[['key_headway', 'key_route']] = pd.DataFrame(list(paths['route'].apply(key_tuple)))
+    paths['actual_cost'] = paths['cumulative'] - paths['key_headway'] / 2
     to_merge = paths.sort_values('cumulative').groupby('stop', as_index=False).first()[['stop', 'cumulative']]
     paths = pd.merge(paths, to_merge, on='stop', suffixes=['', '_best'])
     paths = paths[paths['cumulative_best'] >= paths['actual_cost']]
 
-    #  optimal_strategy: for a given destination, we iterate optimal strategy on all relevant paths.
-    #  for a given destination, if two path have the same key_route (route with the worse headway), the fastest is the
-    #  only relevant path for the optimal strategy
+    # optimal_strategy: for a given destination, we iterate optimal strategy on all relevant paths.
+    # for a given destination, if two path have the same key_route (route with the worse headway), the fastest is the
+    # only relevant path for the optimal strategy
 
     paths = paths.sort_values('cumulative').groupby(['stop', 'key_route'], as_index=False).first()
-    groups = paths.sort_values('cumulative').groupby('stop')['actual_cost','cumulative']
+    groups = paths.sort_values('cumulative').groupby('stop')['actual_cost', 'cumulative']
     optimal = pd.DataFrame([group_optimal_strategy(name, group) for name, group in groups])
     paths = pd.merge(paths, optimal, on='stop', suffixes=['', '_optimal'])
     paths['optimization'] = paths['cumulative_best'] - paths['expected']
-
     return paths
 
 
 def key_tuple(route, headways):
     headways_slice = {k: v for k, v in headways.items() if k in route}
     max_item = max(headways_slice.items(), key=operator.itemgetter(1))
-    return {'key_route': max_item[0], 'key_headway':  max_item[1]}
+    return {'key_route': max_item[0], 'key_headway': max_item[1]}
 
 
 def path(label_id, parents, nodes):
@@ -122,8 +119,8 @@ def path(label_id, parents, nodes):
 def split_skims(all_labels, headways):
     paths = all_labels.copy()
     paths.reset_index(drop=True, inplace=True)
-    paths[['key_headway','key_route']] = pd.DataFrame(list(paths['route'].apply(key_tuple, args=[headways])))
-    paths['actual_cost'] = paths['cumulative'] - paths['key_headway']/2
+    paths[['key_headway', 'key_route']] = pd.DataFrame(list(paths['route'].apply(key_tuple, args=[headways])))
+    paths['actual_cost'] = paths['cumulative'] - paths['key_headway'] / 2
     paths['transfers'] = paths['route'].apply(lambda route: len(route) - 2)
     return paths
 
@@ -148,18 +145,15 @@ def group_data(name, group, geometry=False):
 
     if geometry:
         to_return['geometry'] = trip_leg_geometry(name, to_return['stops'])
-
     return to_return
 
 
 def footpath_from_path_data(path):
-
     origins = path['stop_id_origin']
     destination = path['stop_id_destination'].iloc[:-1]
     destination.index = list(origins.index[1:])
     transfer = pd.DataFrame([origins.iloc[1:], destination]).T
     transfer['is_footpath'] = (transfer['stop_id_origin'] - transfer['stop_id_destination'] > 0)
-
     return transfer[transfer['is_footpath']][['stop_id_origin', 'stop_id_destination']].values.tolist()
 
 
@@ -171,7 +165,6 @@ def best_paths_from_labels(
     first_only=False,
     include_data=False
 ):
-
     all_labels = pd.DataFrame(labels)
     parents = all_labels.set_index('label_id')['parent'].to_dict()
     nodes = all_labels.set_index('label_id')['node'].to_dict()
@@ -198,7 +191,6 @@ def best_paths_from_labels(
                      'footpaths': footpaths}
 
         paths.append(path_dict)
-
     return {'summary': summary, 'paths': paths}
 
 
@@ -208,7 +200,6 @@ def best_paths_from_frequency_links(
     single_source_labels_kwargs={},
     best_paths_from_labels_kwargs={}
 ):
-
     nx_graph, ig_graph = graph.graphs_from_links(frequency_links, include_edges=include_edges, include_igraph=False)
 
     stop_set = list({int(n) for n in nx_graph.nodes() if type(n) == str})
@@ -239,8 +230,4 @@ def best_paths_from_frequency_links(
                     destination, labels, headways, indexed_links, **best_paths_from_labels_kwargs)
             except ValueError:  # the label is not reachable
                 pass
-
     return to_return
-
-
-

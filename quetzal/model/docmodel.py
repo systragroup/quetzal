@@ -1,32 +1,25 @@
-# -*- coding: utf-8 -*-
-
 import networkx as nx
 
 
 def io_from_doc(doc):
-
-
-    try: 
-    
+    try:
         if 'deprecated!' in doc:
             return [], []
-    except TypeError: # argument of type 'NoneType' is not iterable
+    except TypeError:  # argument of type 'NoneType' is not iterable
         return [], []
-        
-    doc = doc.replace(' ', ' ') # espace insécable
 
-    try: 
+    doc = doc.replace(' ', ' ')  # espace insécable
+
+    try:
         requirements = doc.split('* requires: ')[1].split('\n')[0]
         requirements = [r.strip() for r in requirements.split(',')]
     except IndexError:
         requirements = []
-    try: 
+    try:
         products = doc.split('* builds: ')[1].split('\n')[0]
         products = [r.strip() for r in products.split(',')]
     except IndexError:
         products = []
-
-    
     return requirements, products
 
 
@@ -38,7 +31,6 @@ def contain_pattern(s, patterns):
 
 
 class DocModel:
-
     def __init__(self):
         pass
 
@@ -54,7 +46,7 @@ class DocModel:
     def dot(self, patterns, header=None):
 
         header = """
-        ratio = fill; 
+        ratio = fill;
         node [style=filled, fontname = "calibri", fontsize=24, color="#C8D2B3"];
         edge[ fontname = "calibri", fontsize=24];
         ranksep = "0.5";
@@ -83,7 +75,7 @@ class DocModel:
                 g.nodes[node]['color'] = output_color
             else:
                 g.nodes[node]['color'] = color
-                      
+
         for method in methods:
             try:
                 g.nodes[method]['color'] = '#E89196'
@@ -92,6 +84,5 @@ class DocModel:
                 pass
 
         dot = nx.nx_pydot.to_pydot(g)
-
 
         return dot.to_string().replace('{', '{' + header)

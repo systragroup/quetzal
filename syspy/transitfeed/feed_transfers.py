@@ -1,13 +1,9 @@
-# -*- coding: utf-8 -*-
-
 __author__ = 'qchasserieau'
-
 
 import itertools
 
-from shapely import geometry as shapely_geometry
 import pandas as pd
-
+from shapely import geometry as shapely_geometry
 from syspy.skims import skims
 from syspy.transitfeed import feed_links
 
@@ -17,22 +13,19 @@ def linestring_geometry(row):
                                                    [row['x_destination'], row['y_destination']]])
 
 
-def linestring_geometry(row):
-    return shapely_geometry.linestring.LineString([[row['x_origin'], row['y_origin']],
-                                                   [row['x_destination'], row['y_destination']]])
 def transfers_from_stops(
-        stops,
-        stop_times,
-        transfer_type=2,
-        trips=False,
-        links_from_stop_times_kwargs={'max_shortcut': False, 'stop_id': 'stop_id'},
-        euclidean_kwargs={'latitude': 'stop_lat', 'longitude': 'stop_lon'},
-        seek_traffic_redundant_paths=True,
-        seek_transfer_redundant_paths=True,
-        max_distance=800,
-        euclidean_speed=5*1000/3600/1.4,
-        geometry=False,
-        gtfs_only=False
+    stops,
+    stop_times,
+    transfer_type=2,
+    trips=False,
+    links_from_stop_times_kwargs={'max_shortcut': False, 'stop_id': 'stop_id'},
+    euclidean_kwargs={'latitude': 'stop_lat', 'longitude': 'stop_lon'},
+    seek_traffic_redundant_paths=True,
+    seek_transfer_redundant_paths=True,
+    max_distance=800,
+    euclidean_speed=5 * 1000 / 3600 / 1.4,
+    geometry=False,
+    gtfs_only=False
 ):
     """
     Builds a relevant footpath table from the stop_times and stops tables of a transitfeed.
@@ -62,7 +55,6 @@ def transfers_from_stops(
     :param geometry: If True, a geometry column (shapely.geometry.linestring.Linestring object) is added to the table
     :return: footpaths data with optional "dominated" tag
     """
-
     stop_id = links_from_stop_times_kwargs['stop_id']
     origin = stop_id + '_origin'
     destination = stop_id + '_destination'
@@ -74,7 +66,7 @@ def transfers_from_stops(
     short_enough = euclidean[euclidean['euclidean_distance'] < max_distance]
     short_enough = short_enough[short_enough['origin'] != short_enough['destination']]
 
-    footpath_tuples = {tuple(l) for l in short_enough[['origin', 'destination']].values.tolist()}
+    footpath_tuples = {tuple(path) for path in short_enough[['origin', 'destination']].values.tolist()}
     paths = euclidean[euclidean['tuple'].isin(footpath_tuples)]
 
     paths['dominated'] = False
@@ -88,7 +80,7 @@ def transfers_from_stops(
     if seek_traffic_redundant_paths:
 
         links = feed_links.link_from_stop_times(_stop_times, **links_from_stop_times_kwargs).reset_index()
-        in_links_tuples = {tuple(l) for l in links[[origin, destination]].values.tolist()}
+        in_links_tuples = {tuple(path) for path in links[[origin, destination]].values.tolist()}
         paths['trafic_dominated'] = paths['tuple'].isin(in_links_tuples)
         paths['dominated'] = paths['dominated'] | paths['trafic_dominated']
 
@@ -99,7 +91,6 @@ def transfers_from_stops(
     # if routes a and b are connected to route c, d and e by several footpaths :
     # we keep only the shortest one that does the job.
     if trips is not False:
-
         grouped = pd.merge(_stop_times, trips, left_on='trip_id', right_on='id').groupby(stop_id)['route_id']
         stop_routes = grouped.aggregate(lambda x: frozenset(x)).to_dict()
 
@@ -110,11 +101,11 @@ def transfers_from_stops(
         paths['trips'] = paths.apply(get_routes, axis=1)
         paths = paths.sort('euclidean_distance').groupby(['trips', 'dominated'], as_index=False).first()
 
-    paths['min_transfer_time'] = paths['euclidean_distance']/euclidean_speed
+    paths['min_transfer_time'] = paths['euclidean_distance'] / euclidean_speed
     paths = paths[paths['origin'] != paths['destination']]
 
     if seek_transfer_redundant_paths:
-        paths['frozen'] = paths['trips'].apply(lambda a : frozenset(a[0]).union(frozenset(a[1])))
+        paths['frozen'] = paths['trips'].apply(lambda a: frozenset(a[0]).union(frozenset(a[1])))
         max_length = max([len(f) for f in list(paths['frozen'])])
 
         to_beat = []
@@ -138,5 +129,4 @@ def transfers_from_stops(
     if gtfs_only:
         paths = paths[~paths['dominated']]
         paths = paths[['from_stop_id', 'to_stop_id', 'transfer_type', 'min_transfer_time']]
-
     return paths

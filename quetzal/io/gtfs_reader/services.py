@@ -1,5 +1,3 @@
-
-
 def group_services(feed, distinct_by_pattern=False):
     service_groups = get_groupable_services(feed, distinct_by_pattern)
     to_replace = {}
@@ -15,6 +13,7 @@ def group_services(feed, distinct_by_pattern=False):
         feed.calendar_dates['service_id'] = feed.calendar_dates['service_id'].replace(to_replace)
         feed.calendar_dates.drop_duplicates(inplace=True)
 
+
 def get_groupable_services(feed, distinct_by_pattern=False):
     """Groups the services in a feed in order to minimize the number of services
 
@@ -27,7 +26,7 @@ def get_groupable_services(feed, distinct_by_pattern=False):
     services = None
     services_groups = {}
     if distinct_by_pattern:
-        services_trips = feed.trips.groupby('service_id').agg({'trip_id': list})['trip_id'].to_dict()#
+        services_trips = feed.trips.groupby('service_id').agg({'trip_id': list})['trip_id'].to_dict()
         # Services().get_trips(feed_id=feed_id, as_dict=True)
         patterns_trips = feed.trips.groupby('pattern_id').agg({'trip_id': list})['trip_id'].to_dict()
         # Patterns().get_trips(feed_id=feed_id, as_dict=True)
@@ -59,6 +58,7 @@ def get_groupable_services(feed, distinct_by_pattern=False):
         services_groups = group_services_from_list(feed, services)
     return services_groups
 
+
 def group_services_from_list(feed, serviceslist):
     """Groups identical services given a service_id list
     Args:
@@ -79,11 +79,12 @@ def group_services_from_list(feed, serviceslist):
         calendar_dates_groups = calendar_dates_service_groups(feed.calendar_dates)
     else:
         calendar_dates_groups = {serviceslist[0]: serviceslist}
-    
+
     services_groups = intersection_of_groups_of_sets(
         calendar_groups, calendar_dates_groups)
 
     return services_groups
+
 
 def intersection_of_groups_of_sets(dict_set_a, dict_set_b):
     """Computes the multiple instersections of two groups of sets, and keeps
@@ -116,6 +117,7 @@ def intersection_of_groups_of_sets(dict_set_a, dict_set_b):
         groups[element] = [element]
     return groups
 
+
 def calendar_service_groups(calendar):
     """
     Return the dict of groupable service: {master : [children]}
@@ -124,7 +126,7 @@ def calendar_service_groups(calendar):
     calendar = calendar.copy()
 
     calendar['calendar'] = calendar[
-        [x for x in calendar.columns  if x !='service_id']
+        [x for x in calendar.columns if x != 'service_id']
     ].apply(lambda x: '-'.join(x.map(str)), 1)
     calendar['dumb'] = 1
     calendar_groups = calendar[['service_id', 'calendar', 'dumb']].set_index(
@@ -132,11 +134,11 @@ def calendar_service_groups(calendar):
     ).unstack().fillna(-1)['dumb']
     calendar_groups = calendar_groups.reset_index().groupby(
         list(calendar_groups.columns)
-        ).agg({'service_id': list})
+    ).agg({'service_id': list})
     calendar_groups['master'] = calendar_groups['service_id'].apply(lambda x: x[0])
     calendar_groups = calendar_groups.set_index('master')['service_id'].to_dict()
-
     return calendar_groups
+
 
 def calendar_dates_service_groups(calendar_dates):
     """
@@ -145,11 +147,10 @@ def calendar_dates_service_groups(calendar_dates):
     calendar_dates = calendar_dates.copy()
     calendar_dates_groups = calendar_dates.set_index(
         ['service_id', 'date']
-        ).unstack().fillna(0)['exception_type']
+    ).unstack().fillna(0)['exception_type']
     calendar_dates_groups = calendar_dates_groups.reset_index().groupby(
         list(calendar_dates_groups.columns)
-        ).agg({'service_id': list})
+    ).agg({'service_id': list})
     calendar_dates_groups['master'] = calendar_dates_groups['service_id'].apply(lambda x: x[0])
     calendar_dates_groups = calendar_dates_groups.set_index('master')['service_id'].to_dict()
-
     return calendar_dates_groups

@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
-
+import copy
 import os
 import shutil
-import copy
 
 
 class File:
@@ -59,17 +57,17 @@ class Application:
 
     def __init__(self, file_name, copy=False):
         self.file_name = file_name
-        self.duplicata = file_name.split('.')[0]+'_duplicata_deleteme.'+file_name.split('.')[1]
+        self.duplicata = file_name.split('.')[0] + '_duplicata_deleteme.' + file_name.split('.')[1]
         if copy:
             if not os.path.isfile(self.duplicata):
                 shutil.copyfile(file_name, self.duplicata)
                 print('copy')
-        self.file = open( self.file_name, 'r')
+        self.file = open(self.file_name, 'r')
         self.soup = self.file.read()
         self.file.close()
         self.eatsoup()
 
-    def makesoup (self):
+    def makesoup(self):
         self.soup = str(self.preface) + ''.join(['#PROGRAM' + str(program) for program in self.programs])
 
     def eatsoup(self):
@@ -105,6 +103,6 @@ class Application:
             if program.preface.soup_chunks[3]:  # si la priorité du programme est non nulle, on l'utilise pour numéroter le programme.
                 program.preface.soup_chunks[0] = program.preface.soup_chunks[3]
             else:
-                priority_zero_id +=1
+                priority_zero_id += 1
                 program.preface.soup_chunks[0] = priority_zero_id
         self.makesoup()

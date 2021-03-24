@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
-
 __author__ = 'qchasserieau'
 
-from syspy.transitfeed import feed_links
 import networkx as nx
+from syspy.transitfeed import feed_links
 
 
 def distinct(l, lists):
@@ -14,15 +12,14 @@ def distinct(l, lists):
     :param lists: list of lists or sets
     :return: n>0 if every list of 'lists' contains at list an item that does not belong to l.
     """
-    differences = [len(set(r)-set(l)) for r in lists]
+    differences = [len(set(r) - set(l)) for r in lists]
     try:
         return min(differences)
-    except:
+    except Exception:
         return 1
 
 
 def transit_edges(links, weight='time'):
-
     """
     Return a list of edges between transitlinks , given the following links of the same trip:
         * link1 = (a, b, 10min), link2 = (b, c, 3min) and link3 = (c, d, 4min)
@@ -33,8 +30,8 @@ def transit_edges(links, weight='time'):
     """
     assert len(links)
     next_links = feed_links.link_from_stop_times(
-        links, 
-        max_shortcut=1, 
+        links,
+        max_shortcut=1,
         stop_id='index',
         in_sequence='link_sequence',
         out_sequence='connection_sequence',
@@ -45,7 +42,6 @@ def transit_edges(links, weight='time'):
 
 
 def combined_edges(links, index='index', weight='cost'):
-
     """
     Builds direct edges between the links in "links":
         * link a goes from station 1 to station 2
@@ -59,7 +55,6 @@ def combined_edges(links, index='index', weight='cost'):
     :param weight: name of the column that holds the cost of the link (waiting + in vehicle time)
     :return: list of lists [[index_linka, index_linkb, weight], [index_linkb, index_linkc, weight], ...]
     """
-
     edges = []
     for i in set(links['origin']):
         arrivals = list(links[links['destination'] == i][index])
@@ -78,7 +73,6 @@ def graphs_from_links(
     shortcuts=False,
     include_edges=[]
 ):
-
     """
     Builds a graph from a table of transit links. The transit links and the stations are used as nodes.
         * boarding edges and alighting edges connect the transit links to the stations ;
@@ -94,7 +88,6 @@ def graphs_from_links(
     :param include_edges: a list of edges to add to the graph [[a, b, weight(a-b)], [b, c , weight(b-c)], ...]
     :return: nx_graph is a networkx DiGraph, ig_graph is a directed igraph Graph
     """
-
     # drop the edges that connect nodes that are not linked by transitlinks
     stop_set = set(links['destination']).union(set(links['origin']))
     include_edges = [
@@ -124,8 +117,7 @@ def graphs_from_links(
             edges=edges,
             directed=True,
             edge_attrs=['weight']
-    )
-
+        )
     return nx_graph, ig_graph
 
 
@@ -137,7 +129,6 @@ def indexed_data(
     route='route_id',
     stop_route=0
 ):
-
     """
     Returns a dict that contains the data of the edges of a graph built with "links":
         * transit data contains the data of transit links (indexed by integers)
@@ -149,9 +140,8 @@ def indexed_data(
     :param origin: name of the origin column
     :param destination: name of the destination column
     :param route: name of a link attribute that groups links (trip_id, pattern, route_id etc...)
-    :return: {link_id: {destination: d, route: g}... str(stop_id): {destination : stop_id, route: stop_route}}
+    :return: {link_id: {destination: d, route: g}... str(stop_id): {destination : stop_id, route: stop_route}}
     """
-
     transit_data = links.set_index(index)[
         [destination, route]].to_dict(orient='index')
     stop_set = set(links[origin]).union(set(links[destination]))
@@ -186,7 +176,6 @@ def single_source_dijkstra(
     stop='destination',
     return_type='list'
 ):
-
     """
     :param graph: networkx DiGraph to perform the search in
     :param source: source of the dijkstra search
@@ -220,7 +209,6 @@ def single_source_dijkstra(
             } for key, value in paths.items() if type(key) == int
         ],
     }
-
     return to_return if return_type == 'list' else {
         kind: {item['target']: item for item in to_return[kind]}
         for kind in to_return.keys()
@@ -240,7 +228,6 @@ def single_source_labels(
     stop_iteration=100000,
     route='route_id'
 ):
-
     """
     From a given source, search a graph for the best paths to all the stops.
     Takes parameters to not only look for the best path to every destination but a 'relevant' set of paths.
@@ -260,7 +247,6 @@ def single_source_labels(
     :param route
     :return: a list of labels that track the search for the best paths to all the stops from the source
     """
-
     stop_set = {int(n) for n in graph.nodes() if type(n) == str}
 
     root = {
@@ -315,7 +301,7 @@ def single_source_labels(
 
         if dominated:
 
-            if cumulative > alighting[stop]*spread and cumulative - alighting[stop] > absolute:
+            if cumulative > alighting[stop] * spread and cumulative - alighting[stop] > absolute:
                 return []
 
             if not distinct(current_route, routes[stop]) and unique_route_sets and not_alighting:
@@ -329,7 +315,7 @@ def single_source_labels(
                 'stop': data[key]['destination'],
                 'parent': label_id,
                 'cost': value['weight'],
-                'cumulative':  cumulative + value['weight'],
+                'cumulative': cumulative + value['weight'],
                 'visited': visited + [data[key]['destination']],
                 'route': frozenset(current_route.union({data[key][route]})),
                 'first': label['first'] if label['first'] else data[key][route]
@@ -343,9 +329,4 @@ def single_source_labels(
     while len(pile):
         # on remplace le dernier élément de la pile par tous ses enfants
         pile = next_labels(pile.pop(), next(label_id)) + pile
-
     return store
-
-
-
-

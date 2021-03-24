@@ -1,20 +1,20 @@
-# -*- coding: utf-8 -*-
-
 __author__ = 'qchasserieau'
-import pandas as pd
-import itertools
 import collections
+import itertools
+
+import pandas as pd
 from tqdm import tqdm
+
 
 def ma_fonction_a_tester(a, b):
     return a + b
 
 
 def nested_list(volume_array, paths):
-    return [[volume_array[i]]*len(paths[i]) for i in range(len(volume_array))]
+    return [[volume_array[i]] * len(paths[i]) for i in range(len(volume_array))]
+
 
 def fast_assign(volume_array, paths):
-    
     z = zip(volume_array, paths)
     d = {}
     for volume, path in list(z):
@@ -25,8 +25,8 @@ def fast_assign(volume_array, paths):
                 d[key] = volume
     return pd.Series(d)
 
-def assign(volume_array, paths, checkpoints=None, checkpoints_how='all'):
 
+def assign(volume_array, paths, checkpoints=None, checkpoints_how='all'):
     if checkpoints is not None:
         checkpoints = set(checkpoints)
         if checkpoints_how == 'all':
@@ -39,7 +39,7 @@ def assign(volume_array, paths, checkpoints=None, checkpoints_how='all'):
             print('checkpoints failed')
 
     column_indices = list(itertools.chain.from_iterable(paths))
-    if len(column_indices)==0:
+    if len(column_indices) == 0:
         return pd.DataFrame(columns=['volume', 'link']).set_index('link')
     nested_volumes = nested_list(volume_array, paths)
     volumes = list(itertools.chain.from_iterable(nested_volumes))
@@ -58,7 +58,6 @@ def assign(volume_array, paths, checkpoints=None, checkpoints_how='all'):
                 'volume': volumes
             }
         )
-
     return sparse.groupby('link').sum()
 
 
@@ -117,13 +116,13 @@ def build_ntlinks(ntlegs):
 
 def build_edges(links, ntlegs):
     links = label_links(links)
-    #ntlegs = label_ntlegs(ntlegs)
+    # ntlegs = label_ntlegs(ntlegs)
     ntlinks = build_ntlinks(ntlegs)
     return pd.concat([links, ntlinks])[['a', 'b', 'time']].reset_index(drop=True)
 
 
 def link_list_from_path(path):
-    return [(path[i], path[i+1]) for i in range(len(path)-1)]
+    return [(path[i], path[i + 1]) for i in range(len(path) - 1)]
 
 
 def nested_dict_to_stack_matrix(nested_dict, centroids, name='value'):
@@ -136,6 +135,4 @@ def nested_dict_to_stack_matrix(nested_dict, centroids, name='value'):
                     tuples.append((origin, destination, path))
 
     stack = pd.DataFrame(tuples, columns=['origin', 'destination', name])
-
     return stack
-

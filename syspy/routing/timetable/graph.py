@@ -1,10 +1,7 @@
-# -*- coding: utf-8 -*-
-
-import pandas as pd
 import networkx as nx
-
-from IPython.html.widgets import FloatProgress
+import pandas as pd
 from IPython.display import display
+from IPython.html.widgets import FloatProgress
 from syspy.syspy_utils import syscolors
 
 
@@ -21,10 +18,10 @@ def distinct(l, lists):
     :param lists: list of lists or sets
     :return: n>0 if every list of 'lists' contains at list an item that does not belong to l.
     """
-    differences = [len(set(r)-set(l)) for r in lists]
+    differences = [len(set(r) - set(l)) for r in lists]
     try:
         return min(differences)
-    except:
+    except Exception:
         return 1
 
 
@@ -67,7 +64,6 @@ def transfer_times(
         index=arrival_series.index,
         columns=departure_series.index
     ) + departure_cost
-
     return matrix.stack()
 
 
@@ -78,8 +74,7 @@ def graph_from_links(
     transfer_stops=None,
     include_transfer_time=True
 ):
-
-# transfer edges
+    # transfer edges
     origin_indexed_links = links.set_index(
         ['origin', 'index'])['departure_time']
     origin_indexed_costs = links.set_index(
@@ -107,7 +102,7 @@ def graph_from_links(
     concatenated.index.names = ['from', 'to']
     transfer_edges = concatenated.reset_index().values.tolist()
 
-# boarding and alighting edges
+    # boarding and alighting edges
     boarding_edges = []
     alighting_edges = []
 
@@ -129,7 +124,7 @@ def graph_from_links(
 
     edges = transfer_edges + boarding_edges + alighting_edges
 
-# networkx digraph and node dict update
+    # networkx digraph and node dict update
     nx_graph = nx.DiGraph()
     nx_graph.add_weighted_edges_from(edges)
 
@@ -161,7 +156,6 @@ def graph_from_links(
 
     for link, data in link_dict.items():
         nx_graph.node[link].update(data)
-
     return nx_graph
 
 
@@ -179,7 +173,6 @@ def dijkstra_powered_single_source_labels(
     cutoff=float('inf'),
     max_stack=100000
 ):
-
     """
     From a given source, search a graph for the best paths to all the stops.
     Takes parameters to not only look for the best path to every destination but a 'relevant' set of paths.
@@ -198,7 +191,6 @@ def dijkstra_powered_single_source_labels(
         for a route) is over max_transfer + 2
     :return: a list of labels that track the search for the best paths to all the stops from the source
     """
-
     stop_set = {node['destination'] for node in graph.nodes.values()}
 
     root = {
@@ -250,7 +242,6 @@ def dijkstra_powered_single_source_labels(
     display(iteration_progress)
 
     def next_labels(label, label_id):
-
         stop = label['stop']
         node = label['node']
         route = label['route']
@@ -273,7 +264,6 @@ def dijkstra_powered_single_source_labels(
             print_if_debug('not in node_set', debug)
             return []  # the node has no neighbors - no next labels
 
-
         if cumulative > cutoff:
             print_if_debug('cutoff', debug)
             return []
@@ -288,14 +278,14 @@ def dijkstra_powered_single_source_labels(
                 'stop': data[key]['destination'],
                 'parent': label_id,
                 'cost': value['weight'],
-                'cumulative':  cumulative + value['weight'],
+                'cumulative': cumulative + value['weight'],
                 'visited': visited + [data[key]['destination']],
                 'route': frozenset(route.union({data[key]['route_id']}))
             }
             for key, value in neighbors.items()
             if data[key]['destination'] not in visited[:-1]
         ]
-        #  an egress has the same destination as the link it follows [:-2]
+        # an egress has the same destination as the link it follows [:-2]
 
         print_if_debug(
             ('proto_labels_length', len(proto_labels)),
@@ -306,7 +296,6 @@ def dijkstra_powered_single_source_labels(
         # on remplace le dernier élément de la pile par tous ses enfants
         pile = next_labels(pile.pop(), next(label_id)) + pile
         stack_progress.value = len(pile)
-
     return store
 
 
@@ -323,7 +312,6 @@ def single_source_labels(
     debug=False,
     cutoff=float('inf'),
 ):
-
     """
     From a given source, search a graph for the best paths to all the stops.
     Takes parameters to not only look for the best path to every destination but a 'relevant' set of paths.
@@ -342,7 +330,6 @@ def single_source_labels(
         for a route) is over max_transfer + 2
     :return: a list of labels that track the search for the best paths to all the stops from the source
     """
-
     stop_set = {node['destination'] for node in graph.nodes.values()}
 
     root = {
@@ -366,7 +353,6 @@ def single_source_labels(
     data = graph.node
 
     def next_labels(label, label_id):
-
         stop = label['stop']
         node = label['node']
         route = label['route']
@@ -387,7 +373,6 @@ def single_source_labels(
         if node not in node_set:
             print_if_debug('not in node_set', debug)
             return []  # the node has no neighbors - no next labels
-
 
         neighbors = graph.edge[node]
 
@@ -428,15 +413,14 @@ def single_source_labels(
                 'stop': data[key]['destination'],
                 'parent': label_id,
                 'cost': value['weight'],
-                'cumulative':  cumulative + value['weight'],
+                'cumulative': cumulative + value['weight'],
                 'visited': visited + [data[key]['destination']],
                 'route': frozenset(route.union({data[key]['route_id']}))
             }
             for key, value in neighbors.items()
             if data[key]['destination'] not in visited[:-1]
         ]
-        #  an egress has the same destination as the link it follows [:-2]
-
+        # an egress has the same destination as the link it follows [:-2]
         print_if_debug(
             ('proto_labels_length', len(proto_labels)),
             debug)

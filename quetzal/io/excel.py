@@ -1,7 +1,8 @@
-import pandas as pd
+import json
+
 import pandas as pd
 from tqdm import tqdm
-import json
+
 
 def read_var(file='parameters.xlsx', scenario='base'):
     parameter_frame = pd.read_excel(file)
@@ -12,7 +13,7 @@ def read_var(file='parameters.xlsx', scenario='base'):
     except KeyError:
         types = dict()
     parameter_frame.drop(['description', 'unit', 'type'], axis=1, errors='ignore', inplace=True)
-    parameter_frame.set_index(['category','parameter'], inplace=True)
+    parameter_frame.set_index(['category', 'parameter'], inplace=True)
     for c in parameter_frame.columns:
         parent = parameter_frame[c][('general', 'parent')]
         parameter_frame[c] = parameter_frame[c].fillna(parameter_frame[parent])
@@ -30,19 +31,19 @@ def read_var(file='parameters.xlsx', scenario='base'):
             var.loc[k] = json.loads(var.loc[k])
     return var
 
+
 def merge_files(
-    parameters_filepath=r'inputs/parameters.xlsx', 
-    scenario_filepath=r'model/{scenario}/stacks.xlsx', 
+    parameters_filepath=r'inputs/parameters.xlsx',
+    scenario_filepath=r'model/{scenario}/stacks.xlsx',
     merged_filepath=r'outputs/stacks.xlsx'
 ):
-    
     parameters = pd.read_excel(parameters_filepath)
     scenarios = [c for c in parameters.columns if c not in {'category', 'parameter'}]
-    
+
     base = scenarios[0]
     base_dict = pd.read_excel(scenario_filepath.format(scenario=base), sheet_name=None)
-    pool = {key:[] for key in base_dict.keys()}
-    
+    pool = {key: [] for key in base_dict.keys()}
+
     notfound = []
     for scenario in tqdm(scenarios, desc='reading'):
         try:
@@ -55,7 +56,7 @@ def merge_files(
                 pool[key].append(value)
         except FileNotFoundError:
             notfound.append(scenario)
-            
+
     stacks = {k: pd.concat(v) for k, v in pool.items()}
     with pd.ExcelWriter(merged_filepath) as writer:  # doctest: +SKIP
         for name, stack in tqdm(stacks.items(), desc='writing'):

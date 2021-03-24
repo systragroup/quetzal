@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
-import shapely
 import pandas as pd
+import shapely
 from tqdm import tqdm
 
 
@@ -27,7 +25,6 @@ def fill_gaps_with_buffer(geometries, fill_buffer=1e-6):
                 g = g.difference(geometries[j])
 
         polygons.append(g)
-
     return polygons
 
 
@@ -41,7 +38,6 @@ def interstitial_polygons(geometries, buffer=1e-9, hull_buffer=1):
 
 
 def border_length(geoa, geob, buffer=1e-9):
-
     if geoa.intersects(geob):
         intersection = geoa.buffer(buffer).intersection(geob.buffer(buffer))
         return intersection.area / buffer
@@ -70,16 +66,14 @@ def gap_nearest_polygon_index(gap_idex, length_matrix):
 
 
 def unite_gaps_to_polygons(gaps, polygons, buffer=1e-4):
-
     geometries = [p for p in polygons]
 
-    array = border_length_matrix(polygons, gaps,  buffer=buffer)
+    array = border_length_matrix(polygons, gaps, buffer=buffer)
     df = pd.DataFrame(array)
 
     for gap_index in range(len(gaps)):
         polygon_index = gap_nearest_polygon_index(gap_index, df)
         geometries[polygon_index] = geometries[polygon_index].union(gaps[gap_index])
-
     return geometries
 
 
@@ -110,7 +104,7 @@ def biggest_polygons(multipolygons):
 
 def clean_zoning(
     zones,
-    coordinates='degree', # or meter
+    coordinates='degree',  # or meter
     buffer=None,
     fill_buffer=None,
     hull_buffer=None,
@@ -120,7 +114,7 @@ def clean_zoning(
     **kwargs
 ):
     # Default values if not given
-    if coordinates=='degree':
+    if coordinates == 'degree':
         if buffer is None:
             buffer = 1e-4
         if fill_buffer is None:
@@ -129,7 +123,7 @@ def clean_zoning(
             hull_buffer = 1
         if mini_buffer is None:
             mini_buffer = 1e-9
-    elif coordinates=='meter':
+    elif coordinates == 'meter':
         if buffer is None:
             buffer = 10
         if fill_buffer is None:
@@ -139,7 +133,7 @@ def clean_zoning(
         if mini_buffer is None:
             mini_buffer = 1
     # clean geom
-    polygons = [g.simplify(buffer/10) for g in zones]
+    polygons = [g.simplify(buffer / 10) for g in zones]
     polygons = [g.buffer(buffer, **kwargs) for g in polygons]
     polygons = [g.simplify(buffer) for g in polygons]
 
@@ -156,5 +150,4 @@ def clean_zoning(
 
     polygons = remove_overlaps(polygons)
     polygons = biggest_polygons(polygons)
-
     return polygons

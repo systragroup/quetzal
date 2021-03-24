@@ -1,14 +1,14 @@
-# -*- coding: utf-8 -*-
-
 import matplotlib.pyplot as plt
 import numpy as np
-from syspy.syspy_utils import syscolors
 import pandas as pd
+from syspy.syspy_utils import syscolors
+
 # Advice: import seaborn at the beginning of your project to create easily nice plots
+
 
 def clean_seq(x, col):
     x = x.sort_values(col)
-    x[col] = np.arange(1, len(x)+1)
+    x[col] = np.arange(1, len(x) + 1)
     return x
 
 
@@ -19,43 +19,42 @@ def sort_links(to_sort, a_name='a', b_name='b', max_iter=50):
     """
     try:
         to_sort = to_sort.sort_values('link_sequence')
-    except KeyError as e:
+    except KeyError:
         pass
     sorted_line = pd.DataFrame()
     left_to_sort = pd.DataFrame()
-    i=0
+    i = 0
     count = 0
     while len(to_sort) > 0 and count < max_iter and i < 1000:
-        count +=1
+        count += 1
         for index, row in to_sort.iterrows():
-            if i==0:
+            if i == 0:
                 sorted_line = sorted_line.append(row, ignore_index=True)
-                i+=1
+                i += 1
             else:
                 a = row[a_name]
                 b = row[b_name]
-                if len(sorted_line[sorted_line[b_name] == a]) > 0: # place after
+                if len(sorted_line[sorted_line[b_name] == a]) > 0:  # place after
                     name = sorted_line[sorted_line[b_name] == a].index.max()
                     row.name = name
                     sorted_line = sorted_line.append(row)
                     sorted_line.reset_index(drop=True, inplace=True)
-                elif len(sorted_line[sorted_line[a_name] == b]) > 0: # place before
+                elif len(sorted_line[sorted_line[a_name] == b]) > 0:  # place before
                     name = sorted_line[sorted_line[a_name] == b].index.min()
-                    row.name=name
+                    row.name = name
                     to_insert = pd.DataFrame(row).T
                     sorted_line = pd.concat(
                         [sorted_line.iloc[:name], to_insert, sorted_line.iloc[name:]]
                     ).reset_index(drop=True)
                 else:
                     left_to_sort = left_to_sort.append(row, ignore_index=True)
-                i+=1
+                i += 1
 
         to_sort = left_to_sort.copy()
-        left_to_sort = pd.DataFrame() 
+        left_to_sort = pd.DataFrame()
 
     if len(left_to_sort) > 0:
         raise Exception('Sorting failed')
-
     return sorted_line
 
 
@@ -65,7 +64,7 @@ def shift_loadedlinks_alightings(load_df, load_columns=['load'], alighting_colum
     """
     load_df = load_df.reset_index(drop=True).copy()
     load_df = clean_seq(load_df, 'link_sequence')
-    last = load_df.loc[load_df['link_sequence']==load_df['link_sequence'].max()].copy()
+    last = load_df.loc[load_df['link_sequence'] == load_df['link_sequence'].max()].copy()
     last['a'] = last['b']
     last['b'] = ''
     last['link_sequence'] += 1
@@ -76,7 +75,7 @@ def shift_loadedlinks_alightings(load_df, load_columns=['load'], alighting_colum
     # Shift alightings
     load_df = load_df.append(last).reset_index(drop=True)
     temp_a = load_df[alighting_columns].copy()
-    temp_a.index+=1
+    temp_a.index += 1
     load_df[alighting_columns] = temp_a
     load_df[alighting_columns] = load_df[alighting_columns].fillna(0)
     return load_df
@@ -86,7 +85,6 @@ def plot_load_b_a_for_loadedlinks(
         loaded_links, ax=None,
         load_column='load', boarding_column='boardings', alighting_column='alightings',
         width=0.2, label='', shift_alightings=False):
-    
     """
     Export load graph for the specified line.
 
@@ -99,11 +97,11 @@ def plot_load_b_a_for_loadedlinks(
     plt.rcParams['axes.labelsize'] = 15
     """
     load_df = loaded_links.copy()
-    
-    if ax is None:
-         fig, ax = plt.subplots(1, 1)
 
-    ## Prepare dataframe
+    if ax is None:
+        fig, ax = plt.subplots(1, 1)
+
+    # Prepare dataframe
     load_df = clean_seq(load_df, 'link_sequence')
     if shift_alightings:
         load_df = shift_loadedlinks_alightings(
@@ -142,18 +140,17 @@ def plot_load_b_a_for_loadedlinks(
         label=label + ' alightings',
         align='center'
     )
-    
-    ax.set_xticks(load_df['link_sequence'].values) 
-    ax.set_xticklabels(load_df['a'].values, ha='right', rotation=45)
 
+    ax.set_xticks(load_df['link_sequence'].values)
+    ax.set_xticklabels(load_df['a'].values, ha='right', rotation=45)
     return ax
 
 
 def create_two_directions_load_b_a_graph(
-        load_fwd_bwd, 
+        load_fwd_bwd,
         load_column='load', boarding_column='boardings', alighting_column='alightings',
         forward_col_suffix='_fwd', backward_col_suffix='_bwd',
-        forward_label='forward', backward_label='backward', 
+        forward_label='forward', backward_label='backward',
         legend=True, **kwargs):
     """
     Export load graph for the specified line, with boardings and alightings at each station
@@ -205,7 +202,7 @@ def create_two_directions_load_b_a_graph(
         boarding_column=boarding_column_bwd,
         label=backward_label, shift_alightings=False, **kwargs
     )
-    
+
     # Add zero split line
     plt.axhline(y=0, linewidth=2.5, color='k')
 
@@ -223,13 +220,13 @@ def directional_loads_to_station_bidirection_load(
     load_fwd = load_fwd.replace(stations_to_parent_stations)
     load_bwd = load_bwd.replace(stations_to_parent_stations)
 
-    # Format 
+    # Format
     stations = load_fwd[['a', 'link_sequence']]
     index_max = load_fwd['link_sequence'].max()
     stations = stations.append(
         pd.Series(
             {
-                'a': load_fwd.loc[load_fwd['link_sequence']==index_max, 'b'].values[0],
+                'a': load_fwd.loc[load_fwd['link_sequence'] == index_max, 'b'].values[0],
                 'link_sequence': index_max + 1
             }
         ),
@@ -272,11 +269,12 @@ def directional_loads_to_station_bidirection_load(
 
     return stations
 
-#### DEPRECATED ####
+
+# DEPRECATED #
 def save_line_load_graph(
         load_fwd, load_bwd, load_column='volume_pt', image_name='line_load.png', yticks=None,
         title='Line load', legend=True, save_fig=True, clean_sequence=False, *args, **kwargs
-        ):
+):
     """
     Export load graph for the specified line.
 
@@ -311,7 +309,7 @@ def save_line_load_graph(
 
     # backward load
     ax.bar(
-        (1+len(load_bwd) - load_bwd['link_sequence']).values,
+        (1 + len(load_bwd) - load_bwd['link_sequence']).values,
         -load_bwd[load_column].values,
         facecolor=syscolors.red_shades[2],
         # edgecolor=syscolors.red_shades[1],
@@ -325,7 +323,7 @@ def save_line_load_graph(
     # Add zero split line
     plt.axhline(y=0, linewidth=2.5, color='k')
 
-    # Stations labels: we need to add the terminus station
+    # Stations labels: we need to add the terminus station
     plt.xticks(
         np.append(load_fwd['link_sequence'].values,
                   len(load_fwd['link_sequence']) + 1),
@@ -341,7 +339,7 @@ def save_line_load_graph(
     plt.ylabel('Number of passengers')
 
     if yticks is None:
-        rounding = int(np.floor(max(load_bwd[load_column].max(), load_fwd[load_column].max()) ** (1/10)))
+        rounding = int(np.floor(max(load_bwd[load_column].max(), load_fwd[load_column].max()) ** (1 / 10)))
         max_value = round(
             max(load_bwd[load_column].max(), load_fwd[load_column].max()), -rounding)
         yticks = np.arange(-max_value, max_value, round(max_value // 5, -rounding))
@@ -404,7 +402,7 @@ def create_line_load_b_a_graph(
             len(load_fwd['link_sequence']) + 1  # We need to add the final alighting value which is the load
         ) - width / 2,
         np.append(
-            load_fwd['alightings'].values, 
+            load_fwd['alightings'].values,
             load_fwd[(load_fwd['link_sequence'] == len(load_fwd))]['volume_pt'].values[0]
         ),
         facecolor=syscolors.secondary_colors[5],
@@ -415,7 +413,7 @@ def create_line_load_b_a_graph(
 
     if load_bwd is not None:
         if clean_sequence:
-            load_bwd = clean_seq(load_bwd, 'link_sequence') 
+            load_bwd = clean_seq(load_bwd, 'link_sequence')
         # backward load
         ax.bar(
             (1 + len(load_bwd) - load_bwd['link_sequence']).values,
@@ -439,11 +437,11 @@ def create_line_load_b_a_graph(
         ax.bar(
             np.append(
                 (2 + len(load_bwd) - load_bwd['link_sequence'] - width / 2).values,
-                1 - width/2
+                1 - width / 2
             ),
             - np.append(
                 load_bwd['alightings'].values,
-                load_bwd[(load_bwd['link_sequence']==len(load_bwd))]['volume_pt'].values[0]
+                load_bwd[(load_bwd['link_sequence'] == len(load_bwd))]['volume_pt'].values[0]
             ),
             facecolor=syscolors.secondary_colors[4],
             width=width,
@@ -454,20 +452,19 @@ def create_line_load_b_a_graph(
         # Add zero split line
         plt.axhline(y=0, linewidth=2.5, color='k')
 
-    # Stations labels: we need to add the terminus station
+    # Stations labels: we need to add the terminus station
     if xticks is None:
         plt.xticks(
             np.append(load_fwd['link_sequence'].values,
-                    len(load_fwd['link_sequence']) + 1),
+                      len(load_fwd['link_sequence']) + 1),
             np.append(load_fwd['a'].values, load_fwd[
-                    (load_fwd['link_sequence'] == len(load_fwd))]['b'].values[0]),
+                     (load_fwd['link_sequence'] == len(load_fwd))]['b'].values[0]),
             ha='right',
             rotation=45
         )
     else:
         plt.xticks(
-            np.append(load_fwd['link_sequence'].values,
-                    len(load_fwd['link_sequence']) + 1),
+            np.append(load_fwd['link_sequence'].values, len(load_fwd['link_sequence']) + 1),
             xticks,
             ha='right',
             rotation=45
@@ -478,7 +475,7 @@ def create_line_load_b_a_graph(
         if load_bwd is not None:
             ncol = 2
         else:
-            ncol = 1 
+            ncol = 1
         plt.legend(ncol=ncol)
         plt.ylabel('Number of passengers')
 
@@ -492,11 +489,10 @@ def create_line_load_b_a_graph(
             max_value = round(load_fwd['volume_pt'].max(), -2)
             yticks = np.arange(0, max_value, round(max_value // 5, -2))
 
-    plt.yticks(yticks)#, [int(y) for y in abs(yticks)])
+    plt.yticks(yticks)  # , [int(y) for y in abs(yticks)])
 
     if save_fig:
         plt.savefig(
             image_name,
             bbox_inches='tight')
-
     return fig, ax

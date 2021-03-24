@@ -1,12 +1,12 @@
-# -*- coding: utf-8 -*-
 # pylint: disable=no-member
 
-import pandas as pd
 from collections import OrderedDict
 from copy import deepcopy
-import gtfs_kit as gk
+
 import folium as fl
 import folium.plugins as fp
+import gtfs_kit as gk
+import pandas as pd
 from geojson import dump
 from tqdm import tqdm
 
@@ -16,10 +16,9 @@ from tqdm import tqdm
 
 class Feed(gk.feed.Feed):  # Overwrite Feed class
 
-    from .filtering import (
-        restrict_to_services, restrict_to_timerange, restrict,
-        restrict_to_trips, restrict_to_dates, restrict_to_area
-        )
+    from .filtering import (restrict, restrict_to_area, restrict_to_dates,
+                            restrict_to_services, restrict_to_timerange,
+                            restrict_to_trips)
 
     def __init__(self, dist_units: str, path=None):
         if path is not None:
@@ -46,7 +45,7 @@ class Feed(gk.feed.Feed):  # Overwrite Feed class
         else:
             return map_stops(self, *args, **kwargs)
 
-    def map_trips(self, *args,  embed=False, **kwargs):
+    def map_trips(self, *args, embed=False, **kwargs):
         if embed:
             return embed_map(gk.map_trips(self, *args, **kwargs))
         else:
@@ -106,7 +105,7 @@ class Feed(gk.feed.Feed):  # Overwrite Feed class
 def read_gtfs(*args, **kwargs) -> dict:
     try:
         temp = gk.feed.read_gtfs(*args, **kwargs)
-    except:
+    except Exception:
         temp = gk.feed.read_feed(*args, **kwargs)
     init_temp = {key: value for key, value in temp.__dict__.items() if key in gk.constants.FEED_ATTRS_1}
     init_temp['calendar'] = temp.calendar
@@ -125,7 +124,7 @@ def get_trips(feed: "Feed", date=None, time=None):
     then further subset the result to trips in service at that time or within that time.
     """
 
-    # TODO: filtering on time
+    # TODO: filtering on time
     # DATE FILTERING
     filtered = feed.trips.copy()
     if date is not None:
@@ -133,9 +132,9 @@ def get_trips(feed: "Feed", date=None, time=None):
             weekday_str = gk.helpers.weekday_to_str(gk.helpers.datestr_to_date(date).weekday())
             services = set(
                 feed.calendar[
-                    (feed.calendar['start_date'] <= date) &
-                    (feed.calendar['end_date'] >= date) &
-                    (feed.calendar[weekday_str] == 1)
+                    (feed.calendar['start_date'] <= date)
+                    & (feed.calendar['end_date'] >= date)
+                    & (feed.calendar[weekday_str] == 1)
                 ]['service_id'].values
             )
         else:
@@ -143,14 +142,14 @@ def get_trips(feed: "Feed", date=None, time=None):
         if feed.calendar_dates is not None:
             to_add = set(
                 feed.calendar_dates[
-                    (feed.calendar_dates['date'] == date) &
-                    (feed.calendar_dates['exception_type'] == 1)
+                    (feed.calendar_dates['date'] == date)
+                    & (feed.calendar_dates['exception_type'] == 1)
                 ]['service_id'].values
             )
             to_delete = set(
                 feed.calendar_dates[
-                    (feed.calendar_dates['date'] == date) &
-                    (feed.calendar_dates['exception_type'] == 2)
+                    (feed.calendar_dates['date'] == date)
+                    & (feed.calendar_dates['exception_type'] == 2)
                 ]['service_id'].values
             )
             services = services.union(to_add).difference(to_delete)
@@ -239,8 +238,9 @@ def embed_map(m):
     Workaround taken from https://github.com/python-visualization/folium/issues/812
     for displaying Folium maps with lots of features in Chrome-based browsers.
     """
-    from IPython.display import IFrame
     import os
+
+    from IPython.display import IFrame
     i = 1
     filename = 'index_1.html'
     while os.path.exists(filename):
@@ -324,5 +324,3 @@ def build_stops_timetable(feed, stop_ids, dates):
 
     f = pd.concat(frames)
     return f.sort_values(["date", "departure_time"])
-
-

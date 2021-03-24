@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from unittest import TestCase
 
 
@@ -10,12 +8,10 @@ class MyTest(TestCase):
     # SQLALCHEMY_DATABASE_URI = "sqlite:///" + uri
     # TESTING = True
 
-
     def setUp(self):
         pass
 
-
     def tearDown(self):
         pass
-        #db.session.remove()
-        #db.drop_all()
+        # db.session.remove()
+        # db.drop_all()

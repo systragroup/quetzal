@@ -1,52 +1,53 @@
 
 
-
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <title>quetzal.engine.pathfinder &mdash; quetzal  documentation</title>
   
 
   
+  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
   
 
   
 
   
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
+      <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
 
-  
-
-  
-  
-    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-    <link rel="top" title="quetzal  documentation" href="../../../index.html"/>
-        <link rel="up" title="Module code" href="../../index.html"/> 
-
-  
-  <script src="../../../_static/js/modernizr.min.js"></script>
-
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
+   
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -73,11 +74,15 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
             
-                <ul>
+              
+            
+            
+              <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../quetzal.engine.html">quetzal.engine package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.html">quetzal.model package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../quetzal.io.html">quetzal.io package</a></li>
@@ -87,40 +92,61 @@
             
           
         </div>
+        
       </div>
     </nav>
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="../../../index.html">quetzal</a>
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">quetzal</a>
+        
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="../../../index.html">Docs</a> &raquo;</li>
-      
+    
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
           <li><a href="../../index.html">Module code</a> &raquo;</li>
-      
-    <li>quetzal.engine.pathfinder</li>
+        
+      <li>quetzal.engine.pathfinder</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
-        
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -129,110 +155,347 @@
   <h1>Source code for quetzal.engine.pathfinder</h1><div class="highlight"><pre>
 <span></span><span class="c1"># -*- coding: utf-8 -*-</span>
 
-<span class="kn">from</span> <span class="nn">quetzal.engine</span> <span class="k">import</span> <span class="n">engine</span>
+<span class="kn">from</span> <span class="nn">quetzal.engine</span> <span class="kn">import</span> <span class="n">engine</span>
 
-
+<span class="kn">from</span> <span class="nn">scipy.sparse</span> <span class="kn">import</span> <span class="n">csr_matrix</span>
+<span class="kn">from</span> <span class="nn">scipy.sparse.csgraph</span> <span class="kn">import</span> <span class="n">dijkstra</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
 
 <span class="kn">import</span> <span class="nn">itertools</span>
-<span class="kn">from</span> <span class="nn">syspy.skims</span> <span class="k">import</span> <span class="n">skims</span>
-<span class="kn">from</span> <span class="nn">syspy.spatial</span> <span class="k">import</span> <span class="n">spatial</span>
-<span class="kn">from</span> <span class="nn">syspy.routing.frequency</span> <span class="k">import</span> <span class="n">graph</span> <span class="k">as</span> <span class="n">frequency_graph</span>
+<span class="kn">from</span> <span class="nn">syspy.skims</span> <span class="kn">import</span> <span class="n">skims</span>
+<span class="kn">from</span> <span class="nn">syspy.spatial</span> <span class="kn">import</span> <span class="n">spatial</span>
+<span class="kn">from</span> <span class="nn">syspy.routing.frequency</span> <span class="kn">import</span> <span class="n">graph</span> <span class="k">as</span> <span class="n">frequency_graph</span>
 <span class="kn">import</span> <span class="nn">syspy.assignment.raw</span> <span class="k">as</span> <span class="nn">assignment_raw</span>
-<span class="kn">from</span> <span class="nn">tqdm</span> <span class="k">import</span> <span class="n">tqdm</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">from</span> <span class="nn">quetzal.engine.subprocesses</span> <span class="kn">import</span> <span class="n">filepaths</span>
+<span class="kn">from</span> <span class="nn">quetzal.os</span> <span class="kn">import</span> <span class="n">parallel_call</span>
 
-<div class="viewcode-block" id="graph_from_links_and_ntlegs"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.graph_from_links_and_ntlegs">[docs]</a><span class="k">def</span> <span class="nf">graph_from_links_and_ntlegs</span><span class="p">(</span>
-    <span class="n">links</span><span class="p">,</span>
-    <span class="n">ntlegs</span><span class="p">,</span>
-    <span class="n">footpaths</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-    <span class="n">boarding_cost</span><span class="o">=</span><span class="mi">300</span>
-<span class="p">):</span>
-    
-    <span class="n">links</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<div class="viewcode-block" id="get_path"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.get_path">[docs]</a><span class="k">def</span> <span class="nf">get_path</span><span class="p">(</span><span class="n">predecessors</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">):</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="p">[</span><span class="n">j</span><span class="p">]</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">j</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="n">p</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">9999</span><span class="p">:</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="n">p</span> <span class="o">=</span> <span class="n">predecessors</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span>
+        <span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">path</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">:]</span> </div>
 
-    <span class="n">links</span><span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">index</span> <span class="c1"># to be consistent with frequency_graph</span>
-
-    <span class="n">nx_graph</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">frequency_graph</span><span class="o">.</span><span class="n">graphs_from_links</span><span class="p">(</span>
-        <span class="n">links</span><span class="p">,</span>
-        <span class="n">include_edges</span><span class="o">=</span><span class="p">[],</span>
-        <span class="n">include_igraph</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">boarding_cost</span><span class="o">=</span><span class="n">boarding_cost</span>
-    <span class="p">)</span>
-
-    <span class="n">nx_graph</span><span class="o">.</span><span class="n">add_weighted_edges_from</span><span class="p">(</span><span class="n">ntlegs</span><span class="p">[[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
-
-    <span class="k">if</span> <span class="n">footpaths</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">nx_graph</span><span class="o">.</span><span class="n">add_weighted_edges_from</span><span class="p">(</span>
-            <span class="n">footpaths</span><span class="p">[[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-        <span class="p">)</span>
-    <span class="k">return</span> <span class="n">nx_graph</span></div>
+<div class="viewcode-block" id="get_reversed_path"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.get_reversed_path">[docs]</a><span class="k">def</span> <span class="nf">get_reversed_path</span><span class="p">(</span><span class="n">predecessors</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">):</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="p">[</span><span class="n">j</span><span class="p">]</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">j</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="n">p</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">9999</span><span class="p">:</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="n">p</span> <span class="o">=</span> <span class="n">predecessors</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span>
+        <span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">path</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> </div>
 
 <div class="viewcode-block" id="path_and_duration_from_graph"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.path_and_duration_from_graph">[docs]</a><span class="k">def</span> <span class="nf">path_and_duration_from_graph</span><span class="p">(</span>
-    <span class="n">nx_graph</span><span class="p">,</span>
+    <span class="n">nx_graph</span><span class="p">,</span> 
     <span class="n">pole_set</span><span class="p">,</span>
+    <span class="n">od_set</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">sources</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">reversed_nx_graph</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-    <span class="n">reverse</span><span class="o">=</span><span class="kc">False</span>
+    <span class="n">reverse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">ntlegs_penalty</span><span class="o">=</span><span class="mf">1e9</span><span class="p">,</span>
+    <span class="n">cutoff</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span>
 <span class="p">):</span>
-
-    
-        
-    <span class="n">allpaths</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="n">alllengths</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="k">if</span> <span class="n">sources</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">sources</span> <span class="o">=</span> <span class="n">pole_set</span>
-        
-    
-    <span class="c1"># sources</span>
-
-    
-    <span class="n">iterator</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">sources</span><span class="p">)</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">pole_set</span><span class="p">))</span>
-    <span class="k">for</span> <span class="n">pole</span> <span class="ow">in</span> <span class="n">iterator</span><span class="p">:</span>
-        <span class="n">alllengths</span><span class="p">[</span><span class="n">pole</span><span class="p">],</span> <span class="n">allpaths</span><span class="p">[</span><span class="n">pole</span><span class="p">]</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">single_source_dijkstra</span><span class="p">(</span>
-            <span class="n">nx_graph</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="n">pole</span><span class="p">)</span>
-
-    <span class="n">duration_stack</span> <span class="o">=</span> <span class="n">assignment_raw</span><span class="o">.</span><span class="n">nested_dict_to_stack_matrix</span><span class="p">(</span>
-        <span class="n">alllengths</span><span class="p">,</span> <span class="n">pole_set</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;gtime&#39;</span><span class="p">)</span>
-    <span class="n">path_stack</span> <span class="o">=</span> <span class="n">assignment_raw</span><span class="o">.</span><span class="n">nested_dict_to_stack_matrix</span><span class="p">(</span>
-        <span class="n">allpaths</span><span class="p">,</span> <span class="n">pole_set</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;path&#39;</span><span class="p">)</span>
-    <span class="n">source_los</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">duration_stack</span><span class="p">,</span> <span class="n">path_stack</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">])</span>
+    <span class="n">sources</span> <span class="o">=</span> <span class="n">pole_set</span> <span class="k">if</span> <span class="n">sources</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">sources</span>
+    <span class="n">source_los</span><span class="o">=</span><span class="n">sparse_los_from_nx_graph</span><span class="p">(</span>
+        <span class="n">nx_graph</span><span class="p">,</span> <span class="n">pole_set</span><span class="p">,</span> <span class="n">sources</span><span class="o">=</span><span class="n">sources</span><span class="p">,</span> 
+        <span class="n">cutoff</span><span class="o">=</span><span class="n">cutoff</span><span class="o">+</span><span class="n">ntlegs_penalty</span><span class="p">,</span> <span class="n">od_set</span><span class="o">=</span><span class="n">od_set</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
     <span class="n">source_los</span><span class="p">[</span><span class="s1">&#39;reversed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
     
-    <span class="c1"># targets</span>
-    <span class="k">if</span> <span class="n">reverse</span> <span class="ow">or</span> <span class="n">reversed_nx_graph</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">reverse</span> <span class="o">=</span> <span class="n">reverse</span> <span class="ow">or</span> <span class="n">reversed_nx_graph</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">reverse</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">reversed_nx_graph</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">reversed_nx_graph</span> <span class="o">=</span> <span class="n">nx_graph</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span>
+        
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">reversed_od_set</span> <span class="o">=</span> <span class="p">{(</span><span class="n">d</span><span class="p">,</span> <span class="n">o</span><span class="p">)</span> <span class="k">for</span> <span class="n">o</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">od_set</span><span class="p">}</span>
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="n">reversed_od_set</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="n">iterator</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">sources</span><span class="p">)</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">pole_set</span><span class="p">))</span>
-        <span class="k">for</span> <span class="n">pole</span> <span class="ow">in</span> <span class="n">iterator</span><span class="p">:</span>
-            <span class="n">alllengths</span><span class="p">[</span><span class="n">pole</span><span class="p">],</span> <span class="n">allpaths</span><span class="p">[</span><span class="n">pole</span><span class="p">]</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">single_source_dijkstra</span><span class="p">(</span>
-                <span class="n">reversed_nx_graph</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="n">pole</span><span class="p">)</span>
-
-        <span class="n">duration_stack</span> <span class="o">=</span> <span class="n">assignment_raw</span><span class="o">.</span><span class="n">nested_dict_to_stack_matrix</span><span class="p">(</span>
-            <span class="n">alllengths</span><span class="p">,</span> <span class="n">pole_set</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;gtime&#39;</span><span class="p">)</span>
-        <span class="n">path_stack</span> <span class="o">=</span> <span class="n">assignment_raw</span><span class="o">.</span><span class="n">nested_dict_to_stack_matrix</span><span class="p">(</span>
-            <span class="n">allpaths</span><span class="p">,</span> <span class="n">pole_set</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;path&#39;</span><span class="p">)</span>
-        <span class="n">target_los</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">duration_stack</span><span class="p">,</span> <span class="n">path_stack</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">])</span>
+        <span class="n">target_los</span><span class="o">=</span><span class="n">sparse_los_from_nx_graph</span><span class="p">(</span>
+            <span class="n">reversed_nx_graph</span><span class="p">,</span> <span class="n">pole_set</span><span class="p">,</span> <span class="n">sources</span><span class="o">=</span><span class="n">sources</span><span class="p">,</span> 
+            <span class="n">cutoff</span><span class="o">=</span><span class="n">cutoff</span><span class="o">+</span><span class="n">ntlegs_penalty</span><span class="p">,</span> <span class="n">od_set</span><span class="o">=</span><span class="n">reversed_od_set</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="n">target_los</span><span class="p">[</span><span class="s1">&#39;reversed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="n">target_los</span><span class="p">[</span><span class="s1">&#39;path&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">target_los</span><span class="p">[</span><span class="s1">&#39;path&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">x</span><span class="p">)))</span>
         <span class="n">target_los</span><span class="p">[[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">target_los</span><span class="p">[[</span><span class="s1">&#39;destination&#39;</span><span class="p">,</span> <span class="s1">&#39;origin&#39;</span><span class="p">]]</span>
+        
+    <span class="n">los</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">source_los</span><span class="p">,</span> <span class="n">target_los</span><span class="p">])</span> <span class="k">if</span> <span class="n">reverse</span> <span class="k">else</span> <span class="n">source_los</span>
+    <span class="n">los</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">los</span><span class="p">[</span><span class="s1">&#39;origin&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">los</span><span class="p">[</span><span class="s1">&#39;destination&#39;</span><span class="p">],</span><span class="s1">&#39;gtime&#39;</span><span class="p">]</span> <span class="o">-=</span> <span class="n">ntlegs_penalty</span>
+    <span class="n">tuples</span> <span class="o">=</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">l</span><span class="p">)</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span>  <span class="n">los</span><span class="p">[[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()]</span>
+    <span class="n">los</span> <span class="o">=</span> <span class="n">los</span><span class="o">.</span><span class="n">loc</span><span class="p">[[</span><span class="n">t</span> <span class="ow">in</span> <span class="n">od_set</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tuples</span><span class="p">]]</span>
+    <span class="k">return</span> <span class="n">los</span></div>
 
-        <span class="n">los</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">source_los</span><span class="p">,</span> <span class="n">target_los</span><span class="p">])</span>
-    <span class="k">else</span><span class="p">:</span>
+<div class="viewcode-block" id="sparse_los_from_nx_graph"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.sparse_los_from_nx_graph">[docs]</a><span class="k">def</span> <span class="nf">sparse_los_from_nx_graph</span><span class="p">(</span>
+    <span class="n">nx_graph</span><span class="p">,</span> 
+    <span class="n">pole_set</span><span class="p">,</span> 
+    <span class="n">sources</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+    <span class="n">cutoff</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span>
+    <span class="n">od_set</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
 
-        <span class="k">return</span> <span class="n">source_los</span>
+    <span class="n">sources</span> <span class="o">=</span> <span class="n">pole_set</span> <span class="k">if</span> <span class="n">sources</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">sources</span>
+    <span class="k">if</span> <span class="n">od_set</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">sources</span> <span class="o">=</span> <span class="p">{</span><span class="n">o</span> <span class="k">for</span> <span class="n">o</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">od_set</span> <span class="k">if</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">sources</span><span class="p">}</span>
+    <span class="c1"># INDEX</span>
+    <span class="n">pole_list</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">pole_set</span><span class="p">))</span> <span class="c1"># fix order</span>
+    <span class="n">source_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">zone</span> <span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">pole_list</span> <span class="k">if</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">sources</span><span class="p">]</span>
 
+    <span class="n">nodes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">nx_graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">)</span>
+    <span class="n">node_index</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">nodes</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">nodes</span><span class="p">))))</span>
+    
+    <span class="n">zones</span> <span class="o">=</span> <span class="p">[</span><span class="n">node_index</span><span class="p">[</span><span class="n">zone</span><span class="p">]</span> <span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">source_list</span><span class="p">]</span>
+    <span class="n">source_index</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">source_list</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">source_list</span><span class="p">))))</span>
+    <span class="n">zone_index</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">pole_list</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pole_list</span><span class="p">))))</span>
+
+    <span class="c1"># SPARSE GRAPH</span>
+    <span class="n">sparse</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">to_scipy_sparse_matrix</span><span class="p">(</span><span class="n">nx_graph</span><span class="p">)</span>
+    <span class="n">graph</span> <span class="o">=</span> <span class="n">csr_matrix</span><span class="p">(</span><span class="n">sparse</span><span class="p">)</span>
+    <span class="n">dist_matrix</span><span class="p">,</span> <span class="n">predecessors</span> <span class="o">=</span> <span class="n">dijkstra</span><span class="p">(</span>
+        <span class="n">csgraph</span><span class="o">=</span><span class="n">graph</span><span class="p">,</span> 
+        <span class="n">directed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
+        <span class="n">indices</span><span class="o">=</span><span class="n">zones</span><span class="p">,</span> 
+        <span class="n">return_predecessors</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">limit</span><span class="o">=</span><span class="n">cutoff</span>
+    <span class="p">)</span>
+
+    <span class="c1"># LOS LAYOUT</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">dist_matrix</span><span class="p">)</span>
+
+    <span class="n">df</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="p">[</span><span class="n">zone</span> <span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">pole_list</span> <span class="k">if</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">sources</span><span class="p">]</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">nx_graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">)</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;destination&#39;</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;origin&#39;</span>
+    <span class="n">stack</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">pole_list</span><span class="p">]</span><span class="o">.</span><span class="n">stack</span><span class="p">()</span>
+    <span class="n">stack</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;gtime&#39;</span>
+    <span class="n">los</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+    <span class="c1"># QUETZAL FORMAT</span>
+    <span class="n">los</span> <span class="o">=</span> <span class="n">los</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">los</span><span class="p">[</span><span class="s1">&#39;gtime&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">od_set</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">tuples</span> <span class="o">=</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">l</span><span class="p">)</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span>  <span class="n">los</span><span class="p">[[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()]</span>
+        <span class="n">los</span> <span class="o">=</span> <span class="n">los</span><span class="o">.</span><span class="n">loc</span><span class="p">[[</span><span class="n">t</span> <span class="ow">in</span> <span class="n">od_set</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tuples</span><span class="p">]]</span>
+
+
+    <span class="c1"># BUILD PATH FROM PREDECESSORS</span>
+    <span class="n">od_list</span> <span class="o">=</span> <span class="n">los</span><span class="p">[[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="n">paths</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">[</span><span class="n">nodes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">get_path</span><span class="p">(</span><span class="n">predecessors</span><span class="p">,</span> <span class="n">source_index</span><span class="p">[</span><span class="n">o</span><span class="p">],</span> <span class="n">node_index</span><span class="p">[</span><span class="n">d</span><span class="p">])]</span>
+        <span class="k">for</span> <span class="n">o</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">od_list</span>
+    <span class="p">]</span>
+
+    <span class="n">los</span><span class="p">[</span><span class="s1">&#39;path&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">paths</span>
+    <span class="k">return</span> <span class="n">los</span></div>
+
+<div class="viewcode-block" id="sparse_matrix"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.sparse_matrix">[docs]</a><span class="k">def</span> <span class="nf">sparse_matrix</span><span class="p">(</span><span class="n">edges</span><span class="p">):</span>
+    <span class="n">nodelist</span> <span class="o">=</span> <span class="p">{</span><span class="n">e</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">edges</span><span class="p">}</span><span class="o">.</span><span class="n">union</span><span class="p">({</span><span class="n">e</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">edges</span><span class="p">})</span>
+    <span class="n">nlen</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">nodelist</span><span class="p">)</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">nodelist</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="n">nlen</span><span class="p">)))</span>
+    <span class="n">coefficients</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="p">((</span><span class="n">index</span><span class="p">[</span><span class="n">u</span><span class="p">],</span> <span class="n">index</span><span class="p">[</span><span class="n">v</span><span class="p">],</span> <span class="n">w</span> <span class="p">)</span> <span class="k">for</span> <span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">edges</span><span class="p">))</span>
+    <span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="n">data</span> <span class="o">=</span> <span class="n">coefficients</span>
+    <span class="k">return</span> <span class="n">csr_matrix</span><span class="p">((</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">)),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">nlen</span><span class="p">,</span> <span class="n">nlen</span><span class="p">)),</span> <span class="n">index</span></div>
+
+<div class="viewcode-block" id="link_edges"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.link_edges">[docs]</a><span class="k">def</span> <span class="nf">link_edges</span><span class="p">(</span><span class="n">links</span><span class="p">,</span> <span class="n">boarding_time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">alighting_time</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+    <span class="k">assert</span> <span class="ow">not</span> <span class="p">(</span><span class="n">boarding_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s1">&#39;boarding_time&#39;</span> <span class="ow">in</span> <span class="n">links</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+    <span class="n">boarding_time</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">boarding_time</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">boarding_time</span>
+
+    <span class="k">assert</span> <span class="ow">not</span> <span class="p">(</span><span class="n">alighting_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s1">&#39;alighting_time&#39;</span> <span class="ow">in</span> <span class="n">links</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+    <span class="n">alighting_time</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">alighting_time</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">alighting_time</span>
+
+    <span class="n">l</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">l</span><span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">]</span><span class="o">=</span> <span class="n">l</span><span class="o">.</span><span class="n">index</span>
+    <span class="n">l</span><span class="p">[</span><span class="s1">&#39;next&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">l</span><span class="p">[</span><span class="s1">&#39;link_sequence&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+
+    <span class="k">if</span> <span class="s1">&#39;cost&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">l</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">l</span><span class="p">[</span><span class="s1">&#39;cost&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">l</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">l</span><span class="p">[</span><span class="s1">&#39;headway&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">2</span>
+
+    <span class="k">if</span> <span class="s1">&#39;boarding_time&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">l</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">l</span><span class="p">[</span><span class="s1">&#39;boarding_time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">boarding_time</span>
+
+    <span class="k">if</span> <span class="s1">&#39;alighting_time&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">l</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">l</span><span class="p">[</span><span class="s1">&#39;alighting_time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">alighting_time</span>
+
+    <span class="n">l</span><span class="p">[</span><span class="s1">&#39;total_time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">l</span><span class="p">[</span><span class="s1">&#39;boarding_time&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">l</span><span class="p">[</span><span class="s1">&#39;cost&#39;</span><span class="p">]</span>
+
+    <span class="n">boarding_edges</span> <span class="o">=</span> <span class="n">l</span><span class="p">[[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="s1">&#39;total_time&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="n">alighting_edges</span> <span class="o">=</span> <span class="n">l</span><span class="p">[[</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;alighting_time&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>    
+
+    <span class="n">transit</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+        <span class="n">l</span><span class="p">[[</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="s1">&#39;next&#39;</span><span class="p">,</span> <span class="s1">&#39;trip_id&#39;</span><span class="p">]],</span> 
+        <span class="n">l</span><span class="p">[[</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="s1">&#39;link_sequence&#39;</span><span class="p">,</span> <span class="s1">&#39;trip_id&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">]],</span>
+        <span class="n">left_on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;trip_id&#39;</span><span class="p">,</span> <span class="s1">&#39;next&#39;</span><span class="p">],</span>
+        <span class="n">right_on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;trip_id&#39;</span><span class="p">,</span> <span class="s1">&#39;link_sequence&#39;</span><span class="p">],</span>
+    <span class="p">)</span>
+    <span class="n">transit_edges</span> <span class="o">=</span> <span class="n">transit</span><span class="p">[[</span><span class="s1">&#39;index_x&#39;</span><span class="p">,</span> <span class="s1">&#39;index_y&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">boarding_edges</span> <span class="o">+</span> <span class="n">transit_edges</span> <span class="o">+</span> <span class="n">alighting_edges</span></div>
+
+
+<div class="viewcode-block" id="adjacency_matrix"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.adjacency_matrix">[docs]</a><span class="k">def</span> <span class="nf">adjacency_matrix</span><span class="p">(</span>
+    <span class="n">links</span><span class="p">,</span> 
+    <span class="n">ntlegs</span><span class="p">,</span> 
+    <span class="n">footpaths</span><span class="p">,</span>
+    <span class="n">ntlegs_penalty</span><span class="o">=</span><span class="mf">1e9</span><span class="p">,</span> 
+    <span class="n">boarding_time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+    <span class="n">alighting_time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+    <span class="n">ntlegs</span> <span class="o">=</span> <span class="n">ntlegs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    
+    <span class="c1"># ntlegs and footpaths</span>
+    <span class="n">ntlegs</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">ntlegs</span><span class="p">[</span><span class="s1">&#39;direction&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;access&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">ntlegs_penalty</span>
+    <span class="n">ntleg_edges</span> <span class="o">=</span>  <span class="n">ntlegs</span><span class="p">[[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="n">footpaths_edges</span> <span class="o">=</span> <span class="n">footpaths</span><span class="p">[[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+    <span class="n">edges</span> <span class="o">=</span> <span class="n">link_edges</span><span class="p">(</span><span class="n">links</span><span class="p">,</span> <span class="n">boarding_time</span><span class="p">,</span> <span class="n">alighting_time</span><span class="p">)</span>
+    <span class="n">edges</span> <span class="o">+=</span> <span class="n">footpaths_edges</span> <span class="o">+</span> <span class="n">ntleg_edges</span>
+    <span class="k">return</span> <span class="n">sparse_matrix</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="los_from_graph"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.los_from_graph">[docs]</a><span class="k">def</span> <span class="nf">los_from_graph</span><span class="p">(</span>
+    <span class="n">csgraph</span><span class="p">,</span> <span class="c1"># graph is assumed to be a scipy csr_matrix</span>
+    <span class="n">node_index</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">pole_set</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+    <span class="n">sources</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+    <span class="n">cutoff</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span>
+    <span class="n">od_set</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">ntlegs_penalty</span><span class="o">=</span><span class="mf">1e9</span>
+<span class="p">):</span>
+    <span class="n">sources</span> <span class="o">=</span> <span class="n">pole_set</span> <span class="k">if</span> <span class="n">sources</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">sources</span>
+    <span class="k">if</span> <span class="n">od_set</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">sources</span> <span class="o">=</span> <span class="p">{</span><span class="n">o</span> <span class="k">for</span> <span class="n">o</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">od_set</span> <span class="k">if</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">sources</span><span class="p">}</span>
+    <span class="c1"># INDEX</span>
+    <span class="n">pole_list</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">pole_set</span><span class="p">))</span> <span class="c1"># fix order</span>
+    <span class="n">source_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">zone</span> <span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">pole_list</span> <span class="k">if</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">sources</span><span class="p">]</span>
+
+    <span class="n">zones</span> <span class="o">=</span> <span class="p">[</span><span class="n">node_index</span><span class="p">[</span><span class="n">zone</span><span class="p">]</span> <span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">source_list</span><span class="p">]</span>
+    <span class="n">source_index</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">source_list</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">source_list</span><span class="p">))))</span>
+    <span class="n">zone_index</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">pole_list</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pole_list</span><span class="p">))))</span>
+
+    <span class="c1"># SPARSE GRAPH</span>
+    <span class="n">dist_matrix</span><span class="p">,</span> <span class="n">predecessors</span> <span class="o">=</span> <span class="n">dijkstra</span><span class="p">(</span>
+        <span class="n">csgraph</span><span class="o">=</span><span class="n">csgraph</span><span class="p">,</span> 
+        <span class="n">directed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
+        <span class="n">indices</span><span class="o">=</span><span class="n">zones</span><span class="p">,</span> 
+        <span class="n">return_predecessors</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">limit</span><span class="o">=</span><span class="n">cutoff</span><span class="o">+</span><span class="n">ntlegs_penalty</span>
+    <span class="p">)</span>
+
+    <span class="c1"># LOS LAYOUT</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">dist_matrix</span><span class="p">)</span>
+    <span class="n">indexed_nodes</span> <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">node_index</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">indexed_nodes</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">df</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="p">[</span><span class="n">zone</span> <span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">pole_list</span> <span class="k">if</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">sources</span><span class="p">]</span>
+
+    <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;destination&#39;</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;origin&#39;</span>
+
+    <span class="n">stack</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">pole_list</span><span class="p">]</span><span class="o">.</span><span class="n">stack</span><span class="p">()</span>
+    <span class="n">stack</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;gtime&#39;</span>
+    <span class="n">los</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+    <span class="c1"># QUETZAL FORMAT</span>
+    <span class="n">los</span> <span class="o">=</span> <span class="n">los</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">los</span><span class="p">[</span><span class="s1">&#39;gtime&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">]</span>
+    <span class="n">los</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">los</span><span class="p">[</span><span class="s1">&#39;origin&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">los</span><span class="p">[</span><span class="s1">&#39;destination&#39;</span><span class="p">],</span><span class="s1">&#39;gtime&#39;</span><span class="p">]</span> <span class="o">-=</span> <span class="n">ntlegs_penalty</span>
+    <span class="k">if</span> <span class="n">od_set</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">tuples</span> <span class="o">=</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">l</span><span class="p">)</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span>  <span class="n">los</span><span class="p">[[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()]</span>
+        <span class="n">los</span> <span class="o">=</span> <span class="n">los</span><span class="o">.</span><span class="n">loc</span><span class="p">[[</span><span class="n">t</span> <span class="ow">in</span> <span class="n">od_set</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tuples</span><span class="p">]]</span>
+        
+    <span class="c1"># BUILD PATH FROM PREDECESSORS</span>
+    <span class="n">od_list</span> <span class="o">=</span> <span class="n">los</span><span class="p">[[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="n">paths</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">[</span><span class="n">indexed_nodes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">get_path</span><span class="p">(</span><span class="n">predecessors</span><span class="p">,</span> <span class="n">source_index</span><span class="p">[</span><span class="n">o</span><span class="p">],</span> <span class="n">node_index</span><span class="p">[</span><span class="n">d</span><span class="p">])]</span>
+        <span class="k">for</span> <span class="n">o</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">od_list</span>
+    <span class="p">]</span>
+
+    <span class="n">los</span><span class="p">[</span><span class="s1">&#39;path&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">paths</span>
     <span class="k">return</span> <span class="n">los</span></div>
 
 
+<div class="viewcode-block" id="paths_from_graph"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.paths_from_graph">[docs]</a><span class="k">def</span> <span class="nf">paths_from_graph</span><span class="p">(</span>
+    <span class="n">csgraph</span><span class="p">,</span>
+    <span class="n">node_index</span><span class="p">,</span>
+    <span class="n">sources</span><span class="p">,</span>
+    <span class="n">targets</span><span class="p">,</span>
+    <span class="n">od_set</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">cutoff</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+<span class="p">):</span>
+    <span class="n">reverse</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">od_set</span><span class="p">:</span>
+        <span class="n">o_set</span> <span class="o">=</span> <span class="p">{</span><span class="n">o</span> <span class="k">for</span> <span class="n">o</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">od_set</span><span class="p">}</span>
+        <span class="n">d_set</span> <span class="o">=</span> <span class="p">{</span><span class="n">d</span> <span class="k">for</span> <span class="n">o</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">od_set</span><span class="p">}</span>
+        <span class="n">sources</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sources</span> <span class="k">if</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">o_set</span><span class="p">]</span>
+        <span class="n">targets</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">targets</span> <span class="k">if</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">d_set</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sources</span><span class="p">)</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">targets</span><span class="p">):</span>
+        <span class="n">reverse</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">sources</span><span class="p">,</span> <span class="n">targets</span><span class="p">,</span> <span class="n">csgraph</span> <span class="o">=</span> <span class="n">targets</span><span class="p">,</span> <span class="n">sources</span><span class="p">,</span> <span class="n">csgraph</span><span class="o">.</span><span class="n">T</span>
+
+    <span class="c1"># INDEX</span>
+    <span class="n">source_indices</span> <span class="o">=</span> <span class="p">[</span><span class="n">node_index</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sources</span><span class="p">]</span>
+    <span class="n">target_indices</span> <span class="o">=</span> <span class="p">[</span><span class="n">node_index</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">targets</span><span class="p">]</span>
+    <span class="n">source_index</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sources</span><span class="p">))))</span>
+    <span class="n">index_node</span> <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">node_index</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+    <span class="c1">#  DIKSTRA</span>
+    <span class="n">dist_matrix</span><span class="p">,</span> <span class="n">predecessors</span> <span class="o">=</span> <span class="n">dijkstra</span><span class="p">(</span>
+        <span class="n">csgraph</span><span class="o">=</span><span class="n">csgraph</span><span class="p">,</span>
+        <span class="n">directed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">indices</span><span class="o">=</span><span class="n">source_indices</span><span class="p">,</span>
+        <span class="n">return_predecessors</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">limit</span><span class="o">=</span><span class="n">cutoff</span>
+    <span class="p">)</span>
+
+    <span class="n">dist_matrix</span> <span class="o">=</span> <span class="n">dist_matrix</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="n">target_indices</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">dist_matrix</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">sources</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">targets</span><span class="p">)</span>
+
+    <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;destination&#39;</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;origin&#39;</span>
+
+    <span class="k">if</span> <span class="n">od_set</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">mask_series</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">MultiIndex</span><span class="o">.</span><span class="n">from_tuples</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">od_set</span><span class="p">)))</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">mask_series</span><span class="o">.</span><span class="n">unstack</span><span class="p">()</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">sources</span><span class="p">,</span> <span class="n">targets</span><span class="p">]</span>
+        <span class="n">df</span> <span class="o">+=</span> <span class="n">mask</span>
+
+    <span class="n">stack</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">stack</span><span class="p">()</span>
+    <span class="n">stack</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;length&#39;</span>
+    <span class="n">odl</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">od_list</span> <span class="o">=</span> <span class="n">odl</span><span class="p">[[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">get_reversed_path</span> <span class="k">if</span> <span class="n">reverse</span> <span class="k">else</span> <span class="n">get_path</span>
+    <span class="n">paths</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">[</span>
+            <span class="n">index_node</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span>
+            <span class="n">path</span><span class="p">(</span><span class="n">predecessors</span><span class="p">,</span> <span class="n">source_index</span><span class="p">[</span><span class="n">o</span><span class="p">],</span> <span class="n">node_index</span><span class="p">[</span><span class="n">d</span><span class="p">])</span>
+        <span class="p">]</span>
+        <span class="k">for</span> <span class="n">o</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">od_list</span>
+    <span class="p">]</span>
+    <span class="n">odl</span><span class="p">[</span><span class="s1">&#39;path&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">paths</span>
+
+    <span class="k">if</span> <span class="n">reverse</span><span class="p">:</span>    
+        <span class="n">odl</span><span class="p">[[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">odl</span><span class="p">[[</span><span class="s1">&#39;destination&#39;</span><span class="p">,</span> <span class="s1">&#39;origin&#39;</span><span class="p">]]</span>
+    <span class="k">return</span> <span class="n">odl</span></div>
+
 <div class="viewcode-block" id="PublicPathFinder"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.PublicPathFinder">[docs]</a><span class="k">class</span> <span class="nc">PublicPathFinder</span><span class="p">:</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">walk_on_road</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">zones</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">zones</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">links</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">graph_links</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">links</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">footpaths</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">footpaths</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ntlegs</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">zone_to_transit</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">walk_on_road</span><span class="p">:</span>
+            <span class="n">road_links</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">road_links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">road_links</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">road_links</span><span class="p">[</span><span class="s1">&#39;walk_time&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">footpaths</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">model</span><span class="o">.</span><span class="n">footpaths</span><span class="p">,</span> <span class="n">road_links</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">road_to_transit</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ntlegs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">model</span><span class="o">.</span><span class="n">zone_to_road</span><span class="p">,</span>  <span class="n">model</span><span class="o">.</span><span class="n">zone_to_transit</span><span class="p">]</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">footpaths</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">footpaths</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ntlegs</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">zone_to_transit</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
         <span class="k">try</span> <span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">centroids</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">centroids</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
@@ -241,19 +504,8 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">centroids</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">centroids</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
                 <span class="k">lambda</span> <span class="n">g</span><span class="p">:</span> <span class="n">g</span><span class="o">.</span><span class="n">centroid</span>
             <span class="p">)</span>
+            
         
-<div class="viewcode-block" id="PublicPathFinder.find_best_path"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.PublicPathFinder.find_best_path">[docs]</a>    <span class="k">def</span> <span class="nf">find_best_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">pt_los</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nx_graph</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">path_and_duration_from_links_and_ntlegs</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">,</span>
-            <span class="n">ntlegs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ntlegs</span><span class="p">,</span>
-            <span class="n">pole_set</span><span class="o">=</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">zones</span><span class="o">.</span><span class="n">index</span><span class="p">),</span>
-            <span class="n">footpaths</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">footpaths</span><span class="p">,</span>
-            <span class="o">**</span><span class="n">kwargs</span>
-        <span class="p">)</span>
-
-        <span class="n">pt_los</span><span class="p">[</span><span class="s1">&#39;pathfinder_session&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;best_path&#39;</span>
-        <span class="n">pt_los</span><span class="p">[</span><span class="s1">&#39;reversed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">best_paths</span> <span class="o">=</span> <span class="n">pt_los</span></div>
 
 <div class="viewcode-block" id="PublicPathFinder.first_link"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.PublicPathFinder.first_link">[docs]</a>    <span class="k">def</span> <span class="nf">first_link</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">path</span><span class="p">:</span>
@@ -265,8 +517,11 @@
             <span class="k">if</span> <span class="n">n</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">n</span></div>
 
-
 <div class="viewcode-block" id="PublicPathFinder.build_route_zones"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.PublicPathFinder.build_route_zones">[docs]</a>    <span class="k">def</span> <span class="nf">build_route_zones</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route_column</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        find origin zones that are likely to be affected by the removal </span>
+<span class="sd">        each one of the routes</span>
+<span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">los</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_paths</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="n">los</span><span class="p">[</span><span class="s1">&#39;first_link&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">los</span><span class="p">[</span><span class="s1">&#39;path&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">first_link</span><span class="p">)</span>
@@ -287,78 +542,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">route_zones</span> <span class="o">=</span> <span class="n">route_zone_sets</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="PublicPathFinder.build_route_breaker"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.PublicPathFinder.build_route_breaker">[docs]</a>    <span class="k">def</span> <span class="nf">build_route_breaker</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route_column</span><span class="o">=</span><span class="s1">&#39;route_id&#39;</span><span class="p">):</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">build_route_zones</span><span class="p">(</span><span class="n">route_column</span><span class="o">=</span><span class="n">route_column</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">reversed_nx_graph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nx_graph</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span>
-
-        <span class="n">links</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="n">links</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;index&#39;</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">route_links</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span>
-            <span class="p">[</span><span class="n">route_column</span><span class="p">]</span>
-        <span class="p">)[</span><span class="s1">&#39;index&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="nb">set</span><span class="p">(</span><span class="n">s</span><span class="p">))</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">build_route_zones</span><span class="p">(</span><span class="n">route_column</span><span class="o">=</span><span class="n">route_column</span><span class="p">)</span></div>
     
-
-
-<div class="viewcode-block" id="PublicPathFinder.broken_route_graphs"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.PublicPathFinder.broken_route_graphs">[docs]</a>    <span class="k">def</span> <span class="nf">broken_route_graphs</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">route</span><span class="p">,</span>
-        <span class="n">nx_graph</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
-        <span class="n">reversed_nx_graph</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-    <span class="p">):</span>
-        <span class="k">if</span> <span class="n">nx_graph</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">nx_graph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nx_graph</span>
-
-        <span class="k">if</span> <span class="n">reversed_nx_graph</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">reversed_nx_graph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reversed_nx_graph</span>
-
-        <span class="n">to_drop</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">route_links</span><span class="p">[</span><span class="n">route</span><span class="p">]</span>
-        
-        <span class="n">ebunch</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">nx_graph</span><span class="o">.</span><span class="n">edges</span><span class="p">)</span> 
-            <span class="k">if</span> <span class="n">to_drop</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="c1">#  un des noeuds de l&#39;arrête appartient aussi à la route</span>
-        <span class="p">]</span>
-
-        <span class="n">reversed_ebunch</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">reversed_nx_graph</span><span class="o">.</span><span class="n">edges</span><span class="p">)</span> 
-            <span class="k">if</span> <span class="n">to_drop</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-        <span class="p">]</span>
-        
-        <span class="n">broken</span> <span class="o">=</span> <span class="n">nx_graph</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="n">reversed_broken</span> <span class="o">=</span> <span class="n">reversed_nx_graph</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        
-        <span class="n">broken</span><span class="o">.</span><span class="n">remove_edges_from</span><span class="p">(</span><span class="n">ebunch</span><span class="p">)</span>
-        <span class="n">reversed_broken</span><span class="o">.</span><span class="n">remove_edges_from</span><span class="p">(</span><span class="n">reversed_ebunch</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">broken</span><span class="p">,</span> <span class="n">reversed_broken</span></div>
-
-<div class="viewcode-block" id="PublicPathFinder.find_broken_route_paths"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.PublicPathFinder.find_broken_route_paths">[docs]</a>    <span class="k">def</span> <span class="nf">find_broken_route_paths</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">los_dict</span> <span class="o">=</span> <span class="p">{}</span>
-        
-        <span class="n">iterator</span> <span class="o">=</span>  <span class="n">tqdm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">route_zones</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
-        <span class="k">for</span> <span class="n">route</span><span class="p">,</span> <span class="n">zones</span> <span class="ow">in</span> <span class="n">iterator</span><span class="p">:</span>
-            <span class="n">iterator</span><span class="o">.</span><span class="n">desc</span> <span class="o">=</span> <span class="s1">&#39;breaking route: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">route</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span>
-            
-            <span class="n">broken</span><span class="p">,</span> <span class="n">reversed_broken</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">broken_route_graphs</span><span class="p">(</span><span class="n">route</span><span class="p">)</span>
-            
-            <span class="n">los</span> <span class="o">=</span> <span class="n">path_and_duration_from_graph</span><span class="p">(</span>
-                <span class="n">nx_graph</span><span class="o">=</span><span class="n">broken</span><span class="p">,</span>
-                <span class="n">reversed_nx_graph</span><span class="o">=</span><span class="n">reversed_broken</span><span class="p">,</span>
-                <span class="n">pole_set</span><span class="o">=</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">zones</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ntlegs</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">])),</span>
-                <span class="n">sources</span><span class="o">=</span><span class="nb">set</span><span class="p">(</span><span class="n">zones</span><span class="p">)</span>
-            <span class="p">)</span>
-            
-            <span class="n">los_dict</span><span class="p">[</span><span class="n">route</span><span class="p">]</span> <span class="o">=</span> <span class="n">los</span>
-            
-        <span class="n">to_concat</span> <span class="o">=</span> <span class="p">[]</span> 
-        <span class="k">for</span> <span class="n">route</span><span class="p">,</span> <span class="n">los</span> <span class="ow">in</span> <span class="n">los_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">los</span><span class="p">[</span><span class="s1">&#39;pathfinder_session&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;route_breaker&#39;</span> 
-            <span class="n">los</span><span class="p">[</span><span class="s1">&#39;broken_route&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">route</span>
-            <span class="n">to_concat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">los</span><span class="p">)</span>
-            
-        <span class="bp">self</span><span class="o">.</span><span class="n">broken_route_paths</span> <span class="o">=</span>  <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">to_concat</span><span class="p">)</span></div>
-
-
 <div class="viewcode-block" id="PublicPathFinder.build_mode_breaker"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.PublicPathFinder.build_mode_breaker">[docs]</a>    <span class="k">def</span> <span class="nf">build_mode_breaker</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode_column</span><span class="o">=</span><span class="s1">&#39;route_type&#39;</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">build_mode_combinations</span><span class="p">(</span><span class="n">mode_column</span><span class="o">=</span><span class="s1">&#39;route_type&#39;</span><span class="p">)</span></div>
 
@@ -377,61 +562,140 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">mode_combinations</span> <span class="o">=</span> <span class="n">mode_combinations</span>
 
         <span class="n">links</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">links</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
         <span class="n">links</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;index&#39;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">mode_links</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span>
             <span class="p">[</span><span class="n">mode_column</span><span class="p">]</span>
         <span class="p">)[</span><span class="s1">&#39;index&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="nb">set</span><span class="p">(</span><span class="n">s</span><span class="p">))</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="PublicPathFinder.broken_mode_graph"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.PublicPathFinder.broken_mode_graph">[docs]</a>    <span class="k">def</span> <span class="nf">broken_mode_graph</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">drop_modes</span><span class="p">,</span>
-        <span class="n">nx_graph</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+<div class="viewcode-block" id="PublicPathFinder.find_best_path"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.PublicPathFinder.find_best_path">[docs]</a>    <span class="k">def</span> <span class="nf">find_best_path</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> 
+        <span class="n">od_set</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+        <span class="n">cutoff</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> 
+        <span class="n">ntlegs_penalty</span><span class="o">=</span><span class="mf">1e9</span><span class="p">,</span> 
+        <span class="n">boarding_time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
     <span class="p">):</span>
+        <span class="n">pole_set</span><span class="o">=</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">zones</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        <span class="n">matrix</span><span class="p">,</span> <span class="n">node_index</span> <span class="o">=</span> <span class="n">adjacency_matrix</span><span class="p">(</span>
+            <span class="n">links</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">,</span> 
+            <span class="n">ntlegs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ntlegs</span><span class="p">,</span> 
+            <span class="n">footpaths</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">footpaths</span><span class="p">,</span>
+            <span class="n">ntlegs_penalty</span><span class="o">=</span><span class="n">ntlegs_penalty</span><span class="p">,</span> 
+            <span class="n">boarding_time</span><span class="o">=</span><span class="n">boarding_time</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span>
+        <span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">nx_graph</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">nx_graph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nx_graph</span>
-
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">drop_modes</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">nx_graph</span>
-
-        <span class="n">to_drop</span> <span class="o">=</span> <span class="nb">set</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">mode_links</span><span class="p">[</span><span class="n">mode</span><span class="p">]</span> <span class="k">for</span> <span class="n">mode</span> <span class="ow">in</span> <span class="n">drop_modes</span><span class="p">])</span>
+        <span class="n">los</span> <span class="o">=</span> <span class="n">los_from_graph</span><span class="p">(</span>
+            <span class="n">csgraph</span><span class="o">=</span><span class="n">matrix</span><span class="p">,</span>
+            <span class="n">node_index</span><span class="o">=</span><span class="n">node_index</span><span class="p">,</span>
+            <span class="n">pole_set</span><span class="o">=</span><span class="n">pole_set</span><span class="p">,</span>
+            <span class="n">od_set</span><span class="o">=</span><span class="n">od_set</span><span class="p">,</span> 
+            <span class="n">cutoff</span><span class="o">=</span><span class="n">cutoff</span><span class="p">,</span>
+            <span class="n">ntlegs_penalty</span><span class="o">=</span><span class="n">ntlegs_penalty</span>
+        <span class="p">)</span>
         
-        <span class="n">ebunch</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">nx_graph</span><span class="o">.</span><span class="n">edges</span><span class="p">)</span> 
-            <span class="k">if</span> <span class="n">to_drop</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>  <span class="c1">#  un des noeuds de l&#39;arrête appartient aussi à la route</span>
-        <span class="p">]</span>
-        
-        <span class="n">broken</span> <span class="o">=</span> <span class="n">nx_graph</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="n">broken</span><span class="o">.</span><span class="n">remove_edges_from</span><span class="p">(</span><span class="n">ebunch</span><span class="p">)</span>
+        <span class="n">los</span><span class="p">[</span><span class="s1">&#39;pathfinder_session&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;best_path&#39;</span>
+        <span class="n">los</span><span class="p">[</span><span class="s1">&#39;reversed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">best_paths</span> <span class="o">=</span> <span class="n">los</span></div>
 
-        <span class="k">return</span> <span class="n">broken</span></div>
-
-<div class="viewcode-block" id="PublicPathFinder.find_broken_mode_paths"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.PublicPathFinder.find_broken_mode_paths">[docs]</a>    <span class="k">def</span> <span class="nf">find_broken_mode_paths</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">los_tuples</span> <span class="o">=</span> <span class="p">[]</span>
+<div class="viewcode-block" id="PublicPathFinder.find_broken_route_paths"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.PublicPathFinder.find_broken_route_paths">[docs]</a>    <span class="k">def</span> <span class="nf">find_broken_route_paths</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> 
+        <span class="n">od_set</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+        <span class="n">cutoff</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> 
+        <span class="n">route_column</span><span class="o">=</span><span class="s1">&#39;route_id&#39;</span><span class="p">,</span>
+        <span class="n">ntlegs_penalty</span><span class="o">=</span><span class="mf">1e9</span><span class="p">,</span> 
+        <span class="n">boarding_time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">speedup</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
         
+    <span class="p">):</span>
+        <span class="n">pole_set</span><span class="o">=</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">zones</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        <span class="n">do_set</span> <span class="o">=</span> <span class="p">{(</span><span class="n">d</span><span class="p">,</span> <span class="n">o</span><span class="p">)</span> <span class="k">for</span> <span class="n">o</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">od_set</span><span class="p">}</span> <span class="k">if</span> <span class="n">od_set</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">to_concat</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">iterator</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">route_zones</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+        <span class="k">for</span> <span class="n">route_id</span><span class="p">,</span> <span class="n">zones</span> <span class="ow">in</span> <span class="n">iterator</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">speedup</span><span class="p">:</span>
+                <span class="n">zones</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">zones</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ntlegs</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">]))</span>
+            <span class="n">iterator</span><span class="o">.</span><span class="n">desc</span> <span class="o">=</span> <span class="s1">&#39;breaking route: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">route_id</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span>
+            <span class="n">matrix</span><span class="p">,</span> <span class="n">node_index</span> <span class="o">=</span> <span class="n">adjacency_matrix</span><span class="p">(</span>
+                <span class="n">links</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">[</span><span class="n">route_column</span><span class="p">]</span><span class="o">!=</span><span class="n">route_id</span><span class="p">],</span>
+                <span class="n">ntlegs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ntlegs</span><span class="p">,</span> 
+                <span class="n">footpaths</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">footpaths</span><span class="p">,</span>
+                <span class="n">ntlegs_penalty</span><span class="o">=</span><span class="n">ntlegs_penalty</span><span class="p">,</span> 
+                <span class="n">boarding_time</span><span class="o">=</span><span class="n">boarding_time</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">kwargs</span>
+            <span class="p">)</span>
+
+            <span class="n">los</span> <span class="o">=</span> <span class="n">los_from_graph</span><span class="p">(</span>
+                <span class="n">csgraph</span><span class="o">=</span><span class="n">matrix</span><span class="p">,</span>
+                <span class="n">node_index</span><span class="o">=</span><span class="n">node_index</span><span class="p">,</span>
+                <span class="n">pole_set</span><span class="o">=</span><span class="n">pole_set</span><span class="p">,</span>
+                <span class="n">od_set</span><span class="o">=</span><span class="n">od_set</span><span class="p">,</span> 
+                <span class="n">sources</span><span class="o">=</span><span class="n">zones</span><span class="p">,</span>
+                <span class="n">cutoff</span><span class="o">=</span><span class="n">cutoff</span><span class="p">,</span>
+                <span class="n">ntlegs_penalty</span><span class="o">=</span><span class="n">ntlegs_penalty</span>
+            <span class="p">)</span>
+            <span class="n">los</span><span class="p">[</span><span class="s1">&#39;reversed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">los</span><span class="p">[</span><span class="s1">&#39;broken_route&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">route_id</span>
+            <span class="n">los</span><span class="p">[</span><span class="s1">&#39;pathfinder_session&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;route_breaker&#39;</span>
+
+            <span class="n">to_concat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">los</span><span class="p">)</span>
+            <span class="n">los</span> <span class="o">=</span> <span class="n">los_from_graph</span><span class="p">(</span>
+                <span class="n">csgraph</span><span class="o">=</span><span class="n">matrix</span><span class="o">.</span><span class="n">transpose</span><span class="p">(),</span>
+                <span class="n">node_index</span><span class="o">=</span><span class="n">node_index</span><span class="p">,</span>
+                <span class="n">pole_set</span><span class="o">=</span><span class="n">pole_set</span><span class="p">,</span>
+                <span class="n">od_set</span><span class="o">=</span><span class="n">do_set</span><span class="p">,</span> 
+                <span class="n">sources</span><span class="o">=</span><span class="n">zones</span><span class="p">,</span>
+                <span class="n">cutoff</span><span class="o">=</span><span class="n">cutoff</span><span class="p">,</span>
+                <span class="n">ntlegs_penalty</span><span class="o">=</span><span class="n">ntlegs_penalty</span>
+            <span class="p">)</span>
+            <span class="n">los</span><span class="p">[[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">los</span><span class="p">[[</span><span class="s1">&#39;destination&#39;</span><span class="p">,</span> <span class="s1">&#39;origin&#39;</span><span class="p">]]</span>
+            <span class="n">los</span><span class="p">[</span><span class="s1">&#39;path&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">los</span><span class="p">[</span><span class="s1">&#39;path&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">p</span><span class="p">)))</span>
+            <span class="n">los</span><span class="p">[</span><span class="s1">&#39;reversed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">los</span><span class="p">[</span><span class="s1">&#39;broken_route&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">route_id</span>
+            <span class="n">los</span><span class="p">[</span><span class="s1">&#39;pathfinder_session&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;route_breaker&#39;</span>
+            <span class="n">to_concat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">los</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">broken_route_paths</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">to_concat</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="PublicPathFinder.find_broken_mode_paths"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.PublicPathFinder.find_broken_mode_paths">[docs]</a>    <span class="k">def</span> <span class="nf">find_broken_mode_paths</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> 
+        <span class="n">od_set</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+        <span class="n">cutoff</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> 
+        <span class="n">mode_column</span><span class="o">=</span><span class="s1">&#39;mode_type&#39;</span><span class="p">,</span>
+        <span class="n">ntlegs_penalty</span><span class="o">=</span><span class="mf">1e9</span><span class="p">,</span> 
+        <span class="n">boarding_time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+        <span class="n">pole_set</span><span class="o">=</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">zones</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        <span class="n">to_concat</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">iterator</span> <span class="o">=</span>  <span class="n">tqdm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mode_combinations</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">combination</span> <span class="ow">in</span> <span class="n">iterator</span><span class="p">:</span>
             <span class="n">iterator</span><span class="o">.</span><span class="n">desc</span> <span class="o">=</span> <span class="s1">&#39;breaking modes: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">combination</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span>
-            
-            <span class="n">broken</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">broken_mode_graph</span><span class="p">(</span><span class="n">combination</span><span class="p">)</span>
-            
-            <span class="n">los</span> <span class="o">=</span> <span class="n">path_and_duration_from_graph</span><span class="p">(</span>
-                <span class="n">nx_graph</span><span class="o">=</span><span class="n">broken</span><span class="p">,</span>
-                <span class="n">reversed_nx_graph</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">pole_set</span><span class="o">=</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">zones</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ntlegs</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">])),</span>
+            <span class="n">matrix</span><span class="p">,</span> <span class="n">node_index</span> <span class="o">=</span> <span class="n">adjacency_matrix</span><span class="p">(</span>
+                <span class="n">links</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="o">~</span><span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">[</span><span class="n">mode_column</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">combination</span><span class="p">)],</span>
+                <span class="n">ntlegs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ntlegs</span><span class="p">,</span> 
+                <span class="n">footpaths</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">footpaths</span><span class="p">,</span>
+                <span class="n">ntlegs_penalty</span><span class="o">=</span><span class="n">ntlegs_penalty</span><span class="p">,</span> 
+                <span class="n">boarding_time</span><span class="o">=</span><span class="n">boarding_time</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">kwargs</span>
             <span class="p">)</span>
-            
-            <span class="n">los_tuples</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">combination</span><span class="p">,</span> <span class="n">los</span><span class="p">])</span>
-            
-        <span class="n">to_concat</span> <span class="o">=</span> <span class="p">[]</span> 
-        <span class="k">for</span> <span class="n">combination</span><span class="p">,</span> <span class="n">los</span> <span class="ow">in</span> <span class="n">los_tuples</span><span class="p">:</span>
-            <span class="n">los</span><span class="p">[</span><span class="s1">&#39;pathfinder_session&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;mode_breaker&#39;</span> 
+
+            <span class="n">los</span> <span class="o">=</span> <span class="n">los_from_graph</span><span class="p">(</span>
+                <span class="n">csgraph</span><span class="o">=</span><span class="n">matrix</span><span class="p">,</span>
+                <span class="n">node_index</span><span class="o">=</span><span class="n">node_index</span><span class="p">,</span>
+                <span class="n">pole_set</span><span class="o">=</span><span class="n">pole_set</span><span class="p">,</span>
+                <span class="n">od_set</span><span class="o">=</span><span class="n">od_set</span><span class="p">,</span> 
+                <span class="n">cutoff</span><span class="o">=</span><span class="n">cutoff</span><span class="p">,</span>
+                <span class="n">ntlegs_penalty</span><span class="o">=</span><span class="n">ntlegs_penalty</span>
+            <span class="p">)</span>
+            <span class="n">los</span><span class="p">[</span><span class="s1">&#39;reversed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">los</span><span class="p">[</span><span class="s1">&#39;pathfinder_session&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;mode_breaker&#39;</span>
             <span class="n">los</span><span class="p">[</span><span class="s1">&#39;broken_modes&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">combination</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">los</span><span class="p">))]</span>
             <span class="n">to_concat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">los</span><span class="p">)</span>
             
-        <span class="bp">self</span><span class="o">.</span><span class="n">broken_mode_paths</span> <span class="o">=</span>  <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">to_concat</span><span class="p">)</span></div>
-
+        <span class="bp">self</span><span class="o">.</span><span class="n">broken_mode_paths</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">to_concat</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="PublicPathFinder.find_best_paths"><a class="viewcode-back" href="../../../quetzal.engine.pathfinder.html#quetzal.engine.pathfinder.PublicPathFinder.find_best_paths">[docs]</a>    <span class="k">def</span> <span class="nf">find_best_paths</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> 
@@ -440,22 +704,52 @@
         <span class="n">broken_routes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">broken_modes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">drop_duplicates</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">speedup</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">cutoff</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span>
+        <span class="n">od_set</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">boarding_time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="o">**</span><span class="n">kwargs</span>
     <span class="p">):</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">find_best_path</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="n">to_concat</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">best_paths</span><span class="p">]</span>
-
+        
+        <span class="n">to_concat</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">if</span> <span class="n">broken_routes</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">find_best_path</span><span class="p">(</span>
+                <span class="n">boarding_time</span><span class="o">=</span><span class="n">boarding_time</span><span class="p">,</span> 
+                <span class="n">cutoff</span><span class="o">=</span><span class="n">cutoff</span><span class="p">,</span> 
+                <span class="n">od_set</span><span class="o">=</span><span class="n">od_set</span><span class="p">,</span> 
+                <span class="o">**</span><span class="n">kwargs</span>
+            <span class="p">)</span> <span class="c1"># builds the graph</span>
+            <span class="n">to_concat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">best_paths</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">build_route_breaker</span><span class="p">(</span><span class="n">route_column</span><span class="o">=</span><span class="n">route_column</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">find_broken_route_paths</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">find_broken_route_paths</span><span class="p">(</span>
+                <span class="n">speedup</span><span class="o">=</span><span class="n">speedup</span><span class="p">,</span> 
+                <span class="n">od_set</span><span class="o">=</span><span class="n">od_set</span><span class="p">,</span> 
+                <span class="n">boarding_time</span><span class="o">=</span><span class="n">boarding_time</span><span class="p">,</span> 
+                <span class="n">cutoff</span><span class="o">=</span><span class="n">cutoff</span><span class="p">,</span>
+                <span class="n">route_column</span><span class="o">=</span><span class="n">route_column</span>
+            <span class="p">)</span>
             <span class="n">to_concat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broken_route_paths</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">broken_modes</span><span class="p">:</span>
+            <span class="c1"># self.build_graph(**kwargs)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">build_mode_combinations</span><span class="p">(</span><span class="n">mode_column</span><span class="o">=</span><span class="n">mode_column</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">find_broken_mode_paths</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">find_broken_mode_paths</span><span class="p">(</span>
+                <span class="n">od_set</span><span class="o">=</span><span class="n">od_set</span><span class="p">,</span> 
+                <span class="n">cutoff</span><span class="o">=</span><span class="n">cutoff</span><span class="p">,</span>
+                <span class="n">boarding_time</span><span class="o">=</span><span class="n">boarding_time</span><span class="p">,</span>
+                <span class="n">mode_column</span><span class="o">=</span><span class="n">mode_column</span>
+            <span class="p">)</span>
             <span class="n">to_concat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">broken_mode_paths</span><span class="p">)</span>
-        
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">broken_modes</span> <span class="ow">or</span> <span class="n">broken_routes</span><span class="p">)</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">find_best_path</span><span class="p">(</span>
+                <span class="n">cutoff</span><span class="o">=</span><span class="n">cutoff</span><span class="p">,</span> 
+                <span class="n">od_set</span><span class="o">=</span><span class="n">od_set</span><span class="p">,</span> 
+                <span class="n">boarding_time</span><span class="o">=</span><span class="n">boarding_time</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">kwargs</span>
+            <span class="p">)</span>
+            <span class="n">to_concat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">best_paths</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">paths</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">to_concat</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">paths</span><span class="p">[</span><span class="s1">&#39;path&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">paths</span><span class="p">[</span><span class="s1">&#39;path&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="nb">tuple</span><span class="p">)</span>
 
@@ -466,22 +760,28 @@
 </pre></div>
 
            </div>
+           
           </div>
           <footer>
-  
 
   <hr/>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2018, Systra.
+        &#169; Copyright 2018, Systra.
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
-
         </div>
       </div>
 
@@ -490,36 +790,15 @@
   </div>
   
 
-
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'../../../',
-            VERSION:'',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
-        };
-    </script>
-      <script type="text/javascript" src="../../../_static/jquery.js"></script>
-      <script type="text/javascript" src="../../../_static/underscore.js"></script>
-      <script type="text/javascript" src="../../../_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>
