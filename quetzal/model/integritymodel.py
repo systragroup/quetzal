@@ -25,14 +25,18 @@ def list_duplicates(l):
     return [x for x, y in collections.Counter(l).items() if y > 1]
 
 
-def geodataframe_place_holder(geom_type):
+def geodataframe_place_holder(geom_type, prefix=None):
     if geom_type == 'LineString':
         geo = LineString([(0, 0), (0, 0)])
     if geom_type == 'Polygon':
         geo = Polygon([(0, 0), (0, 0), (0, 0)])
     if geom_type == 'Point':
         geo = Point(0, 0)
-    return gpd.GeoDataFrame(pd.DataFrame([geo],columns=['geometry']))
+    if prefix is not None:
+        i = '{}0'.format(prefix)
+    else:
+        i = 0
+    return gpd.GeoDataFrame(pd.DataFrame([geo], columns=['geometry'], index=[i]))
 
 
 class IntegrityModel:
@@ -41,15 +45,15 @@ class IntegrityModel:
 
         self.parameters = {}
         self.debug = debug
-        self.walk_on_road=walk_on_road
+        self.walk_on_road = walk_on_road
         self.coordinates_unit = coordinates_unit
-        self.epsg=epsg
+        self.epsg = epsg
         self.segments = ['all']
 
         self.checkpoint_links = geodataframe_place_holder('LineString')
         self.loaded_links = geodataframe_place_holder('LineString')
         self.links = geodataframe_place_holder('LineString')
-        self.road_links = geodataframe_place_holder('LineString')
+        self.road_links = geodataframe_place_holder('LineString', prefix='road_link_')
         self.footpaths = geodataframe_place_holder('LineString')
         self.lines = geodataframe_place_holder('LineString')
         self.networkcaster_neighbors = geodataframe_place_holder('LineString')
@@ -60,8 +64,8 @@ class IntegrityModel:
         self.zone_to_road = geodataframe_place_holder('LineString')
         self.checkpoint_nodes = geodataframe_place_holder('Point')
         self.loaded_nodes = geodataframe_place_holder('Point')
-        self.nodes = geodataframe_place_holder('Point')
-        self.road_nodes = geodataframe_place_holder('Point')
+        self.nodes = geodataframe_place_holder('Point', prefix='node_')
+        self.road_nodes = geodataframe_place_holder('Point', prefix='road_node_')
         self.centroids = geodataframe_place_holder('Point')
         self.disaggregated_nodes = geodataframe_place_holder('Point')
         self.micro_zones = geodataframe_place_holder('Polygon')
@@ -73,7 +77,6 @@ class IntegrityModel:
         self.mode_nests = pd.DataFrame()
         self.logit_scales = pd.DataFrame()
         self.utility_values = pd.DataFrame()
-        
 
     def integrity_test_collision(
         self, 
