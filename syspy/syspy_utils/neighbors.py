@@ -44,6 +44,7 @@ import json
 from syspy.io.pandasshp import pandasshp
 from syspy.spatial import spatial
 from syspy.syspy_utils import syscolors, data_visualization
+from syspy.io.geojson_utils import set_geojson_crs
 from ipywidgets import FloatProgress
 from IPython.display import display
 from tqdm import tqdm
@@ -57,6 +58,7 @@ line_offset_style = gis_resources + r'styles/line_with_offset.qml'
 epsg4326_string = pandasshp.read_prj(gis_resources + r'projections/epsg4326.prj')
 
 warnings.simplefilter("ignore")
+
 
 class Neighborhood:
     """
@@ -495,22 +497,99 @@ def renumber_volume(volume, cluster_series, volume_columns):
     proto = pd.merge(proto, pd.DataFrame(cluster_series), left_on='destination',
                      right_index=True, suffixes=['_origin', '_destination'])
     grouped = proto.groupby(['cluster_origin', 'cluster_destination'])[volume_columns].sum()
-    grouped.index.names=['origin', 'destination']
-    grouped.reset_index(inplace = True)
+    grouped.index.names = ['origin', 'destination']
+    grouped.reset_index(inplace=True)
 
     return grouped
 
 
 
-def compute_neighborhood_with_origins(
-    zones, volume_matrix, folder, macro_col, volume_col='vol',
+def volumes_classified_neighborhood(
+    zones, volume_matrix, folder, by, volume_col='vol',
     colors_df=None, max_value=None, style_file=line_offset_style
 ):
     """
-    This function applies the neighboorhood algorithm several times, in order to keep track of the information 
-    of the macro zone of origin, for all loaded links.
+    This function applies the neighboorhood algorithm several times, in order to keep track of the
+    information of the volume category for all loaded links.
+    For each volume category:
+        - the neighboorhood algorithm assigns these volumes on the graph
+        - The links are given the color of the volume category and exported as shpfile
+    """
+    # Check number of macro zones
+    if len(volume_matrix[by].unique()) > 12:
+        print("{} categories, that's is going to be difficult to plot. Please give a color palette to try.")
+        return(None)
+
+    if colors_df is None:
+        # Color from Colorbrewer
+        colors = [
+            '#a6cee3', '#1f78b4', '#b2df8a', '#33a02c', '#fb9a99', '#e31a1c',
+            '#fdbf6f', '#ff7f00', '#cab2d6', '#6a3d9a', '#ffff99', '#b15928'
+        ]
+        colors_df = pd.Series({a: b for a, b in zip(list(volume_matrix[by].unique()), colors)})
+
+    # Compute assignment for each macro zone
+    affected_all = []
+    for i_cat, color in colors_df.items():
+        print(i_cat)
+        vol_matrix_i = volume_matrix.loc[volume_matrix[by]==i_cat]
+        neighborhood_i = Neighborhood(zones, vol_matrix_i, volume_columns=[volume_col])
+        affected_all.append(neighborhood_i.volume)
+
+    # Create df with all volumes
+    loaded_links = affected_all[0][['link', 'geometry']].dropna()
+    
+    i = 0
+    for df in affected_all:
+        i_cat = colors_df.index[i]
+        loaded_links = loaded_links.merge(
+            df[['link', volume_col + '_transit']].rename(
+                columns={volume_col + '_transit': volume_col + '_transit_{}'.format(i_cat)}
+                ),
+            on='link'
+        )
+        i += 1
+
+    # Compute width dataframe, for each macro zone of origin
+    width_df = loaded_links.set_index('link')
+
+    # Compute offset dataframe, for each macro zone of origin
+    offset_df = width_df.drop('geometry', 1).cumsum(1) - 0.5 * width_df.drop('geometry', 1)
+
+#     Compute width and offset for a nice plotting, and export.
+    for i_cat, color in tqdm(colors_df.items()):
+        col = volume_col + '_transit_{}'.format(i_cat)
+        offset = offset_df[[col]].rename(columns={col: 'offset_vol'})
+        width = width_df[[col, 'geometry']].rename(columns={col: 'width_vol'})
+        df = width.merge(offset, left_index=True, right_index=True)
+        a = get_shp_with_offset(
+            df, 'width_vol', outer_average_width=15,
+            max_value=max_value, color=color, offset_col='offset_vol'
+        )
+        to_export = gpd.GeoDataFrame(a).reset_index()
+        to_export['a'] = to_export['link'].apply(lambda x: x[0])
+        to_export['b'] = to_export['link'].apply(lambda x: x[1])
+        to_export.drop('link', 1, inplace=True)
+        
+        if len(to_export):
+            filename = folder + '/desire_lines_{}.geojson'.format(i_cat)
+            to_export.to_file(filename, driver='GeoJSON')
+            if zones.crs:
+                epsg = zones.crs.to_epsg(min_confidence=20)
+                if epsg is not None:
+                    set_geojson_crs(filename, "urn:ogc:def:crs:EPSG::{}".format(epsg))
+    
+            if style_file:
+                shutil.copyfile(style_file, folder + '/desire_lines_{}.qml'.format(i_cat))            
+
+
+def zones_classified_neighborhood(
+    zones, volumes, folder, macro_col, by='origin', volume_col='vol', **kwargs):
+    """
+    This function applies the neighboorhood algorithm several times, in order to keep track of the
+    information of the macro zone of origin/destination, for all loaded links.
     For each macro zone:
-        - the volumes having their origin within this macrozone are identified.
+        - the volumes having their origin/destination within this macrozone are identified.
         - the neighboorhood algorithm assigns these volumes on the graph
         - The links are given the color of the macro zone and exported as shpfile
     """
@@ -518,62 +597,15 @@ def compute_neighborhood_with_origins(
     if len(zones[macro_col].unique()) > 12:
         print("{} macro zones, that's is going to be difficult to plot. Please give a color palette to try.")
         return(None)
-
-    if colors_df is None:
-        # Color from Colorbrewer
-        colors = [
-            '#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c',
-            '#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928'
-        ]
-        colors_df = pd.Series({a: b for a,b in zip(list(zones[macro_col].unique()), colors)})
-
-    # Compute assignment for each macro zone    
-    affected_all = []
-    for i_macro, color in colors_df.items():
-        print(i_macro)
-        vol_matrix_i = volume_matrix[
-            volume_matrix['origin'].isin(
-                zones[zones[macro_col]==i_macro].index.values
-            )
-        ]
-        neighborhood_i = Neighborhood(zones, vol_matrix_i, volume_columns=[volume_col])
-        affected_all.append(neighborhood_i.volume)
-
-    # Create df with all volumes
-    loaded_links = affected_all[0][['link', 'geometry']].dropna()
-    i = 0
-    for df in affected_all:
-        i_macro = colors_df.index[i]
-        loaded_links = loaded_links.merge(
-            df[['link', volume_col + '_transit']].rename(columns={volume_col + '_transit': volume_col + '_transit_{}'.format(i_macro)}),
-            on='link'      
-        )
-        i+=1
     
-    # Compute width dataframe, for each macro zone of origin
-    width_df = loaded_links.set_index('link')
-
-    # Compute offset dataframe, for each macro zone of origin
-    offset_df = width_df.drop('geometry', 1).cumsum(1) - 0.5*width_df.drop('geometry', 1)
-
-    # Compute width and offset for a nice plotting, and export.
-    for i_macro, color in tqdm(colors_df.items()):
-        col = volume_col + '_transit_{}'.format(i_macro)
-        offset = offset_df[[col]].rename(columns={col:'offset_vol'})
-        width = width_df[[col, 'geometry']].rename(columns={col:'width_vol'})
-        df = width.merge(offset, left_index=True, right_index=True)
-        a = get_shp_with_offset(
-            df, 'width_vol', outer_average_width=15,
-            max_value=max_value, color=color, offset_col='offset_vol'
-        )
-        to_export = gpd.GeoDataFrame(a)
-        if zones.crs:
-            to_export.crs = zones.crs
-        to_export.to_file( folder + '/desire_lines_{}.shp'.format(i_macro))
-        if style_file:
-            shutil.copyfile(style_file, folder + '/desire_lines_{}.qml'.format(i_macro))
-
-
+    # sort volumes
+    volume_matrix = volumes[['origin', 'destination', volume_col]].copy()
+    volume_matrix['category'] = 0
+    for i_macro in zones[macro_col].unique():
+        loc = volume_matrix[by].isin(zones[zones[macro_col]==i_macro].index.values)
+        volume_matrix.loc[loc, 'category'] = i_macro
+    
+    volumes_classified_neighborhood(zones, volume_matrix, folder, 'category', volume_col, **kwargs)
 
 
 def get_shp_with_offset(
