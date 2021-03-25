@@ -510,7 +510,7 @@ def create_legend_geodataframe(
 
     return legend_df
 
-def base_plot(df, geographical_bounds, *args, **kwargs):
+def base_plot(df, geographical_bounds=None, *args, **kwargs):
     """
     Create a basic plot of a GeoDataFrame with specific geographical bounds.
     """
