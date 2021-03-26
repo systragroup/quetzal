@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
-from graphviz import Source
 from IPython.core import display
 from matplotlib.colors import TwoSlopeNorm
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
@@ -274,6 +273,7 @@ class PlotModel(summarymodel.SummaryModel):
         return fig, axes
 
     def display_aggregated_edges(self, origin, destination, ranksep=0.1, rankdir='LR', *args, **kwargs):
+        from graphviz import Source
         a = self.get_aggregated_edges(origin, destination, *args, **kwargs)
         a['l'] = 'p=' + np.round(a['p'], 2).astype(str)  # + '\nh:' + a['h'].astype(str)
         a.loc[a['p'] == 1, 'l'] = ''
