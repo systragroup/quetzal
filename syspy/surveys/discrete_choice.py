@@ -1,25 +1,22 @@
-# -*- coding: utf-8 -*-
-
-import pandas as pd
-import numpy as np
-
 import json
 
+import numpy as np
+import pandas as pd
 from syspy.surveys.array_example import base
 
 
 def get_array(array_class, verbose=False):
-    selected  = base.copy()
+    selected = base.copy()
     for level, factors in array_class.items():
         selected = selected .loc[
-            selected [level] >= factors
+            selected[level] >= factors
         ].copy()
-        
+
     first = selected.iloc[0]
     exponents = first['exponents']
     df = pd.DataFrame(json.loads(first['array']))
     df.columns = get_index(exponents)
-    
+
     array_classes = selected.loc[
         selected['runs'] == first['runs'],
         'exponents'
@@ -31,38 +28,41 @@ def get_array(array_class, verbose=False):
         print(array_classes)
     return df[get_index(array_class)]
 
+
 def build_array(array_class, *args, **kwargs):
-    try: 
+    try:
         return get_array(array_class, *args, **kwargs)
-    except ValueError: 
+    except ValueError:
         i = 2
         m = max(array_class.keys())
         pop = array_class.pop(m)
         l = []
-        for key in [int(m/i), i]:
+        for key in [int(m / i), i]:
             base = 0
-            if key in array_class.keys(): 
+            if key in array_class.keys():
                 base = array_class[key]
-            array_class[key] = base + 1 
+            array_class[key] = base + 1
             l.append('%ie%i' % (key, base))
-            
+
         oa = get_array(array_class)
-        oa['%ie%i'% (m, 0)] = oa[l[0]] + oa[l[1]] * int(m/i)
+        oa['%ie%i' % (m, 0)] = oa[l[0]] + oa[l[1]] * int(m / i)
         return oa.drop(l, axis=1)
+
 
 def get_index(exponents):
     index = []
-    for level, factors in  exponents.items():
-        for i in range( factors):
+    for level, factors in exponents.items():
+        for i in range(factors):
             c = str(level) + 'e' + str(i)
             index.append(c)
     return sorted(index)
 
+
 def get_selection(array_class):
-    selected  = base.copy()
+    selected = base.copy()
     for level, factors in array_class.items():
         selected = selected .loc[
-            selected [level] >= factors
+            selected[level] >= factors
         ].copy()
     return selected
 
@@ -70,21 +70,20 @@ def get_selection(array_class):
 def get_array_class(factors):
     array_class = {}
     join = {}
-    
+
     for factor, levels in factors.items():
         key = len(levels)
         if key in array_class:
             array_class[key] += 1
         else:
             array_class[key] = 1
-        
+
         factor_index = array_class[key] - 1
         join[str(key) + 'e' + str(factor_index)] = factor
     return array_class, join
 
 
 def orthogonal_array(factors, *args, **kwargs):
-
     array_class, match = get_array_class(factors)
 
     df = build_array(array_class, *args, **kwargs)

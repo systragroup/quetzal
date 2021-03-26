@@ -1,20 +1,16 @@
-# -*- coding: utf-8 -*-
-
-import pandas as pd
+import networkx as nx
 import numpy as np
+import pandas as pd
 from quetzal.analysis import analysis
-from quetzal.engine import engine
+from quetzal.engine import engine, nested_logit
+from quetzal.engine.park_and_ride_pathfinder import ParkRidePathFinder
 from quetzal.engine.pathfinder import PublicPathFinder
-from quetzal.engine.park_and_ride_pathfinder import ParkRidePathFinder 
 from quetzal.engine.road_pathfinder import RoadPathFinder
-from quetzal.engine import nested_logit
 from quetzal.model import model, optimalmodel, parkridemodel
-
 from syspy.assignment import raw as raw_assignment
 from syspy.assignment.raw import fast_assign as assign
 from syspy.skims import skims
 from tqdm import tqdm
-import networkx as nx
 
 
 def read_hdf(filepath):
@@ -28,12 +24,12 @@ def read_json(folder):
     m.read_json(folder)
     return m
 
+
 track_args = model.track_args
 log = model.log
 
 
 class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
-
     @track_args
     def step_distribution(
         self,
@@ -45,7 +41,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         * requires: zones
         * builds: volumes
 
-        :param deterrence_matrix: an OD unstaked dataframe representing the disincentive to 
+        :param deterrence_matrix: an OD unstaked dataframe representing the disincentive to
             travel as distance/time/cost increases.
         :param od_volume_from_zones_kwargs: if the friction matrix is not
             provided, it will be automatically computed using a gravity distribution which
@@ -112,7 +108,6 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         * requires: links, footpaths, zone_to_transit, zone_to_road
         * builds: pt_los
         """
-
         assert self.links['time'].isnull().sum() == 0
 
         self.links = engine.graph_links(self.links)
@@ -123,12 +118,12 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             footpaths['time'] = footpaths['walk_time']
             ntlegs = self.zone_to_road
             nodes = self.road_nodes
-        else: 
+        else:
             footpaths = self.footpaths
             ntlegs = self.zone_to_transit
             nodes = self.nodes
 
-        #TODO even with walk on road, transit nodes may not belong to road_nodes
+        # TODO even with walk on road, transit nodes may not belong to road_nodes
         self.pt_los, self.graph = engine.path_and_duration_from_links_and_ntlegs(
             self.links,
             ntlegs=ntlegs,
@@ -137,14 +132,14 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             **kwargs
         )
 
-        if complete:        
+        if complete:
             self.pt_los = analysis.path_analysis_od_matrix(
-                od_matrix=self.pt_los, 
+                od_matrix=self.pt_los,
                 links=self.links,
                 nodes=nodes,
                 centroids=self.centroids,
             )
-  
+
     @track_args
     def step_road_pathfinder(self, maxiters=1, *args, **kwargs):
         """
@@ -171,7 +166,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         parkridepathfinder.find_best_path(**kwargs)
 
         self.pr_los = parkridepathfinder.paths
-        
+
         if path_analysis:
             analysis_nodes = pd.concat([self.nodes, self.road_nodes])
             analysis_links = pd.concat([self.links, self.road_links])
@@ -180,23 +175,24 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 links=self.links,
                 nodes=analysis_nodes,
                 centroids=self.centroids,
-            ) # analyse non vérifiée, prise directement depuis pt_los
+            )  # analyse non vérifiée, prise directement depuis pt_los
 
     @track_args
     def step_pt_pathfinder(
         self,
-        broken_routes=True, 
-        broken_modes=True, 
+        broken_routes=True,
+        broken_modes=True,
         route_column='route_id',
         mode_column='route_type',
         boarding_time=None,
         speedup=False,
-        walk_on_road=False, 
+        walk_on_road=False,
         # keep_graph=False,
         keep_pathfinder=False,
         force=False,
         path_analysis=True,
-        **kwargs):
+        **kwargs
+    ):
         """
         * requires: zones, links, footpaths, zone_to_road, zone_to_transit
         * builds: pt_los
@@ -212,8 +208,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         publicpathfinder = PublicPathFinder(self, walk_on_road=walk_on_road)
         publicpathfinder.find_best_paths(
-            broken_routes=broken_routes, 
-            broken_modes=broken_modes, 
+            broken_routes=broken_routes,
+            broken_modes=broken_modes,
             route_column=route_column,
             mode_column=mode_column,
             speedup=speedup,
@@ -223,13 +219,13 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         # if keep_graph:
         #     self.nx_graph=publicpathfinder.nx_graph
-        
+
         if keep_pathfinder:
             self.publicpathfinder = publicpathfinder
-        
+
         self.pt_los = publicpathfinder.paths
         analysis_nodes = pd.concat([self.nodes, self.road_nodes]) if walk_on_road else self.nodes
-        
+
         if path_analysis:
             self.pt_los = analysis.path_analysis_od_matrix(
                 od_matrix=self.pt_los,
@@ -244,6 +240,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         * requires: pt_los, car_los
         * builds: los
         """
+        pass
 
     @track_args
     def step_modal_split(self, build_od_stack=True, **modal_split_kwargs):
@@ -273,9 +270,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         self.shared = shared
 
     def compute_los_volume(self, time_expanded=False, keep_segments=True):
-
         los = self.los if not time_expanded else self.te_los
-    
+
         segments = self.segments
         probabilities = [(segment, 'probability') for segment in segments]
 
@@ -302,9 +298,9 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             self.los.loc[:, los_volumes.columns] = volume_values
 
     def step_assignment(
-        self, 
-        road=False, 
-        boardings=False, 
+        self,
+        road=False,
+        boardings=False,
         boarding_links=False,
         alightings=False,
         alighting_links=False,
@@ -312,8 +308,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         segmented=False,
         time_expanded=False,
         compute_los_volume=True
-        ):
-
+    ):
         if compute_los_volume:
             self.compute_los_volume(time_expanded=time_expanded)
         los = self.los.copy()
@@ -322,28 +317,28 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         l = los.dropna(subset=[column])
         l = l.loc[l['volume'] > 0]
         self.links['volume'] = assign(l['volume'], l[column])
-        
+
         if road:
             self.road_links[('volume', 'car')] = assign(l['volume'], l[column])
             if 'road_link_list' in self.links.columns:
                 to_assign = self.links.dropna(subset=['volume', 'road_link_list'])
                 self.road_links[('volume', 'pt')] = assign(
-                    to_assign['volume'], 
+                    to_assign['volume'],
                     to_assign['road_link_list']
                 )
-            
+
         if boardings and not boarding_links:
             print('to assign boardings on links pass boarding_links=True')
         if boarding_links:
             column = 'boarding_links'
             l = los.dropna(subset=[column])
             self.links['boardings'] = assign(l['volume'], l[column])
-        
+
         if boardings:
             column = 'boardings'
             l = los.dropna(subset=[column])
             self.nodes['boardings'] = assign(l['volume'], l[column])
-            
+
         if alighting_links:
             column = 'alighting_links'
             l = los.dropna(subset=[column])
@@ -353,38 +348,36 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             column = 'alightings'
             l = los.dropna(subset=[column])
             self.nodes['alightings'] = assign(l['volume'], l[column])
-            
+
         if transfers:
             column = 'transfers'
             l = los.dropna(subset=[column])
-            self.nodes[ 'transfers'] = assign(l['volume'], l[column])
+            self.nodes['transfers'] = assign(l['volume'], l[column])
 
         if segmented:
             self.segmented_assigment(
-                road=road, 
+                road=road,
                 boardings=boardings, alightings=alightings, transfers=transfers,
                 aggregated_los=los
             )
-        
+
     def segmented_assigment(
-        self, 
-        road=False, 
-        boardings=False, 
-        alightings=False, 
+        self,
+        road=False,
+        boardings=False,
+        alightings=False,
         transfers=False,
         aggregated_los=None
-        ):
+    ):
         los = aggregated_los if aggregated_los is not None else self.los
-    
         for segment in self.segments:
-
             column = 'link_path'
             l = los.dropna(subset=[column])
             self.links[segment] = assign(l[segment], l[column])
             if road:
                 self.road_links[(segment, 'car')] = assign(l[segment], l[column])
                 self.road_links[(segment, 'pt')] = assign(
-                    self.links[segment], 
+                    self.links[segment],
                     self.links['road_link_list']
                 )
             if boardings:
@@ -417,7 +410,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         on_road_links=False,
         split_by=None,
         **kwargs
-        ):
+    ):
         """
         Assignment step
             * requires: links, nodes, pt_los, road_links, volumes, path_probabilities
@@ -439,17 +432,16 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 }
             )
         """
-
         if volume_column is None:
             self.segmented_pt_assignment(
                 on_road_links=on_road_links,
                 split_by=split_by,
                 **kwargs
             )
-            return 
+            return
 
-        # When split_by is not None, this call could be replaced by a sum, provided 
-        # prior dumb definition of loaded_links and loaded_nodes 
+        # When split_by is not None, this call could be replaced by a sum, provided
+        # prior dumb definition of loaded_links and loaded_nodes
         self.loaded_links, self.loaded_nodes = engine.loaded_links_and_nodes(
             self.links,
             self.nodes,
@@ -471,7 +463,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             groups = self.pt_los[split_by].unique()
             for group in groups:
                 # TODO remove rows with empty link_path
-                group_pt_los = self.pt_los.loc[self.pt_los[split_by]==group]
+                group_pt_los = self.pt_los.loc[self.pt_los[split_by] == group]
                 group_loaded_links, group_loaded_nodes = engine.loaded_links_and_nodes(
                     self.links,
                     self.nodes,
@@ -489,13 +481,13 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         # Assignment on road_links
         if on_road_links:
-            if not 'road_link_path' in self.pt_los.columns:
+            if 'road_link_path' not in self.pt_los.columns:
                 # create road_link_path column from networkcasted linkss if not already defined
                 self._analysis_road_link_path()
 
             merged = pd.merge(self.pt_los, self.volumes, on=['origin', 'destination'])
-            merged['to_assign'] = merged[(volume_column ,'probability')] * merged[volume_column].fillna(0)
-            
+            merged['to_assign'] = merged[(volume_column, 'probability')] * merged[volume_column].fillna(0)
+
             if split_by is not None:
                 def assign_group(g):
                     x = g.reset_index()
@@ -507,13 +499,13 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 for empty in list(set(groups).difference(set(assigned.columns))):
                     assigned[empty] = 0
                 self.road_links[[(volume_column, col) for col in groups]] = assigned[[col for col in groups]]
-                self.road_links[volume_column] =  assigned.T.sum()
+                self.road_links[volume_column] = assigned.T.sum()
 
-            else: # no groups
+            else:  # no groups
                 assigned = raw_assignment.assign(merged['to_assign'], merged['road_link_path'])
                 self.road_links[volume_column] = assigned['volume']
 
-            # todo remove 'load' from analysis module: 
+            # todo remove 'load' from analysis module:
             self.road_links['load'] = self.road_links[volume_column]
 
     def segmented_pt_assignment(self, split_by=None, on_road_links=False, *args, **kwargs):
@@ -522,7 +514,6 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         Requires computed path probabilities in pt_los for each segment.
         """
         segments = self.segments
-
 
         iterator = tqdm(segments)
         for segment in iterator:
@@ -543,7 +534,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         # Group assignment results: sum over demand segments
         try:
             groups = self.pt_los[split_by].unique()
-        except KeyError as e:
+        except KeyError:
             groups = []
         cols = ['load']
         # Add boardings, alightings and transfers if processed
@@ -573,7 +564,6 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             self.road_links['load'] = self.road_links[[s for s in segments]].T.sum()
             self.road_links.drop([s for s in segments], 1, inplace=True)
 
-    
     def step_car_assignment(self, volume_column=None):
         """
         Assignment step
@@ -584,26 +574,24 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             self.segmented_car_assignment()
 
     def segmented_car_assignment(self):
-
         segments = self.segments
         iterator = tqdm(segments)
         for segment in iterator:
             iterator.desc = str(segment)
             merged = pd.merge(self.car_los, self.volumes, on=['origin', 'destination'])
-            merged['to_assign'] = merged[(segment ,'probability')] * merged[segment].fillna(0)
+            merged['to_assign'] = merged[(segment, 'probability')] * merged[segment].fillna(0)
             assigned = raw_assignment.assign(merged['to_assign'], merged['link_path']).fillna(0)
             self.road_links[(segment, 'car')] = assigned
 
         columns = [(segment, 'car') for segment in self.segments]
         self.road_links[('all', 'car')] = self.road_links[columns].T.sum()
-	#TODO Merge conflict: TO CHECK WITH ACCRA        
-	# self.road_links.drop(columns, 1, inplace=True)
+        # TODO Merge conflict: TO CHECK WITH ACCRA
+        # self.road_links.drop(columns, 1, inplace=True)
         # if not 'load' in self.road_links.columns:
         #    self.road_links['load'] = 0
         # self.road_links['load'] += self.road_links[('all','car')]
-        
 
-    #TODO move all utility features to another object / file
+    # TODO move all utility features to another object / file
 
     def analysis_mode_utility(self, how='min', segment=None, segments=None, time_expanded=False):
         """
@@ -611,11 +599,9 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         * builds: los
         """
         if segment is None:
-
             for segment in tqdm(self.segments):
-
                 self.analysis_mode_utility(how=how, segment=segment, time_expanded=time_expanded)
-            return 
+            return
         if time_expanded:
             logit_los = self.te_los
         else:
@@ -625,11 +611,11 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         rtu = {
             rt: get_combined_mode_utility(
                 rt, how=how, mode_utility=mode_utility
-                )
+            )
             for rt in logit_los['route_types'].unique()
         }
         logit_los['mode_utility'] = logit_los['route_types'].map(rtu.get)
-        
+
         utility_values = self.utility_values[segment].to_dict()
         u = 0
         for key, value in utility_values.items():
@@ -637,8 +623,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         logit_los[(segment, 'utility')] = u
         logit_los[(segment, 'utility')] = logit_los[(segment, 'utility')]
-        
-    def analysis_utility(self, segment='root', time_expanded=False):
+
+    def analysis_utility(self, segment='root', time_expanded=False, how='min'):
         """
         * requires: mode_utility, los, utility_values
         * builds: los
@@ -647,12 +633,12 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             for segment in self.segments:
                 print(segment)
                 self.analysis_mode_utility(how=how, segment=segment, time_expanded=time_expanded)
-            return 
+            return
         if time_expanded:
             los = self.te_los
         else:
             los = self.los
-        
+
         utility_values = self.utility_values[segment].to_dict()
         u = 0
         for key, value in utility_values.items():
@@ -668,9 +654,9 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         self.od_utilities = od.copy()
 
     def step_logit(
-        self, 
+        self,
         time_expanded=False,
-        decimals=None, 
+        decimals=None,
         n_paths_max=None,
         nchunks=10,
         workers=1,
@@ -680,14 +666,13 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         * requires: mode_nests, logit_scales, los
         * builds: los, od_utilities, od_probabilities, path_utilities, path_probabilities
         """
-
-        # concatenate paths
+        # concatenate paths
         od_cols = ['origin', 'destination']
         if time_expanded:
             od_cols.append('wished_departure_time')
         to_concat = []
         for segment in self.segments:
-            keep_columns = od_cols + ['route_type',  (segment, 'utility')]
+            keep_columns = od_cols + ['route_type', (segment, 'utility')]
             if time_expanded:
                 paths = self.te_los[keep_columns]
             else:
@@ -699,14 +684,15 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             to_concat.append(paths)
         segmented_paths = pd.concat(to_concat)
 
-        try: # all the segments can be proccessed together
-            # assert all logit scales are the same and pick one
+        try:
+            # all the segments can be proccessed together
+            # assert all logit scales are the same and pick one
             logit_scales = self.logit_scales.T.drop_duplicates().T
             assert len(logit_scales.columns) == 1
             logit_scales.columns = ['root']
             nls = logit_scales['root'].to_dict()
 
-            # assert all mode_nests are the same and pick one
+            # assert all mode_nests are the same and pick one
             mode_nests = self.mode_nests.T.drop_duplicates().T
             assert len(mode_nests.columns) == 1
             mode_nests.columns = ['root']
@@ -714,7 +700,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 lambda s: list(s)).to_dict()
 
             p, mu, mp = nested_logit.nested_logit_from_paths(
-                segmented_paths, 
+                segmented_paths,
                 od_cols,
                 mode_nests=nests, phi=nls,
                 verbose=False,
@@ -729,11 +715,12 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             mp_list = []
             for segment in self.segments:
                 mode_nests = self.mode_nests.reset_index().groupby(segment)['route_type'].agg(
-                        lambda s: list(s)).to_dict()
+                    lambda s: list(s)
+                ).to_dict()
                 nls = self.logit_scales[segment].to_dict()
                 paths = segmented_paths.loc[segmented_paths['segment'] == segment]
                 p, mu, mp = nested_logit.nested_logit_from_paths(
-                    paths, 
+                    paths,
                     mode_nests=mode_nests,
                     phi=nls,
                     od_cols=od_cols,
@@ -744,7 +731,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 p_list.append(p)
                 mu_list.append(mu)
                 mp_list.append(mp)
-                
+
             p = pd.concat(p_list)
             mu = pd.concat(mu_list, ignore_index=True)
             mp = pd.concat(mp_list, ignore_index=True)
@@ -756,20 +743,20 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 self.te_los[(segment, 'probability')] = p.loc[segment]['probability']
             else:
                 self.los[(segment, 'probability')] = p.loc[segment]['probability']
-        
+
         self.probabilities = mp
         self.utilities = mu
 
-    
-def get_combined_mode_utility(route_types, mode_utility,  how='min',):
+
+def get_combined_mode_utility(route_types, mode_utility, how='min'):
     utilities = [mode_utility[mode] for mode in route_types]
     if not len(utilities):
         return 0
-    if how=='min': # worse mode
+    if how == 'min':  # worse mode
         return min(utilities)
-    elif how=='max': # best mode
+    elif how == 'max':  # best mode
         return max(utilities)
-    elif how=='sum':
+    elif how == 'sum':
         return sum(utilities)
-    elif how=='mean':
+    elif how == 'mean':
         return sum(utilities) / len(utilities)

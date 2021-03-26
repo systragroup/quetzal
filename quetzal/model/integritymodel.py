@@ -1,22 +1,17 @@
-# -*- coding: utf-8 -*-
-
-# -*- coding: utf-8 -*-
-
 import collections
 
 import geopandas as gpd
+import networkx as nx
 import pandas as pd
 from shapely.geometry import LineString, Point, Polygon
-import networkx as nx
-from tqdm import tqdm
-
 from syspy.spatial.graph import network as networktools
 from syspy.transitfeed import feed_links
+from tqdm import tqdm
 
 
 def label_links(links, node_prefixe):
     links = links.copy()
-    links['a'] = [node_prefixe + str(i).split(node_prefixe)[-1] for i in links['a']] 
+    links['a'] = [node_prefixe + str(i).split(node_prefixe)[-1] for i in links['a']]
     links['b'] = [node_prefixe + str(i).split(node_prefixe)[-1] for i in links['b']]
     return links
 
@@ -42,7 +37,6 @@ def geodataframe_place_holder(geom_type, prefix=None):
 class IntegrityModel:
 
     def __init__(self, debug=False, walk_on_road=False, epsg=None, coordinates_unit=None):
-
         self.parameters = {}
         self.debug = debug
         self.walk_on_road = walk_on_road
@@ -79,13 +73,12 @@ class IntegrityModel:
         self.utility_values = pd.DataFrame()
 
     def integrity_test_collision(
-        self, 
+        self,
         sets=('links', 'nodes', 'zones', 'road_links', 'road_nodes')
-        ):
+    ):
         """
             * requires: links, nodes, zones
         """
-
         tuples = [(key, list(self.__getattribute__(key).index)) for key in sets]
 
         for left, left_list in tuples:
@@ -94,7 +87,7 @@ class IntegrityModel:
                 assert len(duplicates) <= 0
             except AssertionError:
                 message = """
-                %i duplicates in %s.index: %s 
+                %i duplicates in %s.index: %s
                 """ % (len(duplicates), left, str(duplicates))
                 raise AssertionError(message)
 
@@ -120,16 +113,15 @@ class IntegrityModel:
             * requires: links, nodes, zones
             * builds: links, nodes, zones
         """
-        try: 
+        try:
             self.integrity_test_collision()
         except AssertionError:
             if len(set(self.links.index)) != len(self.links):
-                self.links = self.links.reset_index(drop=True)      
-            try: 
+                self.links = self.links.reset_index(drop=True)
+            try:
                 self.integrity_test_collision()
             except AssertionError:
                 self._add_type_prefixes(prefixes)
-            
 
     def _add_type_prefixes(
         self,
@@ -139,18 +131,17 @@ class IntegrityModel:
             * requires: links, nodes, zones
             * builds: links, nodes, zones
         """
-
         for key in prefixes.keys():
             attribute = self.__getattribute__(key)
             prefixe = prefixes[key]
-            attribute.index = [prefixe + str(i).split(prefixe)[-1] for i in attribute.index] 
+            attribute.index = [prefixe + str(i).split(prefixe)[-1] for i in attribute.index]
 
         if 'nodes' in prefixes.keys():
             for key in ['links', 'footpaths']:
                 try:
                     link_like = self.__getattribute__(key)
-                    self.__setattr__(key, label_links(link_like, prefixes['nodes'])) 
-                except (AttributeError, KeyError): # KeyError: 'a'
+                    self.__setattr__(key, label_links(link_like, prefixes['nodes']))
+                except (AttributeError, KeyError):  # KeyError: 'a'
                     print('can not add prefixes on table: ', key)
 
     def integrity_test_sequences(self):
@@ -158,15 +149,13 @@ class IntegrityModel:
             * requires: links
             * builds: broken_sequences
         """
-
-        #  TODO for route_id... should be «for trip_id»
         links = self.links.copy().sort_values('link_sequence')
         broken_sequences = []
-        for route_id in set(links['trip_id']):
-            subset = links.loc[links['trip_id'] == route_id]
+        for trip_id in set(links['trip_id']):
+            subset = links.loc[links['trip_id'] == trip_id]
             broken = tuple(subset['a'])[1:] != tuple(subset['b'])[:-1]
             if broken:
-                broken_sequences.append(route_id)
+                broken_sequences.append(trip_id)
             message = "some lines have a broken pattern \n"
             message += "ex : the following pattern is broken: a->b, b->c, d->e "
             message += " because it misses the c->d link \n"
@@ -199,7 +188,6 @@ class IntegrityModel:
             l = feed_links.clean_sequences(l, sequence='link_sequence', group_id='trip_id')
             self.links = l.set_index('index')
 
-
     def integrity_test_circular_lines(self):
         """
         The model does not work with circular lines
@@ -208,14 +196,14 @@ class IntegrityModel:
         """
         links = self.links.copy().sort_values('link_sequence')
         circular_lines = []
-        for route_id in set(links['trip_id']):
-            subset = links.loc[links['trip_id'] == route_id]
+        for trip_id in set(links['trip_id']):
+            subset = links.loc[links['trip_id'] == trip_id]
 
             start = subset['a'].value_counts()
             end = subset['b'].value_counts()
 
             if start.max() > 1 or end.max() > 1:
-                circular_lines.append(route_id)
+                circular_lines.append(trip_id)
 
             message = "some lines stop many time at the same stop (circular) \n"
             message += "ex : the following pattern is circular : a->b, b->c, c->d, d->b, b-f "
@@ -252,10 +240,8 @@ class IntegrityModel:
         look for dead-ends in the road network
         only the dead-ends with a dead-rank lower than the cutoff
         will be identified
-        
             * requires: road_links
         """
-
         road_graph = nx.DiGraph()
         road_graph.add_edges_from(self.road_links[['a', 'b']].values)
 
@@ -306,7 +292,6 @@ class IntegrityModel:
 
         try:
             missing_road_nodes = self.road_link_nodeset() - self.road_nodeset()
-            
 
             msg = 'some nodes are referenced in links but not in nodes \n'
             msg += 'missing road_nodes' + str(missing_road_nodes)[:1000]
@@ -322,17 +307,14 @@ class IntegrityModel:
 
             self.orphan_nodes = orphan_nodes
             assert len(orphan_nodes) == 0, msg
-
-        except (AttributeError, KeyError):  
+        except (AttributeError, KeyError):
             # no road_links or road_nodes, KeyError if they are place_holders
             print('no road_links or road_nodes')
-            pass
 
     def integrity_test_road_nodeset_consistency(self):
         """
             * requires: nodes, links
         """
-
         missing_road_nodes = self.road_link_nodeset() - self.road_nodeset()
 
         msg = 'some nodes are referenced in links but not in nodes \n'
@@ -340,22 +322,17 @@ class IntegrityModel:
 
         self.missing_road_nodes = missing_road_nodes
         assert len(missing_road_nodes) == 0, msg
-        
 
     def integrity_fix_nodeset_consistency(self):
         self.links = self.links.loc[self.links['a'].isin(self.nodeset())]
         self.links = self.links.loc[self.links['b'].isin(self.nodeset())]
         self.nodes = self.nodes.loc[self.link_nodeset()]
-        self.road_links = self.road_links.loc[
-            self.road_links['a'].isin(self.road_nodeset())
-        ]
-        self.road_links = self.road_links.loc[
-            self.road_links['b'].isin(self.road_nodeset())
-        ]
-        self.road_nodes = self.road_nodes.loc[self.road_link_nodeset()]
+        try:
+            self.integrity_fix_road_nodeset_consistency()
+        except KeyError:  # 'a'
+            pass
 
     def integrity_fix_road_nodeset_consistency(self):
-
         self.road_links = self.road_links.loc[
             self.road_links['a'].isin(self.road_nodeset())
         ]
@@ -365,7 +342,6 @@ class IntegrityModel:
         self.road_nodes = self.road_nodes.loc[self.road_link_nodeset()]
 
     def integrity_test_road_network(self, cutoff=10):
-
         self.integrity_test_isolated_roads()
         self.integrity_test_dead_ends(cutoff=cutoff)
         self.integrity_test_road_nodeset_consistency()
@@ -387,17 +363,16 @@ class IntegrityModel:
             self.integrity_test_road_network()
         except AssertionError:
             self.integrity_fix_road_network(
-                cutoff=cutoff, 
-                recursive_depth=recursive_depth-1
+                cutoff=cutoff,
+                recursive_depth=recursive_depth - 1
             )
-
 
     def integrity_test_all(self, errors='raise', verbose=True):
         """
         errors='ignore' can be passed
         """
         integrity_test_methods = [
-            m for m in list(dir(self)) 
+            m for m in list(dir(self))
             if ('integrity_test_' in m) and ('integrity_test_all' not in m)
         ]
         for name in integrity_test_methods:
@@ -407,13 +382,13 @@ class IntegrityModel:
                     if verbose:
                         print('passed:', name)
                 except AssertionError as e:
-                    if verbose :
+                    if verbose:
                         print('failed:', name)
                     if errors != 'ignore':
                         raise e
-            except: # broad exception
-                if verbose :
-                        print('not performed:', name)
+            except Exception as e:  # broad exception
+                if verbose:
+                    print('not performed:', name)
                 if errors != 'ignore':
                     raise e
 

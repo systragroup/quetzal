@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """ pandashp: read/write shapefiles to/from special DataFrames
 Offers two functions read_shp and write_shp that convert ESRI shapefiles to
 pandas DataFrames that can be manipulated at will and then written back to
@@ -14,19 +12,20 @@ Usage:
 """
 __all__ = ["read_shp", "write_shp", "match_vertices_and_edges"]
 
-import requests
+import collections
+import shutil
+import warnings
+
 import numpy as np
 import pandas as pd
-import warnings
-from shapely.geometry import LineString, Point, Polygon
-import shapely.geometry.polygon
-import shapely.geometry.linestring
-
-from syspy.io.pandasshp import shapefile
-from syspy.io.pandasdbf import pandasdbf
 import pyproj
-import shutil
+import requests
+import shapely.geometry.linestring
+import shapely.geometry.polygon
+from shapely.geometry import LineString, Point, Polygon
 from sklearn.cluster import KMeans
+from syspy.io.pandasdbf import pandasdbf
+from syspy.io.pandasshp import shapefile
 from tqdm import tqdm
 
 
@@ -34,7 +33,6 @@ def read_prj(filename):
     with open('.'.join(filename.split('.')[:-1]) + '.prj', 'r') as prj_file:
         return prj_file.read()
 
-import collections
 # if isinstance(e, collections.Iterable):
 
 
@@ -96,7 +94,7 @@ def read_shp(filename, encoding=None, type=False, strings_to_float=True):
         for col in df.columns:
             try:
                 # the column is a string of an int, we keep it that way
-                asint = df[col].astype(int)  #  do_nothing
+                asint = df[col].astype(int)  # do_nothing
 
             except (ValueError, TypeError, OverflowError):
                 # invalid literal for int() with base 10:
@@ -143,7 +141,6 @@ def write_shp(
     Returns:
         Nothing. test
     """
-
     df = dataframe.copy() if copy else dataframe
 
     if write_index:
@@ -164,28 +161,23 @@ def write_shp(
             sw = shapefile.Writer(shapefile.POINT)
             for point in geometry:
                 sw.point(point.x, point.y)
-
         elif isinstance(first_instance, LineString):
             sw = shapefile.Writer(shapefile.POLYLINE)
             for line in geometry:
                 sw.line([list(line.coords)])
-
         elif isinstance(first_instance, Polygon):
             sw = shapefile.Writer(shapefile.POLYGON)
             for polygon in geometry:
                 try:
                     sw.poly([list(polygon.exterior.coords)])
-
                 except (NotImplementedError, AttributeError):
                     # 'GeometryCollection' object has no attribute 'exterior'
                     # if it is not a polygon but a multipolygon,
                     # we use the convex hull
                     polygon = polygon.convex_hull
                     sw.poly([list(polygon.exterior.coords)])
-
         else:
             raise NotImplementedError
-
     except KeyError:
         # make a random shp / shx file
         sw = shapefile.Writer(shapefile.POINT)
@@ -240,7 +232,7 @@ def write_shp(
         shutil.copyfile(style_file, without_extension + '.qml')
 
     if projection_file:
-        shutil.copyfile(projection_file, without_extension+ '.prj')
+        shutil.copyfile(projection_file, without_extension + '.prj')
 
     if shp_file:
         shutil.copyfile(shp_file, without_extension + '.shp')
@@ -248,12 +240,13 @@ def write_shp(
     if shx_file:
         shutil.copyfile(shx_file, without_extension + '.shx')
 
+
 def write_secondary_files(
     filename,
     epsg=None,
     style_file=None,
     projection_file=None
-    ):
+):
     if epsg:
         projection_string = requests.get(
             'http://spatialreference.org/ref/epsg/%i/prettywkt/' % epsg
@@ -267,7 +260,7 @@ def write_secondary_files(
         shutil.copyfile(style_file, without_extension + '.qml')
 
     if projection_file:
-        shutil.copyfile(projection_file, without_extension+ '.prj')
+        shutil.copyfile(projection_file, without_extension + '.prj')
 
 
 def match_vertices_and_edges(vertices, edges, vertex_cols=('Vertex1', 'Vertex2')):
@@ -288,7 +281,6 @@ def match_vertices_and_edges(vertices, edges, vertex_cols=('Vertex1', 'Vertex2')
         Nothing, the mathing IDs are added to the columns vertex_cols in
         argument edges
     """
-
     vertex_indices = []
     for e, line in enumerate(edges.geometry):
         edge_endpoints = []
@@ -297,12 +289,11 @@ def match_vertices_and_edges(vertices, edges, vertex_cols=('Vertex1', 'Vertex2')
                 edge_endpoints.append(vertices.index[k])
 
         if len(edge_endpoints) == 0:
-            warnings.warn("edge " + str(e) +
-                          " has no endpoints: " + str(edge_endpoints))
+            warnings.warn("edge " + str(e)
+                          + " has no endpoints: " + str(edge_endpoints))
         elif len(edge_endpoints) == 1:
-            warnings.warn("edge " + str(e) +
-                          " has only 1 endpoint: " + str(edge_endpoints))
-
+            warnings.warn("edge " + str(e)
+                          + " has only 1 endpoint: " + str(edge_endpoints))
         vertex_indices.append(edge_endpoints)
 
     edges[vertex_cols[0]] = pd.Series([min(n1n2) for n1n2 in vertex_indices],
@@ -330,9 +321,7 @@ def total_bounds(df):
 
 def add_centroid(zones_shp):
     """Returns a DataFrame with centroid attributes from a zonig pandas.DataFrame """
-
     inner_zones = zones_shp.copy()
-
     inner_zones['centroid_geometry'] = inner_zones[
         'geometry'].apply(lambda g: g.centroid)
     inner_zones['centroid_coordinates'] = inner_zones[
@@ -341,12 +330,10 @@ def add_centroid(zones_shp):
         'geometry'].apply(lambda g: g.centroid.y)
     inner_zones['longitude'] = inner_zones[
         'geometry'].apply(lambda g: g.centroid.x)
-
     return inner_zones
 
 
 def od_matrix(zones, centroids=False):
-
     _zones = zones.copy() if centroids else add_centroid(zones.copy())
     #: the {centroid: [latitude, longitude]} dictionary
     pos = _zones[['latitude', 'longitude']]
@@ -356,7 +343,6 @@ def od_matrix(zones, centroids=False):
     od = pd.merge(od, pos, left_on='origin', right_index=True)
     od = pd.merge(od, pos, left_on='destination', right_index=True,
                   suffixes=['_origin', '_destination'])
-
     od['geometry'] = od[['origin', 'destination']].apply(
         lambda r: shapely.geometry.LineString(
             [_zones.loc[r['origin'], 'centroid_geometry'],
@@ -379,8 +365,7 @@ def buffer_until_polygon(g, b=1e-6):
         return buffer_until_polygon(g.buffer(b), b * 5)
 
 
-def zone_clusters(zones,  n_clusters=10, buffer=None, cluster_column=None):
-
+def zone_clusters(zones, n_clusters=10, buffer=None, cluster_column=None):
     df = add_centroid(zones)
 
     if buffer:
@@ -397,7 +382,6 @@ def zone_clusters(zones,  n_clusters=10, buffer=None, cluster_column=None):
 
     geo = df.groupby('cluster')['geometry'].agg(union_geometry)
     clusters = pd.DataFrame(geo.apply(buffer_until_polygon))
-
     return clusters, cluster_series
 
 

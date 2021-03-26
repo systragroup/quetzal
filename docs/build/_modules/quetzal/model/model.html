@@ -1,51 +1,53 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <title>quetzal.model.model &mdash; quetzal  documentation</title>
   
 
   
+  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
   
 
   
 
   
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
+      <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
 
-  
-
-  
-  
-    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-    <link rel="top" title="quetzal  documentation" href="../../../index.html"/>
-        <link rel="up" title="Module code" href="../../index.html"/> 
-
-  
-  <script src="../../../_static/js/modernizr.min.js"></script>
-
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
+   
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -72,11 +74,15 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
             
-                <ul>
+              
+            
+            
+              <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../quetzal.engine.html">quetzal.engine package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.html">quetzal.model package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../quetzal.io.html">quetzal.io package</a></li>
@@ -86,40 +92,61 @@
             
           
         </div>
+        
       </div>
     </nav>
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="../../../index.html">quetzal</a>
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">quetzal</a>
+        
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="../../../index.html">Docs</a> &raquo;</li>
-      
+    
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
           <li><a href="../../index.html">Module code</a> &raquo;</li>
-      
-    <li>quetzal.model.model</li>
+        
+      <li>quetzal.model.model</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
-        
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -129,16 +156,25 @@
 <span></span><span class="c1"># -*- coding: utf-8 -*-</span>
 
 <span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">zlib</span>
 <span class="kn">import</span> <span class="nn">os</span>
-
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
 <span class="kn">import</span> <span class="nn">geopandas</span> <span class="k">as</span> <span class="nn">gpd</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">shapely.geometry</span> <span class="kn">import</span> <span class="n">Point</span>
 
-<span class="kn">from</span> <span class="nn">copy</span> <span class="k">import</span> <span class="n">deepcopy</span>
-<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">wraps</span>
-<span class="kn">from</span> <span class="nn">tqdm</span> <span class="k">import</span> <span class="n">tqdm</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">wraps</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">import</span> <span class="nn">ntpath</span>
+<span class="kn">from</span> <span class="nn">quetzal.io</span> <span class="kn">import</span> <span class="n">hdf_io</span>
 
-<span class="kn">from</span> <span class="nn">quetzal.model.integritymodel</span> <span class="k">import</span> <span class="n">IntegrityModel</span>
+<span class="kn">from</span> <span class="nn">syspy.syspy_utils.data_visualization</span> <span class="kn">import</span> <span class="n">add_basemap</span>
+<span class="kn">from</span> <span class="nn">concurrent.futures</span> <span class="kn">import</span> <span class="n">ProcessPoolExecutor</span>
+<span class="kn">from</span> <span class="nn">quetzal.model.integritymodel</span> <span class="kn">import</span> <span class="n">IntegrityModel</span>
 
 
 <div class="viewcode-block" id="read_hdf"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.read_hdf">[docs]</a><span class="k">def</span> <span class="nf">read_hdf</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
@@ -151,14 +187,16 @@
     <span class="k">if</span> <span class="n">debug</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="n">text</span><span class="p">)</span></div>
 
+
 <div class="viewcode-block" id="authorized_column"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.authorized_column">[docs]</a><span class="k">def</span> <span class="nf">authorized_column</span><span class="p">(</span>
-    <span class="n">df</span><span class="p">,</span> 
-    <span class="n">column</span><span class="p">,</span> 
+    <span class="n">df</span><span class="p">,</span>
+    <span class="n">column</span><span class="p">,</span>
     <span class="n">authorized_types</span><span class="o">=</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
 <span class="p">):</span>
     <span class="n">type_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="nb">type</span><span class="p">))</span>
     <span class="n">delta</span> <span class="o">=</span> <span class="n">type_set</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">authorized_types</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">delta</span> <span class="o">==</span> <span class="nb">set</span><span class="p">()</span></div>
+
 
 <div class="viewcode-block" id="track_args"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.track_args">[docs]</a><span class="k">def</span> <span class="nf">track_args</span><span class="p">(</span><span class="n">method</span><span class="p">):</span>
 
@@ -166,7 +204,6 @@
     <span class="c1"># decorated.__name__ = method.__name__ etc...</span>
     <span class="nd">@wraps</span><span class="p">(</span><span class="n">method</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">decorated</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>  <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        All the parameters are stored</span>
 <span class="sd">        if use_tracked_args=True is passed to a method, the last parameters</span>
@@ -210,11 +247,11 @@
     <span class="n">left_nodes</span> <span class="o">=</span> <span class="n">left_nodes</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="n">right_nodes</span> <span class="o">=</span> <span class="n">right_nodes</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
-    <span class="c1"># suffixes</span>
+    <span class="c1"># suffixes</span>
     <span class="n">sx_left</span> <span class="o">=</span> <span class="n">suffixes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">sx_right</span> <span class="o">=</span> <span class="n">suffixes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
 
-    <span class="c1"># we can not use suffixes_on non string indexes</span>
+    <span class="c1"># we can not use suffixes_on non string indexes</span>
     <span class="n">left_links</span><span class="p">[[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">left_links</span><span class="p">[[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> <span class="o">+</span> <span class="n">sx_left</span>
     <span class="n">right_links</span><span class="p">[[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">right_links</span><span class="p">[[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> <span class="o">+</span> <span class="n">sx_right</span>
     <span class="n">left_nodes</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">left_nodes</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> <span class="o">+</span> <span class="n">sx_left</span>
@@ -228,11 +265,12 @@
 
         <span class="n">reindex_series</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">nodes</span><span class="p">)),</span> <span class="n">index</span><span class="o">=</span><span class="n">nodes</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
         <span class="n">reindex_dict</span> <span class="o">=</span> <span class="n">reindex_series</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
-        <span class="n">reindex_function</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">n</span><span class="p">:</span> <span class="n">reindex_dict</span><span class="p">[</span><span class="n">n</span><span class="p">]</span>
+        <span class="k">def</span> <span class="nf">reindex_function</span><span class="p">(</span><span class="n">n</span><span class="p">):</span> <span class="k">return</span> <span class="n">reindex_dict</span><span class="p">[</span><span class="n">n</span><span class="p">]</span>
         <span class="n">links</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">reindex_function</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
         <span class="n">links</span><span class="p">[</span><span class="s1">&#39;b&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;b&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">reindex_function</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
-        <span class="n">nodes</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">nodes</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">reindex_function</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
-    
+        <span class="n">nodes</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">nodes</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+            <span class="n">reindex_function</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+
     <span class="k">return</span> <span class="n">links</span><span class="p">,</span> <span class="n">nodes</span></div>
 
 
@@ -245,9 +283,9 @@
     <span class="n">clear</span><span class="o">=</span><span class="kc">True</span>
 <span class="p">):</span>
     <span class="k">assert</span> <span class="n">left</span><span class="o">.</span><span class="n">epsg</span> <span class="o">==</span> <span class="n">right</span><span class="o">.</span><span class="n">epsg</span>
-    <span class="c1"># we want to return an object with the same class as left</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">left</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="n">epsg</span><span class="o">=</span><span class="n">left</span><span class="o">.</span><span class="n">epsg</span><span class="p">,</span> <span class="n">coordinates_unit</span><span class="o">=</span><span class="n">left</span><span class="o">.</span><span class="n">coordinates_unit</span><span class="p">)</span> <span class="k">if</span> <span class="n">clear</span> <span class="k">else</span> <span class="n">left</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-    
+    <span class="c1"># we want to return an object with the same class as left</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">left</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
+        <span class="n">epsg</span><span class="o">=</span><span class="n">left</span><span class="o">.</span><span class="n">epsg</span><span class="p">,</span> <span class="n">coordinates_unit</span><span class="o">=</span><span class="n">left</span><span class="o">.</span><span class="n">coordinates_unit</span><span class="p">)</span> <span class="k">if</span> <span class="n">clear</span> <span class="k">else</span> <span class="n">left</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
     <span class="n">model</span><span class="o">.</span><span class="n">links</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">nodes</span> <span class="o">=</span> <span class="n">merge_links_and_nodes</span><span class="p">(</span>
         <span class="n">left_links</span><span class="o">=</span><span class="n">left</span><span class="o">.</span><span class="n">links</span><span class="p">,</span>
@@ -263,15 +301,223 @@
     <span class="k">return</span> <span class="n">model</span></div>
 
 
+<div class="viewcode-block" id="obj_size_fmt"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.obj_size_fmt">[docs]</a><span class="k">def</span> <span class="nf">obj_size_fmt</span><span class="p">(</span><span class="n">num</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">num</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="o">**</span><span class="mi">3</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{:.2f}{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="s2">&quot;B&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="p">((</span><span class="n">num</span> <span class="o">&gt;=</span> <span class="mi">10</span><span class="o">**</span><span class="mi">3</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">num</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="o">**</span><span class="mi">6</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{:.2f}{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">num</span><span class="o">/</span><span class="p">(</span><span class="mf">1.024</span><span class="o">*</span><span class="mi">10</span><span class="o">**</span><span class="mi">3</span><span class="p">),</span> <span class="s2">&quot;KB&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="p">((</span><span class="n">num</span> <span class="o">&gt;=</span> <span class="mi">10</span><span class="o">**</span><span class="mi">6</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">num</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="o">**</span><span class="mi">9</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{:.2f}{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">num</span><span class="o">/</span><span class="p">(</span><span class="mf">1.024</span><span class="o">*</span><span class="mi">10</span><span class="o">**</span><span class="mi">6</span><span class="p">),</span> <span class="s2">&quot;MB&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{:.2f}{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">num</span><span class="o">/</span><span class="p">(</span><span class="mf">1.024</span><span class="o">*</span><span class="mi">10</span><span class="o">**</span><span class="mi">9</span><span class="p">),</span> <span class="s2">&quot;GB&quot;</span><span class="p">)</span></div>
+
+
 <div class="viewcode-block" id="Model"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model">[docs]</a><span class="k">class</span> <span class="nc">Model</span><span class="p">(</span><span class="n">IntegrityModel</span><span class="p">):</span>
 
-<div class="viewcode-block" id="Model.read_hdf"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.read_hdf">[docs]</a>    <span class="k">def</span> <span class="nf">read_hdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">json_database</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">json_folder</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">hdf_database</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">zip_database</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">zippedpickles_folder</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">omitted_attributes</span><span class="o">=</span><span class="p">(),</span>
+        <span class="n">only_attributes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialization function, either from a json folder or a json_database representation.</span>
+<span class="sd">        Args:</span>
+<span class="sd">            json_database (json): a json_database representation of the model. Default None.</span>
+<span class="sd">            json_folder (json): a json folder representation of the model. Default None.</span>
+<span class="sd">        Examples:</span>
+<span class="sd">        &gt;&gt;&gt; sm = stepmodel.Model(json_database=json_database_object)</span>
+<span class="sd">        &gt;&gt;&gt; sm = stepmodel.Model(json_folder=folder_path)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">json_database</span> <span class="ow">and</span> <span class="n">json_folder</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
+                <span class="s1">&#39;Only one argument should be given to the init function.&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">json_database</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">read_json_database</span><span class="p">(</span><span class="n">json_database</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">json_folder</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">read_json</span><span class="p">(</span><span class="n">json_folder</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">hdf_database</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">read_hdf</span><span class="p">(</span>
+                <span class="n">hdf_database</span><span class="p">,</span>
+                <span class="n">omitted_attributes</span><span class="o">=</span><span class="n">omitted_attributes</span><span class="p">,</span>
+                <span class="n">only_attributes</span><span class="o">=</span><span class="n">only_attributes</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">zip_database</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">read_zip</span><span class="p">(</span>
+                <span class="n">zip_database</span><span class="p">,</span>
+                <span class="n">omitted_attributes</span><span class="o">=</span><span class="n">omitted_attributes</span><span class="p">,</span>
+                <span class="n">only_attributes</span><span class="o">=</span><span class="n">only_attributes</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">zippedpickles_folder</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">read_zippedpickles</span><span class="p">(</span>
+                <span class="n">zippedpickles_folder</span><span class="p">,</span>
+                <span class="n">omitted_attributes</span><span class="o">=</span><span class="n">omitted_attributes</span><span class="p">,</span>
+                <span class="n">only_attributes</span><span class="o">=</span><span class="n">only_attributes</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">debug</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># Add default coordinates unit and epsg</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">epsg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># print(&#39;Model epsg not defined: setting epsg to default one: 4326&#39;)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">epsg</span> <span class="o">=</span> <span class="mi">4326</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinates_unit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># print(&#39;Model coordinates_unit not defined: setting coordinates_unit to default one: degree&#39;)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">coordinates_unit</span> <span class="o">=</span> <span class="s1">&#39;degree&#39;</span>
+
+<div class="viewcode-block" id="Model.memory_usage"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.memory_usage">[docs]</a>    <span class="k">def</span> <span class="nf">memory_usage</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">head</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+        <span class="n">memory_usage_by_variable</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+            <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">sys</span><span class="o">.</span><span class="n">getsizeof</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">()},</span><span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Size&#39;</span><span class="p">]</span>
+            <span class="p">)</span>
+        <span class="n">memory_usage_by_variable</span> <span class="o">=</span> <span class="n">memory_usage_by_variable</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">memory_usage_by_variable</span> <span class="o">=</span> <span class="n">memory_usage_by_variable</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="s1">&#39;Size&#39;</span><span class="p">,</span><span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">memory_usage_by_variable</span><span class="p">[</span><span class="s1">&#39;Size&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">memory_usage_by_variable</span><span class="p">[</span><span class="s1">&#39;Size&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">obj_size_fmt</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">memory_usage_by_variable</span></div>
+
+<div class="viewcode-block" id="Model.plot"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.plot">[docs]</a>    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">ticks</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">basemap_url</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">zoom</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+        <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">24</span><span class="p">,</span>
+        <span class="n">fname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+        <span class="n">gdf</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">attribute</span><span class="p">])</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">epsg</span> <span class="o">!=</span> <span class="mi">3857</span> <span class="ow">and</span> <span class="n">basemap_url</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">gdf</span><span class="o">.</span><span class="n">crs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;init&#39;</span><span class="p">:</span> <span class="s1">&#39;epsg:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">epsg</span><span class="p">)}</span>
+            <span class="n">gdf</span> <span class="o">=</span> <span class="n">gdf</span><span class="o">.</span><span class="n">to_crs</span><span class="p">(</span><span class="n">epsg</span><span class="o">=</span><span class="mi">3857</span><span class="p">)</span>
+
+        <span class="n">plot</span> <span class="o">=</span> <span class="n">gdf</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ticks</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="n">plot</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">([])</span>
+            <span class="n">plot</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">([])</span>
+
+        <span class="k">if</span> <span class="n">title</span><span class="p">:</span>
+            <span class="n">plot</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="n">fontsize</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">basemap_url</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">add_basemap</span><span class="p">(</span><span class="n">plot</span><span class="p">,</span> <span class="n">zoom</span><span class="o">=</span><span class="n">zoom</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="n">basemap_url</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">fname</span><span class="p">:</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">plot</span><span class="o">.</span><span class="n">get_figure</span><span class="p">()</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">plot</span></div>
+
+<div class="viewcode-block" id="Model.split_attribute"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.split_attribute">[docs]</a>    <span class="k">def</span> <span class="nf">split_attribute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nchunks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="c1"># attr = pt_los</span>
+        <span class="c1"># split self.pt_los in several attributes self.pt_los_1, self.pt_los_2 etc</span>
+        <span class="k">if</span> <span class="n">by</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">pool</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="n">by</span><span class="p">,</span> <span class="n">append</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">drop</span><span class="o">=</span><span class="n">drop</span><span class="p">)</span><span class="o">.</span><span class="n">swaplevel</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="fm">__delattr__</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span>
+            <span class="n">keys</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">pool</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">levels</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">k</span><span class="p">)),</span> <span class="n">pool</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+
+        <span class="k">elif</span> <span class="n">nchunks</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">pool</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="fm">__delattr__</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span>
+            <span class="n">length</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">pool</span><span class="p">)</span>
+            <span class="n">chunk_size</span> <span class="o">=</span> <span class="n">length</span> <span class="o">//</span> <span class="n">nchunks</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">length</span><span class="p">))</span> <span class="o">//</span> <span class="n">chunk_size</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nchunks</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span>
+                    <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)),</span> 
+                    <span class="n">pool</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="n">chunk_size</span><span class="p">:</span> <span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">chunk_size</span><span class="p">]</span>
+                <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Model.merge_attribute"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.merge_attribute">[docs]</a>    <span class="k">def</span> <span class="nf">merge_attribute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># attr = pt_los</span>
+        <span class="c1"># merge several attributes self.pt_los_1, self.pt_los_2 etc in self.pt_los</span>
+        <span class="k">if</span> <span class="n">keys</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">s</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">attr</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">attr</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span><span class="p">)</span>
+            <span class="p">]</span>
+        <span class="n">to_concat</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+            <span class="n">to_concat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="n">attr</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">key</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="fm">__delattr__</span><span class="p">(</span><span class="n">attr</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">key</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">to_concat</span><span class="p">))</span>  </div>
+
+<div class="viewcode-block" id="Model.to_zippedpickles"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.to_zippedpickles">[docs]</a>    <span class="k">def</span> <span class="nf">to_zippedpickles</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">folder</span><span class="p">,</span>
+        <span class="n">omitted_attributes</span><span class="o">=</span><span class="p">(),</span>
+        <span class="n">only_attributes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">max_workers</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">complevel</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">remove_first</span><span class="o">=</span><span class="kc">True</span>
+        
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="n">remove_first</span><span class="p">:</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">max_workers</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">iterator</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">iterator</span><span class="p">:</span>
+                <span class="n">iterator</span><span class="o">.</span><span class="n">desc</span> <span class="o">=</span> <span class="n">key</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">omitted_attributes</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="n">only_attributes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">only_attributes</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">hdf_io</span><span class="o">.</span><span class="n">to_zippedpickle</span><span class="p">(</span>
+                    <span class="n">value</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">/</span><span class="si">%s</span><span class="s1">.zippedpickle&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">key</span><span class="p">),</span>
+                    <span class="n">complevel</span><span class="o">=</span><span class="n">complevel</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">ProcessPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="n">max_workers</span><span class="p">)</span> <span class="k">as</span> <span class="n">executor</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">omitted_attributes</span><span class="p">:</span>
+                        <span class="k">continue</span>
+                    <span class="k">if</span> <span class="n">only_attributes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">only_attributes</span><span class="p">:</span>
+                        <span class="k">continue</span>
+                    <span class="n">executor</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span>
+                        <span class="n">hdf_io</span><span class="o">.</span><span class="n">to_zippedpickle</span><span class="p">,</span> 
+                        <span class="n">value</span><span class="p">,</span> 
+                        <span class="sa">r</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">/</span><span class="si">%s</span><span class="s1">.zippedpickle&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">key</span><span class="p">),</span>
+                        <span class="n">complevel</span><span class="o">=</span><span class="n">complevel</span>
+                    <span class="p">)</span></div>
+                
+<div class="viewcode-block" id="Model.read_zippedpickles"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.read_zippedpickles">[docs]</a>    <span class="k">def</span> <span class="nf">read_zippedpickles</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">folder</span><span class="p">,</span> <span class="n">omitted_attributes</span><span class="o">=</span><span class="p">(),</span> <span class="n">only_attributes</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">files</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">folder</span><span class="p">)</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.zippedpickle&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> 
+            <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files</span> 
+            <span class="k">if</span> <span class="s1">&#39;.zippedpickle&#39;</span> <span class="ow">in</span> <span class="n">file</span>
+        <span class="p">]</span>
+        <span class="n">iterator</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">iterator</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">omitted_attributes</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">only_attributes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">only_attributes</span><span class="p">:</span>
+                <span class="k">continue</span>
+                
+            <span class="n">iterator</span><span class="o">.</span><span class="n">desc</span> <span class="o">=</span> <span class="n">key</span>
+            <span class="k">with</span> <span class="nb">open</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">/</span><span class="si">%s</span><span class="s1">.zippedpickle&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">key</span><span class="p">),</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+                <span class="n">buffer</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+                <span class="n">bigbuffer</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">decompress</span><span class="p">(</span><span class="n">buffer</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">pickle</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">bigbuffer</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Model.read_hdf"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.read_hdf">[docs]</a>    <span class="k">def</span> <span class="nf">read_hdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="n">omitted_attributes</span><span class="o">=</span><span class="p">(),</span> <span class="n">only_attributes</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="k">with</span> <span class="n">pd</span><span class="o">.</span><span class="n">HDFStore</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span> <span class="k">as</span> <span class="n">hdf</span><span class="p">:</span>
             <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">hdf</span><span class="o">.</span><span class="n">keys</span><span class="p">()]</span>
 
         <span class="n">iterator</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">desc</span><span class="o">=</span><span class="s1">&#39;read_hdf: &#39;</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">iterator</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">omitted_attributes</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">only_attributes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">only_attributes</span><span class="p">:</span>
+                <span class="k">continue</span>
             <span class="n">value</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_hdf</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="ow">and</span> <span class="s1">&#39;geometry&#39;</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
 
         <span class="c1"># some attributes may have been store in the json_series</span>
@@ -280,15 +526,105 @@
             <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">json_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                 <span class="bp">self</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
         <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;error&#39;</span><span class="p">)</span></div>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;coul not read json attributes&#39;</span><span class="p">)</span></div>
 
-    <span class="nd">@track_args</span>
-<div class="viewcode-block" id="Model.to_hdf"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.to_hdf">[docs]</a>    <span class="k">def</span> <span class="nf">to_hdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">):</span>
+<div class="viewcode-block" id="Model.read_zip"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.read_zip">[docs]</a>    <span class="k">def</span> <span class="nf">read_zip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="n">omitted_attributes</span><span class="o">=</span><span class="p">(),</span> <span class="n">only_attributes</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">only_attributes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">only_attributes</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">only_attributes</span><span class="p">}</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">only_attributes</span><span class="p">)</span>
+        <span class="n">omitted_attributes</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">omitted_attributes</span><span class="p">}</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">omitted_attributes</span><span class="p">)</span>
+        
+        <span class="c1"># read the zip in a buffer</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+            <span class="n">bigbyte</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">decompress</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="c1"># build a store from the buffer</span>
+        <span class="k">with</span> <span class="n">pd</span><span class="o">.</span><span class="n">HDFStore</span><span class="p">(</span>
+            <span class="s2">&quot;quetzal-</span><span class="si">%s</span><span class="s2">.h5&quot;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()),</span>
+            <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">,</span>
+            <span class="n">driver</span><span class="o">=</span><span class="s2">&quot;H5FD_CORE&quot;</span><span class="p">,</span>
+            <span class="n">driver_core_backing_store</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">driver_core_image</span><span class="o">=</span><span class="n">bigbyte</span>
+        <span class="p">)</span> <span class="k">as</span> <span class="n">store</span><span class="p">:</span>
+            <span class="n">iterator</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">store</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">iterator</span><span class="p">:</span>
+                <span class="n">skey</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">iterator</span><span class="o">.</span><span class="n">desc</span> <span class="o">=</span> <span class="n">skey</span>
+
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">omitted_attributes</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="n">only_attributes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">only_attributes</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                
+                <span class="n">value</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="ow">and</span> <span class="s1">&#39;geometry&#39;</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                
+                <span class="bp">self</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">skey</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="kc">None</span>
+
+            <span class="c1"># some attributes may have been store in the json_series</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">json_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">jsons</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">json_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;could not read json attributes&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Model.to_excel"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.to_excel">[docs]</a>    <span class="k">def</span> <span class="nf">to_excel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;stack&#39;</span><span class="p">):</span>
+        <span class="n">length</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span>
+        <span class="n">stacks</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">name</span><span class="p">[</span><span class="n">length</span><span class="o">+</span><span class="mi">1</span><span class="p">:]:</span> <span class="n">attr</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">attr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">name</span><span class="p">[:</span><span class="n">length</span><span class="p">]</span> <span class="o">==</span> <span class="n">prefix</span>
+        <span class="p">}</span>
+        <span class="k">with</span> <span class="n">pd</span><span class="o">.</span><span class="n">ExcelWriter</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span> <span class="k">as</span> <span class="n">writer</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">stack</span> <span class="ow">in</span> <span class="n">stacks</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">stack</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span><span class="o">.</span><span class="n">to_excel</span><span class="p">(</span><span class="n">writer</span><span class="p">,</span> <span class="n">sheet_name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Model.to_frames"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.to_frames">[docs]</a>    <span class="k">def</span> <span class="nf">to_frames</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">omitted_attributes</span><span class="o">=</span><span class="p">(),</span> <span class="n">only_attributes</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        export the full model to a dataframe dict</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">jsons</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">attributeerrors</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">frames</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">attribute</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">omitted_attributes</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">only_attributes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">only_attributes</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attribute</span><span class="p">,</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoSeries</span><span class="p">):</span>
+                <span class="n">frames</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attribute</span><span class="p">,</span> <span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">)):</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="k">pass</span>
+                <span class="n">frames</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">jsons</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+                    <span class="n">attributeerrors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="n">frames</span><span class="p">[</span><span class="s1">&#39;jsons&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">jsons</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">frames</span></div>
+
+<div class="viewcode-block" id="Model.to_zip"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.to_zip">[docs]</a>    <span class="k">def</span> <span class="nf">to_zip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="n">complevel</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">frames</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_frames</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">buffer</span> <span class="o">=</span> <span class="n">hdf_io</span><span class="o">.</span><span class="n">write_hdf_to_buffer</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="n">complevel</span><span class="o">=</span><span class="n">complevel</span><span class="p">)</span>
+        <span class="n">smallbuffer</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">buffer</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+            <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">smallbuffer</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Model.to_hdf"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.to_hdf">[docs]</a>    <span class="nd">@track_args</span>
+    <span class="k">def</span> <span class="nf">to_hdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="n">omitted_attributes</span><span class="o">=</span><span class="p">(),</span> <span class="n">only_attributes</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        export the full model to a hdf database</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span> 
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
             <span class="n">status</span> <span class="o">=</span> <span class="s1">&#39;overwriting&#39;</span>
         <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
             <span class="n">status</span> <span class="o">=</span> <span class="s1">&#39;new file&#39;</span>
@@ -297,12 +633,25 @@
 
         <span class="n">attributeerrors</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">attribute</span> <span class="ow">in</span> <span class="n">iterator</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">omitted_attributes</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">only_attributes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">only_attributes</span><span class="p">:</span>
+                <span class="k">continue</span>
+
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attribute</span><span class="p">,</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">):</span>
-                <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span><span class="o">.</span><span class="n">to_hdf</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;a&#39;</span><span class="p">)</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span>
+                <span class="n">df</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span>
+                <span class="n">df</span><span class="o">.</span><span class="n">to_hdf</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;a&#39;</span><span class="p">)</span>
             <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attribute</span><span class="p">,</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoSeries</span><span class="p">):</span>
-                <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span><span class="o">.</span><span class="n">to_hdf</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;a&#39;</span><span class="p">)</span>
+                <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span><span class="o">.</span><span class="n">to_hdf</span><span class="p">(</span>
+                    <span class="n">filepath</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;a&#39;</span><span class="p">)</span>
             <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attribute</span><span class="p">,</span> <span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)):</span>
-                <span class="n">attribute</span><span class="o">.</span><span class="n">to_hdf</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;a&#39;</span><span class="p">)</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="n">attribute</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="k">pass</span>
+                <span class="n">df</span><span class="o">.</span><span class="n">to_hdf</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;a&#39;</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">jsons</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span>
@@ -313,21 +662,29 @@
             <span class="n">log</span><span class="p">(</span><span class="s1">&#39;could not save attribute: &#39;</span> <span class="o">+</span> <span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">)</span>
 
         <span class="n">json_series</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">jsons</span><span class="p">)</span>
-        <span class="c1"># mode=a : we do not want to overwrite the file !</span>
+        <span class="c1"># mode=a : we do not want to overwrite the file !</span>
         <span class="n">json_series</span><span class="o">.</span><span class="n">to_hdf</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="s1">&#39;jsons&#39;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;a&#39;</span><span class="p">)</span></div>
 
-    <span class="nd">@track_args</span>
-<div class="viewcode-block" id="Model.to_json"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.to_json">[docs]</a>    <span class="k">def</span> <span class="nf">to_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">folder</span><span class="p">,</span> <span class="n">omitted_attributes</span><span class="o">=</span><span class="p">()):</span>
-        
+<div class="viewcode-block" id="Model.to_zipped_hdf"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.to_zipped_hdf">[docs]</a>    <span class="k">def</span> <span class="nf">to_zipped_hdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">filedir</span> <span class="o">=</span> <span class="n">ntpath</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+        <span class="n">tempdir</span> <span class="o">=</span> <span class="n">filedir</span> <span class="o">+</span> <span class="s1">&#39;/quetzal_temp&#39;</span> <span class="o">+</span> <span class="s1">&#39;-&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">tempdir</span><span class="p">)</span>
+        <span class="n">hdf_path</span> <span class="o">=</span> <span class="n">tempdir</span> <span class="o">+</span> <span class="sa">r</span><span class="s1">&#39;/model.hdf&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">to_hdf</span><span class="p">(</span><span class="n">hdf_path</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">make_archive</span><span class="p">(</span><span class="n">filepath</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.zip&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;zip&#39;</span><span class="p">,</span> <span class="n">tempdir</span><span class="p">)</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">tempdir</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Model.to_json"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.to_json">[docs]</a>    <span class="nd">@track_args</span>
+    <span class="k">def</span> <span class="nf">to_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">folder</span><span class="p">,</span> <span class="n">omitted_attributes</span><span class="o">=</span><span class="p">(),</span> <span class="n">only_attributes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        export the full model to a hdf database</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> 
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="n">status</span> <span class="o">=</span> <span class="s1">&#39;overwriting&#39;</span>
         <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
             <span class="n">status</span> <span class="o">=</span> <span class="s1">&#39;new file&#39;</span>
-            
+
         <span class="n">jsons</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">iterator</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">desc</span><span class="o">=</span><span class="s1">&#39;to_hdf(</span><span class="si">%s</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="n">status</span><span class="p">)</span>
 
@@ -335,48 +692,59 @@
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">attribute</span> <span class="ow">in</span> <span class="n">iterator</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">omitted_attributes</span><span class="p">:</span>
                 <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">only_attributes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">only_attributes</span><span class="p">:</span>
+                <span class="k">continue</span>
 
             <span class="n">root_name</span> <span class="o">=</span> <span class="n">folder</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">key</span>
             <span class="n">geojson_file</span> <span class="o">=</span> <span class="n">root_name</span> <span class="o">+</span> <span class="s1">&#39;.geojson&#39;</span>
             <span class="n">json_file</span> <span class="o">=</span> <span class="n">root_name</span> <span class="o">+</span> <span class="s1">&#39;.json&#39;</span>
-            
+
             <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="p">(</span><span class="n">geojson_file</span><span class="p">,</span> <span class="n">json_file</span><span class="p">):</span>
-                <span class="k">try</span><span class="p">:</span> 
+                <span class="k">try</span><span class="p">:</span>
                     <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
                 <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
                     <span class="k">pass</span>
 
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attribute</span><span class="p">,</span> <span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)):</span>
-                
+
                 <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;datframe attributes must have unique index:&#39;</span> <span class="o">+</span> <span class="n">key</span>
                 <span class="k">assert</span> <span class="n">attribute</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">is_unique</span><span class="p">,</span> <span class="n">msg</span>
                 <span class="n">attribute</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span>  <span class="c1"># copy and type conversion</span>
                 <span class="n">attribute</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
                 <span class="n">attribute</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;index&#39;</span>
                 <span class="n">attribute</span> <span class="o">=</span> <span class="n">attribute</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>  <span class="c1"># loss of index name</span>
-                
+                <span class="n">attribute</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+                                          <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">attribute</span><span class="o">.</span><span class="n">columns</span><span class="p">},</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
                 <span class="n">df</span> <span class="o">=</span> <span class="n">attribute</span>
-                <span class="n">geojson_columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span> 
-                    <span class="k">if</span> <span class="n">authorized_column</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> 
-                    <span class="ow">or</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="s1">&#39;geometry&#39;</span><span class="p">)</span>
-                <span class="p">]</span> 
-                <span class="n">json_columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">geojson_columns</span><span class="p">]</span>
+                <span class="n">geojson_columns</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">authorized_column</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="ow">or</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="s1">&#39;geometry&#39;</span><span class="p">)</span>
+                <span class="p">]</span>
+                <span class="n">json_columns</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">geojson_columns</span><span class="p">]</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">attribute</span><span class="p">[</span><span class="n">geojson_columns</span><span class="p">])</span><span class="o">.</span><span class="n">to_file</span><span class="p">(</span>
-                        <span class="n">geojson_file</span><span class="p">,</span> 
-                        <span class="n">driver</span><span class="o">=</span><span class="s1">&#39;GeoJSON&#39;</span>
+                        <span class="n">geojson_file</span><span class="p">,</span> <span class="n">driver</span><span class="o">=</span><span class="s1">&#39;GeoJSON&#39;</span>
                     <span class="p">)</span>
                     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">json_columns</span><span class="p">):</span>
-                        <span class="n">attribute</span><span class="p">[</span><span class="n">json_columns</span> <span class="o">+</span> <span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">root_name</span> <span class="o">+</span> <span class="s1">&#39;_quetzaldata.json&#39;</span><span class="p">)</span>
-                <span class="k">except</span> <span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">,</span> <span class="p">):</span> <span class="c1"># &quot;[&#39;geometry&#39;] not in index&quot;</span>
-                    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
-                    <span class="n">df</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">root_name</span> <span class="o">+</span> <span class="s1">&#39;.json&#39;</span><span class="p">)</span>       
-                <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span> 
+                        <span class="n">attribute</span><span class="p">[</span><span class="n">json_columns</span> <span class="o">+</span> <span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">]</span>
+                                  <span class="p">]</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">root_name</span> <span class="o">+</span> <span class="s1">&#39;_quetzaldata.json&#39;</span><span class="p">)</span>
+                <span class="c1"># &quot;[&#39;geometry&#39;] not in index&quot;</span>
+                <span class="k">except</span> <span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">,</span> <span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span>
+                        <span class="s1">&#39;geometry&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+                    <span class="n">df</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">root_name</span> <span class="o">+</span> <span class="s1">&#39;.json&#39;</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
                     <span class="c1"># Geometry column cannot contain mutiple geometry types when writing to file.</span>
                     <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;could not save geometry from table &#39;</span> <span class="o">+</span> <span class="n">key</span><span class="p">)</span>
-                    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
-                    <span class="n">df</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">root_name</span> <span class="o">+</span> <span class="s1">&#39;.json&#39;</span><span class="p">)</span>     
-                    
+                    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span>
+                        <span class="s1">&#39;geometry&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+                    <span class="n">df</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">root_name</span> <span class="o">+</span> <span class="s1">&#39;.json&#39;</span><span class="p">)</span>
+
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">jsons</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span>
@@ -385,29 +753,31 @@
 
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">attributeerrors</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;could not save attribute: &#39;</span> <span class="o">+</span> <span class="n">key</span><span class="p">)</span>
-            
+
         <span class="n">json_series</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">jsons</span><span class="p">)</span>
         <span class="n">json_series</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;json&#39;</span>
         <span class="n">json_series</span> <span class="o">=</span> <span class="n">json_series</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
         <span class="n">json_series</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">folder</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="s1">&#39;jsons.json&#39;</span><span class="p">)</span></div>
-    
+
 <div class="viewcode-block" id="Model.read_json"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.read_json">[docs]</a>    <span class="k">def</span> <span class="nf">read_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">folder</span><span class="p">):</span>
         <span class="n">files</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">folder</span><span class="p">)</span>
-        <span class="n">geojson_attributes</span> <span class="o">=</span> <span class="p">[</span><span class="n">file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.geojson&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="s1">&#39;.geojson&#39;</span> <span class="ow">in</span> <span class="n">file</span><span class="p">]</span>
-        <span class="n">json_attributes</span> <span class="o">=</span> <span class="p">[</span><span class="n">file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.json&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="s1">&#39;.json&#39;</span> <span class="ow">in</span> <span class="n">file</span><span class="p">]</span>
-        
+        <span class="n">geojson_attributes</span> <span class="o">=</span> <span class="p">[</span><span class="n">file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.geojson&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                              <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="s1">&#39;.geojson&#39;</span> <span class="ow">in</span> <span class="n">file</span><span class="p">]</span>
+        <span class="n">json_attributes</span> <span class="o">=</span> <span class="p">[</span><span class="n">file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.json&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                           <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="s1">&#39;.json&#39;</span> <span class="ow">in</span> <span class="n">file</span><span class="p">]</span>
+
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">json_attributes</span><span class="p">:</span>
 
             <span class="n">value</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_json</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">/</span><span class="si">%s</span><span class="s1">.json&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">key</span><span class="p">))</span>
             <span class="n">value</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-            
+
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">geojson_attributes</span><span class="p">:</span>
-            
+
             <span class="n">value</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">/</span><span class="si">%s</span><span class="s1">.geojson&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">key</span><span class="p">))</span>
             <span class="n">value</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
-            
+
         <span class="c1"># some attributes may have been store in the json_series</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">json_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">jsons</span><span class="p">[</span><span class="s1">&#39;json&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
@@ -422,14 +792,15 @@
             <span class="k">if</span> <span class="s1">&#39;_quetzaldata&#39;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
                 <span class="n">key_to_set</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_quetzaldata&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
                 <span class="n">left</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="n">key_to_set</span><span class="p">)</span>
-                <span class="n">merged</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">left_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">right_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">merged</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+                    <span class="n">left</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">left_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">right_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">key_to_set</span><span class="p">,</span> <span class="n">merged</span><span class="p">)</span>
                 <span class="n">to_delete</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">to_delete</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="fm">__delattr__</span><span class="p">(</span><span class="n">key</span><span class="p">)</span></div>
 
-    <span class="nd">@track_args</span>
-<div class="viewcode-block" id="Model.to_json_database"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.to_json_database">[docs]</a>    <span class="k">def</span> <span class="nf">to_json_database</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Model.to_json_database"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.to_json_database">[docs]</a>    <span class="nd">@track_args</span>
+    <span class="k">def</span> <span class="nf">to_json_database</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Dumps the model into a single json organized as follow:</span>
 <span class="sd">        json_database = {</span>
@@ -443,10 +814,8 @@
 <span class="sd">                key: value</span>
 <span class="sd">            }</span>
 <span class="sd">        }</span>
-
 <span class="sd">        Args:</span>
 <span class="sd">            stepmodel</span>
-
 <span class="sd">        Returns:</span>
 <span class="sd">            json_database (json): the single json representation of the model</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -456,7 +825,7 @@
         <span class="c1"># Create json_database object</span>
         <span class="n">json_database</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s1">&#39;geojson&#39;</span><span class="p">:</span> <span class="p">{},</span>
-            <span class="s1">&#39;pd_json&#39;</span><span class="p">:{},</span>
+            <span class="s1">&#39;pd_json&#39;</span><span class="p">:</span> <span class="p">{},</span>
             <span class="s1">&#39;json&#39;</span><span class="p">:</span> <span class="p">{}</span>
         <span class="p">}</span>
 
@@ -466,17 +835,18 @@
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attribute</span><span class="p">,</span> <span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)):</span>
                 <span class="c1"># Check index</span>
                 <span class="k">assert</span> <span class="n">attribute</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">is_unique</span><span class="p">,</span> <span class="s1">&#39;DataFrame attributes must have unique index&#39;</span>
-                <span class="n">attribute</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span> <span class="c1"># copy and type conversion</span>
+                <span class="n">attribute</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span>  <span class="c1"># copy and type conversion</span>
                 <span class="n">attribute</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
                 <span class="n">attribute</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;index&#39;</span>
-                <span class="n">attribute</span> <span class="o">=</span> <span class="n">attribute</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span> <span class="c1"># loss of index name</span>
+                <span class="n">attribute</span> <span class="o">=</span> <span class="n">attribute</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>  <span class="c1"># loss of index name</span>
 
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">geojson_to_store</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>
                     <span class="n">json_database</span><span class="p">[</span><span class="s1">&#39;geojson&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">key</span><span class="p">:</span> <span class="n">geojson_to_store</span><span class="p">})</span>
 
                 <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-                    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+                    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span>
+                        <span class="s1">&#39;geometry&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
                     <span class="n">json_to_store</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>
                     <span class="n">json_database</span><span class="p">[</span><span class="s1">&#39;pd_json&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">key</span><span class="p">:</span> <span class="n">json_to_store</span><span class="p">})</span>
 
@@ -495,11 +865,10 @@
 <div class="viewcode-block" id="Model.read_json_database"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.read_json_database">[docs]</a>    <span class="k">def</span> <span class="nf">read_json_database</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">json_database</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Load model from its json_database representation.</span>
-
 <span class="sd">        Args:</span>
 <span class="sd">            stepmodel</span>
 <span class="sd">            json_database (json): the json_database model representation</span>
-<span class="sd">        </span>
+
 <span class="sd">        Returns:</span>
 <span class="sd">            None</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -509,13 +878,13 @@
         <span class="c1"># Geojson objects</span>
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">json_database</span><span class="p">[</span><span class="s1">&#39;geojson&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="n">value</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="o">.</span><span class="n">from_features</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">attr</span><span class="p">))</span>
-            <span class="n">value</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  
+            <span class="n">value</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
 
         <span class="c1"># Dataframe objects</span>
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">json_database</span><span class="p">[</span><span class="s1">&#39;pd_json&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="n">value</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_json</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span>
-            <span class="n">value</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  
+            <span class="n">value</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
 
         <span class="c1"># Parameters</span>
@@ -529,59 +898,107 @@
 <div class="viewcode-block" id="Model.merge"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.merge">[docs]</a>    <span class="k">def</span> <span class="nf">merge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">merge</span><span class="p">(</span><span class="n">left</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
-
-    <span class="nd">@track_args</span>
-<div class="viewcode-block" id="Model.change_epsg"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.change_epsg">[docs]</a>    <span class="k">def</span> <span class="nf">change_epsg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">epsg</span><span class="p">,</span> <span class="n">coordinates_unit</span><span class="p">):</span>
+<div class="viewcode-block" id="Model.change_epsg"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.change_epsg">[docs]</a>    <span class="nd">@track_args</span>
+    <span class="k">def</span> <span class="nf">change_epsg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">epsg</span><span class="p">,</span> <span class="n">coordinates_unit</span><span class="p">):</span>
 
         <span class="n">projected_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="n">iterator</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span>
             <span class="n">projected_model</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span>
-            <span class="n">desc</span><span class="o">=</span><span class="s1">&#39;Reprojecting model from epsg </span><span class="si">{}</span><span class="s1"> to epsg </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">epsg</span><span class="p">,</span> <span class="n">epsg</span><span class="p">)</span>
+            <span class="n">desc</span><span class="o">=</span><span class="s1">&#39;Reprojecting model from epsg </span><span class="si">{}</span><span class="s1"> to epsg </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">epsg</span><span class="p">,</span> <span class="n">epsg</span><span class="p">)</span>
         <span class="p">)</span>
+        <span class="n">failed</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">attribute</span> <span class="ow">in</span> <span class="n">iterator</span><span class="p">:</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attribute</span><span class="p">,</span> <span class="p">(</span><span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">,</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoSeries</span><span class="p">)):</span>
-                <span class="n">attribute</span><span class="o">.</span><span class="n">crs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;init&#39;</span><span class="p">:</span> <span class="s1">&#39;epsg:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">epsg</span><span class="p">)}</span>
-                <span class="n">attribute</span> <span class="o">=</span> <span class="n">attribute</span><span class="o">.</span><span class="n">to_crs</span><span class="p">(</span><span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">)</span>
-                <span class="n">projected_model</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">attribute</span><span class="p">)</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">attribute</span><span class="o">.</span><span class="n">crs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;init&#39;</span><span class="p">:</span> <span class="s1">&#39;epsg:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">epsg</span><span class="p">)}</span>
+                    <span class="n">attribute</span> <span class="o">=</span> <span class="n">attribute</span><span class="o">.</span><span class="n">to_crs</span><span class="p">(</span><span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">)</span>
+                    <span class="n">projected_model</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">attribute</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
+                    <span class="c1"># b&#39;tolerance condition error&#39;, b&#39;latitude or longitude exceeded limits&#39;</span>
+                    <span class="n">failed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
             <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attribute</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
                 <span class="k">if</span> <span class="s1">&#39;geometry&#39;</span> <span class="ow">in</span> <span class="n">attribute</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-                    <span class="c1"># print(&#39;Converting {}&#39;.format(key))</span>
-                    <span class="n">temp</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span>
-                    <span class="n">temp</span><span class="o">.</span><span class="n">crs</span> <span class="o">=</span>  <span class="p">{</span><span class="s1">&#39;init&#39;</span><span class="p">:</span> <span class="s1">&#39;epsg:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">epsg</span><span class="p">)}</span>
-                    <span class="n">attribute</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">temp</span><span class="o">.</span><span class="n">to_crs</span><span class="p">(</span><span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">))</span>
-                    <span class="n">projected_model</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">attribute</span><span class="p">)</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="c1"># print(&#39;Converting {}&#39;.format(key))</span>
+                        <span class="n">temp</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span>
+                        <span class="n">temp</span><span class="o">.</span><span class="n">crs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;init&#39;</span><span class="p">:</span> <span class="s1">&#39;epsg:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">epsg</span><span class="p">)}</span>
+                        <span class="n">attribute</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">temp</span><span class="o">.</span><span class="n">to_crs</span><span class="p">(</span><span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">))</span>
+                        <span class="n">projected_model</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">attribute</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
+                        <span class="c1"># b&#39;tolerance condition error&#39;, b&#39;latitude or longitude exceeded limits&#39;</span>
+                        <span class="n">failed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+
             <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attribute</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">):</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">temp</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoSeries</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span>
-                    <span class="n">temp</span><span class="o">.</span><span class="n">crs</span> <span class="o">=</span>  <span class="p">{</span><span class="s1">&#39;init&#39;</span><span class="p">:</span> <span class="s1">&#39;epsg:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">epsg</span><span class="p">)}</span>
+                    <span class="n">temp</span><span class="o">.</span><span class="n">crs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;init&#39;</span><span class="p">:</span> <span class="s1">&#39;epsg:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">epsg</span><span class="p">)}</span>
                     <span class="n">attribute</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">temp</span><span class="o">.</span><span class="n">to_crs</span><span class="p">(</span><span class="n">epsg</span><span class="o">=</span><span class="n">epsg</span><span class="p">))</span>
                     <span class="n">projected_model</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">attribute</span><span class="p">)</span>
                 <span class="k">except</span><span class="p">:</span>
-                    <span class="k">pass</span>
+                    <span class="k">if</span> <span class="n">attribute</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;geometry&#39;</span><span class="p">:</span>
+                        <span class="n">failed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
         <span class="n">projected_model</span><span class="o">.</span><span class="n">epsg</span> <span class="o">=</span> <span class="n">epsg</span>
         <span class="n">projected_model</span><span class="o">.</span><span class="n">coordinates_unit</span> <span class="o">=</span> <span class="n">coordinates_unit</span>
 
-        <span class="k">return</span> <span class="n">projected_model</span></div></div>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">failed</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;could not change epsg for the following attributes: &#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">failed</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">projected_model</span></div>
+
+<div class="viewcode-block" id="Model.describe"><a class="viewcode-back" href="../../../quetzal.model.model.html#quetzal.model.model.Model.describe">[docs]</a>    <span class="k">def</span> <span class="nf">describe</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># general case</span>
+        <span class="k">for</span> <span class="n">attr</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+                <span class="n">desc</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="n">desc</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                <span class="n">desc</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">)</span> <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">centroid</span><span class="o">.</span><span class="n">equals</span><span class="p">(</span><span class="n">gpd</span><span class="o">.</span><span class="n">GeoSeries</span><span class="p">({</span><span class="mi">0</span><span class="p">:</span> <span class="n">Point</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)})):</span>
+                <span class="k">continue</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
+                <span class="n">desc</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
+                <span class="n">desc</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">desc</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+                    <span class="n">desc</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">attr</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="n">desc</span><span class="p">])</span>
+        <span class="c1"># specific cases</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">,</span> <span class="s1">&#39;desc&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">sort_index</span><span class="p">()</span></div></div>
 </pre></div>
 
            </div>
+           
           </div>
           <footer>
-  
 
   <hr/>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2018, Systra.
+        &#169; Copyright 2018, Systra.
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
-
         </div>
       </div>
 
@@ -590,36 +1007,15 @@
   </div>
   
 
-
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'../../../',
-            VERSION:'',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
-        };
-    </script>
-      <script type="text/javascript" src="../../../_static/jquery.js"></script>
-      <script type="text/javascript" src="../../../_static/underscore.js"></script>
-      <script type="text/javascript" src="../../../_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>

@@ -1,15 +1,14 @@
-# -*- coding: utf-8 -*-
-
 __author__ = 'qchasserieau'
+
 import re
 
 
 class Line:
     def __init__(self, chunk):
         self.chunk = chunk
-        try :
+        try:
             self.name = self.chunk.split("'")[1]
-        except:
+        except Exception:
             self.name = 'not_a_line'
 
     def change_time(self, time_factor=1, offset=0):
@@ -21,12 +20,12 @@ class Line:
         self.format_chunk()
 
     def cut_at_node(self, n, keep='left'):
-        self.chunk = _cut_at_node(self.chunk, n,  keep)
+        self.chunk = _cut_at_node(self.chunk, n, keep)
         self.format_chunk()
 
     def cut_between(self, from_node, to_node):
-        #TODO understand and kill the fix below
-        self.chunk = _cut_between(self.chunk, from_node,  to_node).replace('RT=-', 'RT=')
+        # TODO understand and kill the fix below
+        self.chunk = _cut_between(self.chunk, from_node, to_node).replace('RT=-', 'RT=')
         self.format_chunk()
 
     def format_chunk(self):
@@ -53,7 +52,6 @@ class Line:
         return self.chunk
 
 
-
 equal = re.compile('[ ]*[=]+[ ]*')
 coma = re.compile('[ ]*[,]+[ ]*')
 
@@ -63,9 +61,11 @@ node_re = re.compile(regex_node_rt)
 regex_time = 'RT=[0-9]{1,6}[.]?[0-9]{0,6}'
 time_re = re.compile(regex_time)
 
+
 def _stop_list(text, regex='N=[0-9]{4,6}'):
     stop_re = re.compile(regex)
     return [int(f[2:]) for f in stop_re.findall(text)]
+
 
 def _add_chunk(left, right, start='left'):
     left_offset = _chunk_times(left)[-1]
@@ -81,7 +81,9 @@ def _add_chunk(left, right, start='left'):
             return left.split('N=')[0] + ', N=' + 'N='.join(_add_chunk(right, left, start='left').split('N=')[1:]) + '\n'
         else:
             print('terminus do not match : %i -- %i | %i -- %i' % (
-                 _stop_list(right)[0], _stop_list(right)[-1]), _stop_list(left)[0], _stop_list(left)[-1])
+                _stop_list(right)[0], _stop_list(right)[-1]), _stop_list(left)[0], _stop_list(left)[-1]
+            )
+
 
 def _chunk_times(chunk):
     clean_chunk = chunk.replace(' ', '')
@@ -103,7 +105,7 @@ def _change_time(chunk, time_factor=1, time_offset=0):
 
 
 def _zip_rt_times(chunk, time_factor=1, time_offset=0):
-    clean_chunk = chunk.replace(' ','')
+    clean_chunk = chunk.replace(' ', '')
     nodes_rt = [int(f[2:-4]) for f in node_re.findall(clean_chunk)]
     times = [float(f[3:]) for f in time_re.findall(clean_chunk)]
     _times = [round(t * time_factor + time_offset, 2) for t in times]
@@ -111,26 +113,26 @@ def _zip_rt_times(chunk, time_factor=1, time_offset=0):
 
 
 def _cut_at_node(chunk, n, keep='left'):
-    s = 'N='+str(n)
+    s = 'N=' + str(n)
     left = chunk.split('N=')[0]
-    offset = -1*dict(_zip_rt_times(chunk))[n]
+    offset = -1 * dict(_zip_rt_times(chunk))[n]
 
     if keep == 'right':
-        return _change_time(left+ s + chunk.split(str(n))[1], 1, time_offset=offset)
+        return _change_time(left + s + chunk.split(str(n))[1], 1, time_offset=offset)
     if keep == 'left':
         return chunk.split(s)[0] + s + ', RT=' + str(offset)
 
 
 def _cut_between(chunk, na, nb, failed=False):
     try:
-        test =  _cut_at_node(_cut_at_node(chunk, na, keep='right'), nb, keep='left')
+        test = _cut_at_node(_cut_at_node(chunk, na, keep='right'), nb, keep='left')
 
         if (str(na) in chunk) and (str(nb) in test):
             return test
         else:
             return _cut_at_node(_cut_at_node(chunk, nb, keep='right'), na, keep='left')
-    except:
-        if failed == False:
+    except Exception:
+        if not failed:
             return _cut_between(chunk, nb, na, failed=True)
         else:
             return chunk
@@ -150,5 +152,3 @@ def _set_direct(chunk, from_stop, to_stop):
         _chunk = chunk.replace(match, 'N='.join(match.split('N=')[:2]) + 'N=' + b + ', ')
 
     return _chunk
-
-

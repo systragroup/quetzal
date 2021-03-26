@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 The following colors are mentioned in Systra's graphical charter: \n
 red shades \n
@@ -25,7 +24,7 @@ red_shades = ['#691214', '#9d1a1e', '#d22328', '#e8777a', '#f0a4a6', '#f7d2d3']
 grey_shades = ['#303032', '#5a5a5a', '#7f7f7f', '#a6a5a5', '#c7c7c8', '#e3e3e4']
 
 
-# Couleurs ordonné dans le sens des préconisations de la charte graphique 
+# Couleurs ordonné dans le sens des préconisations de la charte graphique
 sorted_colors = ['#d22328', '#7f7f7f', '#691214', '#f0a4a6']
 
 # Couleurs secondaires
@@ -38,67 +37,72 @@ linedraft_shades = ["#1f77b4", "#2ca02c", "#d62728", "#9467bd", "#ff7f0e", "#8c5
                     "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"]
 
 all_colors = {
-        'rainbow_shades': rainbow_shades,
-        'red_shades': red_shades,
-        'grey_shades': grey_shades,
-        'sorted_colors': sorted_colors,
-        'secondary_colors': secondary_colors,
-        'linedraft_shades': linedraft_shades
+    'rainbow_shades': rainbow_shades,
+    'red_shades': red_shades,
+    'grey_shades': grey_shades,
+    'sorted_colors': sorted_colors,
+    'secondary_colors': secondary_colors,
+    'linedraft_shades': linedraft_shades
 }
 
+
 def display_colors(label_hexa_dict):
-        """
-         Displays colors from a dict {label: hexadecimal}
-        """
-        x = np.linspace(0, 1, 10)
-        i = -1
-        for n, c in label_hexa_dict.items():
-                i+=1
-                plot = plt.plot(x, x*0 + i, linewidth=10, color=c, label=n)
-                plt.legend(loc='center left', bbox_to_anchor=(1.1, 0.5))
-        return plot
+    """
+        Displays colors from a dict {label: hexadecimal}
+    """
+    x = np.linspace(0, 1, 10)
+    i = -1
+    for n, c in label_hexa_dict.items():
+        i += 1
+        plot = plt.plot(x, x * 0 + i, linewidth=10, color=c, label=n)
+        plt.legend(loc='center left', bbox_to_anchor=(1.1, 0.5))
+    return plot
 
 
 def show_all_colors(
-                figsize=(15,10),
-                color_lists=['rainbow_shades', 'red_shades', 'grey_shades',\
-                        'sorted_colors', 'secondary_colors', 'linedraft_shades']):
-        n = len(color_lists)
-        if n<=3:
-                n_rows=1
-                n_cols=n
-        else:
-                n_rows = 2
-                n_cols = int(np.ceil(n /n_rows))
-                
-        f = plt.figure(figsize=figsize)
-        index = 1
-        for name, c_list in all_colors.items():
-                if name in color_lists:
-                        to_show = {}
-                        for i in range(len(c_list)):
-                                to_show.update({'{}[{}] - {}'.format(name, i, c_list[i]): c_list[i]})
-                        ax = f.add_subplot(n_rows,n_cols,index)
-                        ax = display_colors(to_show)
-                        if (index-1) // n_cols == 0:
-                                plt.legend(loc='lower left', bbox_to_anchor=(0,1.1))
-                        else:
-                                plt.legend(loc='upper left', bbox_to_anchor=(0,-0.1))
-                        index += 1
+    figsize=(15, 10),
+    color_lists=['rainbow_shades', 'red_shades', 'grey_shades',
+                 'sorted_colors', 'secondary_colors', 'linedraft_shades']
+):
+    n = len(color_lists)
+    if n <= 3:
+        n_rows = 1
+        n_cols = n
+    else:
+        n_rows = 2
+        n_cols = int(np.ceil(n / n_rows))
+    f = plt.figure(figsize=figsize)
+    index = 1
+    for name, c_list in all_colors.items():
+        if name in color_lists:
+            to_show = {}
+            for i in range(len(c_list)):
+                to_show.update({'{}[{}] - {}'.format(name, i, c_list[i]): c_list[i]})
+            _ = f.add_subplot(n_rows, n_cols, index)
+            _ = display_colors(to_show)
+            if (index - 1) // n_cols == 0:
+                plt.legend(loc='lower left', bbox_to_anchor=(0, 1.1))
+            else:
+                plt.legend(loc='upper left', bbox_to_anchor=(0, -0.1))
+            index += 1
 
 
 def itercolors(color_list, repetition):
-    return list(itertools.chain(*[[color]*repetition for color in color_list]))
+    return list(itertools.chain(*[[color] * repetition for color in color_list]))
+
 
 _NUMERALS = '0123456789abcdefABCDEF'
-_HEXDEC = {v: int(v, 16) for v in (x+y for x in _NUMERALS for y in _NUMERALS)}
+_HEXDEC = {v: int(v, 16) for v in (x + y for x in _NUMERALS for y in _NUMERALS)}
 LOWERCASE, UPPERCASE = 'x', 'X'
+
 
 def rgb(triplet):
     return _HEXDEC[triplet[1:][0:2]], _HEXDEC[triplet[1:][2:4]], _HEXDEC[triplet[1:][4:6]]
 
+
 def triplet(rgb, lettercase=LOWERCASE):
-    return '#'+(format(rgb[0]<<16 | rgb[1]<<8 | rgb[2], '06'+lettercase)).upper()
+    return '#' + (format(rgb[0] << 16 | rgb[1] << 8 | rgb[2], '06' + lettercase)).upper()
+
 
 def clear(rgb, x=50):
     (r, g, b) = rgb
@@ -107,25 +111,25 @@ def clear(rgb, x=50):
     _b = round(((100 - x) * b + x * 255) / 100)
     return (_r, _g, _b)
 
+
 def clear_shades():
     return [triplet(clear(rgb(shade))) for shade in rainbow_shades]
 
 
 d = {
-    'marron' : 8,
-    'orange' : 5,
-    'rouge' : 0,
-    'bleue' : 1,
-    'verte' : 2,
-    'jaune' : 3,
-    'violette' : 4,
+    'marron': 8,
+    'orange': 5,
+    'rouge': 0,
+    'bleue': 1,
+    'verte': 2,
+    'jaune': 3,
+    'violette': 4,
     'rose': 9
 }
+
 
 def in_string(name):
     for c in d.keys():
         if c in name:
             return rainbow_shades[d[c]]
     return rainbow_shades[7]
-
-

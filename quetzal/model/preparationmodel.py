@@ -1,15 +1,10 @@
-# -*- coding: utf-8 -*-
-
-import pandas as pd
 import numpy as np
-
-from quetzal.engine import engine,  connectivity, gps_tracks
+import pandas as pd
+from quetzal.engine import connectivity, engine, gps_tracks
 from quetzal.engine.add_network import NetworkCaster
-from quetzal.model import model, cubemodel
-
-from syspy.skims import skims
+from quetzal.model import cubemodel, model
 from syspy.renumber import renumber
-
+from syspy.skims import skims
 from tqdm import tqdm
 
 
@@ -29,26 +24,21 @@ log = model.log
 
 
 class PreparationModel(model.Model, cubemodel.cubeModel):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
- 
-
-
 
     @track_args
     def preparation_footpaths(
-        self, 
-        road=False, 
-        speed=3, 
-        max_length=None, 
-        n_clusters=None, 
+        self,
+        road=False,
+        speed=3,
+        max_length=None,
+        n_clusters=None,
         **kwargs
     ):
         """
             * requires: nodes
             * builds: footpaths
-
         """
         try:
             self.footpaths = connectivity.build_footpaths(
@@ -59,9 +49,9 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 coordinates_unit=self.coordinates_unit,
                 **kwargs
             )
-        except ValueError as e: #Shape of passed values is (1, 3019), indices imply (1, 5847)
+        except ValueError as e:  # Shape of passed values is (1, 3019), indices imply (1, 5847)
             print('an error has occured: ', e)
-            n_clusters = int(int(str(e).split('1, ')[1].split(')')[0])  * 0.9)
+            n_clusters = int(int(str(e).split('1, ')[1].split(')')[0]) * 0.9)
             print('now trying to run the method with n_cluster = ' + str(n_clusters))
             self.footpaths = connectivity.build_footpaths(
                 self.nodes,
@@ -73,16 +63,16 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             )
 
         if road:
-            v = kwargs['speed'] * 1000 / 3600 # en m/s
+            v = kwargs['speed'] * 1000 / 3600  # en m/s
             self.road_links['walk_time'] = self.road_links['length'] / v
 
     @track_args
     def preparation_ntlegs(
-        self, 
-        short_leg_speed=2, 
+        self,
+        short_leg_speed=2,
         long_leg_speed=10,
         threshold=1000,
-        n_ntlegs=5, 
+        n_ntlegs=5,
         max_ntleg_length=5000,
         zone_to_transit=True,
         zone_to_road=False
@@ -152,14 +142,13 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 coordinates_unit=self.coordinates_unit
             )
             ntlegs['walk_time'] = ntlegs['time']
-
             self.road_to_transit = ntlegs.loc[ntlegs['distance'] < length].copy()
 
     def preparation_drop_redundant_zone_to_transit(self):
         self.zone_to_transit.sort_values('time', inplace=True)
         trips = self.links.groupby('a')['trip_id'].agg(set)
         df = self.zone_to_transit
-        
+
         keep = []
         # access
         zones = set(df.loc[df['direction'] == 'access']['a'])
@@ -176,8 +165,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                     index, t, n = ztt.iloc[0][['index', 'trips', 'n_trips']].values
                     ztt = ztt.loc[ztt['n_trips'] > 0]
                     keep.append(index)
-                    
-        # egress      
+
+        # egress
         zones = set(df.loc[df['direction'] != 'access']['b'])
         for zone in tqdm(set(zones)):
             ztt = self.zone_to_transit.loc[self.zone_to_transit['b'] == zone]
@@ -187,14 +176,13 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 n = 1
                 t = set()
                 while n > 0:
-                    ztt['trips'] = [ trips - t for trips in ztt['trips']]
+                    ztt['trips'] = [trips - t for trips in ztt['trips']]
                     ztt['n_trips'] = [len(trips) for trips in ztt['trips']]
                     ztt.sort_values('n_trips', ascending=False, inplace=True)
                     index, t, n = ztt.iloc[0][['index', 'trips', 'n_trips']].values
                     ztt = ztt.loc[ztt['n_trips'] > 0]
                     keep.append(index)
         self.zone_to_transit = self.zone_to_transit.loc[list(set(keep))]
-            
 
     @track_args
     def preparation_cast_network(
@@ -217,33 +205,29 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         :param nodes_checkpoints: mandatory transit nodes
         :param penalty factor: ...
         :ng_kwargs: ...
-
         """
-
-
         if dumb_cast:
             nc = NetworkCaster(
-                self.nodes, 
-                self.links, 
+                self.nodes,
+                self.links,
                 self.road_nodes
             )
             nc.dumb_cast()
-
         else:
-            try :
-                dump = self.road_links[weight] + 1
+            try:
+                self.road_links[weight] + 1
             except TypeError:
                 raise TypeError(str(weight) + ' should be an int or a float')
- 
+
             nc = NetworkCaster(
-                self.nodes, 
-                self.links, 
-                self.road_nodes, 
+                self.nodes,
+                self.links,
+                self.road_nodes,
                 self.road_links,
                 weight=weight
             )
             nc.build(
-                nearest_method=nearest_method, 
+                nearest_method=nearest_method,
                 penalty_factor=penalty_factor,
                 coordinates_unit=self.coordinates_unit,
                 geometry=True,
@@ -262,10 +246,9 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             self.links = self.links.loc[self.links['a'] != self.links['b']]
             self.nodes = self.road_nodes.loc[list(self.link_nodeset())].copy()
             self.road_to_transit = None
-
-        # if we do not replace the nodes by the road_nodes,
+        # if we do not replace the nodes by the road_nodes,
         # we have to provide road to transit legs...
-        elif not dumb_cast:  
+        elif not dumb_cast:
 
             rc = nc.road_access['geometry'].reset_index()
             if self.coordinates_unit == 'degree':
@@ -285,19 +268,19 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
 
     @track_args
     def preparation_logit(
-        self, 
-        mode=1, 
-        pt_mode=1, 
-        pt_path=1, 
+        self,
+        mode=1,
+        pt_mode=1,
+        pt_path=1,
         segments=[],
         time=-1,
         price=-1,
         transfers=-1,
-        time_shift=None, # for time expanded model
+        time_shift=None,  # for time expanded model
         route_types=None
     ):
         """
-        * requires: 
+        * requires:
         * builds: mode_utility, mode_nests, logit_scales, utility_values
 
         :param mode: phi parameter used in the logit choice between modes
@@ -311,16 +294,15 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         we should have 1 >= mode >= pt_mode >= pt_path > 0
         if the three of them are equal to 1 the nested logit will be equivalent to a flat logit
         """
-        #TODO : move to preparation
-        
+        # TODO : move to preparation
         # utility values
         if time_shift is None:
             self.utility_values = pd.DataFrame(
-                {'root': pd.Series( {'time': time, 'price': price, 'ntransfers': transfers, 'mode_utility': 1})}
+                {'root': pd.Series({'time': time, 'price': price, 'ntransfers': transfers, 'mode_utility': 1})}
             )
         else:
             self.utility_values = pd.DataFrame(
-                {'root': pd.Series( {'time': time, 'price': price, 'ntransfers': transfers, 'mode_utility': 1, 'time_shift': time_shift})}
+                {'root': pd.Series({'time': time, 'price': price, 'ntransfers': transfers, 'mode_utility': 1, 'time_shift': time_shift})}
             )
         self.utility_values.index.name = 'value'
         self.utility_values.columns.name = 'segment'
@@ -337,9 +319,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         self.mode_utility.index.name = 'route_type'
         self.mode_utility.columns.name = 'segment'
 
-
         # mode nests
-        self.mode_nests =  pd.DataFrame(
+        self.mode_nests = pd.DataFrame(
             {'root': pd.Series({rt: 'pt' for rt in route_types})}
         )
 
@@ -364,7 +345,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
     def preparation_clusterize_zones(
         self, max_zones=500, cluster_column=None,
         is_od_stack=False, **kwargs
-        ):
+    ):
         """
         clusterize zones
             * requires: zones, volumes
@@ -425,7 +406,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
 
     def preparation_map_tracks(
         self,
-        agg={'gps_speed': lambda s: s.mean() * 3.6},
+        agg={'speed': lambda s: s.mean() * 3.6},
         buffer=50,
         smoothing_span=100,
         *args, **kwargs
@@ -437,23 +418,22 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             iterator.desc = str(trip_id)
             points = self.track_points.loc[self.track_points['trip_id'] == trip_id]
             times = gps_tracks.get_times(
-                points, 
-                road_links=self.road_links, 
-                buffer=buffer, 
-                road_nodes=self.road_nodes, 
+                points,
+                road_links=self.road_links,
+                buffer=buffer,
+                road_nodes=self.road_nodes,
                 smoothing_span=smoothing_span
             )
             times['trip_id'] = trip_id
             to_concat.append(times)
-            
-        # INDEX
+
+        # INDEX
         self.road_links.drop(['index'], axis=1, errors='ignore', inplace=True)
         indexed = self.road_links.reset_index().set_index(['a', 'b'])['index'].to_dict()
         concatenated = pd.concat(to_concat)
-        concatenated['road_link'] = concatenated.apply(lambda r: indexed[(r['a'], r['b'])], axis=1) 
-        aggregated = concatenated.groupby(['road_link'])['speed'].agg(agg)
-        
+        concatenated['road_link'] = concatenated.apply(lambda r: indexed[(r['a'], r['b'])], axis=1)
+        aggregated = concatenated.groupby(['road_link']).agg(agg)
+
         for c in aggregated.columns:
             self.road_links[c] = aggregated[c]
-            
         self.track_links = concatenated.drop(['a', 'b'], axis=1)

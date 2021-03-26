@@ -1,23 +1,22 @@
-# -*- coding: utf-8 -*-
-
 """
 This module provides tools for geometry processing.
 """
 
 __author__ = 'qchasserieau'
 
-from tqdm import tqdm
-import shapely
 import json
 from math import pi
+
+import geopandas as gpd
 import numpy as np
 import pandas as pd
-import geopandas as gpd
+import shapely
+from tqdm import tqdm
+
 
 def reversed_polyline(polyline):
     coords = list(polyline.coords)
     return shapely.geometry.LineString(reversed(coords))
-
 
 
 def linestring_geometry(row):
@@ -43,6 +42,7 @@ def linestring_from_indexed_point_geometries(indexed, points):
     except ValueError:
         return None
 
+
 def line_list_to_polyline(geometries):
     coord_sequence = []
     last = False
@@ -55,9 +55,10 @@ def line_list_to_polyline(geometries):
     except ValueError:
         return None
 
+
 def polyline_to_line_list(geometry, tolerance=0):
     sequence = geometry.simplify(tolerance).coords if tolerance else geometry.coords
-    couples = [(sequence[i], sequence[i+1]) for i in range(len(sequence) - 1)]
+    couples = [(sequence[i], sequence[i + 1]) for i in range(len(sequence) - 1)]
     return [shapely.geometry.linestring.LineString(couple) for couple in couples]
 
 
@@ -67,8 +68,8 @@ def string_to_geometry(string_series):
 
 
 def geometry_to_string(geometry_series):
-        iterator = tqdm(list(geometry_series), 'geometry_to_string')
-        return [json.dumps(shapely.geometry.mapping(x)) for x in iterator]
+    iterator = tqdm(list(geometry_series), 'geometry_to_string')
+    return [json.dumps(shapely.geometry.mapping(x)) for x in iterator]
 
 
 def coexist(
@@ -96,33 +97,33 @@ def angle(geometry):
     ya = geometry.coords[0][1]
     xb = geometry.coords[-1][0]
     yb = geometry.coords[-1][1]
-    
+
     delta_x = xb - xa
     delta_y = yb - ya
-    
+
     if xb != xa:
-        tan = delta_y / delta_x 
+        tan = delta_y / delta_x
         a = np.arctan(tan)
     else:
         a = 0
-    
+
     if delta_x < 0:
         a += pi
-        
-    return (a  + 2*pi) % (2*pi)
+    return (a + 2 * pi) % (2 * pi)
+
 
 def b_crosses_a_to_the_left(a, b):
-    ab_angle = angle(b) - angle(a) 
-    ab_angle =  (ab_angle + 2*pi) % (2*pi)
+    ab_angle = angle(b) - angle(a)
+    ab_angle = (ab_angle + 2 * pi) % (2 * pi)
     return ab_angle < pi
 
 
 def delta_angle(g_a, g_b):
     delta = angle(g_a) - angle(g_b)
-    return (delta + 2*pi) % (2*pi)
+    return (delta + 2 * pi) % (2 * pi)
 
 
-def collinear(g_a, g_b, tol=pi/4):
+def collinear(g_a, g_b, tol=pi / 4):
     return np.absolute(delta_angle(g_a, g_b) - pi) >= (pi - tol)
 
 
@@ -144,11 +145,10 @@ def dissociate_collinear_lines(lines, coexist_kwargs={}):
         taken = {
             uniques[other_line]
             for other_line in sorted_lines
-            if conflicts[line][other_line] and
-            other_line != line
+            if conflicts[line][other_line]
+            and other_line != line
         }
         uniques[line] = min(possibilities - taken)
-
     return uniques
 
 
@@ -158,7 +158,7 @@ def line_rows(row, tolerance):
     The initial geometry is a polyline. It is simplified then cut at its checkpoints.
     """
     line_list = polyline_to_line_list(row['geometry'], tolerance)
-    df = pd.DataFrame([row]*(len(line_list))).reset_index(drop=True)
+    df = pd.DataFrame([row] * (len(line_list))).reset_index(drop=True)
     df['geometry'] = pd.Series(line_list)
     return df
 
@@ -178,9 +178,7 @@ def cut_ab_at_c(geometry, intersection):
     """
     Geometry is a line. intersection is a point.
     returns two lines : origin->intersection and intersection->destination
-
     """
-
     coords = list(geometry.coords)
     a = coords[0]
     b = coords[-1]
@@ -195,7 +193,7 @@ def cut_ab_at_c(geometry, intersection):
 def add_centroid_to_polyline(polyline, polygon):
     """
     polyline is actualy two points geometry. Returns a three points geometry
-    if the line intersects the polygon. The centroid of the polygon is added 
+    if the line intersects the polygon. The centroid of the polygon is added
     to the line (in the midle)
     """
     lines = polyline_to_line_list(polyline)
@@ -205,7 +203,6 @@ def add_centroid_to_polyline(polyline, polygon):
         to_concatenate += cut_ab_at_c(line, centroid) if polygon.intersects(line) else [line]
 
     chained = line_list_to_polyline(to_concatenate)
-
     return chained
 
 
@@ -213,10 +210,9 @@ def add_centroids_to_polyline(geometry, intersections, buffer=1e-9):
     """
     Recursive:
     geometry is a line. Every point in itersections is added to it recursively.
-    In the end, a polyline is returned. All the points that were in intersections can 
+    In the end, a polyline is returned. All the points that were in intersections can
     be found in the coordinates of the polyline.
     """
-
     if not len(intersections):
         return [geometry]
 
@@ -225,8 +221,8 @@ def add_centroids_to_polyline(geometry, intersections, buffer=1e-9):
 
     coord_intersections = set(intersections).intersection(coords)
     sequence_dict = {coords[i]: i for i in range(len(coords))}
-    cuts = sorted([0] + [sequence_dict[coord] for coord in coord_intersections] + [len(coords)-1])
-    coord_lists = [coords[cuts[i]: cuts[i+1] + 1] for i in range(len(cuts)-1)]
+    cuts = sorted([0] + [sequence_dict[coord] for coord in coord_intersections] + [len(coords) - 1])
+    coord_lists = [coords[cuts[i]: cuts[i + 1] + 1] for i in range(len(cuts) - 1)]
     polylines = [shapely.geometry.LineString(coord_list) for coord_list in coord_lists if len(coord_list) > 1]
 
     if len(remaining_intersections) == 0:
@@ -243,12 +239,12 @@ def add_centroids_to_polyline(geometry, intersections, buffer=1e-9):
 
             polylines = [add_centroid_to_polyline(polyline, polygon) for polyline in polylines]
 
-    # recursive
+    # recursive
     return add_centroids_to_polyline(
-            line_list_to_polyline(polylines), 
-            coord_intersections.union(centroid_coords), 
-            buffer
-        )
+        line_list_to_polyline(polylines),
+        coord_intersections.union(centroid_coords),
+        buffer
+    )
 
 
 def intersects_in_between(geometry_a, geometry_b):
@@ -256,7 +252,6 @@ def intersects_in_between(geometry_a, geometry_b):
     Returns True if :
     geometry_a and geometry_b form a T intersection or a cross intersection
     """
-
     # they dont even intersect, it is not an intersection
     if not geometry_a.intersects(geometry_b):
         return False
@@ -267,44 +262,45 @@ def intersects_in_between(geometry_a, geometry_b):
     # the two geometries share an endpoint.
     if set(boundaries_a).intersection(set(boundaries_b)):
         return False
-
     return True
+
 
 def connected_geometries(sorted_edges):
     try:
         edges = sorted_edges.copy()
         a = list(edges.index)
-        #a = [i for i in a if i in edges.index]
-        b = [edges.loc[a[i], 'b'] == edges.loc[a[i+1], 'a'] for i in range(len(a) - 1)]
+        # a = [i for i in a if i in edges.index]
+        b = [edges.loc[a[i], 'b'] == edges.loc[a[i + 1], 'a'] for i in range(len(a) - 1)]
 
-        s = [0] + [i+1 for i in range(len(b) - 1) if not b[i]] + [len(a)]
-        slices = [(s[i], s[i+1]) for i in range(len(s) - 1)]
+        s = [0] + [i + 1 for i in range(len(b) - 1) if not b[i]] + [len(a)]
+        slices = [(s[i], s[i + 1]) for i in range(len(s) - 1)]
 
         geometry_list = []
         for s in slices:
             line_series = edges.loc[a].iloc[s[0]: s[1]]['geometry']
             geometry = line_list_to_polyline(list(line_series))
             geometry_list.append(geometry)
-    except ValueError as e: # Can only compare identically-labeled Series objects
+    except ValueError:  # Can only compare identically-labeled Series objects
         pass
         return []
     return geometry_list
 
+
 def geometries_with_side(
-    tuple_indexed_geometry_lists, 
+    tuple_indexed_geometry_lists,
     width=1
-    ):
+):
     tigl = tuple_indexed_geometry_lists
-    
+
     # explode geometry lists
     tuples = []
-    for index_tuple,  geometry_list in tigl.items():
+    for index_tuple, geometry_list in tigl.items():
         for geometry in geometry_list:
-            tuples.append([index_tuple , geometry])
-            
+            tuples.append([index_tuple, geometry])
+
     tuple_geometries = pd.DataFrame(tuples, columns=['index_tuple', 'geometry'])
 
-    # explode line tuples
+    # explode line tuples
     tuples = []
     for index_tuple in tigl.keys():
         for item in index_tuple:
@@ -312,7 +308,7 @@ def geometries_with_side(
 
     df = pd.DataFrame(tuples, columns=['id', 'index_tuple'])
     df = pd.merge(tuple_geometries, df, on='index_tuple').dropna()
-    
+
     df['geometry_string'] = df['geometry'].astype(str)
     l = df.copy()
     groupby_columns = ['geometry_string']
@@ -325,6 +321,6 @@ def geometries_with_side(
 
     l['side'] = sides
     l['width'] = width
-    l['offset'] =  l['width'] *( l['side'] + 0.5)
+    l['offset'] = l['width'] * (l['side'] + 0.5)
 
     return gpd.GeoDataFrame(l[['geometry', 'width', 'side', 'offset', 'id']])

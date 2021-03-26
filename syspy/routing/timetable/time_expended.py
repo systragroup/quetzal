@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
-
 __author__ = 'qchasserieau'
 
-from tqdm import tqdm
 import pandas as pd
+from tqdm import tqdm
 
 
 def print_if_debug(to_print, debug):
@@ -19,7 +17,7 @@ def build_connection_dicts(
     first_only=True,
     connection_time=False,
     footpath_list=frozenset(),
-    max_wait=24*3600,
+    max_wait=24 * 3600,
     preprocess=True,
     alpha_wait=1,
     alpha_in_vehicle=1,
@@ -29,7 +27,6 @@ def build_connection_dicts(
     transfer_stops=None,
     debug=False
 ):
-
     """
     :param link_array: link DataFrame with at least: 'departure_time', 'arrival_time',
         origin_column and destination_column
@@ -42,7 +39,6 @@ def build_connection_dicts(
     :param max_wait: maximum waiting time for a transfer
     :return:
     """
-
     _links = link_array.copy()
 
     if not transfer_stops:
@@ -56,7 +52,7 @@ def build_connection_dicts(
     l = _links.sort_values(
         ['trip_id', 'link_sequence']).to_dict(orient='record')
     next_link = {
-        l[i]['index']: l[i+1] for i in range(len(l) - 1)
+        l[i]['index']: l[i + 1] for i in range(len(l) - 1)
         if l[i]['trip_id'] == l[i + 1]['trip_id']
     }
 
@@ -147,7 +143,7 @@ def build_connection_dicts(
             footpath_cost = foot_path[1] * alpha_footpath + beta_footpath
             including_foot_paths_connections += direct_neighbors(
                 stop=foot_path[0],
-                arrival_time=time+foot_path[1],
+                arrival_time=time + foot_path[1],
                 footpath_cost=footpath_cost,
                 from_stop=stop,
                 max_wait=max_wait
@@ -168,7 +164,7 @@ def build_connection_dicts(
         def all_neighbors(stop, time, max_wait=max_wait):
             try:
                 return neighbors_time_stop[stop][time]
-            except:
+            except Exception:
                 print(stop, time, max_wait)
                 return direct_neighbors(stop, time, max_wait=max_wait)
 
@@ -221,15 +217,14 @@ def build_connection_dicts(
         'neighbors_time_stop': neighbors_time_stop,
         'indexed_links': indexed_links
     }
-
     return to_return
 
 
 def distinct(l, lists):
-    differences = [len(set(r)-set(l)) for r in lists]
+    differences = [len(set(r) - set(l)) for r in lists]
     try:
         return max(differences)
-    except:
+    except Exception:
         return 1
 
 
@@ -249,9 +244,8 @@ def single_source_labels(
     origin_column='origin',
     destination_column='destination',
     debug=False,
-    max_wait=24*3600
+    max_wait=24 * 3600
 ):
-
     """
     :param source: id of the source (it belongs to the keys of connections)
     :param connections: connection dict {origin:{arrival_time:
@@ -314,7 +308,7 @@ def single_source_labels(
 
         # à corriger pour utiliser un spread en temps et non
         # un spread en cumulative cost
-        if (time-departure_time) >= (earliest[stop]-departure_time)*spread:
+        if (time - departure_time) >= (earliest[stop] - departure_time) * spread:
             pass
             # print('tim')
             # return []
@@ -353,7 +347,7 @@ def single_source_labels(
                 destination_column=destination_column,
                 max_wait=max_wait
             ))
-        except:
+        except Exception:
             print_if_debug('not in neighbors ', debug)
             proto_labels = all_neighbors(stop, time, max_wait)
 
@@ -393,16 +387,13 @@ def single_source_label_dataframe(
 
     df = pd.DataFrame(single_source_labels(source, **label_from_stop_kwargs))
     df[source_column] = source
-
     return df
 
 
 def multiple_source_label_dataframe(origins, **label_from_stop_kwargs):
-
     to_concat = []
 
     for stop in tqdm(origins):
         to_concat.append(
             single_source_label_dataframe(stop, **label_from_stop_kwargs))
-
     return pd.concat(to_concat)

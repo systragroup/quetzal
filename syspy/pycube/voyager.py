@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
-
 """
-
 **The Voyager class takes advantage from the executable file voyager.exe to launch CUBE scripts using command lines.**
 
 Launching a CUBE script with a command line requires the voyager folder that contains voyager.exe to belong to the
@@ -17,7 +14,7 @@ It may be added to one's system path with the following method:
     * Paramètres système avancés
     * Variable d'environnement
     * Variables utilisateur
-    * PATH (create PATH or add your voyager folder to its list)
+    * PATH (create PATH or add your voyager folder to its list)
 
 example:
 ::
@@ -37,7 +34,6 @@ from syspy.io.pandasshp import pandasshp
 
 
 class Voyager:
-
     def __init__(self, environment):
         self.environment = environment
 
@@ -91,22 +87,22 @@ class Voyager:
         if not fields:
             tabs = ['tab_%i' % (i + 1) for i in range(n_tab)]
             fields = tabs
-        else :
+        else:
             n_tab = len(fields)
         field_names = ', '.join(fields)
 
         filei_mati = '"%s"' % input_matrix
         fileo_reco = '"%s"' % output_dbf
-        rec_in_jloop = '        '.join(['RO.%s = MI.1.%s \n'%( fields[i], i+1) for i in range(n_tab)])
+        rec_in_jloop = '        '.join(['RO.%s = MI.1.%s \n' % (fields[i], i + 1) for i in range(n_tab)])
 
         # creating a cube script
         script = open(self.environment + r'\mat_to_dbf.s', 'w', encoding='latin')
 
         script.write(script_text.replace(
             'format_env', self.environment).replace(
-            'filei_mati',filei_mati).replace(
-            'fileo_reco',fileo_reco).replace(
-            'field_names',field_names).replace(
+            'filei_mati', filei_mati).replace(
+            'fileo_reco', fileo_reco).replace(
+            'field_names', field_names).replace(
             'rec_in_jloop', rec_in_jloop))
 
         script.close()
@@ -125,7 +121,6 @@ class Voyager:
         i='origin',
         j='destination'
     ):
-
         """
         creates a csv from a cube matrix, requires fields OR n_tab = len(fields)
 
@@ -141,7 +136,6 @@ class Voyager:
         :type debug: bool
         :return: None
         """
-
         script_text = r"""
             RUN PGM=MATRIX PRNFILE="format_env\mat_to_csv.prn" MSG='mat_to_csv'
 
@@ -155,21 +149,18 @@ class Voyager:
 
             ENDRUN
         """
-
-
         if fields is None:
-                tabs = ['tab_%i'%(i + 1) for i in range(n_tab)]
-                fields = tabs
+            tabs = ['tab_%i' % (i + 1) for i in range(n_tab)]
+            fields = tabs
         else:
             n_tab = len(fields)
         field_names = ', '.join(fields)
 
-
-        filei_mati = '"%s"'% input_matrix
+        filei_mati = '"%s"' % input_matrix
         fileo_printo = '"%s"' % output_csv
 
         print_headers = 'IF (I = 1) \n PRINT LIST ="' + '" ,";" ,"'.join([i, j] + fields) + '" PRINTO = 1 \n ENDIF'
-        print_assignation = '        '.join(['%s = MI.1.%s \n' % (fields[i].replace(' ', '_'), i+1) for i in range(n_tab)])
+        print_assignation = '        '.join(['%s = MI.1.%s \n' % (fields[i].replace(' ', '_'), i + 1) for i in range(n_tab)])
         print_statement = 'PRINT LIST = I, ";", J, ";", ' + ',";",'.join([f.replace(' ', '_') for f in fields]) + ' PRINTO = 1'
         print_in_jloop = print_assignation + ' \n' + print_statement
 
@@ -188,7 +179,6 @@ class Voyager:
         os.system('voyager.exe "' + self.environment + r'\mat_to_csv.s" ' + options)
 
     def net_to_dbf(self, input_network, output_links, output_nodes, debug=False):
-
         """
         creates a dbf from a cube network
 
@@ -202,7 +192,6 @@ class Voyager:
         :type debug: bool
         :return: None
         """
-
         script_text = r"""
             RUN PGM=NETWORK PRNFILE="%s\net_to_dbf.prn"
             FILEI LINKI[1] = "%s"
@@ -220,11 +209,10 @@ class Voyager:
         options = """/Start /CloseWhenDone /Minimize /NoSplash""" if not debug else ""
         os.system('voyager.exe "' + self.environment + r'\net_to_dbf.s" ' + options)
 
-
     def build_net_from_links_shape(
         self, links, output_network, first_node=0, length=False, debug=False,
-                                   add_symmetric=False, write_shp=False, shp_kwargs={}):
-
+        add_symmetric=False, write_shp=False, shp_kwargs={}
+    ):
         name = output_network.replace('.net', '').replace('.NET', '')
         links_to_shp = name + '_links.shp'
         nodes_to_shp = name + '_nodes.shp'
@@ -233,11 +221,10 @@ class Voyager:
         links['coordinates_b'] = links['geometry'].apply(lambda c: c.coords[0])
 
         coordinate_list = list(set(list(links['coordinates_a'])).union(list(links['coordinates_b'])))
-        coordinate_dict = {first_node + i :coordinate_list[i] for i in range(len(coordinate_list))}
+        coordinate_dict = {first_node + i: coordinate_list[i] for i in range(len(coordinate_list))}
 
         nodes = pd.DataFrame(pd.Series(coordinate_dict)).reset_index()
         nodes.columns = ['n', 'coordinates']
-
 
         links = pd.merge(links, nodes.rename(columns={'coordinates': 'coordinates_a'}), on='coordinates_a', how='left')
         links = pd.merge(links, nodes.rename(columns={'coordinates': 'coordinates_b'}), on='coordinates_b', how='left',
@@ -250,13 +237,13 @@ class Voyager:
         links = pandasdbf.convert_stringy_things_to_string(links)
 
         if length:
-            links[length] = links['geometry'].apply(lambda g : g.length)
+            links[length] = links['geometry'].apply(lambda g: g.length)
 
         if add_symmetric:
             sym = links.copy()
             sym['a'], sym['b'] = links['b'], links['a']
             sym = sym[sym['a'] != sym['b']]
-            links =pd.concat([links, sym])
+            links = pd.concat([links, sym])
 
         nodes['geometry'] = nodes['coordinates'].apply(shapely.geometry.point.Point)
         if write_shp:
@@ -265,12 +252,9 @@ class Voyager:
 
         links.drop(['geometry'], axis=1, errors='ignore', inplace=True)
 
-
         self.build_net(nodes[['n', 'geometry']], links.fillna(0), output_network, debug=debug)
 
-
     def build_net(self, nodes, links, output_network, from_geometry=True, debug=False):
-
         """
         creates a Cube .NET from links and nodes geoDataFrames
 
@@ -286,7 +270,6 @@ class Voyager:
         :type debug: bool
         :return: None
         """
-
         _nodes = nodes.copy()
         _links = links.copy()
 
@@ -324,12 +307,11 @@ class Voyager:
         os.system(cmd)
 
     def dbf_to_mat(self, lookupi, mato, fields, zones, debug=False):
-
         statements = ''
         lookups = ''
         for i in range(len(fields)):
-            statements += "MW[%i] = L(%i,I*1000000+J) \n"%(i+1, i+1)
-            lookups += "LOOKUP[%i]=lookup, RESULT=%s, \n"%(i+1, fields[i])
+            statements += "MW[%i] = L(%i,I*1000000+J) \n" % (i + 1, i + 1)
+            lookups += "LOOKUP[%i]=lookup, RESULT=%s, \n" % (i + 1, fields[i])
 
         script_text = r"""RUN PGM=MATRIX PRNFILE="%s\dbf_to_mat.prn"
         FILEI LOOKUPI[1] = "%s"
@@ -345,18 +327,18 @@ class Voyager:
         %s
         ENDJLOOP
 
-        ENDRUN"""%(
+        ENDRUN""" % (
             self.environment,
             lookupi,
             mato,
-            ', '.join([str(i) for i in list(range(1, len(fields)+1))]),
+            ', '.join([str(i) for i in list(range(1, len(fields) + 1))]),
             ', '.join(fields),
             zones,
             lookups[:-3],
             statements
         )
 
-                    # creating a cube script
+        # creating a cube script
         script = open(self.environment + r'\dbf_to_mat.s', 'w', encoding='latin')
         script.write(script_text)
         script.close()
@@ -369,14 +351,13 @@ class Voyager:
 
     def _write_lookup_database(df, i, j, path):
         _df = df.copy()
-        _df['lookup'] = _df[i]*1e6 + _df[j]
+        _df['lookup'] = _df[i] * 1e6 + _df[j]
         print('test')
         print(len(df))
         pandasdbf.write_dbf(_df, path)
     _write_lookup_database = staticmethod(_write_lookup_database)
 
-    def write_mat(self, df, i, j, mato, fields=None,  zones=None, debug=False, remove_dbf=True):
-
+    def write_mat(self, df, i, j, mato, fields=None, zones=None, debug=False, remove_dbf=True):
         """
         creates a cube .mat from a pd.DataFrame
 
@@ -396,11 +377,10 @@ class Voyager:
         :type debug: bool
         :return: None
         """
-
         if not zones:
-            zones = df[[i,j]].max().max()
+            zones = df[[i, j]].max().max()
         if not fields:
-            fields = list(set(df.columns)-{i, j})
+            fields = list(set(df.columns) - {i, j})
         _path = self.environment + r'\dbf_to_mat_from_df.dbf'
         self._write_lookup_database(df, i, j, _path)
         self.dbf_to_mat(_path, mato, fields, zones, debug=debug)
@@ -418,7 +398,6 @@ class Voyager:
         j='destination',
         remove_csv=True
     ):
-
         """
         creates a csv from a cube matrix, requires fields OR n_tab = len(fields), returns a matrix
 
@@ -434,12 +413,12 @@ class Voyager:
         :type debug: bool
         :return: the pd.DataFrame corresponding to the matrix
         """
-        n_tab =  len(fields) if fields is not None else n_tab
+        n_tab = len(fields) if fields is not None else n_tab
         self.mat_to_csv(input_matrix, output_csv, n_tab=n_tab, debug=debug, i=i, j=j)
         df = pd.read_csv(output_csv, sep=';', encoding='latin')
-        df.set_index([i,j], inplace=True)
+        df.set_index([i, j], inplace=True)
         if fields is not None:
-            df.columns=fields
+            df.columns = fields
         if (remove_csv):
             os.remove(output_csv)
         return df.reset_index()

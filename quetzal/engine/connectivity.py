@@ -1,14 +1,11 @@
-# -*- coding: utf-8 -*-
-
-from syspy.spatial import spatial
-from syspy.skims import skims
-import pandas as pd
 import geopandas as gpd
+import pandas as pd
 import shapely
+from syspy.skims import skims
+from syspy.spatial import spatial
 
 
 def node_clustering(links, nodes, n_clusters=None, prefixe='', group_id=None, **kwargs):
-
     disaggregated_nodes = nodes.copy()
     if group_id is None:
         assert n_clusters is not None, 'n_clusters must be defined if group_id is None'
@@ -68,6 +65,7 @@ def geo_join_method(geo):
 def voronoi_graph_and_tesselation(nodes, max_length=None, coordinates_unit='degree'):
 
     v_tesselation, v_graph = spatial.voronoi_diagram_dataframes(nodes['geometry'])
+
     # Compute length
     if coordinates_unit == 'degree':  # Default behaviour, assuming lat-lon coordinates
         v_graph['length'] = skims.distance_from_geometry(v_graph['geometry'])
@@ -78,12 +76,10 @@ def voronoi_graph_and_tesselation(nodes, max_length=None, coordinates_unit='degr
 
     if max_length:
         v_graph = v_graph.loc[v_graph['length'] <= max_length]
-
     return v_graph, v_tesselation
 
 
 def build_footpaths(nodes, speed=3, max_length=None, n_clusters=None, coordinates_unit='degree'):
-
     if n_clusters and n_clusters < len(nodes):
         centroids, links = centroid_and_links(nodes, n_clusters, coordinates_unit=coordinates_unit)
         nodes = nodes.loc[centroids]
@@ -116,7 +112,6 @@ def build_footpaths(nodes, speed=3, max_length=None, n_clusters=None, coordinate
 
 
 def centroid_and_links(nodes, n_clusters, coordinates_unit='degree'):
-
     clusters, cluster_series = spatial.zone_clusters(
         nodes,
         n_clusters=n_clusters,
@@ -147,7 +142,6 @@ def centroid_and_links(nodes, n_clusters, coordinates_unit='degree'):
         links['length'] = skims.distance_from_geometry(links['geometry'])
     else:
         links['length'] = gpd.GeoDataFrame(links).length
-
     return first, links
 
 

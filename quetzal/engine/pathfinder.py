@@ -1,23 +1,21 @@
-# -*- coding: utf-8 -*-
-
-from quetzal.engine import engine
-
-from scipy.sparse import csr_matrix
-from scipy.sparse.csgraph import dijkstra
-import pandas as pd
-import numpy as np
-import networkx as nx
-
 import itertools
-from syspy.skims import skims
-from syspy.spatial import spatial
-from syspy.routing.frequency import graph as frequency_graph
-import syspy.assignment.raw as assignment_raw
-from tqdm import tqdm
-from copy import deepcopy
 import json
+from copy import deepcopy
+
+import networkx as nx
+import numpy as np
+import pandas as pd
+import syspy.assignment.raw as assignment_raw
+from quetzal.engine import engine
 from quetzal.engine.subprocesses import filepaths
 from quetzal.os import parallel_call
+from scipy.sparse import csr_matrix
+from scipy.sparse.csgraph import dijkstra
+from syspy.routing.frequency import graph as frequency_graph
+from syspy.skims import skims
+from syspy.spatial import spatial
+from tqdm import tqdm
+
 
 def get_path(predecessors, i, j):
     path = [j]
@@ -26,7 +24,8 @@ def get_path(predecessors, i, j):
     while p != -9999:
         k = p = predecessors[i, k]
         path.append(p)
-    return path[::-1][1:] 
+    return path[::-1][1:]
+
 
 def get_reversed_path(predecessors, i, j):
     path = [j]
@@ -35,10 +34,11 @@ def get_reversed_path(predecessors, i, j):
     while p != -9999:
         k = p = predecessors[i, k]
         path.append(p)
-    return path[:-1] 
+    return path[:-1]
+
 
 def path_and_duration_from_graph(
-    nx_graph, 
+    nx_graph,
     pole_set,
     od_set=None,
     sources=None,
@@ -49,52 +49,53 @@ def path_and_duration_from_graph(
     **kwargs
 ):
     sources = pole_set if sources is None else sources
-    source_los=sparse_los_from_nx_graph(
-        nx_graph, pole_set, sources=sources, 
-        cutoff=cutoff+ntlegs_penalty, od_set=od_set, **kwargs)
+    source_los = sparse_los_from_nx_graph(
+        nx_graph, pole_set, sources=sources,
+        cutoff=cutoff + ntlegs_penalty, od_set=od_set, **kwargs
+    )
     source_los['reversed'] = False
-    
+
     reverse = reverse or reversed_nx_graph is not None
     if reverse:
         if reversed_nx_graph is None:
             reversed_nx_graph = nx_graph.reverse()
-        
+
         try:
             reversed_od_set = {(d, o) for o, d in od_set}
         except TypeError:
             reversed_od_set = None
 
-        target_los=sparse_los_from_nx_graph(
-            reversed_nx_graph, pole_set, sources=sources, 
-            cutoff=cutoff+ntlegs_penalty, od_set=reversed_od_set, **kwargs)
+        target_los = sparse_los_from_nx_graph(
+            reversed_nx_graph, pole_set, sources=sources,
+            cutoff=cutoff + ntlegs_penalty, od_set=reversed_od_set, **kwargs)
         target_los['reversed'] = True
         target_los['path'] = target_los['path'].apply(lambda x: list(reversed(x)))
         target_los[['origin', 'destination']] = target_los[['destination', 'origin']]
-        
+
     los = pd.concat([source_los, target_los]) if reverse else source_los
-    los.loc[los['origin'] != los['destination'],'gtime'] -= ntlegs_penalty
-    tuples = [tuple(l) for l in  los[['origin', 'destination']].values.tolist()]
+    los.loc[los['origin'] != los['destination'], 'gtime'] -= ntlegs_penalty
+    tuples = [tuple(l) for l in los[['origin', 'destination']].values.tolist()]
     los = los.loc[[t in od_set for t in tuples]]
     return los
 
+
 def sparse_los_from_nx_graph(
-    nx_graph, 
-    pole_set, 
-    sources=None, 
+    nx_graph,
+    pole_set,
+    sources=None,
     cutoff=np.inf,
     od_set=None,
 ):
-
     sources = pole_set if sources is None else sources
     if od_set is not None:
         sources = {o for o, d in od_set if o in sources}
     # INDEX
-    pole_list = sorted(list(pole_set)) # fix order
+    pole_list = sorted(list(pole_set))  # fix order
     source_list = [zone for zone in pole_list if zone in sources]
 
     nodes = list(nx_graph.nodes)
     node_index = dict(zip(nodes, range(len(nodes))))
-    
+
     zones = [node_index[zone] for zone in source_list]
     source_index = dict(zip(source_list, range(len(source_list))))
     zone_index = dict(zip(pole_list, range(len(pole_list))))
@@ -103,9 +104,9 @@ def sparse_los_from_nx_graph(
     sparse = nx.to_scipy_sparse_matrix(nx_graph)
     graph = csr_matrix(sparse)
     dist_matrix, predecessors = dijkstra(
-        csgraph=graph, 
-        directed=True, 
-        indices=zones, 
+        csgraph=graph,
+        directed=True,
+        indices=zones,
         return_predecessors=True,
         limit=cutoff
     )
@@ -124,9 +125,8 @@ def sparse_los_from_nx_graph(
     # QUETZAL FORMAT
     los = los.loc[los['gtime'] < np.inf]
     if od_set is not None:
-        tuples = [tuple(l) for l in  los[['origin', 'destination']].values.tolist()]
+        tuples = [tuple(l) for l in los[['origin', 'destination']].values.tolist()]
         los = los.loc[[t in od_set for t in tuples]]
-
 
     # BUILD PATH FROM PREDECESSORS
     od_list = los[['origin', 'destination']].values.tolist()
@@ -138,16 +138,17 @@ def sparse_los_from_nx_graph(
     los['path'] = paths
     return los
 
+
 def sparse_matrix(edges):
     nodelist = {e[0] for e in edges}.union({e[1] for e in edges})
     nlen = len(nodelist)
     index = dict(zip(nodelist, range(nlen)))
-    coefficients = zip(*((index[u], index[v], w ) for u, v, w in edges))
+    coefficients = zip(*((index[u], index[v], w) for u, v, w in edges))
     row, col, data = coefficients
     return csr_matrix((data, (row, col)), shape=(nlen, nlen)), index
 
-def link_edges(links, boarding_time=None, alighting_time=None):
 
+def link_edges(links, boarding_time=None, alighting_time=None):
     assert not (boarding_time is not None and 'boarding_time' in links.columns)
     boarding_time = 0 if boarding_time is None else boarding_time
 
@@ -155,7 +156,7 @@ def link_edges(links, boarding_time=None, alighting_time=None):
     alighting_time = 0 if alighting_time is None else alighting_time
 
     l = links.copy()
-    l['index']= l.index
+    l['index'] = l.index
     l['next'] = l['link_sequence'] + 1
 
     if 'cost' not in l.columns:
@@ -170,10 +171,10 @@ def link_edges(links, boarding_time=None, alighting_time=None):
     l['total_time'] = l['boarding_time'] + l['cost']
 
     boarding_edges = l[['a', 'index', 'total_time']].values.tolist()
-    alighting_edges = l[['index', 'b', 'alighting_time']].values.tolist()    
+    alighting_edges = l[['index', 'b', 'alighting_time']].values.tolist()
 
     transit = pd.merge(
-        l[['index', 'next', 'trip_id']], 
+        l[['index', 'next', 'trip_id']],
         l[['index', 'link_sequence', 'trip_id', 'time']],
         left_on=['trip_id', 'next'],
         right_on=['trip_id', 'link_sequence'],
@@ -183,30 +184,31 @@ def link_edges(links, boarding_time=None, alighting_time=None):
 
 
 def adjacency_matrix(
-    links, 
-    ntlegs, 
+    links,
+    ntlegs,
     footpaths,
-    ntlegs_penalty=1e9, 
-    boarding_time=None, 
+    ntlegs_penalty=1e9,
+    boarding_time=None,
     alighting_time=None,
     **kwargs
-    ):
+):
     ntlegs = ntlegs.copy()
-    
+
     # ntlegs and footpaths
-    ntlegs.loc[ntlegs['direction']=='access', 'time'] += ntlegs_penalty
-    ntleg_edges =  ntlegs[['a', 'b', 'time']].values.tolist()
+    ntlegs.loc[ntlegs['direction'] == 'access', 'time'] += ntlegs_penalty
+    ntleg_edges = ntlegs[['a', 'b', 'time']].values.tolist()
     footpaths_edges = footpaths[['a', 'b', 'time']].values.tolist()
 
     edges = link_edges(links, boarding_time, alighting_time)
     edges += footpaths_edges + ntleg_edges
     return sparse_matrix(edges)
 
+
 def los_from_graph(
-    csgraph, # graph is assumed to be a scipy csr_matrix
+    csgraph,  # graph is assumed to be a scipy csr_matrix
     node_index=None,
-    pole_set=None, 
-    sources=None, 
+    pole_set=None,
+    sources=None,
     cutoff=np.inf,
     od_set=None,
     ntlegs_penalty=1e9
@@ -215,20 +217,20 @@ def los_from_graph(
     if od_set is not None:
         sources = {o for o, d in od_set if o in sources}
     # INDEX
-    pole_list = sorted(list(pole_set)) # fix order
+    pole_list = sorted(list(pole_set))  # fix order
     source_list = [zone for zone in pole_list if zone in sources]
 
     zones = [node_index[zone] for zone in source_list]
     source_index = dict(zip(source_list, range(len(source_list))))
     zone_index = dict(zip(pole_list, range(len(pole_list))))
 
-    # SPARSE GRAPH
+    # SPARSE GRAPH
     dist_matrix, predecessors = dijkstra(
-        csgraph=csgraph, 
-        directed=True, 
-        indices=zones, 
+        csgraph=csgraph,
+        directed=True,
+        indices=zones,
         return_predecessors=True,
-        limit=cutoff+ntlegs_penalty
+        limit=cutoff + ntlegs_penalty
     )
 
     # LOS LAYOUT
@@ -247,11 +249,11 @@ def los_from_graph(
 
     # QUETZAL FORMAT
     los = los.loc[los['gtime'] < np.inf]
-    los.loc[los['origin'] != los['destination'],'gtime'] -= ntlegs_penalty
+    los.loc[los['origin'] != los['destination'], 'gtime'] -= ntlegs_penalty
     if od_set is not None:
-        tuples = [tuple(l) for l in  los[['origin', 'destination']].values.tolist()]
+        tuples = [tuple(l) for l in los[['origin', 'destination']].values.tolist()]
         los = los.loc[[t in od_set for t in tuples]]
-        
+
     # BUILD PATH FROM PREDECESSORS
     od_list = los[['origin', 'destination']].values.tolist()
     paths = [
@@ -288,7 +290,7 @@ def paths_from_graph(
     source_index = dict(zip(sources, range(len(sources))))
     index_node = {v: k for k, v in node_index.items()}
 
-    #  DIKSTRA
+    # DIKSTRA
     dist_matrix, predecessors = dijkstra(
         csgraph=csgraph,
         directed=True,
@@ -322,9 +324,10 @@ def paths_from_graph(
     ]
     odl['path'] = paths
 
-    if reverse:    
+    if reverse:
         odl[['origin', 'destination']] = odl[['destination', 'origin']]
     return odl
+
 
 class PublicPathFinder:
     def __init__(self, model, walk_on_road=False):
@@ -336,27 +339,25 @@ class PublicPathFinder:
             road_links['time'] = road_links['walk_time']
             self.footpaths = pd.concat([model.footpaths, road_links, model.road_to_transit])
             self.ntlegs = pd.concat(
-                [model.zone_to_road,  model.zone_to_transit]
+                [model.zone_to_road, model.zone_to_transit]
             )
         else:
             self.footpaths = model.footpaths.copy()
             self.ntlegs = model.zone_to_transit.copy()
 
-        try :
+        try:
             self.centroids = model.centroids.copy()
         except AttributeError:
             self.centroids = self.zones.copy()
             self.centroids['geometry'] = self.centroids['geometry'].apply(
                 lambda g: g.centroid
             )
-            
-        
 
     def first_link(self, path):
         for n in path:
             if n in self.links.index:
                 return n
-            
+
     def last_link(self, path):
         for n in reversed(path):
             if n in self.links.index:
@@ -364,19 +365,19 @@ class PublicPathFinder:
 
     def build_route_zones(self, route_column):
         """
-        find origin zones that are likely to be affected by the removal 
+        find origin zones that are likely to be affected by the removal
         each one of the routes
         """
 
         los = self.best_paths.copy()
         los['first_link'] = los['path'].apply(self.first_link)
         los['last_link'] = los['path'].apply(self.last_link)
-        
+
         right = self.links[[route_column]]
-        
+
         merged = pd.merge(los, right, left_on='first_link', right_index=True)
-        merged = pd.merge(merged, right, left_on='last_link', right_index=True, suffixes=['_first',  '_last'])
-        
+        merged = pd.merge(merged, right, left_on='last_link', right_index=True, suffixes=['_first', '_last'])
+
         first = merged[['origin', route_column + '_first']]
         first.columns = ['zone', 'route']
         last = merged[['destination', route_column + '_last']]
@@ -388,19 +389,18 @@ class PublicPathFinder:
 
     def build_route_breaker(self, route_column='route_id'):
         self.build_route_zones(route_column=route_column)
-    
+
     def build_mode_breaker(self, mode_column='route_type'):
         self.build_mode_combinations(mode_column='route_type')
 
     def build_mode_combinations(self, mode_column='route_type'):
-    
         mode_list = sorted(list(set(self.links[mode_column])))
         boolean_array = list(itertools.product((True, False), repeat=len(mode_list)))
         mode_combinations = []
         for booleans in boolean_array:
             combination = {
-                mode_list[i] 
-                for i in range(len(mode_list) )
+                mode_list[i]
+                for i in range(len(mode_list))
                 if booleans[i]
             }
             mode_combinations.append(combination)
@@ -415,19 +415,19 @@ class PublicPathFinder:
         )['index'].apply(lambda s: set(s)).to_dict()
 
     def find_best_path(
-        self, 
-        od_set=None, 
-        cutoff=np.inf, 
-        ntlegs_penalty=1e9, 
+        self,
+        od_set=None,
+        cutoff=np.inf,
+        ntlegs_penalty=1e9,
         boarding_time=None,
         **kwargs
     ):
-        pole_set=set(self.zones.index)
+        pole_set = set(self.zones.index)
         matrix, node_index = adjacency_matrix(
-            links=self.links, 
-            ntlegs=self.ntlegs, 
+            links=self.links,
+            ntlegs=self.ntlegs,
             footpaths=self.footpaths,
-            ntlegs_penalty=ntlegs_penalty, 
+            ntlegs_penalty=ntlegs_penalty,
             boarding_time=boarding_time,
             **kwargs
         )
@@ -436,27 +436,26 @@ class PublicPathFinder:
             csgraph=matrix,
             node_index=node_index,
             pole_set=pole_set,
-            od_set=od_set, 
+            od_set=od_set,
             cutoff=cutoff,
             ntlegs_penalty=ntlegs_penalty
         )
-        
+
         los['pathfinder_session'] = 'best_path'
         los['reversed'] = False
         self.best_paths = los
 
     def find_broken_route_paths(
-        self, 
-        od_set=None, 
-        cutoff=np.inf, 
+        self,
+        od_set=None,
+        cutoff=np.inf,
         route_column='route_id',
-        ntlegs_penalty=1e9, 
+        ntlegs_penalty=1e9,
         boarding_time=None,
         speedup=True,
         **kwargs
-        
     ):
-        pole_set=set(self.zones.index)
+        pole_set = set(self.zones.index)
         do_set = {(d, o) for o, d in od_set} if od_set is not None else None
         to_concat = []
         iterator = tqdm(self.route_zones.items())
@@ -465,10 +464,10 @@ class PublicPathFinder:
                 zones = set(self.zones.index).intersection(set(self.ntlegs['a']))
             iterator.desc = 'breaking route: ' + str(route_id) + ' '
             matrix, node_index = adjacency_matrix(
-                links=self.links.loc[self.links[route_column]!=route_id],
-                ntlegs=self.ntlegs, 
+                links=self.links.loc[self.links[route_column] != route_id],
+                ntlegs=self.ntlegs,
                 footpaths=self.footpaths,
-                ntlegs_penalty=ntlegs_penalty, 
+                ntlegs_penalty=ntlegs_penalty,
                 boarding_time=boarding_time,
                 **kwargs
             )
@@ -477,7 +476,7 @@ class PublicPathFinder:
                 csgraph=matrix,
                 node_index=node_index,
                 pole_set=pole_set,
-                od_set=od_set, 
+                od_set=od_set,
                 sources=zones,
                 cutoff=cutoff,
                 ntlegs_penalty=ntlegs_penalty
@@ -491,7 +490,7 @@ class PublicPathFinder:
                 csgraph=matrix.transpose(),
                 node_index=node_index,
                 pole_set=pole_set,
-                od_set=do_set, 
+                od_set=do_set,
                 sources=zones,
                 cutoff=cutoff,
                 ntlegs_penalty=ntlegs_penalty
@@ -503,26 +502,26 @@ class PublicPathFinder:
             los['pathfinder_session'] = 'route_breaker'
             to_concat.append(los)
         self.broken_route_paths = pd.concat(to_concat)
-    
+
     def find_broken_mode_paths(
-        self, 
-        od_set=None, 
-        cutoff=np.inf, 
+        self,
+        od_set=None,
+        cutoff=np.inf,
         mode_column='mode_type',
-        ntlegs_penalty=1e9, 
+        ntlegs_penalty=1e9,
         boarding_time=None,
         **kwargs
     ):
-        pole_set=set(self.zones.index)
+        pole_set = set(self.zones.index)
         to_concat = []
-        iterator =  tqdm(self.mode_combinations)
+        iterator = tqdm(self.mode_combinations)
         for combination in iterator:
             iterator.desc = 'breaking modes: ' + str(combination) + ' '
             matrix, node_index = adjacency_matrix(
                 links=self.links.loc[~self.links[mode_column].isin(combination)],
-                ntlegs=self.ntlegs, 
+                ntlegs=self.ntlegs,
                 footpaths=self.footpaths,
-                ntlegs_penalty=ntlegs_penalty, 
+                ntlegs_penalty=ntlegs_penalty,
                 boarding_time=boarding_time,
                 **kwargs
             )
@@ -531,7 +530,7 @@ class PublicPathFinder:
                 csgraph=matrix,
                 node_index=node_index,
                 pole_set=pole_set,
-                od_set=od_set, 
+                od_set=od_set,
                 cutoff=cutoff,
                 ntlegs_penalty=ntlegs_penalty
             )
@@ -539,11 +538,10 @@ class PublicPathFinder:
             los['pathfinder_session'] = 'mode_breaker'
             los['broken_modes'] = [combination for i in range(len(los))]
             to_concat.append(los)
-            
         self.broken_mode_paths = pd.concat(to_concat)
 
     def find_best_paths(
-        self, 
+        self,
         route_column='route_id',
         mode_column='route_type',
         broken_routes=False,
@@ -555,21 +553,20 @@ class PublicPathFinder:
         boarding_time=None,
         **kwargs
     ):
-        
         to_concat = []
         if broken_routes:
             self.find_best_path(
-                boarding_time=boarding_time, 
-                cutoff=cutoff, 
-                od_set=od_set, 
+                boarding_time=boarding_time,
+                cutoff=cutoff,
+                od_set=od_set,
                 **kwargs
-            ) # builds the graph
+            )  # builds the graph
             to_concat.append(self.best_paths)
             self.build_route_breaker(route_column=route_column)
             self.find_broken_route_paths(
-                speedup=speedup, 
-                od_set=od_set, 
-                boarding_time=boarding_time, 
+                speedup=speedup,
+                od_set=od_set,
+                boarding_time=boarding_time,
                 cutoff=cutoff,
                 route_column=route_column
             )
@@ -579,17 +576,17 @@ class PublicPathFinder:
             # self.build_graph(**kwargs)
             self.build_mode_combinations(mode_column=mode_column)
             self.find_broken_mode_paths(
-                od_set=od_set, 
+                od_set=od_set,
                 cutoff=cutoff,
                 boarding_time=boarding_time,
                 mode_column=mode_column
             )
             to_concat.append(self.broken_mode_paths)
 
-        if (broken_modes or broken_routes) == False:
+        if not (broken_modes or broken_routes):
             self.find_best_path(
-                cutoff=cutoff, 
-                od_set=od_set, 
+                cutoff=cutoff,
+                od_set=od_set,
                 boarding_time=boarding_time,
                 **kwargs
             )
@@ -600,5 +597,3 @@ class PublicPathFinder:
 
         if drop_duplicates:
             self.paths.drop_duplicates(subset=['path'], inplace=True)
-
-

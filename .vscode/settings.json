@@ -1,7 +1,17 @@
 {
+    // "python.pythonPath": "${workspaceFolder}/.venv/bin/python3.8",
+    "python.pythonPath": "${QUETZAL_ENV}/python.exe",
+    "python.venvPath": "${QUETZAL_ENV}",
+    "python.jediEnabled": true,
+    "python.workspaceSymbols.tagFilePath": "${workspaceFolder}/.vscode/tags",
+    "python.workspaceSymbols.enabled": true,
+    "python.linting.pylintEnabled": false,
     "python.linting.flake8Enabled": true,
-    "python.linting.flake8Args": [
-        "--max-line-length=120"
+    "python.linting.mypyArgs": [
+        "--ignore-missing-imports",
+        "--follow-imports=silent",
+        "--disable=W503"
     ],
-    "python.pythonPath": "C:\\Users\\rgoix\\AppData\\Local\\Continuum\\anaconda3\\envs\\quetzal_env\\python.exe"
+    "python.linting.enabled": true,
+    "python.languageServer": "Jedi"
 }

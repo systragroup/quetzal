@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import networkx as nx
 from tqdm import tqdm
 

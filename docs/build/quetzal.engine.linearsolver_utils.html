@@ -1,53 +1,55 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <title>quetzal.engine.linearsolver_utils module &mdash; quetzal  documentation</title>
   
 
   
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
   
 
   
 
   
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-
-  
-  
-    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-    <link rel="top" title="quetzal  documentation" href="index.html"/>
-        <link rel="up" title="quetzal.engine package" href="quetzal.engine.html"/>
-        <link rel="next" title="quetzal.engine.pathfinder module" href="quetzal.engine.pathfinder.html"/>
-        <link rel="prev" title="quetzal.engine.engine module" href="quetzal.engine.engine.html"/> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="quetzal.engine.pathfinder module" href="quetzal.engine.pathfinder.html" />
+    <link rel="prev" title="quetzal.engine.engine module" href="quetzal.engine.engine.html" /> 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
+   
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -74,11 +76,15 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
             
-                <ul class="current">
+              
+            
+            
+              <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="quetzal.engine.html">quetzal.engine package</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="quetzal.engine.html#submodules">Submodules</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="quetzal.engine.add_network.html">quetzal.engine.add_network module</a></li>
@@ -100,42 +106,65 @@
             
           
         </div>
+        
       </div>
     </nav>
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="index.html">quetzal</a>
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">quetzal</a>
+        
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
- 
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="index.html">Docs</a> &raquo;</li>
-      
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
           <li><a href="quetzal.engine.html">quetzal.engine package</a> &raquo;</li>
-      
-    <li>quetzal.engine.linearsolver_utils module</li>
+        
+      <li>quetzal.engine.linearsolver_utils module</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
           
-            <a href="_sources/quetzal.engine.linearsolver_utils.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/quetzal.engine.linearsolver_utils.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -143,43 +172,43 @@
             
   <div class="section" id="module-quetzal.engine.linearsolver_utils">
 <span id="quetzal-engine-linearsolver-utils-module"></span><h1>quetzal.engine.linearsolver_utils module<a class="headerlink" href="#module-quetzal.engine.linearsolver_utils" title="Permalink to this headline">¶</a></h1>
-<dl class="function">
+<dl class="py function">
 <dt id="quetzal.engine.linearsolver_utils.build_constraints">
-<code class="descclassname">quetzal.engine.linearsolver_utils.</code><code class="descname">build_constraints</code><span class="sig-paren">(</span><em>indicator</em>, <em>values_links</em>, <em>od_stack</em>, <em>bounds_A</em>, <em>bounds_emissions</em>, <em>bounds_tot_emissions</em>, <em>pas_distance</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/linearsolver_utils.html#build_constraints"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.linearsolver_utils.build_constraints" title="Permalink to this definition">¶</a></dt>
-<dd><p>Ici on construit l&#8217;objectif et les contraintes du problème d&#8217;optimisation
+<code class="sig-prename descclassname"><span class="pre">quetzal.engine.linearsolver_utils.</span></code><code class="sig-name descname"><span class="pre">build_constraints</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">indicator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values_links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">od_stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_emissions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_tot_emissions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pas_distance</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volume_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'volume_pt'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/linearsolver_utils.html#build_constraints"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.linearsolver_utils.build_constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ici on construit l’objectif et les contraintes du problème d’optimisation
 suivant:
 variable: pivot A
 min_A ||Rc - Rm|| = ||indic*volumes*A - constrained values||
 sous contraintes:</p>
 <blockquote>
 <div><ul class="simple">
-<li><ul class="first">
-<li>Pg &lt; volumes*A - e/a &lt; Pg ((C1): émissions et attractions par zone conservées)</li>
+<li><ul>
+<li><p>Pg &lt; volumes*A - e/a &lt; Pg ((C1): émissions et attractions par zone conservées)</p></li>
 </ul>
 </li>
-<li><ul class="first">
-<li>Pg&#8217; &lt; sum(volumes*A) - e/a_tot &lt; Pg&#8217; ((C2) émissions et attractions totales conservées)</li>
+<li><ul>
+<li><p>Pg’ &lt; sum(volumes*A) - e/a_tot &lt; Pg’ ((C2) émissions et attractions totales conservées)</p></li>
 </ul>
 </li>
-<li><ul class="first">
-<li>Pd &lt; &lt;D,X&gt; - distance_moyenne &lt; Pd ((C3) distance moyenne conservée)</li>
+<li><ul>
+<li><p>Pd &lt; &lt;D,X&gt; - distance_moyenne &lt; Pd ((C3) distance moyenne conservée)</p></li>
 </ul>
 </li>
-<li>bound_A_min &lt; A(i) &lt; bound_A_max ((B) bornes du problème) forall i</li>
+<li><p>bound_A_min &lt; A(i) &lt; bound_A_max ((B) bornes du problème) forall i</p></li>
 </ul>
 </div></blockquote>
-<p>Comme l&#8217;objectif n&#8217;est pas linéaire, on décide d&#8217;utiliser la norme 1 et de
+<p>Comme l’objectif n’est pas linéaire, on décide d’utiliser la norme 1 et de
 linéariser la valeur absolue en ajoutant une nouvelle variable y:</p>
 <blockquote>
-<div>(~~ y(i) = <a href="#id1"><span class="problematic" id="id2">|</span></a>indic*volumes*A - constrained values|(i))</div></blockquote>
-<dl class="docutils">
-<dt>Le problème devient alors:</dt>
-<dd>min y</dd>
-<dt>sous contraintes</dt>
-<dd><ul class="first last simple">
-<li>y(i) &gt;= (indic*volumes*A - constrained values)(i)   forall i (C4)</li>
-<li>y(i) &gt;= - (indic*volumes*A - constrained values)(i)   forall i (C5)</li>
-<li>(mêmes contraintes que précedemment en plus)</li>
+<div><p>(~~ y(i) = <a href="#id1"><span class="problematic" id="id2">|</span></a>indic*volumes*A - constrained values|(i))</p>
+</div></blockquote>
+<dl class="simple">
+<dt>Le problème devient alors:</dt><dd><p>min y</p>
+</dd>
+<dt>sous contraintes</dt><dd><ul class="simple">
+<li><p>y(i) &gt;= (indic*volumes*A - constrained values)(i)   forall i (C4)</p></li>
+<li><p>y(i) &gt;= - (indic*volumes*A - constrained values)(i)   forall i (C5)</p></li>
+<li><p>(mêmes contraintes que précedemment en plus)</p></li>
 </ul>
 </dd>
 </dl>
@@ -190,156 +219,134 @@ linéariser la valeur absolue en ajoutant une nouvelle variable y:</p>
 :param bounds_A (list): upper and lower bound of coefficients of the pivot
 :param bounds_emissions (list): upper and lower bound of the multiplicative</p>
 <blockquote>
-<div>coefficient on emissions and attractions per cluster</div></blockquote>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>(list)</strong> (<em>bounds_tot_emissions</em>) &#8211; idem but for emisisons and attractions
-of the entire model</li>
-<li><strong>(int)</strong> (<em>pas_distance</em>) &#8211; additive pas on the mean distance</li>
+<div><p>coefficient on emissions and attractions per cluster</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>(</strong><strong>list</strong><strong>)</strong> (<em>bounds_tot_emissions</em>) – idem but for emisisons and attractions
+of the entire model</p></li>
+<li><p><strong>(</strong><strong>int</strong><strong>)</strong> (<em>pas_distance</em>) – additive pas on the mean distance</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name" colspan="2">Return objectif:</th></tr>
-<tr class="field-even field"><td>&nbsp;</td><td class="field-body"><p class="first">objective of the function</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return A_ub:</th><td class="field-body"><p class="first">matrix of inequality constraint (left side)</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Return b_ub:</th><td class="field-body"><p class="first last">vector of inequality constraint (right side)</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">Return objectif</dt>
+<dd class="field-even"><p>objective of the function</p>
+</dd>
+<dt class="field-odd">Return A_ub</dt>
+<dd class="field-odd"><p>matrix of inequality constraint (left side)</p>
+</dd>
+<dt class="field-even">Return b_ub</dt>
+<dd class="field-even"><p>vector of inequality constraint (right side)</p>
+</dd>
+</dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="quetzal.engine.linearsolver_utils.build_indicator">
-<code class="descclassname">quetzal.engine.linearsolver_utils.</code><code class="descname">build_indicator</code><span class="sig-paren">(</span><em>od_stack</em>, <em>constrained_links</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/linearsolver_utils.html#build_indicator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.linearsolver_utils.build_indicator" title="Permalink to this definition">¶</a></dt>
-<dd><table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>(pd.DataFrame)</strong> (<em>od_stack</em>) &#8211; od_stack of the model</li>
-<li><strong>(dict)</strong> (<em>constrained_links</em>) &#8211; constrained links and their volumes</li>
+<code class="sig-prename descclassname"><span class="pre">quetzal.engine.linearsolver_utils.</span></code><code class="sig-name descname"><span class="pre">build_indicator</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">od_stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constrained_links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">link_path_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'link_path'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/linearsolver_utils.html#build_indicator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.linearsolver_utils.build_indicator" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>(</strong><strong>pd.DataFrame</strong><strong>)</strong> (<em>od_stack</em>) – od_stack of the model</p></li>
+<li><p><strong>(</strong><strong>dict</strong><strong>)</strong> (<em>constrained_links</em>) – constrained links and their volumes</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name" colspan="2">Returns indicator (DataFrame):</th></tr>
-<tr class="field-even field"><td>&nbsp;</td><td class="field-body"><p class="first last">indicator for the model</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">Returns indicator (DataFrame)</dt>
+<dd class="field-even"><p>indicator for the model</p>
+</dd>
+</dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="quetzal.engine.linearsolver_utils.extrapolate">
-<code class="descclassname">quetzal.engine.linearsolver_utils.</code><code class="descname">extrapolate</code><span class="sig-paren">(</span><em>agg_pivot_stack_matrix</em>, <em>od_stack</em>, <em>cluster_series</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/linearsolver_utils.html#extrapolate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.linearsolver_utils.extrapolate" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">quetzal.engine.linearsolver_utils.</span></code><code class="sig-name descname"><span class="pre">extrapolate</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agg_pivot_stack_matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">od_stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cluster_series</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/linearsolver_utils.html#extrapolate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.linearsolver_utils.extrapolate" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extrapolates the model.
 Given the aggregated model and its pivot_stack_matrix, we build the
 pivot_stack_matrix for the whole model.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>agg_pivot_stack_matrix</strong> &#8211; agg_pivot_stack_matrix of the aggregated model</li>
-<li><strong>(pd.DataFrame)</strong> (<em>od_stack</em>) &#8211; od_stack of the entire model</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>agg_pivot_stack_matrix</strong> – agg_pivot_stack_matrix of the aggregated model</p></li>
+<li><p><strong>(</strong><strong>pd.DataFrame</strong><strong>)</strong> (<em>od_stack</em>) – od_stack of the entire model</p></li>
 </ul>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 <p>:param cluster_series (pd.Series)
 :return grouped (pd.DataFrame): pivot_stack_matrix of the whole model
 :return od_stack: od_stack of the whole model, with pivot column updated</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="quetzal.engine.linearsolver_utils.linearsolver">
-<code class="descclassname">quetzal.engine.linearsolver_utils.</code><code class="descname">linearsolver</code><span class="sig-paren">(</span><em>indicator</em>, <em>constrained_links</em>, <em>od_stack</em>, <em>bounds_A</em>, <em>bounds_emissions</em>, <em>bounds_tot_emissions</em>, <em>pas_distance</em>, <em>maxiter</em>, <em>tolerance</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/linearsolver_utils.html#linearsolver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.linearsolver_utils.linearsolver" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">quetzal.engine.linearsolver_utils.</span></code><code class="sig-name descname"><span class="pre">linearsolver</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">indicator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constrained_links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">od_stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_emissions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_tot_emissions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pas_distance</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxiter</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tolerance</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/linearsolver_utils.html#linearsolver"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.linearsolver_utils.linearsolver" title="Permalink to this definition">¶</a></dt>
 <dd><p>Cette fonction est le coeur de la méthode linear_solver.
-- Elle construit les contraintes et l&#8217;objectif dans build_constraints
-- Elle résoud le problème d&#8217;optimisation linéaire ainsi formé, avec les
+- Elle construit les contraintes et l’objectif dans build_constraints
+- Elle résoud le problème d’optimisation linéaire ainsi formé, avec les
 bonnes contraintes et paramètres.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>(pd.DataFrame)</strong> (<em>od_stack</em>) &#8211; indicator of the model</li>
-<li><strong>(dict)</strong> (<em>constrained_links</em>) &#8211; dict of constrained links with volumes</li>
-<li><strong>(pd.DataFrame)</strong> &#8211; od_stack of the model</li>
-<li><strong>bounds_emissions, bounds_tot_emissions, pas_distance</strong> (<em>bounds_A,</em>) &#8211; parameters for building constraints</li>
-<li><strong>tolerance (int)</strong> (<em>maxiter,</em>) &#8211; maximum iterations and tolerance on
-objective for the linprog function</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>(</strong><strong>pd.DataFrame</strong><strong>)</strong> (<em>od_stack</em>) – indicator of the model</p></li>
+<li><p><strong>(</strong><strong>dict</strong><strong>)</strong> (<em>constrained_links</em>) – dict of constrained links with volumes</p></li>
+<li><p><strong>(</strong><strong>pd.DataFrame</strong><strong>)</strong> – od_stack of the model</p></li>
+<li><p><strong>bounds_emissions</strong><strong>, </strong><strong>bounds_tot_emissions</strong><strong>, </strong><strong>pas_distance</strong> (<em>bounds_A</em><em>,</em>) – parameters for building constraints</p></li>
+<li><p><strong>tolerance</strong><strong> (</strong><strong>int</strong><strong>)</strong> (<em>maxiter</em><em>,</em>) – maximum iterations and tolerance on
+objective for the linprog function</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name" colspan="2">Returns pivot_stack_matrix (pd.DataFrame):</th></tr>
-<tr class="field-even field"><td>&nbsp;</td><td class="field-body"><p class="first last">elements of pivot_stack_matrix.</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">Returns pivot_stack_matrix (pd.DataFrame)</dt>
+<dd class="field-even"><p>elements of pivot_stack_matrix.</p>
+</dd>
+</dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="quetzal.engine.linearsolver_utils.reduce_indicator">
-<code class="descclassname">quetzal.engine.linearsolver_utils.</code><code class="descname">reduce_indicator</code><span class="sig-paren">(</span><em>big_indicator</em>, <em>cluster_series</em>, <em>volumes</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/linearsolver_utils.html#reduce_indicator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.linearsolver_utils.reduce_indicator" title="Permalink to this definition">¶</a></dt>
-<dd><table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>(pd.DataFrame)</strong> (<em>volumes</em>) &#8211; indicator of the entire model</li>
-<li><strong>(pd.Serie)</strong> (<em>cluster_series</em>) &#8211; correspondance between zones and clusters</li>
-<li><strong>(pd.DataFrame)</strong> &#8211; od_stack of the model</li>
+<code class="sig-prename descclassname"><span class="pre">quetzal.engine.linearsolver_utils.</span></code><code class="sig-name descname"><span class="pre">reduce_indicator</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">big_indicator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cluster_series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volumes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volume_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'volume_pt'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/linearsolver_utils.html#reduce_indicator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.linearsolver_utils.reduce_indicator" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>(</strong><strong>pd.DataFrame</strong><strong>)</strong> (<em>volumes</em>) – indicator of the entire model</p></li>
+<li><p><strong>(</strong><strong>pd.Serie</strong><strong>)</strong> (<em>cluster_series</em>) – correspondance between zones and clusters</p></li>
+<li><p><strong>(</strong><strong>pd.DataFrame</strong><strong>)</strong> – od_stack of the model</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name" colspan="2">Returns indicator (DataFrame):</th></tr>
-<tr class="field-even field"><td>&nbsp;</td><td class="field-body"><p class="first last">reduced indicator for the aggregated model</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">Returns indicator (DataFrame)</dt>
+<dd class="field-even"><p>reduced indicator for the aggregated model</p>
+</dd>
+</dl>
 </dd></dl>
 
 </div>
 
 
            </div>
+           
           </div>
           <footer>
-  
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="quetzal.engine.pathfinder.html" class="btn btn-neutral float-right" title="quetzal.engine.pathfinder module" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="quetzal.engine.engine.html" class="btn btn-neutral" title="quetzal.engine.engine module" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
+        <a href="quetzal.engine.pathfinder.html" class="btn btn-neutral float-right" title="quetzal.engine.pathfinder module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="quetzal.engine.engine.html" class="btn btn-neutral float-left" title="quetzal.engine.engine module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
-  
 
   <hr/>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2018, Systra.
+        &#169; Copyright 2018, Systra.
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
-
         </div>
       </div>
 
@@ -348,36 +355,15 @@ objective for the linprog function</li>
   </div>
   
 
-
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>

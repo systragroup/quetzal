@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """
 This module provides tools for network processing.
 It processes geometries more than abstract graphs.
@@ -7,12 +5,11 @@ It processes geometries more than abstract graphs.
 
 __author__ = 'qchasserieau'
 
+import networkx as nx
 import pandas as pd
 import shapely
-import networkx as nx
-
-from tqdm import tqdm
 from syspy import spatial
+from tqdm import tqdm
 
 
 def non_terminal_intersections(graph, n_neighbors=100):
@@ -44,34 +41,33 @@ def non_terminal_intersections(graph, n_neighbors=100):
                 try:
                     intersections[index_a].add(list(intersection.coords)[0])
                     intersections[index_b].add(list(intersection.coords)[0])
-                except:
+                except Exception:
                     # the geometries intersect in various points
                     for intersection_point in intersection:
                         intersections[index_a].add(list(intersection_point.coords)[0])
                         intersections[index_b].add(list(intersection_point.coords)[0])
-
     return intersections
 
+
 def split_geometries_at_nodes(
-        links, 
-        buffer=1e-9, 
+        links,
+        buffer=1e-9,
         n_neighbors=100,
         seek_intersections=True,
         line_split_coord_dict={}
-    ):
+):
     """
     Test every link of links against its neigbors in order to find intersections.
     The links are split at their intersections with the other links.
     All the links are concatenated then returned. The returned dataframe contains
     more links than the one passed as an argument.
     """
-
     cut = line_split_coord_dict
     geometry_dict = links['geometry'].to_dict()
 
     if seek_intersections:
         intersections = non_terminal_intersections(
-            links, 
+            links,
             n_neighbors=n_neighbors
         )
     else:
@@ -103,12 +99,10 @@ def split_geometries_at_nodes(
         left_index=True,
         right_index=True
     )
-
     return to_return
 
 
 def graph_from_links(links, first_node=0, geometry=True):
-
     links['coordinates_a'] = links['geometry'].apply(lambda c: c.coords[0])
     links['coordinates_b'] = links['geometry'].apply(lambda c: c.coords[-1])
 
@@ -146,7 +140,6 @@ def graph_from_links(links, first_node=0, geometry=True):
 
     coordinates = tqdm(list(nodes['coordinates']))
     nodes['geometry'] = [shapely.geometry.point.Point(c) for c in coordinates]
-
     return links, nodes
 
 
@@ -166,7 +159,6 @@ def constrained_nodes(links):
 
     count_b = links['b'].value_counts()
     single_b = set(count_b[count_b == 1].index)
-
     # tester avec l'union pour ajouter les impasses
     return single_a.intersection(single_b)
 
@@ -201,13 +193,12 @@ def polyline_graph(
     shared_columns=list(),
     geometry=False,
     drop_circular=False
-    ):
+):
     """
-    Merge links of a graph to leave only the nodes that belong to more than 
-    two links. 
+    Merge links of a graph to leave only the nodes that belong to more than
+    two links.
     """
-
-    # todo : semble ne pas marcher dans un graphe directionnel
+    # todo : semble ne pas marcher dans un graphe directionnel
     # il y a un problème, on se retrouve avec 'b' en premier nœud
     links = links.copy()
     links.reset_index(inplace=True, drop=True)
@@ -262,6 +253,7 @@ def polyline_graph(
     model_graph = pd.concat([single_links[columns], polylines[columns]])
     return model_graph
 
+
 def drop_secondary_components(links):
     """
     keep only the main component among the connected components of the graph
@@ -278,8 +270,8 @@ def drop_secondary_components(links):
     main_graph = [sg for sg in l if len(sg.nodes) == max_length][0]
     main_nodes = set(main_graph.nodes.keys())
     main_links = links[links['a'].isin(main_nodes)]
-
     return main_links
+
 
 def drop_deadends(links, cutoff=10):
     """
@@ -292,16 +284,16 @@ def drop_deadends(links, cutoff=10):
         graph,
         cutoff=cutoff
     )
-    
-    # for example, if in 10 moves, we can reach less 
+
+    # for example, if in 10 moves, we can reach less
     # than 10 nodes, we are in a dead end
-    try: 
+    try:
         items = list(all_pairs.items())
-    except AttributeError: # 'generator' object has no attribute 'items' 
-        items = list(tqdm(all_pairs, desc='direct')) # networkx 2.0 syntax
+    except AttributeError:  # 'generator' object has no attribute 'items'
+        items = list(tqdm(all_pairs, desc='direct'))  # networkx 2.0 syntax
 
     direct_deadends = {
-        key for key, value in  items
+        key for key, value in items
         if len(value) < cutoff
     }
 
@@ -311,13 +303,13 @@ def drop_deadends(links, cutoff=10):
         reversed_graph,
         cutoff=cutoff
     )
-    
-    # for example, if in 10 moves, we can reach less 
+
+    # for example, if in 10 moves, we can reach less
     # than 10 nodes, we are in a dead end
-    try: 
+    try:
         items = list(reversed_all_pairs.items())
-    except AttributeError: # 'generator' object has no attribute 'items' 
-        items = list(tqdm(reversed_all_pairs, desc='reversed')) # networkx 2.0 syntax
+    except AttributeError:  # 'generator' object has no attribute 'items'
+        items = list(tqdm(reversed_all_pairs, desc='reversed'))  # networkx 2.0 syntax
 
     reversed_deadends = {
         key for key, value in items
@@ -325,22 +317,20 @@ def drop_deadends(links, cutoff=10):
     }
 
     deadends = direct_deadends.union(reversed_deadends)
-    
-    # nodes 
+
+    # nodes
     nodes = set(links['a']).union(set(links['b'])) - deadends
-    
+
     keep = links[links['a'].isin(nodes)]
     keep = keep[keep['b'].isin(nodes)]
-
     return keep
 
 
 def reindex_nodes(links, nodes, start_from=0, reindex_node=None):
-
     if reindex_node is None:
         nodes = nodes.copy()
         links = links.copy()
-        
+
         index = nodes.index
         rename_dict = {}
         current = start_from
@@ -354,6 +344,4 @@ def reindex_nodes(links, nodes, start_from=0, reindex_node=None):
     nodes.index = [reindex_node(n) for n in nodes.index]
     links['a'] = links['a'].apply(reindex_node)
     links['b'] = links['b'].apply(reindex_node)
-    
     return links, nodes
-    

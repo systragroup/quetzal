@@ -1,21 +1,20 @@
-# -*- coding: utf-8 -*-
-
-import pandas as pd
-import numpy as np
-import requests
 import json
 import time
 
+import numpy as np
+import pandas as pd
+import requests
+
 
 def google_maps_encoder(
-        latitude_origin, 
-        longitude_origin, 
+        latitude_origin,
+        longitude_origin,
         latitude_destination,
-        longitude_destination, 
-        timestamp=int(time.time())+1, 
+        longitude_destination,
+        timestamp=int(time.time()) + 1,
         token=None,
         mode='driving'
-    ):
+):
     def in_url(coordinates):
         """
         :param coordinates: list of coordinates [longitude, latitude]
@@ -37,9 +36,7 @@ def google_maps_encoder(
         int(timestamp),
         token
     )
-
     # timestamp must be an int!
-
     return url
 
 
@@ -111,7 +108,7 @@ class Proxy:
         sql = 'SELECT * FROM ' + table
         try:
             self.local = pd.read_sql(sql, conn)
-        except:  # no such table:
+        except Exception:  # no such table:
             print('create table')
             empty = pd.DataFrame(
                 index=list(parameters) + ['current', 'json']

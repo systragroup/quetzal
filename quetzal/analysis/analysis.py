@@ -1,30 +1,23 @@
-# -*- coding: utf-8 -*-
-
-import pandas as pd
 import numpy as np
+import pandas as pd
 from quetzal.analysis import on_demand
-
 from tqdm import tqdm
 
-def tp_summary(links, shared):
 
+def tp_summary(links, shared):
     links = links.copy()
     links['index'] = links.index
-    line_link_dict = links.groupby('trip_id')['index'].agg(
-        lambda s: set(s)).to_dict()
+    line_link_dict = links.groupby('trip_id')['index'].agg(lambda s: set(s)).to_dict()
     line_list = list(line_link_dict.keys())
     link_set = set(links['index'])
 
     df = shared.copy()
 
     for key, value in line_link_dict.items():
-        df[key] = df['path'].apply(
-            lambda p: bool(len(value.intersection(p)))) * df['volume_pt']
+        df[key] = df['path'].apply(lambda p: bool(len(value.intersection(p)))) * df['volume_pt']
 
     # walk
-    df['all_walk'] = df['path'].apply(
-        lambda p: len(link_set.intersection(p)) == 0)
-
+    df['all_walk'] = df['path'].apply(lambda p: len(link_set.intersection(p)) == 0)
     df['transfer'] = df.loc[:, line_list].astype(bool).T.sum()
     df['exclusivity'] = 1 / df['transfer']
     # we do not want to reach infinite exclusivity rates where no line is used
@@ -36,7 +29,7 @@ def tp_summary(links, shared):
         except ZeroDivisionError:  # Weights sum to zero, can't be normalized
             return 0
 
-    #  transfer
+    # transfer
     transfers = pd.Series(
         [average_value(line, 'transfer') for line in line_list],
         index=line_list
@@ -83,8 +76,8 @@ def tp_summary(links, shared):
     lines['color'] = lines['line_color']
     return lines
 
-def analysis_path(path, vertex_type):
 
+def analysis_path(path, vertex_type):
     boarding_links = []
     alighting_links = []
     boardings = []
@@ -93,12 +86,11 @@ def analysis_path(path, vertex_type):
     link_path = []
     footpaths = []
     ntlegs = []
-    
-    for i in range(1, len(path)-1):
-    
-        from_node = path[i-1]
+
+    for i in range(1, len(path) - 1):
+        from_node = path[i - 1]
         node = path[i]
-        to_node = path[i+1]
+        to_node = path[i + 1]
 
         from_vtype = vertex_type.get(from_node)
         vtype = vertex_type.get(node)
@@ -110,8 +102,7 @@ def analysis_path(path, vertex_type):
                 alighting_links.append(node)
             if from_vtype != 'link':
                 boarding_links.append(node)
-
-        elif vtype == 'node': 
+        elif vtype == 'node':
             node_path.append(node)
             if from_vtype == 'link':
                 alightings.append(node)
@@ -123,9 +114,8 @@ def analysis_path(path, vertex_type):
                 boardings.append(node)
             elif to_vtype == 'centroid':
                 ntlegs.append((node, to_node))
-                
+
     transfers = [n for n in boardings if n in alightings]
-                
     to_return = {
         'boardings': boardings,
         'alightings': alightings,
@@ -137,14 +127,14 @@ def analysis_path(path, vertex_type):
         'boarding_links': boarding_links,
         'alighting_links': alighting_links
     }
-                
     return to_return
 
+
 def path_analysis_od_matrix(
-    od_matrix, 
-    links, 
-    nodes, 
-    centroids, 
+    od_matrix,
+    links,
+    nodes,
+    centroids,
     agg={'link_path': ['time', 'length']},
 ):
     vertex_sets = {
@@ -159,7 +149,7 @@ def path_analysis_od_matrix(
     link_dict = links.to_dict()
 
     analysis_path_list = [
-        analysis_path(p, vertex_type) 
+        analysis_path(p, vertex_type)
         for p in tqdm(list(od_matrix['path']), desc='path_analysis')
     ]
 
@@ -170,7 +160,7 @@ def path_analysis_od_matrix(
 
     df = pd.concat([od_matrix, analysis_path_dataframe], axis=1)
     df['all_walk'] = df['link_path'].apply(lambda p: len(p) == 0)
-    df['ntransfers'] = df['boarding_links'].apply(lambda x: max(len(x)-1, 0))
+    df['ntransfers'] = df['boarding_links'].apply(lambda x: max(len(x) - 1, 0))
 
     for key, extensive_columns in agg.items():
         for column in extensive_columns:
@@ -178,16 +168,15 @@ def path_analysis_od_matrix(
             df[column + '_' + key] = df[key].apply(
                 lambda p: sum([column_dict[i] for i in p])
             )
-
     return df
 
-def volume_analysis_od_matrix(od_matrix):
 
+def volume_analysis_od_matrix(od_matrix):
     df = od_matrix.copy()
 
     df['volume_car'] = df['volume'] - df['volume_pt']
     df['volume_walk'] = df['volume_pt'] * df['all_walk'].astype(int)
-    df['volume_pt'] = df['volume_pt'] * (1-df['all_walk'].astype(int))
+    df['volume_pt'] = df['volume_pt'] * (1 - df['all_walk'].astype(int))
 
     df['volume_duration_car'] = df['volume_car'] * df['duration_car']
     df['volume_duration_pt'] = df['volume_pt'] * df['duration_pt']
@@ -196,8 +185,8 @@ def volume_analysis_od_matrix(od_matrix):
     df['volume_distance_pt'] = df['volume_pt'] * df['distance_pt']
 
     df['pivot'] = np.ones(len(df))
-
     return df
+
 
 def analysis_od_matrix(od_matrix, links, nodes, centroids):
     paod_matrix = path_analysis_od_matrix(od_matrix, links, nodes, centroids)
@@ -209,14 +198,11 @@ def analysis_tp_summary(lines, period_duration=1):
     lines['vehicles'] = 1 / lines['headway'] * period_duration
     lines['exclusive_passenger'] = lines['boardings'] * lines['exclusivity']
     lines['vehicles_distance'] = lines['vehicles'] * lines['length'] / 1000
-
     return lines
 
 
 def economic_series(od_stack, lines, period_length=1):
-
     df = pd.concat([
-
         od_stack[
             [
                 'volume',
@@ -240,9 +226,8 @@ def economic_series(od_stack, lines, period_length=1):
             ]
         ].sum()
     ])
-
     return df
-    
+
 
 # function definition
 checkpoint_demand = on_demand.checkpoint_demand

@@ -1,9 +1,9 @@
-import os
-from subprocess import Popen
-import time
 import json
-import uuid
+import os
 import shutil
+import time
+import uuid
+from subprocess import Popen
 
 
 def add_freeze_support(file):
@@ -22,6 +22,7 @@ def add_freeze_support(file):
     with open(file, 'w') as pyfile:
         pyfile.writelines(lines)
 
+
 def parallel_call_jobs(jobs, mode='w', leave=False, workers=1, sleep=1):
     popens = {}
     for i, file, arg, stdout_file, stderr_file in jobs:
@@ -34,12 +35,10 @@ def parallel_call_jobs(jobs, mode='w', leave=False, workers=1, sleep=1):
                     stderr=stderr
                 )
                 if (i + 1) % workers == 0 or (i + 1) == len(jobs):
-                    #print('waiting')
+                    # print('waiting')
                     for p in popens.values():
                         p.wait()
-                        
         time.sleep(sleep)
-
 
     for i, file, arg, stdout_file, stderr_file in jobs:
         subprocess_name = str(file) + str(i)
@@ -51,10 +50,8 @@ def parallel_call_jobs(jobs, mode='w', leave=False, workers=1, sleep=1):
         with open(stderr_file, 'r') as stderr:
             content = stderr.read()
             if 'Error' in content and "end_of_notebook" not in content:
-                print("subprocess **{} {}** terminated with an error.".format(
-                    subprocess_name, arg
-                    )
-                )
+                print("subprocess **{} {}** terminated with an error.".format(subprocess_name, arg))
+
 
 def parallel_call_notebooks(
     *notebook_arg_list_tuples,
@@ -65,11 +62,10 @@ def parallel_call_notebooks(
     leave=False,
     errout_suffix=False,
     freeze_support=True,
-    ):
+):
     start = time.time()
     mode = 'w' if errout_suffix else 'a+'
     jobs = []
-    
     outer_i = 0
     for notebook, arg_list in notebook_arg_list_tuples:
         os.system('jupyter nbconvert --to python %s' % notebook)
@@ -84,11 +80,12 @@ def parallel_call_notebooks(
             stdout_file = stdout_path.replace('.txt', '_' + suffix + '.txt')
             stderr_file = stderr_path.replace('.txt', '_' + suffix + '.txt')
             jobs.append([outer_i, file, arg, stdout_file, stderr_file])
-            outer_i +=1
-            
+            outer_i += 1
+
     parallel_call_jobs(jobs, mode=mode, leave=leave, workers=workers, sleep=sleep)
     end = time.time()
     print(int(end - start), 'seconds')
+
 
 def parallel_call_notebook(
     notebook,
@@ -101,16 +98,16 @@ def parallel_call_notebook(
     errout_suffix=False,
     freeze_support=True,
 ):
-    
+
     start = time.time()
     jobs = []
     os.system('jupyter nbconvert --to python %s' % notebook)
     file = notebook.replace('.ipynb', '.py')
     if freeze_support:
         add_freeze_support(file)
-     
+
     mode = 'w' if errout_suffix else 'a+'
-    
+
     for i in range(len(arg_list)):
         arg = arg_list[i]
         suffix = arg if errout_suffix else ''
@@ -118,12 +115,10 @@ def parallel_call_notebook(
         stdout_file = stdout_path.replace('.txt', '_' + suffix + '.txt')
         stderr_file = stderr_path.replace('.txt', '_' + suffix + '.txt')
         jobs.append([i, file, arg, stdout_file, stderr_file])
-    
+
     parallel_call_jobs(jobs, mode=mode, leave=leave, workers=workers, sleep=sleep)
-    
     end = time.time()
     print(int(end - start), 'seconds')
-    
 
 
 def parallel_call_python(
@@ -138,13 +133,13 @@ def parallel_call_python(
 ):
     popens = {}
     notebook = file
-    
+
     for i in range(len(arg_list)):
         arg = arg_list[i]
         suffix = arg if errout_suffix else ''
         suffix += '_' + process_name
-        mode =  'w' if errout_suffix else 'a+'
-        #print(i, arg)
+        mode = 'w' if errout_suffix else 'a+'
+        # print(i, arg)
         with open(stdout_path.replace('.txt', '_' + suffix + '.txt'), mode) as stdout:
             with open(stderr_path.replace('.txt', '_' + suffix + '.txt'), mode) as stderr:
                 popens[i] = Popen(
@@ -153,27 +148,27 @@ def parallel_call_python(
                     stderr=stderr
                 )
                 if (i + 1) % workers == 0 or (i + 1) == len(arg_list):
-                    #print('waiting')
+                    # print('waiting')
                     for p in popens.values():
                         p.wait()
         time.sleep(sleep)
-        
-        
+
     for i in range(len(arg_list)):
         arg = arg_list[i]
         suffix = arg if errout_suffix else ''
         suffix += '_' + process_name
-        mode =  'r'
+        mode = 'r'
         with open(stderr_path.replace('.txt', '_' + suffix + '.txt'), mode) as stderr:
             content = stderr.read()
             if 'Error' in content and "end_of_notebook" not in content:
                 print("subprocess **{} {}** terminated with an error.".format(i, arg))
     return popens
 
+
 def parallel_call_subprocess(
-    subprocess_filepath, 
-    kwarg_list, 
-    dump_kwargs=json.dump, 
+    subprocess_filepath,
+    kwarg_list,
+    dump_kwargs=json.dump,
     load_result=json.load,
     leave=False,
     *args,
@@ -196,20 +191,19 @@ def parallel_call_subprocess(
 
         dump_kwargs(kwarg_dict, input_file)
         io_string = json.dumps({'input_json': input_file, 'output_json': output_file})
-        io_strings.append(io_string)   
+        io_strings.append(io_string)
 
     parallel_call_python(
-        subprocess_filepath, 
-        io_strings, 
-        errout_suffix=False, 
+        subprocess_filepath,
+        io_strings,
+        errout_suffix=False,
         stdout_path='subprocess_io/out.txt',
         stderr_path='subprocess_io/err.txt',
         *args,
         **kwargs,
     )
     results = [load_result(file) for file in output_files]
-    
+
     if not leave:
         shutil.rmtree('subprocess_io')
-        
     return results

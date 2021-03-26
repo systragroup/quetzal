@@ -1,17 +1,16 @@
-# -*- coding: utf-8 -*-
-
 __author__ = 'qchasserieau'
+
+import pandas as pd
 import shapely
 from syspy.spatial import spatial
-import pandas as pd
 
 
 def _join_geometry(link_row, one, many):
     return shapely.geometry.LineString(
-        [one['geometry'].loc[link_row['ix_one']],many['geometry'].loc[link_row['ix_many']]])
+        [one['geometry'].loc[link_row['ix_one']], many['geometry'].loc[link_row['ix_many']]])
 
 
-def add_geometry_coordinates(df, columns=['x_geometry','y_geometry']):
+def add_geometry_coordinates(df, columns=['x_geometry', 'y_geometry']):
     df[columns[0]] = df['geometry'].apply(lambda g: g.coords[0][0])
     df[columns[1]] = df['geometry'].apply(lambda g: g.coords[0][1])
     return df
@@ -72,7 +71,6 @@ def renumber_volume(volume, cluster_series, volume_columns):
     grouped = proto.groupby(['cluster_origin', 'cluster_destination'])[volume_columns].sum()
     grouped.index.names = ['origin', 'destination']
     grouped.reset_index(inplace=True)
-
     return grouped
 
 
@@ -86,5 +84,4 @@ def renumber_od_stack(od_stack, cluster_series, volume_columns, distance_columns
     grouped.index.names = ['origin', 'destination']
     grouped = pd.DataFrame(grouped)
     grouped.reset_index(inplace=True)
-
     return grouped

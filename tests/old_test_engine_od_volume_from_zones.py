@@ -1,12 +1,12 @@
-# -*- coding: utf-8 -*-
-
-from unittest import TestCase
-from unittest.mock import patch, ANY
-import pandas as pd
-import numpy as np
 import sys
-sys.path.append(r'../syspy')
+from unittest import TestCase
+from unittest.mock import ANY, patch
+
+import numpy as np
+import pandas as pd
 from quetzal.engine.engine import od_volume_from_zones
+
+sys.path.append(r'../syspy')
 
 
 origin_power = np.power
@@ -16,19 +16,16 @@ origin_power = np.power
 @patch('syspy.distribution.distribution.CalcDoublyConstrained', autospec=True)
 @patch('syspy.skims.skims.euclidean', autospec=True)
 class Test(TestCase):
-
-
-    
     def test_zones_only_intrazonal(
-        self, 
-        skims_euclidean, 
+        self,
+        skims_euclidean,
         distribution_CalcDoublyConstrained,
         spy_power
     ):
         spy_power.side_effect = origin_power
         values = [
-            [1,2,3],
-            [1,2,4],
+            [1, 2, 3],
+            [1, 2, 4],
         ]
         zones = pd.DataFrame(values, columns=['emission', 'attraction', 'geometry'])
         values = [
@@ -52,7 +49,7 @@ class Test(TestCase):
         )
 
         pd.testing.assert_frame_equal(
-            result, 
+            result,
             expected
         )
         skims_euclidean.assert_called_once_with(zones, intrazonal=False)
@@ -62,5 +59,3 @@ class Test(TestCase):
             ANY
         )
         spy_power.assert_called_once_with(ANY, -2)
-
-

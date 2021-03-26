@@ -1,19 +1,16 @@
-# -*- coding: utf-8 -*-
-
-
 __author__ = 'qchasserieau'
 
-from tqdm import tqdm
-import pyproj
-import shapely
-import time
 import json
-import requests
-from random import random
+import time
 import warnings
+from random import random
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pyproj
+import requests
+import shapely
+from tqdm import tqdm
 
 try:
     from geopy.distance import geodesic  # works for geopy version >=2
@@ -22,7 +19,6 @@ except ImportError:
     from geopy.distance import vincenty as geodesic  # works for geopy version <2
 
 from syspy.spatial import spatial
-from tqdm import tqdm
 
 
 wgs84 = pyproj.Proj("EPSG:4326")
@@ -39,12 +35,10 @@ def dist_from_row(row, projection=wgs84):
     :return: euclidean_distance: euclidean distance of the origin-destination
     :rtype: int
     """
-
     coordinates_origin = (pyproj.transform(projection, wgs84, row['x_origin'], row['y_origin']))
     coordinates_origin = (coordinates_origin[1], coordinates_origin[0])
     coordinates_destination = (pyproj.transform(projection, wgs84, row['x_destination'], row['y_destination']))
     coordinates_destination = (coordinates_destination[1], coordinates_destination[0])
-
     return geodesic(coordinates_origin, coordinates_destination).m
 
 
@@ -74,7 +68,6 @@ def euclidean(zones, coordinates_unit='degree', projection=wgs84, epsg=False, me
     and the euclidean distances between the zones
     :rtype: pd.DataFrame
     """
-
     projection = pyproj.Proj("+init=EPSG:" + str(epsg)) if epsg else projection
     if 'geometry' in zones.columns:
         z = zones[['geometry']].copy()
@@ -89,7 +82,7 @@ def euclidean(zones, coordinates_unit='degree', projection=wgs84, epsg=False, me
         print('If the DataFrame has no "geometry" field, longitude and latitude should be provided')
 
     # zones_destination = zones_destination if zones_destination
-    iterables = [zones.index]*2
+    iterables = [zones.index] * 2
     od = pd.DataFrame(index=pd.MultiIndex.from_product(iterables, names=['origin', 'destination'])).reset_index()
     od = pd.merge(od, z, left_on='origin', right_index=True)
     od = pd.merge(od, z, left_on='destination', right_index=True, suffixes=['_origin', '_destination'])
@@ -108,8 +101,8 @@ def euclidean(zones, coordinates_unit='degree', projection=wgs84, epsg=False, me
             od['euclidean_distance'] = od.apply(dist_from_row, axis=1, args={projection})
     elif coordinates_unit == 'meter':
         od['euclidean_distance'] = np.sqrt(
-            (od['x_origin'] - od['x_destination'])**2 +\
-            (od['y_origin'] - od['y_destination'])**2
+            (od['x_origin'] - od['x_destination'])**2
+            + (od['y_origin'] - od['y_destination'])**2
         )
     else:
         raise('Invalid coordinates_unit.')
@@ -118,7 +111,6 @@ def euclidean(zones, coordinates_unit='degree', projection=wgs84, epsg=False, me
         for i in od.index:
             if od['origin'][i] == od['destination'][i]:
                 od['euclidean_distance'][i] = np.sqrt(zones['area'][od['origin'][i]]) / 2
-
     return od[['origin', 'destination', 'euclidean_distance', 'x_origin', 'y_origin', 'x_destination', 'y_destination']]
 
 
@@ -130,9 +122,9 @@ def all_skim_matrix(zones=None, token=None, od_matrix=None, coordinates_unit='de
         df = euclidean(zones, coordinates_unit=coordinates_unit)
     try:
         assert token is not None
-        
+
         if isinstance(token, str):
-            token = [token, token] # il semble que l'on vide trop tôt la pile
+            token = [token, token]  # il semble que l'on vide trop tôt la pile
         t = token.pop()
         print('Building driving skims matrix with Google API.')
         skim_lists = []
@@ -143,8 +135,8 @@ def all_skim_matrix(zones=None, token=None, od_matrix=None, coordinates_unit='de
                 try:
                     skim_lists.append(
                         driving_skims_from_row(
-                            row, 
-                            t, 
+                            row,
+                            t,
                             **skim_matrix_kwargs
                         )
                     )
@@ -154,17 +146,16 @@ def all_skim_matrix(zones=None, token=None, od_matrix=None, coordinates_unit='de
                     try:
                         t = token.pop()
                         print('Popped:', t)
-                    except :
+                    except Exception:
                         print('Could not complete the skim matrix computation: not enough credentials.')
         df[['distance', 'duration', 'duration_in_traffic']] = pd.DataFrame(skim_lists)
         print('Done')
     except IndexError as e:
         print('Exception [%s] occured' % e)
         print('WARNING: the build of the real skim matrix has failed.')
-        df[['distance', 'duration']] =df.apply(
+        df[['distance', 'duration']] = df.apply(
             pseudo_driving_skims_from_row, args=[token], axis=1)
         print('A random one has been generated instead to allow testing of the next steps.')
-
     return df
 
 
@@ -173,7 +164,7 @@ def skim_matrix(zones, token, n_clusters, coordinates_unit='degree', skim_matrix
     cluster_euclidean = all_skim_matrix(
         clusters,
         token,
-        coordinates_unit=coordinates_unit
+        coordinates_unit=coordinates_unit,
         **skim_matrix_kwargs
     )
 
@@ -208,16 +199,15 @@ def skim_matrix(zones, token, n_clusters, coordinates_unit='degree', skim_matrix
 
     df['distance_rate'] = (
         df['euclidean_distance'] / df['euclidean_distance_cluster']
-        ).fillna(0)
+    ).fillna(0)
     df['distance'] = df['cluster_distance'] * df['distance_rate']
     df['duration'] = df['cluster_duration'] * df['distance_rate']
 
-    euclidean_to_path_length = 1 / (df['euclidean_distance_cluster'] / df['cluster_distance'] ).mean()
+    euclidean_to_path_length = 1 / (df['euclidean_distance_cluster'] / df['cluster_distance']).mean()
     euclidean_speed = (df['euclidean_distance_cluster'] / df['duration']).mean()
 
     df.loc[df['euclidean_distance_cluster'] == 0, 'duration'] = df['euclidean_distance'] / euclidean_speed
     df.loc[df['euclidean_distance_cluster'] == 0, 'distance'] = df['euclidean_distance'] * euclidean_to_path_length
-
     return df.fillna(0)
 
 
@@ -233,19 +223,18 @@ def in_url(coordinates):
 
 class TokenError(Exception):
     def __init__(self, message='out of credentials'):
-
         # Call the base class constructor with the parameters it needs
         super(TokenError, self).__init__(message)
 
 
 def driving_skims_from_coordinate_couple(
-        origin_coordinates, 
-        destination_coordinates, 
+        origin_coordinates,
+        destination_coordinates,
         token,
-        timestamp=time.time(), 
-        errors='ignore', 
+        timestamp=time.time(),
+        errors='ignore',
         proxy=None
-    ):
+):
     """
     Requests google maps distancematrix API with a couple of coordinates. Returns the road skims of the trip.
 
@@ -260,7 +249,6 @@ def driving_skims_from_coordinate_couple(
     :return: skim_series: a pd.Series with the duration and the distance of the trip
     :rtype: pd.Series
     """
-
     api_url = "https://maps.googleapis.com/maps/api/distancematrix/json?"
     proto_url = api_url + "origins={0}&destinations={1}"
     proto_url += "&mode=driving&language=en-EN&sensor=false&departure_time={2}&trafic_model=pessimistic&key={3}"
@@ -285,7 +273,7 @@ def driving_skims_from_coordinate_couple(
                     proxy.populate(resp=resp, **data)
                     proxy.insert()
                     element = resp_json['rows'][0]['elements'][0]
-                else : 
+                else:
                     raise TokenError
             else:
                 element = json.loads(resp)['rows'][0]['elements'][0]
@@ -293,7 +281,7 @@ def driving_skims_from_coordinate_couple(
         else:
             element = json.loads(requests.get(url).text)['rows'][0]['elements'][0]
 
-        try: 
+        try:
             duration_in_traffic = element['duration_in_traffic']['value']
         except KeyError:
             duration_in_traffic = np.nan
@@ -304,16 +292,14 @@ def driving_skims_from_coordinate_couple(
                 'duration_in_traffic': duration_in_traffic,
             }
         )
-    except (KeyError) as e: # Exception
+    except (KeyError):  # Exception
         # duration_in_traffic may not be provided
         assert(errors == 'ignore'), 'Token probably out of credentials.'
-        return pd.Series(
-        {
-            'duration': np.nan, 
-            'distance': np.nan, 
+        return pd.Series({
+            'duration': np.nan,
+            'distance': np.nan,
             'duration_in_traffic': np.nan
-        }
-    )
+        })
 
 
 def driving_skims_from_row(
@@ -323,7 +309,6 @@ def driving_skims_from_row(
     timestamp=time.time(),
     **skim_matrix_kwargs
 ):
-    
     time.sleep(0.1)
     origin_coordinates = pyproj.transform(
         projection,
@@ -345,7 +330,6 @@ def driving_skims_from_row(
         timestamp,
         **skim_matrix_kwargs
     )
-
     return driving_skims
 
 
@@ -361,7 +345,6 @@ def pseudo_driving_skims_from_row(
 
     distance = random_distance + get_distance_from_row_in_m(row) * random_distance_factor
     duration = distance * random_duration_factor
-
     return pd.Series({'distance': distance, 'duration': duration})
 
 
@@ -393,7 +376,6 @@ def add_coordinates(dataframe):
     df['y_origin'] = df['coords'].apply(lambda c: c[0][1])
     df['x_destination'] = df['coords'].apply(lambda c: c[-1][0])
     df['y_destination'] = df['coords'].apply(lambda c: c[-1][1])
-
     return df
 
 
@@ -409,7 +391,7 @@ def distance_from_geometry(geometry_series, projection=wgs84, method='numpy'):
     df = pd.DataFrame(geometry_series)
     df.columns = ['geometry']
     df = add_coordinates(df)
-    if method == 'numpy' and projection==wgs84:
+    if method == 'numpy' and projection == wgs84:
         cols = ['x_origin', 'y_origin', 'x_destination', 'y_destination']
         df['distance'] = get_distance_from_lon_lat_in_m(*[df[s] for s in cols])
     else:
@@ -418,11 +400,9 @@ def distance_from_geometry(geometry_series, projection=wgs84, method='numpy'):
 
 
 def a_b_from_geometry(geometry):
-
     boundary = geometry.envelope.boundary
     a = shapely.geometry.linestring.LineString(list(boundary.coords)[0:2])
     b = shapely.geometry.linestring.LineString(list(boundary.coords)[1:3])
-
     return pd.Series([a, b])
 
 
@@ -435,10 +415,4 @@ def area_factor(geometry_series):
     df['boundary_area'] = df['geometry'].apply(lambda g: g.envelope.area)
     df['actual_boundary_area'] = df['la'] * df['lb']
     df['rate'] = df['actual_boundary_area'] / df['boundary_area']
-
     return df['rate'].mean()
-
-
-
-
-
