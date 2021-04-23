@@ -275,10 +275,10 @@ class ParkRideModel(preparationmodel.PreparationModel):
             s.analysis_car_length()
 
         s.car_los['parking_node'] = s.car_los['destination']
-        s.car_los.loc[s.car_los['reverse'] is True, 'parking_node'] = s.car_los['origin']
+        s.car_los.loc[s.car_los['reverse'] == True, 'parking_node'] = s.car_los['origin']
 
         s.pt_los['parking_node'] = s.pt_los['origin']
-        s.pt_los.loc[s.pt_los['reverse'] is True, 'parking_node'] = s.pt_los['destination']
+        s.pt_los.loc[s.pt_los['reverse'] == True, 'parking_node'] = s.pt_los['destination']
 
         on = ['destination' if reverse else 'origin', 'parking_node', 'reverse']
         columns = on + time_columns + length_columns + path_columns
