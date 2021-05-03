@@ -1,13 +1,10 @@
 import bz2
 import os
 import xml
-from xml import sax
-
 import geopandas as gpd
-import networkx as nx
-import osmnx as ox
 import pandas as pd
 from shapely import geometry
+import string
 
 
 class OSMContentHandler(xml.sax.handler.ContentHandler):
@@ -141,3 +138,61 @@ def routes_links_nodes(data):
     links = gpd.GeoDataFrame(links)
     links[['a', 'b']] = links[['a', 'b']].astype(int)
     return routes, links, nodes
+
+
+highway_order = [
+    'motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential',
+    'living_street', 'service', 'pedestrian', 'track', 'bus_guideway', 'escape', 'raceway', 'road',
+    'footway', 'bridleway', 'steps', 'corridor', 'path',
+    'motorway_link', 'trunk_link', 'primary_link', 'secondary_link', 'tertiary_link',
+]
+
+
+def min_lanes(value):
+    try:
+        return min(int(s) for s in value)
+    except TypeError:
+        return value
+
+
+def highest_highway_order(value, highway_order=highway_order):
+    if value in highway_order:
+        return value
+
+    for match in highway_order:
+        if match in value:
+            return match
+
+    return 'unknown'
+
+
+def first_item(value):
+    try:
+        hash(value)
+        return value
+    except TypeError:
+        return value[0]
+
+
+def printable(value):
+    try:
+        return ''.join([s for s in value if s in string.printable])
+
+    except TypeError:  # nan
+        return value
+
+
+def clean_road_links(road_links, copy=False):
+
+    if copy:
+        road_links = road_links.copy()
+
+    road_links['highway'] = road_links['highway'].apply(highest_highway_order)
+    road_links['lanes'] = road_links['lanes'].fillna(1).apply(min_lanes).astype(int)
+
+    for c in set(road_links.columns) - {'geometry'}:
+        road_links[c] = road_links[c].apply(first_item)
+
+    road_links['name'] = road_links['name'].apply(printable)
+
+    return road_links

@@ -1,5 +1,5 @@
 {
-    "python.pythonPath": "${workspaceFolder}/.venv/bin/python3.8",
+    "python.pythonPath": "C:\\Users\\qchasserieau\\AppData\\Local\\Continuum\\Anaconda3\\envs\\quetzal_env\\python.exe",
     // "python.pythonPath": "C:\\Users\\qchasserieau\\AppData\\Local\\Continuum\\Anaconda3\\envs\\quetzal_env\\python.exe",
     "python.venvPath": "${workspaceFolder}/.venv",
     "python.jediEnabled": true,
