@@ -1,7 +1,8 @@
 {
-    "python.pythonPath": "C:\\Users\\qchasserieau\\AppData\\Local\\Continuum\\Anaconda3\\envs\\quetzal_env\\python.exe",
-    // "python.pythonPath": "C:\\Users\\qchasserieau\\AppData\\Local\\Continuum\\Anaconda3\\envs\\quetzal_env\\python.exe",
-    "python.venvPath": "${workspaceFolder}/.venv",
+
+    // "python.pythonPath": "${workspaceFolder}/.venv/bin/python3.8",
+    "python.pythonPath": "${QUETZAL_ENV}/python.exe",
+    "python.venvPath": "${QUETZAL_ENV}",
     "python.jediEnabled": true,
     "python.workspaceSymbols.tagFilePath": "${workspaceFolder}/.vscode/tags",
     "python.workspaceSymbols.enabled": true,

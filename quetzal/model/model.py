@@ -15,6 +15,7 @@ import pandas as pd
 from quetzal.io import hdf_io
 from quetzal.model.integritymodel import IntegrityModel
 from shapely.geometry import Point
+from syspy.io.geojson_utils import set_geojson_crs
 from syspy.syspy_utils.data_visualization import (add_basemap, add_north,
                                                   add_raster, add_scalebar)
 from tqdm import tqdm

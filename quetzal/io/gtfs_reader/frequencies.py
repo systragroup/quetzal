@@ -27,7 +27,7 @@ def convert_to_frequencies(feed, time_range, pattern_column='pattern_id'):
     feed = restrict_to_timerange(feed, time_range)
 
     # Compute pattern headway
-    pattern_headways = compute_pattern_headways(feed, time_range)
+    pattern_headways = compute_pattern_headways(feed, time_range, pattern_column)
 
     # One trip per pattern
     to_replace_all = feed.trips.set_index('trip_id')[pattern_column].to_dict()
@@ -49,7 +49,7 @@ def convert_to_frequencies(feed, time_range, pattern_column='pattern_id'):
     return feed
 
 
-def compute_pattern_headways(feed, time_range):
+def compute_pattern_headways(feed, time_range, pattern_column='pattern_id'):
     """
     Args:
         feed
@@ -77,7 +77,7 @@ def compute_pattern_headways(feed, time_range):
     time_range_sec = [hhmmss_to_seconds_since_midnight(x) for x in time_range]
 
     freq_conv = GTFS_frequencies_utils(temp_frequencies, feed.trips.copy())
-    pattern_headways = feed.trips.groupby('pattern_id')[['trip_id']].agg(list)
+    pattern_headways = feed.trips.groupby(pattern_column)[['trip_id']].agg(list)
     pattern_headways['headway_secs'] = pattern_headways['trip_id'].progress_apply(
         lambda x: freq_conv.compute_average_headway(x, time_range_sec)
     )

@@ -5,16 +5,18 @@ from syspy.skims import skims
 from syspy.spatial import spatial
 
 
-def node_clustering(links, nodes, n_clusters, prefixe='', group_id=None, **kwargs):
+def node_clustering(links, nodes, n_clusters=None, prefixe='', group_id=None, **kwargs):
     disaggregated_nodes = nodes.copy()
     if group_id is None:
+        assert n_clusters is not None, 'n_clusters must be defined if group_id is None'
         clusters, cluster_series = spatial.zone_clusters(
             nodes,
             n_clusters=n_clusters,
             **kwargs
         )
     else:
-        clusters = nodes.groupby(group_id).first()
+        clusters = gpd.GeoDataFrame(nodes).dissolve(group_id)['geometry'].apply(lambda x: x.convex_hull)
+        clusters = pd.DataFrame(clusters)
         cluster_series = nodes[group_id]
 
     cluster_dict = cluster_series.to_dict()
@@ -45,7 +47,8 @@ def node_clustering(links, nodes, n_clusters, prefixe='', group_id=None, **kwarg
 
     parenthood['geometry'] = parenthood.apply(parenthood_geometry, axis=1)
     centroids.index = prefixe + pd.Series(centroids.index).astype(str)
-    return links, centroids, clusters, parenthood
+
+    return links, centroids,  clusters, parenthood
 
 
 def parenthood_geometry(row):
@@ -140,3 +143,58 @@ def centroid_and_links(nodes, n_clusters, coordinates_unit='degree'):
     else:
         links['length'] = gpd.GeoDataFrame(links).length
     return first, links
+
+
+def adaptive_clustering(nodes, zones, mean_distance_threshold=None, distance_col=None):
+    """
+    Compute cluster_id for each node, based on given zoning and agglomerative_clustering.
+    For each zone, distance_threshold is computed as follow:
+    - take value of distance_col if parameter is given
+    - otherwise:
+        - consider twice the characteristic distance of each zone (area**0.5)
+        - scale in average to mean_distance_threshold if given
+    """
+    # define distance_threshold
+    zone_df = gpd.GeoDataFrame(zones.copy())
+
+    if distance_col is not None:
+        zone_df['distance_threshold'] = zone_df[distance_col]
+    else:
+        zone_df['distance_threshold'] = zone_df['geometry'].area ** 0.5
+        
+        if mean_distance_threshold is not None:
+            zone_df['distance_threshold'] *= mean_distance_threshold / zone_df['distance_threshold'].mean()
+    
+    print('Mean distance threshold is {}'.format(int(zone_df['distance_threshold'].mean())))
+
+    #  take twice max value for outer zones
+    d_max = zone_df['distance_threshold'].max() * 2
+
+    def group_clusters(g, zone_df=zone_df):
+        z_id = g['zone_id'].values[0]
+
+        if len(g) > 1:
+            # a quarter of the characteristic distance of the zone
+            if z_id != 'outer':
+                d = zone_df.loc[z_id, 'distance_threshold']
+            else:
+                d = d_max
+
+            cluster_ids = spatial.agglomerative_clustering(g, d)
+
+        else:
+            cluster_ids = [0]
+
+        g['adaptive_cluster_id'] = ['{}_{}'.format(z_id, x) for x in cluster_ids]
+
+        return g
+
+    # find zone
+    nodes['zone_id'] = 'outer'
+    for z_id, z in zones.iterrows():
+        nodes.loc[nodes.within(z.geometry), 'zone_id'] = z_id
+
+    # perform clustering
+    nodes = nodes.groupby('zone_id').apply(group_clusters)
+
+    return nodes
