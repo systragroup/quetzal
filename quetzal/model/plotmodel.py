@@ -12,6 +12,7 @@ from shapely import geometry
 from syspy.syspy_utils import data_visualization
 from syspy.syspy_utils.data_visualization import trim_axs
 from tqdm import tqdm
+from rasterio import plot
 
 styles = {
     'zones': {'color': 'grey', 'alpha': 0},

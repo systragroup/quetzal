@@ -1,4 +1,5 @@
 {
+
     // "python.pythonPath": "${workspaceFolder}/.venv/bin/python3.8",
     "python.pythonPath": "${QUETZAL_ENV}/python.exe",
     "python.venvPath": "${QUETZAL_ENV}",

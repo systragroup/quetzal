@@ -742,6 +742,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             if time_expanded:
                 self.te_los[(segment, 'probability')] = p.loc[segment]['probability']
             else:
+                assert self.los.index.is_unique, "los must have unique index"
                 self.los[(segment, 'probability')] = p.loc[segment]['probability']
 
         self.probabilities = mp
