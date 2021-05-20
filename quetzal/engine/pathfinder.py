@@ -138,9 +138,16 @@ def sparse_los_from_nx_graph(
     los['path'] = paths
     return los
 
+def clean_edges(edges):
+    cleanedEdges = []
+    for edge in edges:
+        isnan = any([str(e) == 'nan' for e in edge])
+        if not isnan: cleanedEdges.append(edge)
+    return cleanedEdges
 
 def sparse_matrix(edges):
-    nodelist = {e[0] for e in edges}.union({e[1] for e in edges})
+    edges = clean_edges(edges)
+    nodelist = sorted(list({e[0] for e in edges}.union({e[1] for e in edges})))
     nlen = len(nodelist)
     index = dict(zip(nodelist, range(nlen)))
     coefficients = zip(*((index[u], index[v], w) for u, v, w in edges))
