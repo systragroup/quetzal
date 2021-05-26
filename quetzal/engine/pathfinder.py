@@ -225,7 +225,9 @@ def los_from_graph(
         sources = {o for o, d in od_set if o in sources}
     # INDEX
     pole_list = sorted(list(pole_set))  # fix order
-    source_list = [zone for zone in pole_list if zone in sources]
+    source_list = sorted([zone for zone in pole_list if zone in sources]) # fix order
+
+    od_list = sorted(list(od_set)) # fix order
 
     zones = [node_index[zone] for zone in source_list]
     source_index = dict(zip(source_list, range(len(source_list))))
