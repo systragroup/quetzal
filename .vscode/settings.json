@@ -1,9 +1,8 @@
 {
-
-    // "python.pythonPath": "${workspaceFolder}/.venv/bin/python3.8",
-    "python.pythonPath": "${QUETZAL_ENV}/python.exe",
-    "python.venvPath": "${QUETZAL_ENV}",
-    "python.jediEnabled": true,
+    "python.pythonPath": "${workspaceFolder}/.venv/bin/python3.8",
+    "python.venvPath": "${workspaceFolder}/.venv",
+    // "python.pythonPath": "${QUETZAL_ENV}/python.exe",
+    // "python.venvPath": "${QUETZAL_ENV}",
     "python.workspaceSymbols.tagFilePath": "${workspaceFolder}/.vscode/tags",
     "python.workspaceSymbols.enabled": true,
     "python.linting.pylintEnabled": false,
