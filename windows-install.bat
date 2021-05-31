@@ -27,4 +27,4 @@ set conda_cmd=
 for /f "delims=" %%a in ('python get_conda_install_args.py') do set conda_cmd=%%a
 call %conda_cmd%
 call python -m pip install -e . -r requirements_win.txt --trusted-host pypi.org --trusted-host files.pythonhosted.org
-call conda install -y -c conda-forge rtree=0.9.3
+call conda install -y -c conda-forge rtree
