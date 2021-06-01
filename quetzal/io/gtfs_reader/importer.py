@@ -1,21 +1,18 @@
-# -*- coding: utf-8 -*-
 # pylint: disable=no-member
-
-import pandas as pd
 import geopandas as gpd
+import gtfs_kit as gk
+import pandas as pd
 from shapely.geometry import LineString
 from syspy.transitfeed import feed_links
 
-from .feed_gtfsk import Feed
-import gtfs_kit as gk
 from . import patterns
+from .feed_gtfsk import Feed
 
 
 def get_epsg(lat, lon):
-    return int(
-        32700 - round((45 + lat) / 90, 0) * 100 +
-        round((183 + lon) / 6, 0)
-    )
+    return int(32700 - round((45 + lat) / 90, 0) * 100 + round((183 + lon) / 6, 0))
+
+
 
 def to_seconds(time_string):  # seconds
     return pd.to_timedelta(time_string).total_seconds()
@@ -38,9 +35,9 @@ class GtfsImporter(Feed):
         self.epsg = epsg
 
     from .directions import build_directions
+    from .frequencies import compute_pattern_headways, convert_to_frequencies
     from .patterns import build_patterns
     from .services import group_services
-    from .frequencies import convert_to_frequencies, compute_pattern_headways
 
     def clean(self):
         feed = super().clean()
@@ -124,6 +121,7 @@ class GtfsImporter(Feed):
         self.nodes = gk.stops.geometrize_stops_0(self.stops)
         if use_utm:
             epsg = get_epsg(self.stops.iloc[1]['stop_lat'], self.stops.iloc[1]['stop_lon'])
+            print('export geometries in epsg:', epsg)
             self.nodes = self.nodes.to_crs(epsg=epsg)
 
         self.links['geometry'] = linestring_geometry(
@@ -133,3 +131,4 @@ class GtfsImporter(Feed):
             'b'
         )
         self.links = gpd.GeoDataFrame(self.links)
+        self.links.crs = self.nodes.crs

@@ -14,14 +14,14 @@ def set_prefs(prefs):
     # 'build/*.o': matches 'build/lib.o' but not 'build/sub/lib.o'
     # 'build//*.o': matches 'build/lib.o' and 'build/sub/lib.o'
     prefs['ignored_resources'] = ['*.pyc', '*~', '.ropeproject',
-                                  '.hg', '.svn', '_svn', '.git', 
+                                  '.hg', '.svn', '_svn', '.git',
                                   '__pycache__']
 
     # Specifies which files should be considered python files.  It is
     # useful when you have scripts inside your project.  Only files
     # ending with ``.py`` are considered to be python files by
     # default.
-    #prefs['python_files'] = ['*.py']
+    # prefs['python_files'] = ['*.py']
 
     # Custom source folders:  By default rope searches the project
     # for finding source folders (folders that should be searched
@@ -31,10 +31,10 @@ def set_prefs(prefs):
     # The folders should be relative to project root and use '/' for
     # separating folders regardless of the platform rope is running on.
     # 'src/my_source_folder' for instance.
-    #prefs.add('source_folders', 'src')
+    # prefs.add('source_folders', 'src')
 
     # You can extend python path for looking up modules
-    #prefs.add('python_path', '~/python/')
+    # prefs.add('python_path', '~/python/')
 
     # Should rope save object information or not.
     prefs['save_objectdb'] = True

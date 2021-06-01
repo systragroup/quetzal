@@ -1,52 +1,54 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <title>quetzal.analysis.on_demand module &mdash; quetzal  documentation</title>
   
 
   
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
   
 
   
 
   
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-
-  
-  
-    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-    <link rel="top" title="quetzal  documentation" href="index.html"/>
-        <link rel="up" title="quetzal.analysis package" href="quetzal.analysis.html"/>
-        <link rel="prev" title="quetzal.analysis.cost_benefit_analysis module" href="quetzal.analysis.cost_benefit_analysis.html"/> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="quetzal.analysis.cost_benefit_analysis module" href="quetzal.analysis.cost_benefit_analysis.html" /> 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
+   
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -73,11 +75,15 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
             
-                <ul class="current">
+              
+            
+            
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="quetzal.engine.html">quetzal.engine package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quetzal.model.html">quetzal.model package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quetzal.io.html">quetzal.io package</a></li>
@@ -96,42 +102,65 @@
             
           
         </div>
+        
       </div>
     </nav>
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="index.html">quetzal</a>
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">quetzal</a>
+        
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
- 
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="index.html">Docs</a> &raquo;</li>
-      
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
           <li><a href="quetzal.analysis.html">quetzal.analysis package</a> &raquo;</li>
-      
-    <li>quetzal.analysis.on_demand module</li>
+        
+      <li>quetzal.analysis.on_demand module</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
           
-            <a href="_sources/quetzal.analysis.on_demand.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/quetzal.analysis.on_demand.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -139,48 +168,50 @@
             
   <div class="section" id="module-quetzal.analysis.on_demand">
 <span id="quetzal-analysis-on-demand-module"></span><h1>quetzal.analysis.on_demand module<a class="headerlink" href="#module-quetzal.analysis.on_demand" title="Permalink to this headline">¶</a></h1>
-<dl class="function">
+<dl class="py function">
 <dt id="quetzal.analysis.on_demand.checkpoint_demand">
-<code class="descclassname">quetzal.analysis.on_demand.</code><code class="descname">checkpoint_demand</code><span class="sig-paren">(</span><em>od_stack, link_checkpoints, node_checkpoints, volume_columns=['volume'], suffixe=''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/analysis/on_demand.html#checkpoint_demand"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.analysis.on_demand.checkpoint_demand" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">quetzal.analysis.on_demand.</span></code><code class="sig-name descname"><span class="pre">checkpoint_demand</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">od_stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">link_checkpoints</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_checkpoints</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volume_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['volume']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">suffixe</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/analysis/on_demand.html#checkpoint_demand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.analysis.on_demand.checkpoint_demand" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="quetzal.analysis.on_demand.node_path">
-<code class="descclassname">quetzal.analysis.on_demand.</code><code class="descname">node_path</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/analysis/on_demand.html#node_path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.analysis.on_demand.node_path" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">quetzal.analysis.on_demand.</span></code><code class="sig-name descname"><span class="pre">node_path</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/analysis/on_demand.html#node_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.analysis.on_demand.node_path" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="quetzal.analysis.on_demand.select">
-<code class="descclassname">quetzal.analysis.on_demand.</code><code class="descname">select</code><span class="sig-paren">(</span><em>row</em>, <em>link_checkpoints</em>, <em>node_checkpoints</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/analysis/on_demand.html#select"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.analysis.on_demand.select" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">quetzal.analysis.on_demand.</span></code><code class="sig-name descname"><span class="pre">select</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">row</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">link_checkpoints</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_checkpoints</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/analysis/on_demand.html#select"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.analysis.on_demand.select" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
 
 
            </div>
+           
           </div>
           <footer>
-  
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-      
-        <a href="quetzal.analysis.cost_benefit_analysis.html" class="btn btn-neutral" title="quetzal.analysis.cost_benefit_analysis module" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
+        <a href="quetzal.analysis.cost_benefit_analysis.html" class="btn btn-neutral float-left" title="quetzal.analysis.cost_benefit_analysis module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
-  
 
   <hr/>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2018, Systra.
+        &#169; Copyright 2018, Systra.
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
-
         </div>
       </div>
 
@@ -189,36 +220,15 @@
   </div>
   
 
-
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>

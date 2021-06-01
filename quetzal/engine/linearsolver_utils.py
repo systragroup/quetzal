@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
-import pandas as pd
 import numpy as np
+import pandas as pd
 from scipy.optimize import linprog
 
 
@@ -45,16 +43,16 @@ def linearsolver(
         **kwargs
     )
     try:
-        l = linprog(obj, A_ub=A_ub, b_ub=b_ub, bounds=bound_ub,
-                    options={'maxiter': maxiter, 'bland': True, 'tol': tolerance})
-        x = l.x[0:len(indicator)]
+        lin = linprog(obj, A_ub=A_ub, b_ub=b_ub, bounds=bound_ub,
+                      options={'maxiter': maxiter, 'bland': True, 'tol': tolerance})
+        x = lin.x[0:len(indicator)]
         pivot_stack_matrix = pd.merge(
             od_stack[['origin', 'destination']],
             pd.DataFrame(x, columns=['pivot']),
             left_index=True, right_index=True
         )
         return pivot_stack_matrix
-    except:
+    except Exception:
         raise NotImplementedError
         pass
 
@@ -93,10 +91,9 @@ def reduce_indicator(big_indicator, cluster_series, volumes, volume_column='volu
             [i for i in range(nb_keys)]]
 
     indicator = pd.DataFrame([
-        tuple(np.ma.average(table[k], weights=table[volume_column], axis=0)
-            for k in range(nb_keys))
+        tuple(np.ma.average(table[k], weights=table[volume_column], axis=0) for k in range(nb_keys))
         for couple, table in grouped
-        ]).fillna(0)
+    ]).fillna(0)
     return indicator
 
 
@@ -178,7 +175,7 @@ def build_constraints(
     :return A_ub: matrix of inequality constraint (left side)
     :return b_ub: vector of inequality constraint (right side)
     """
-    
+
     od_stack = od_stack.sort_values(['origin', 'destination'])
     volumes = od_stack[volume_column]
     zone_list = sorted(od_stack['origin'])
@@ -187,7 +184,7 @@ def build_constraints(
     V = np.array(volumes)
     # df est en fait l'application linéaire
     # à appliquer aux paramètres d'ajustement
-    df = pd.DataFrame(I.transpose()*V)
+    df = pd.DataFrame(I.transpose() * V)
     X = np.array(volumes)
 
     # dimension du probleme: 2* nb_od
@@ -240,15 +237,15 @@ def build_constraints(
     # constraints on distance (C3)
     if pas_distance is not None:
         vect_dist = od_stack['euclidean_distance']
-        dist_moy = (vect_dist.values*X).sum()/X.sum()
-        G1 = pd.DataFrame([[X[i]*(vect_dist[i] - dist_moy - pas_distance) for i in range(nb_od)]])
-        G2 = pd.DataFrame([[X[i]*(-vect_dist[i] + dist_moy - pas_distance) for i in range(nb_od)]])
+        dist_moy = (vect_dist.values * X).sum() / X.sum()
+        G1 = pd.DataFrame([[X[i] * (vect_dist[i] - dist_moy - pas_distance) for i in range(nb_od)]])
+        G2 = pd.DataFrame([[X[i] * (-vect_dist[i] + dist_moy - pas_distance) for i in range(nb_od)]])
         G_y = pd.DataFrame([[0 for j in range(k)]])
         G_sup = pd.concat([G1, G_y], axis=1)
         G_inf = pd.concat([G2, G_y], axis=1)
     else:
-        G1 = pd.DataFrame([[X[i]*0 for i in range(nb_od)]])
-        G2 = pd.DataFrame([[X[i]*0 for i in range(nb_od)]])
+        G1 = pd.DataFrame([[X[i] * 0 for i in range(nb_od)]])
+        G2 = pd.DataFrame([[X[i] * 0 for i in range(nb_od)]])
         G_y = pd.DataFrame([[0 for j in range(k)]])
         G_sup = pd.concat([G1, G_y], axis=1)
         G_inf = pd.concat([G2, G_y], axis=1)
@@ -257,10 +254,9 @@ def build_constraints(
         [A_pos, A_neg, A_e, A_a, -A_e, -A_a, A_tot_em, -A_tot_em, G_sup, G_inf]
     ).values
     b_ub = pd.concat(
-        [b_sum, -b_sum, b_e_pos, b_a_pos, b_e_neg, b_a_neg, b_tot_em, pd.DataFrame([0,0])]
+        [b_sum, -b_sum, b_e_pos, b_a_pos, b_e_neg, b_a_neg, b_tot_em, pd.DataFrame([0, 0])]
     ).values
 
     # bounds (B)
     bounds = [bounds_A for i in range(nb_od)] + [(0, None) for i in range(k)]
-
     return objectif, A_ub, b_ub, bounds

@@ -1,53 +1,55 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <title>quetzal.model.preparationmodel module &mdash; quetzal  documentation</title>
   
 
   
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
   
 
   
 
   
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-
-  
-  
-    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-    <link rel="top" title="quetzal  documentation" href="index.html"/>
-        <link rel="up" title="quetzal.model package" href="quetzal.model.html"/>
-        <link rel="next" title="quetzal.model.stepmodel module" href="quetzal.model.stepmodel.html"/>
-        <link rel="prev" title="quetzal.model.model module" href="quetzal.model.model.html"/> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="quetzal.model.stepmodel module" href="quetzal.model.stepmodel.html" />
+    <link rel="prev" title="quetzal.model.model module" href="quetzal.model.model.html" /> 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
+   
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -74,11 +76,15 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
             
-                <ul class="current">
+              
+            
+            
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="quetzal.engine.html">quetzal.engine package</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="quetzal.model.html">quetzal.model package</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="quetzal.model.html#submodules">Submodules</a><ul class="current">
@@ -102,42 +108,65 @@
             
           
         </div>
+        
       </div>
     </nav>
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="index.html">quetzal</a>
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">quetzal</a>
+        
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
- 
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="index.html">Docs</a> &raquo;</li>
-      
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
           <li><a href="quetzal.model.html">quetzal.model package</a> &raquo;</li>
-      
-    <li>quetzal.model.preparationmodel module</li>
+        
+      <li>quetzal.model.preparationmodel module</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
           
-            <a href="_sources/quetzal.model.preparationmodel.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/quetzal.model.preparationmodel.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -145,103 +174,125 @@
             
   <div class="section" id="module-quetzal.model.preparationmodel">
 <span id="quetzal-model-preparationmodel-module"></span><h1>quetzal.model.preparationmodel module<a class="headerlink" href="#module-quetzal.model.preparationmodel" title="Permalink to this headline">¶</a></h1>
-<dl class="class">
+<dl class="py class">
 <dt id="quetzal.model.preparationmodel.PreparationModel">
-<em class="property">class </em><code class="descclassname">quetzal.model.preparationmodel.</code><code class="descname">PreparationModel</code><span class="sig-paren">(</span><em>json_database=None</em>, <em>json_folder=None</em>, <em>hdf_database=None</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="quetzal.model.model.html#quetzal.model.model.Model" title="quetzal.model.model.Model"><code class="xref py py-class docutils literal"><span class="pre">quetzal.model.model.Model</span></code></a>, <a class="reference internal" href="quetzal.model.cubemodel.html#quetzal.model.cubemodel.cubeModel" title="quetzal.model.cubemodel.cubeModel"><code class="xref py py-class docutils literal"><span class="pre">quetzal.model.cubemodel.cubeModel</span></code></a></p>
-<dl class="method">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">quetzal.model.preparationmodel.</span></code><code class="sig-name descname"><span class="pre">PreparationModel</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="quetzal.model.model.html#quetzal.model.model.Model" title="quetzal.model.model.Model"><code class="xref py py-class docutils literal notranslate"><span class="pre">quetzal.model.model.Model</span></code></a>, <a class="reference internal" href="quetzal.model.cubemodel.html#quetzal.model.cubemodel.cubeModel" title="quetzal.model.cubemodel.cubeModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">quetzal.model.cubemodel.cubeModel</span></code></a></p>
+<dl class="py method">
 <dt id="quetzal.model.preparationmodel.PreparationModel.preparation_cast_network">
-<code class="descname">preparation_cast_network</code><span class="sig-paren">(</span><em>nearest_method='nodes'</em>, <em>weight='length'</em>, <em>penalty_factor=1</em>, <em>speed=3</em>, <em>replace_nodes=False</em>, <em>dumb_cast=False</em>, <em>**nc_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_cast_network"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_cast_network" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="docutils">
-<dt>Finds a path for the transport lines in an actual road network</dt>
-<dd><ul class="first last simple">
-<li>requires: nodes, links, road_nodes, road_links</li>
-<li>builds: links</li>
+<code class="sig-name descname"><span class="pre">preparation_cast_network</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nearest_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'nodes'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'length'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">penalty_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">speed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">replace_nodes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dumb_cast</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">nc_kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_cast_network"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_cast_network" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Finds a path for the transport lines in an actual road network</dt><dd><ul class="simple">
+<li><p>requires: nodes, links, road_nodes, road_links</p></li>
+<li><p>builds: links</p></li>
 </ul>
 </dd>
 </dl>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>nearest_method</strong> &#8211; if &#8216;links&#8217;, looks for the nearest link to a stop
-in road_links and links the stop to its end_node (b). If &#8216;node&#8217; looks
-for the actual nearest node in road_nodes.</li>
-<li><strong>nodes_checkpoints</strong> &#8211; mandatory transit nodes</li>
-<li><strong>factor</strong> (<em>penalty</em>) &#8211; <p>...</p>
-</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>nearest_method</strong> – if ‘links’, looks for the nearest link to a stop
+in road_links and links the stop to its end_node (b). If ‘node’ looks
+for the actual nearest node in road_nodes.</p></li>
+<li><p><strong>nodes_checkpoints</strong> – mandatory transit nodes</p></li>
+<li><p><strong>factor</strong> (<em>penalty</em>) – <p>…</p>
+</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Ng_kwargs:</th><td class="field-body"><p class="first last">...</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">Ng_kwargs</dt>
+<dd class="field-even"><p>…</p>
+</dd>
+</dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="quetzal.model.preparationmodel.PreparationModel.preparation_clusterize_nodes">
-<code class="descname">preparation_clusterize_nodes</code><span class="sig-paren">(</span><em>n_clusters</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_clusterize_nodes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_clusterize_nodes" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="docutils">
-<dt>clusterize nodes</dt>
-<dd><ul class="first last simple">
-<li>requires: nodes</li>
-<li>builds: links, nodes</li>
+<code class="sig-name descname"><span class="pre">preparation_clusterize_nodes</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_clusters</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_clusterize_nodes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_clusterize_nodes" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>clusterize nodes</dt><dd><ul class="simple">
+<li><p>requires: nodes</p></li>
+<li><p>builds: links, nodes</p></li>
 </ul>
 </dd>
 </dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="quetzal.model.preparationmodel.PreparationModel.preparation_clusterize_zones">
-<code class="descname">preparation_clusterize_zones</code><span class="sig-paren">(</span><em>max_zones=500</em>, <em>cluster_column=None</em>, <em>is_od_stack=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_clusterize_zones"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_clusterize_zones" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="docutils">
-<dt>clusterize zones</dt>
-<dd><ul class="first last simple">
-<li>requires: zones, volumes</li>
-<li>builds: zones, volumes, (cluster_series)</li>
+<code class="sig-name descname"><span class="pre">preparation_clusterize_zones</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_zones</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cluster_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_od_stack</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_clusterize_zones"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_clusterize_zones" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>clusterize zones</dt><dd><ul class="simple">
+<li><p>requires: zones, volumes</p></li>
+<li><p>builds: zones, volumes, cluster_series</p></li>
 </ul>
 </dd>
 </dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
+<dt id="quetzal.model.preparationmodel.PreparationModel.preparation_drop_redundant_zone_to_transit">
+<code class="sig-name descname"><span class="pre">preparation_drop_redundant_zone_to_transit</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_drop_redundant_zone_to_transit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_drop_redundant_zone_to_transit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
 <dt id="quetzal.model.preparationmodel.PreparationModel.preparation_footpaths">
-<code class="descname">preparation_footpaths</code><span class="sig-paren">(</span><em>road=False</em>, <em>speed=3</em>, <em>max_length=None</em>, <em>n_clusters=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_footpaths"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_footpaths" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">preparation_footpaths</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">road</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">speed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_clusters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_footpaths"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_footpaths" title="Permalink to this definition">¶</a></dt>
 <dd><ul class="simple">
-<li>requires: nodes</li>
-<li>builds: footpaths</li>
+<li><p>requires: nodes</p></li>
+<li><p>builds: footpaths</p></li>
 </ul>
 </dd></dl>
 
-<dl class="method">
-<dt id="quetzal.model.preparationmodel.PreparationModel.preparation_ntlegs">
-<code class="descname">preparation_ntlegs</code><span class="sig-paren">(</span><em>short_leg_speed=2</em>, <em>long_leg_speed=10</em>, <em>threshold=1000</em>, <em>n_ntlegs=5</em>, <em>max_ntleg_length=5000</em>, <em>zone_to_transit=True</em>, <em>zone_to_road=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_ntlegs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_ntlegs" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="docutils">
-<dt>Builds the centroids and the ntlegs</dt>
-<dd><ul class="first last simple">
-<li>requires: zones, nodes</li>
-<li>builds: centroids, zone_to_transit, zone_to_road</li>
+<dl class="py method">
+<dt id="quetzal.model.preparationmodel.PreparationModel.preparation_logit">
+<code class="sig-name descname"><span class="pre">preparation_logit</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pt_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pt_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">segments</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">price</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transfers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_shift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">route_types</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_logit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_logit" title="Permalink to this definition">¶</a></dt>
+<dd><ul class="simple">
+<li><p>requires:</p></li>
+<li><p>builds: mode_utility, mode_nests, logit_scales, utility_values</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mode</strong> – phi parameter used in the logit choice between modes</p></li>
+<li><p><strong>pt_mode</strong> – phi parameter used in the logit choice between pt modes</p></li>
+<li><p><strong>pt_mode</strong> – phi parameter used in the logit choice between pt paths</p></li>
+<li><p><strong>segments</strong> – the demand segments that will have to chose ex [‘car’, ‘nocar’]</p></li>
+<li><p><strong>time</strong> – number of utility units by seconds</p></li>
+<li><p><strong>price</strong> – number of utility units by currency unit</p></li>
+<li><p><strong>transfers</strong> – number of utility units by transfer</p></li>
 </ul>
 </dd>
 </dl>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>ntleg_speed</strong> &#8211; in km/h</li>
-<li><strong>n_ntlegs</strong> &#8211; int</li>
-<li><strong>max_ntleg_length</strong> &#8211; in m</li>
+<p>we should have 1 &gt;= mode &gt;= pt_mode &gt;= pt_path &gt; 0
+if the three of them are equal to 1 the nested logit will be equivalent to a flat logit</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="quetzal.model.preparationmodel.PreparationModel.preparation_map_tracks">
+<code class="sig-name descname"><span class="pre">preparation_map_tracks</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="pre">agg={'speed':</span> <span class="pre">&lt;function</span> <span class="pre">PreparationModel.&lt;lambda&gt;&gt;}</span></em>, <em class="sig-param"><span class="pre">buffer=50</span></em>, <em class="sig-param"><span class="pre">smoothing_span=100</span></em>, <em class="sig-param"><span class="pre">*args</span></em>, <em class="sig-param"><span class="pre">**kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_map_tracks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_map_tracks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="quetzal.model.preparationmodel.PreparationModel.preparation_ntlegs">
+<code class="sig-name descname"><span class="pre">preparation_ntlegs</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">short_leg_speed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">long_leg_speed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_ntlegs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_ntleg_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_to_transit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_to_road</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_ntlegs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_ntlegs" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Builds the centroids and the ntlegs</dt><dd><ul class="simple">
+<li><p>requires: zones, nodes</p></li>
+<li><p>builds: centroids, zone_to_transit, zone_to_road</p></li>
 </ul>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ntleg_speed</strong> – in km/h</p></li>
+<li><p><strong>n_ntlegs</strong> – int</p></li>
+<li><p><strong>max_ntleg_length</strong> – in m</p></li>
+</ul>
+</dd>
+</dl>
 <p>example:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">sm</span><span class="o">.</span><span class="n">step_ntlegs</span><span class="p">(</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sm</span><span class="o">.</span><span class="n">step_ntlegs</span><span class="p">(</span>
     <span class="n">n_ntlegs</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
     <span class="n">walk_speed</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
     <span class="n">short_leg_speed</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
@@ -255,45 +306,46 @@ for the actual nearest node in road_nodes.</li>
 
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="quetzal.model.preparationmodel.read_hdf">
-<code class="descclassname">quetzal.model.preparationmodel.</code><code class="descname">read_hdf</code><span class="sig-paren">(</span><em>filepath</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#read_hdf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.preparationmodel.read_hdf" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">quetzal.model.preparationmodel.</span></code><code class="sig-name descname"><span class="pre">read_hdf</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#read_hdf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.read_hdf" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="quetzal.model.preparationmodel.read_json">
-<code class="descclassname">quetzal.model.preparationmodel.</code><code class="descname">read_json</code><span class="sig-paren">(</span><em>folder</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#read_json"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.model.preparationmodel.read_json" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">quetzal.model.preparationmodel.</span></code><code class="sig-name descname"><span class="pre">read_json</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">folder</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#read_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.read_json" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
 
 
            </div>
+           
           </div>
           <footer>
-  
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="quetzal.model.stepmodel.html" class="btn btn-neutral float-right" title="quetzal.model.stepmodel module" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="quetzal.model.model.html" class="btn btn-neutral" title="quetzal.model.model module" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
+        <a href="quetzal.model.stepmodel.html" class="btn btn-neutral float-right" title="quetzal.model.stepmodel module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="quetzal.model.model.html" class="btn btn-neutral float-left" title="quetzal.model.model module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
-  
 
   <hr/>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2018, Systra.
+        &#169; Copyright 2018, Systra.
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
-
         </div>
       </div>
 
@@ -302,36 +354,15 @@ for the actual nearest node in road_nodes.</li>
   </div>
   
 
-
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>

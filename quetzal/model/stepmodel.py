@@ -1,12 +1,10 @@
-# -*- coding: utf-8 -*-
-
-from quetzal.model import analysismodel, docmodel, plotmodel
-
+import ntpath
+import shutil
+import uuid
 import warnings
 from functools import wraps
-import shutil
-import ntpath
-import uuid
+
+from quetzal.model import analysismodel, docmodel, plotmodel
 
 
 def deprecated_method(method):
@@ -28,13 +26,15 @@ def read_hdf(filepath, *args, **kwargs):
     m = StepModel(hdf_database=filepath, *args, **kwargs)
     return m
 
+
 def read_zip(filepath, *args, **kwargs):
     try:
         m = StepModel(zip_database=filepath, *args, **kwargs)
         return m
-    except : 
+    except Exception:
         # the zip is a zipped hdf and can not be decompressed
         return read_zipped_hdf(filepath, *args, **kwargs)
+
 
 def read_zipped_hdf(filepath, *args, **kwargs):
     filedir = ntpath.dirname(filepath)
@@ -48,6 +48,8 @@ def read_zipped_hdf(filepath, *args, **kwargs):
 def read_json(folder, **kwargs):
     m = StepModel(json_folder=folder, **kwargs)
     return m
+
+
 def read_zippedpickles(folder, *args, **kwarg):
     m = StepModel(zippedpickles_folder=folder, *args, **kwarg)
     return m
@@ -55,13 +57,12 @@ def read_zippedpickles(folder, *args, **kwarg):
 
 class StepModel(
     plotmodel.PlotModel,
-    analysismodel.AnalysisModel, 
+    analysismodel.AnalysisModel,
     docmodel.DocModel,
-    ):
-
+):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
- 
+
 
 # DEPRECATION
 
@@ -105,10 +106,10 @@ StepModel.add_type_prefixes = deprecated_method(
 StepModel.get_lines_integrity = deprecated_method(
     StepModel.integrity_fix_sequences)
 StepModel.get_no_circular_lines = deprecated_method(
-    StepModel.integrity_fix_circular_lines)  
+    StepModel.integrity_fix_circular_lines)
 StepModel.get_no_collision = deprecated_method(
     StepModel.integrity_fix_collision)
 StepModel.clean_road_network = deprecated_method(
     StepModel.integrity_fix_road_network)
 
-# renamed 
+# renamed

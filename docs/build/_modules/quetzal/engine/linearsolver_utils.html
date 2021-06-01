@@ -1,51 +1,53 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <title>quetzal.engine.linearsolver_utils &mdash; quetzal  documentation</title>
   
 
   
+  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
   
 
   
 
   
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
+      <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
 
-  
-
-  
-  
-    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-    <link rel="top" title="quetzal  documentation" href="../../../index.html"/>
-        <link rel="up" title="Module code" href="../../index.html"/> 
-
-  
-  <script src="../../../_static/js/modernizr.min.js"></script>
-
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
+   
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -72,11 +74,15 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
             
-                <ul>
+              
+            
+            
+              <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../quetzal.engine.html">quetzal.engine package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.html">quetzal.model package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../quetzal.io.html">quetzal.io package</a></li>
@@ -86,40 +92,61 @@
             
           
         </div>
+        
       </div>
     </nav>
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="../../../index.html">quetzal</a>
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">quetzal</a>
+        
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="../../../index.html">Docs</a> &raquo;</li>
-      
+    
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
           <li><a href="../../index.html">Module code</a> &raquo;</li>
-      
-    <li>quetzal.engine.linearsolver_utils</li>
+        
+      <li>quetzal.engine.linearsolver_utils</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
-        
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -130,7 +157,7 @@
 
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">scipy.optimize</span> <span class="k">import</span> <span class="n">linprog</span>
+<span class="kn">from</span> <span class="nn">scipy.optimize</span> <span class="kn">import</span> <span class="n">linprog</span>
 
 
 <div class="viewcode-block" id="linearsolver"><a class="viewcode-back" href="../../../quetzal.engine.linearsolver_utils.html#quetzal.engine.linearsolver_utils.linearsolver">[docs]</a><span class="k">def</span> <span class="nf">linearsolver</span><span class="p">(</span>
@@ -142,7 +169,8 @@
     <span class="n">bounds_tot_emissions</span><span class="p">,</span>
     <span class="n">pas_distance</span><span class="p">,</span>
     <span class="n">maxiter</span><span class="p">,</span>
-    <span class="n">tolerance</span>
+    <span class="n">tolerance</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span>
 <span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    Cette fonction est le coeur de la méthode linear_solver.</span>
@@ -168,7 +196,8 @@
         <span class="n">bounds_A</span><span class="p">,</span>
         <span class="n">bounds_emissions</span><span class="p">,</span>
         <span class="n">bounds_tot_emissions</span><span class="p">,</span>
-        <span class="n">pas_distance</span>
+        <span class="n">pas_distance</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
     <span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">l</span> <span class="o">=</span> <span class="n">linprog</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">A_ub</span><span class="o">=</span><span class="n">A_ub</span><span class="p">,</span> <span class="n">b_ub</span><span class="o">=</span><span class="n">b_ub</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="n">bound_ub</span><span class="p">,</span>
@@ -185,7 +214,7 @@
         <span class="k">pass</span></div>
 
 
-<div class="viewcode-block" id="build_indicator"><a class="viewcode-back" href="../../../quetzal.engine.linearsolver_utils.html#quetzal.engine.linearsolver_utils.build_indicator">[docs]</a><span class="k">def</span> <span class="nf">build_indicator</span><span class="p">(</span><span class="n">od_stack</span><span class="p">,</span> <span class="n">constrained_links</span><span class="p">):</span>
+<div class="viewcode-block" id="build_indicator"><a class="viewcode-back" href="../../../quetzal.engine.linearsolver_utils.html#quetzal.engine.linearsolver_utils.build_indicator">[docs]</a><span class="k">def</span> <span class="nf">build_indicator</span><span class="p">(</span><span class="n">od_stack</span><span class="p">,</span> <span class="n">constrained_links</span><span class="p">,</span> <span class="n">link_path_column</span><span class="o">=</span><span class="s1">&#39;link_path&#39;</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    :param od_stack (pd.DataFrame): od_stack of the model</span>
 <span class="sd">    :param constrained_links (dict): constrained links and their volumes</span>
@@ -193,7 +222,7 @@
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="n">constrained_zip</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">constrained_links</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
     <span class="n">keys</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">constrained_zip</span><span class="p">)</span>
-    <span class="n">paths</span> <span class="o">=</span> <span class="n">od_stack</span><span class="p">[</span><span class="s1">&#39;path&#39;</span><span class="p">]</span>
+    <span class="n">paths</span> <span class="o">=</span> <span class="n">od_stack</span><span class="p">[</span><span class="n">link_path_column</span><span class="p">]</span>
     <span class="n">indicator</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([</span>
         <span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span> <span class="ow">in</span> <span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">paths</span>
@@ -201,7 +230,7 @@
     <span class="k">return</span> <span class="n">indicator</span></div>
 
 
-<div class="viewcode-block" id="reduce_indicator"><a class="viewcode-back" href="../../../quetzal.engine.linearsolver_utils.html#quetzal.engine.linearsolver_utils.reduce_indicator">[docs]</a><span class="k">def</span> <span class="nf">reduce_indicator</span><span class="p">(</span><span class="n">big_indicator</span><span class="p">,</span> <span class="n">cluster_series</span><span class="p">,</span> <span class="n">volumes</span><span class="p">):</span>
+<div class="viewcode-block" id="reduce_indicator"><a class="viewcode-back" href="../../../quetzal.engine.linearsolver_utils.html#quetzal.engine.linearsolver_utils.reduce_indicator">[docs]</a><span class="k">def</span> <span class="nf">reduce_indicator</span><span class="p">(</span><span class="n">big_indicator</span><span class="p">,</span> <span class="n">cluster_series</span><span class="p">,</span> <span class="n">volumes</span><span class="p">,</span> <span class="n">volume_column</span><span class="o">=</span><span class="s1">&#39;volume_pt&#39;</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    :param big_indicator (pd.DataFrame): indicator of the entire model</span>
 <span class="sd">    :param cluster_series (pd.Serie): correspondance between zones and clusters</span>
@@ -219,7 +248,7 @@
             <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_keys</span><span class="p">)]]</span>
 
     <span class="n">indicator</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([</span>
-        <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">table</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">weights</span><span class="o">=</span><span class="n">table</span><span class="p">[</span><span class="s1">&#39;volume_pt&#39;</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">table</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">weights</span><span class="o">=</span><span class="n">table</span><span class="p">[</span><span class="n">volume_column</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_keys</span><span class="p">))</span>
         <span class="k">for</span> <span class="n">couple</span><span class="p">,</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">grouped</span>
         <span class="p">])</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
@@ -266,7 +295,8 @@
     <span class="n">bounds_A</span><span class="p">,</span>
     <span class="n">bounds_emissions</span><span class="p">,</span>
     <span class="n">bounds_tot_emissions</span><span class="p">,</span>
-    <span class="n">pas_distance</span>
+    <span class="n">pas_distance</span><span class="p">,</span>
+    <span class="n">volume_column</span><span class="o">=</span><span class="s1">&#39;volume_pt&#39;</span>
 <span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Ici on construit l&#39;objectif et les contraintes du problème d&#39;optimisation</span>
@@ -305,7 +335,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     
     <span class="n">od_stack</span> <span class="o">=</span> <span class="n">od_stack</span><span class="o">.</span><span class="n">sort_values</span><span class="p">([</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">])</span>
-    <span class="n">volumes</span> <span class="o">=</span> <span class="n">od_stack</span><span class="p">[</span><span class="s1">&#39;volume_pt&#39;</span><span class="p">]</span>
+    <span class="n">volumes</span> <span class="o">=</span> <span class="n">od_stack</span><span class="p">[</span><span class="n">volume_column</span><span class="p">]</span>
     <span class="n">zone_list</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">od_stack</span><span class="p">[</span><span class="s1">&#39;origin&#39;</span><span class="p">])</span>
 
     <span class="n">I</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">indicator</span><span class="p">)</span>
@@ -363,13 +393,20 @@
     <span class="n">b_tot_em</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([</span><span class="n">tot_em_pos</span><span class="p">,</span> <span class="n">tot_em_neg</span><span class="p">])</span>
 
     <span class="c1"># constraints on distance (C3)</span>
-    <span class="n">vect_dist</span> <span class="o">=</span> <span class="n">od_stack</span><span class="p">[</span><span class="s1">&#39;euclidean_distance&#39;</span><span class="p">]</span>
-    <span class="n">dist_moy</span> <span class="o">=</span> <span class="p">(</span><span class="n">vect_dist</span><span class="o">.</span><span class="n">values</span><span class="o">*</span><span class="n">X</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">/</span><span class="n">X</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-    <span class="n">G1</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([[</span><span class="n">X</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="n">vect_dist</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">dist_moy</span> <span class="o">-</span> <span class="n">pas_distance</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_od</span><span class="p">)]])</span>
-    <span class="n">G2</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([[</span><span class="n">X</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="o">-</span><span class="n">vect_dist</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">dist_moy</span> <span class="o">-</span> <span class="n">pas_distance</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_od</span><span class="p">)]])</span>
-    <span class="n">G_y</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([[</span><span class="mi">0</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">)]])</span>
-    <span class="n">G_sup</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">G1</span><span class="p">,</span> <span class="n">G_y</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-    <span class="n">G_inf</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">G2</span><span class="p">,</span> <span class="n">G_y</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pas_distance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">vect_dist</span> <span class="o">=</span> <span class="n">od_stack</span><span class="p">[</span><span class="s1">&#39;euclidean_distance&#39;</span><span class="p">]</span>
+        <span class="n">dist_moy</span> <span class="o">=</span> <span class="p">(</span><span class="n">vect_dist</span><span class="o">.</span><span class="n">values</span><span class="o">*</span><span class="n">X</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">/</span><span class="n">X</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">G1</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([[</span><span class="n">X</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="n">vect_dist</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">dist_moy</span> <span class="o">-</span> <span class="n">pas_distance</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_od</span><span class="p">)]])</span>
+        <span class="n">G2</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([[</span><span class="n">X</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="o">-</span><span class="n">vect_dist</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">dist_moy</span> <span class="o">-</span> <span class="n">pas_distance</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_od</span><span class="p">)]])</span>
+        <span class="n">G_y</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([[</span><span class="mi">0</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">)]])</span>
+        <span class="n">G_sup</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">G1</span><span class="p">,</span> <span class="n">G_y</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">G_inf</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">G2</span><span class="p">,</span> <span class="n">G_y</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">G1</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([[</span><span class="n">X</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="mi">0</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_od</span><span class="p">)]])</span>
+        <span class="n">G2</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([[</span><span class="n">X</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="mi">0</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_od</span><span class="p">)]])</span>
+        <span class="n">G_y</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([[</span><span class="mi">0</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">)]])</span>
+        <span class="n">G_sup</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">G1</span><span class="p">,</span> <span class="n">G_y</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">G_inf</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">G2</span><span class="p">,</span> <span class="n">G_y</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
     <span class="n">A_ub</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
         <span class="p">[</span><span class="n">A_pos</span><span class="p">,</span> <span class="n">A_neg</span><span class="p">,</span> <span class="n">A_e</span><span class="p">,</span> <span class="n">A_a</span><span class="p">,</span> <span class="o">-</span><span class="n">A_e</span><span class="p">,</span> <span class="o">-</span><span class="n">A_a</span><span class="p">,</span> <span class="n">A_tot_em</span><span class="p">,</span> <span class="o">-</span><span class="n">A_tot_em</span><span class="p">,</span> <span class="n">G_sup</span><span class="p">,</span> <span class="n">G_inf</span><span class="p">]</span>
@@ -385,22 +422,28 @@
 </pre></div>
 
            </div>
+           
           </div>
           <footer>
-  
 
   <hr/>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2018, Systra.
+        &#169; Copyright 2018, Systra.
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
-
         </div>
       </div>
 
@@ -409,36 +452,15 @@
   </div>
   
 
-
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'../../../',
-            VERSION:'',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
-        };
-    </script>
-      <script type="text/javascript" src="../../../_static/jquery.js"></script>
-      <script type="text/javascript" src="../../../_static/underscore.js"></script>
-      <script type="text/javascript" src="../../../_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>

@@ -1,15 +1,13 @@
-# -*- coding: utf-8 -*-
-
-from syspy.spatial.graph import network
-from syspy.spatial.geometries import reversed_polyline, simplify
 import pandas as pd
+from syspy.spatial.geometries import reversed_polyline, simplify
+from syspy.spatial.graph import network
 from tqdm import tqdm
 
 
 class GraphBuilder():
     """
     Use graphbuilders to build a graph from a collection of lines.
-    INIT then LINE METHODS then LINE TO LINK then LINK METHODS:
+    INIT then LINE METHODS then LINE TO LINK then LINK METHODS:
       process the lines first by adding intersections and splitting them;
       build the nodes and the links from the lines;
       process the links (merge them, drop the dead ends etc...)
@@ -27,7 +25,6 @@ class GraphBuilder():
         )
         links, nodes = gb.links, gb.nodes
     """
-
     def __init__(self, lines=None):
         """
         :param lines: line GeoDataFrame with at least a 'geometry' column
@@ -51,7 +48,7 @@ class GraphBuilder():
             inplace=True,
             seek_intersections=True,
             line_split_coord_dict=dict()
-        ):
+    ):
         """
         LINE METHOD
         Test every line of self.lines against its neigbors in order to find intersections.
@@ -71,7 +68,7 @@ class GraphBuilder():
 
     def build_nodes(self):
         """
-        LINE TO LINKS
+        LINE TO LINKS
         Builds self.links and self.nodes
         self.links have 'a' and 'b' columns which reference
         nodes from self.nodes (column 'n')
@@ -84,7 +81,7 @@ class GraphBuilder():
         nodes['join'] = nodes['n'].isin(join)
         self.links, self.nodes, self.join = links, nodes, join
 
-    def merge_links(self, inplace=True,  **kwargs):
+    def merge_links(self, inplace=True, **kwargs):
         """
         LINK METHOD
         Removes the nodes of degree 2 in the undirected graph (more or less)
@@ -100,23 +97,23 @@ class GraphBuilder():
             direct=2,
             indirect=3,
             both=1
-        ):
+    ):
         """
         LINK METHOD
         Builds directed links where:
           one can go from a to b
           the geometry goes from a to b
         The links that enable both directions are duplicated
-        The links tha enable only the indirect direction are reversed  
+        The links tha enable only the indirect direction are reversed
         example:
         ::
             gb.build_directed_links(
-                direction_column='sens', 
-                direct='Direct', 
-                indirect='Inverse', 
+                direction_column='sens',
+                direct='Direct',
+                indirect='Inverse',
                 both='Double',
                 inplace=True
-            )     
+            )
         """
         merge_oneway = pd.DataFrame(
             {
@@ -181,12 +178,6 @@ class GraphBuilder():
         self.nodes = self.nodes.loc[self.nodes['n'].isin(nodeset)]
 
 
-
-
-
-
-
-
 def clean_geometries(links, nodes, decimal_threshold=9):
     links = links.copy()
     ng = nodes['geometry'].to_dict()
@@ -195,6 +186,7 @@ def clean_geometries(links, nodes, decimal_threshold=9):
         a = tuple([round(x, decimal_threshold) for x in list(ng[row['a']].coords)[0]])
         b = tuple([round(x, decimal_threshold) for x in list(row['geometry'].coords)[0]])
         return a == b
+
     def return_directed(row):
         a = tuple([round(x, decimal_threshold) for x in list(ng[row['a']].coords)[0]])
         b = tuple([round(x, decimal_threshold) for x in list(row['geometry'].coords)[-1]])
@@ -204,13 +196,13 @@ def clean_geometries(links, nodes, decimal_threshold=9):
         return_directed,
         axis=1
     )
-    
+
     direct = links.apply(
         directed,
         axis=1
     )
-    
-    loc = (reverse == True, 'geometry')
+
+    loc = (reverse is True, 'geometry')
 
     links.loc[loc] = links.loc[loc].apply(
         reversed_polyline
@@ -218,14 +210,15 @@ def clean_geometries(links, nodes, decimal_threshold=9):
     assert (reverse | direct).mean() == 1
     return links
 
+
 def add_reversed_links(
-    links, 
-    direction_column='oneway', 
+    links,
+    direction_column='oneway',
     reverse_value=False,
     reset_link_index=True,
 ):
     reversed_link = links.copy()
-    reversed_link[ 'a'], reversed_link['b']  = links[ 'b'], links['a']
+    reversed_link['a'], reversed_link['b'] = links['b'], links['a']
     reversed_link['geometry'] = links['geometry'].apply(reversed_polyline)
 
     direct_links = links
@@ -236,27 +229,28 @@ def add_reversed_links(
     bothway = pd.concat([direct_links, indirect_links])
 
     if reset_link_index:
-        bothway['uid'] = range(1, len(bothway)+1)
+        bothway['uid'] = range(1, len(bothway) + 1)
         bothway.set_index('uid', inplace=True)
     return bothway
 
+
 class OsmnxCleaner():
     def __init__(
-        self,     
-        links=None, 
-        nodes=None, 
-        a='from', 
-        b='to', 
+        self,
+        links=None,
+        nodes=None,
+        a='from',
+        b='to',
         node_id=None
     ):
-        self.links=links.rename(columns ={a: 'a', b: 'b'})
+        self.links = links.rename(columns={a: 'a', b: 'b'})
         self.nodes = nodes
         if node_id is not None:
             self.nodes = self.nodes.set_index(node_id)
-            
+
     def add_reversed_links(self, *args, **kwargs):
         self.links = add_reversed_links(self.links, *args, **kwargs)
-        
+
     def clean_geometries(self, *args, **kwargs):
         self.links = clean_geometries(self.links, self.nodes, *args, **kwargs)
 
@@ -264,4 +258,3 @@ class OsmnxCleaner():
         self.links = self.links.loc[self.links['a'].isin(set(self.nodes.index))]
         self.links = self.links.loc[self.links['b'].isin(set(self.nodes.index))]
         self.nodes = self.nodes.loc[set(self.links['a']).union(self.links['b'])]
-

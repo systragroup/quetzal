@@ -1,14 +1,12 @@
-# -*- coding: utf-8 -*-
-
-import unittest
-import os
-import pandas as pd
-import sys
 import json
+import os
+import sys
+import unittest
+
+import pandas as pd
 
 
 class TestStringMethods(unittest.TestCase):
-
     def setUp(self):
         # Import syspy
         sys.path.append(r'../syspy')
@@ -16,12 +14,11 @@ class TestStringMethods(unittest.TestCase):
 
         # Read json_database object
         self.data_path = r'tests/data/'
-        with open(self.data_path + r'json_database.json', 'r') as infile: 
+        with open(self.data_path + r'json_database.json', 'r') as infile:
             json_database_object = json.load(infile)
 
         # load model
         self.sm = stepmodel.StepModel(json_database=json_database_object)
-
 
     def test_step_ntlegs(self):
         self.sm.step_ntlegs(
@@ -80,8 +77,9 @@ class TestStringMethods(unittest.TestCase):
 
     def test_json_database_io(self):
         from quetzal.model import stepmodel
+
         # Read json file
-        with open(self.data_path + r'json_database.json', 'r') as infile: 
+        with open(self.data_path + r'json_database.json', 'r') as infile:
             json_database_object = json.load(infile)
         # load model
         sm2 = stepmodel.StepModel(json_database=json_database_object)
@@ -99,16 +97,16 @@ class TestStringMethods(unittest.TestCase):
         # preparation
         sm = self.sm
         sm.od_stack = pd.merge(
-            sm.pt_los, 
-            sm.volumes, 
-            on=['origin', 'destination'], 
+            sm.pt_los,
+            sm.volumes,
+            on=['origin', 'destination'],
             suffixes=['_los', '_vol']
         ).sort_values(['origin', 'destination']).reset_index(drop=True)
         sm.od_stack['euclidean_distance'] = 10
 
         # linear solver
         constrained_links = {'link_12': 0.8, 'link_11': 1}
-        linprog_kwargs={
+        linprog_kwargs = {
             'bounds_A': [0.8, 1.2],
             'bounds_emissions': [0.9, 1.1],
             'bounds_tot_emissions': [0.99, 1.01],
@@ -124,15 +122,15 @@ class TestStringMethods(unittest.TestCase):
         reset = sm.pivot_stack_matrix.sort_values(['origin', 'destination']).reset_index(drop=True)
 
         def check_bound(value, bounds, tolerance=0):
-            return bounds[0]*(1-tolerance) <= value <= bounds[1]*(1+tolerance)
+            return bounds[0] * (1 - tolerance) <= value <= bounds[1] * (1 + tolerance)
 
         def assert_bound(value, bounds, tolerance=0):
             print(value, bounds)
             assert check_bound(value, bounds, tolerance)
 
-        sm.volumes['pivoted'] =sm.volumes['volume_pt'] * reset['pivot']
+        sm.volumes['pivoted'] = sm.volumes['volume_pt'] * reset['pivot']
 
-        # second assignment
+        # second assignment
         sm.step_assignment(
             volume_column='pivoted',
             boardings=True,
@@ -140,25 +138,24 @@ class TestStringMethods(unittest.TestCase):
             transfers=True
         )
 
-        # total
-        volsum = (sm.volumes['volume_pt']*reset['pivot']).sum()
+        # total
+        volsum = (sm.volumes['volume_pt'] * reset['pivot']).sum()
         growth = volsum / sm.volumes['volume_pt'].sum()
 
-        # emissions
+        # emissions
         attractions = sm.volumes.groupby(['destination']).sum()
         emissions = sm.volumes.groupby(['origin']).sum()
 
         attractions['growth'] = attractions['pivoted'] / attractions['volume_pt']
         emissions['growth'] = emissions['pivoted'] / emissions['volume_pt']
 
-        # pairwise
+        # pairwise
         pivoted = sm.volumes.copy()
         pivoted['growth'] = pivoted['pivoted'] / pivoted['volume_pt']
 
-
-        # total 
+        # total
         assert_bound(
-            growth, 
+            growth,
             linprog_kwargs['bounds_tot_emissions'],
             tolerance=linprog_kwargs['tolerance']
         )
@@ -167,12 +164,12 @@ class TestStringMethods(unittest.TestCase):
         for key, value in constrained_links.items():
             bounds = [value, value]
             assert_bound(
-                sm.loaded_links['pivoted'][key], 
+                sm.loaded_links['pivoted'][key],
                 bounds,
                 tolerance=linprog_kwargs['tolerance']
             )
 
-        # emissions
+        # emissions
         values = [
             attractions['growth'].min(),
             attractions['growth'].max(),
@@ -182,12 +179,12 @@ class TestStringMethods(unittest.TestCase):
 
         for value in values:
             assert_bound(
-                value, 
+                value,
                 linprog_kwargs['bounds_emissions'],
                 tolerance=linprog_kwargs['tolerance']
             )
-            
-        # pairwise
+
+        # pairwise
         values = [
             reset['pivot'].min(),
             reset['pivot'].max()
@@ -195,10 +192,11 @@ class TestStringMethods(unittest.TestCase):
 
         for value in values:
             assert_bound(
-                value, 
+                value,
                 linprog_kwargs['bounds_A'],
                 tolerance=linprog_kwargs['tolerance']
             )
+
 
 if __name__ == '__main__':
     unittest.main()

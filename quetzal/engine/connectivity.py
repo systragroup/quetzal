@@ -1,47 +1,46 @@
-# -*- coding: utf-8 -*-
-
-from syspy.spatial import spatial
-from syspy.skims import skims
-import pandas as pd
 import geopandas as gpd
+import pandas as pd
 import shapely
+from syspy.skims import skims
+from syspy.spatial import spatial
 
-def node_clustering(links, nodes, n_clusters, prefixe='', group_id=None,**kwargs):
-    
+
+def node_clustering(links, nodes, n_clusters=None, prefixe='', group_id=None, **kwargs):
     disaggregated_nodes = nodes.copy()
     if group_id is None:
+        assert n_clusters is not None, 'n_clusters must be defined if group_id is None'
         clusters, cluster_series = spatial.zone_clusters(
-            nodes, 
+            nodes,
             n_clusters=n_clusters,
             **kwargs
         )
     else:
-        clusters = nodes.groupby(group_id).first()
-        cluster_series = nodes[group_id] 
-    
+        clusters = gpd.GeoDataFrame(nodes).dissolve(group_id)['geometry'].apply(lambda x: x.convex_hull)
+        clusters = pd.DataFrame(clusters)
+        cluster_series = nodes[group_id]
+
     cluster_dict = cluster_series.to_dict()
     centroids = clusters.copy()
     centroids['geometry'] = centroids['geometry'].apply(lambda g: g.centroid)
-    
+
     try:
         links = links.copy()
-        
+
         links['disaggregated_a'] = links['a']
         links['disaggregated_b'] = links['b']
 
-        links['a'] = links['a'].apply(lambda x: prefixe + str(cluster_dict[x]))    
+        links['a'] = links['a'].apply(lambda x: prefixe + str(cluster_dict[x]))
         links['b'] = links['b'].apply(lambda x: prefixe + str(cluster_dict[x]))
     except AttributeError:
         links = None
-    
-    
+
     clusters['count'] = cluster_series.value_counts()
     disaggregated_nodes['cluster'] = cluster_series
-    
+
     parenthood = pd.merge(
-        disaggregated_nodes, 
-        centroids, 
-        left_on='cluster', 
+        disaggregated_nodes,
+        centroids,
+        left_on='cluster',
         right_index=True,
         suffixes=['_node', '_centroid']
     )
@@ -58,6 +57,7 @@ def parenthood_geometry(row):
     )
     return g
 
+
 def geo_join_method(geo):
     return geo.convex_hull.buffer(1e-4)
 
@@ -67,26 +67,24 @@ def voronoi_graph_and_tesselation(nodes, max_length=None, coordinates_unit='degr
     v_tesselation, v_graph = spatial.voronoi_diagram_dataframes(nodes['geometry'])
 
     # Compute length
-    if coordinates_unit=='degree':  # Default behaviour, assuming lat-lon coordinates
+    if coordinates_unit == 'degree':  # Default behaviour, assuming lat-lon coordinates
         v_graph['length'] = skims.distance_from_geometry(v_graph['geometry'])
-    elif coordinates_unit=='meter':  # metric
+    elif coordinates_unit == 'meter':  # metric
         v_graph['length'] = v_graph['geometry'].apply(lambda x: x.length)
     else:
         raise('Invalid coordinates_unit.')
 
     if max_length:
         v_graph = v_graph.loc[v_graph['length'] <= max_length]
-        
     return v_graph, v_tesselation
 
-def build_footpaths(nodes, speed=3, max_length=None, n_clusters=None, coordinates_unit='degree'):
 
+def build_footpaths(nodes, speed=3, max_length=None, n_clusters=None, coordinates_unit='degree'):
     if n_clusters and n_clusters < len(nodes):
         centroids, links = centroid_and_links(nodes, n_clusters, coordinates_unit=coordinates_unit)
-        nodes=nodes.loc[centroids]
+        nodes = nodes.loc[centroids]
         # not a bool for the geodataframe to be serializabe
-        links['voronoi'] = 0 
-
+        links['voronoi'] = 0
 
     graph, tesselation = voronoi_graph_and_tesselation(
         nodes,
@@ -114,36 +112,89 @@ def build_footpaths(nodes, speed=3, max_length=None, n_clusters=None, coordinate
 
 
 def centroid_and_links(nodes, n_clusters, coordinates_unit='degree'):
+    clusters, cluster_series = spatial.zone_clusters(
+        nodes,
+        n_clusters=n_clusters,
+        geo_union_method=lambda lg: shapely.geometry.MultiPoint(list(lg)),
+        geo_join_method=geo_join_method
+    )
+
+    index_name = cluster_series.index.name
+    index_name = index_name if index_name else 'index'
+    grouped = cluster_series.reset_index().groupby('cluster')
+    first = list(grouped[index_name].first())
+    node_lists = list(grouped[index_name].agg(lambda s: list(s)))
+
+    node_geo_dict = nodes['geometry'].to_dict()
+
+    def link_geometry(a, b):
+        return shapely.geometry.LineString([node_geo_dict[a], node_geo_dict[b]])
+
+    values = []
+    for node_list in node_lists:
+        for a in node_list:
+            for b in node_list:
+                if a != b:
+                    values.append([a, b, link_geometry(a, b)])
+
+    links = pd.DataFrame(values, columns=['a', 'b', 'geometry'])
+    if coordinates_unit == 'degree':
+        links['length'] = skims.distance_from_geometry(links['geometry'])
+    else:
+        links['length'] = gpd.GeoDataFrame(links).length
+    return first, links
+
+
+def adaptive_clustering(nodes, zones, mean_distance_threshold=None, distance_col=None):
+    """
+    Compute cluster_id for each node, based on given zoning and agglomerative_clustering.
+    For each zone, distance_threshold is computed as follow:
+    - take value of distance_col if parameter is given
+    - otherwise:
+        - consider twice the characteristic distance of each zone (area**0.5)
+        - scale in average to mean_distance_threshold if given
+    """
+    # define distance_threshold
+    zone_df = gpd.GeoDataFrame(zones.copy())
+
+    if distance_col is not None:
+        zone_df['distance_threshold'] = zone_df[distance_col]
+    else:
+        zone_df['distance_threshold'] = zone_df['geometry'].area ** 0.5
+        
+        if mean_distance_threshold is not None:
+            zone_df['distance_threshold'] *= mean_distance_threshold / zone_df['distance_threshold'].mean()
     
-        clusters, cluster_series = spatial.zone_clusters(
-            nodes, 
-            n_clusters=n_clusters, 
-            geo_union_method=lambda lg: shapely.geometry.MultiPoint(list(lg)),
-            geo_join_method=geo_join_method
-        )
+    print('Mean distance threshold is {}'.format(int(zone_df['distance_threshold'].mean())))
 
-        index_name = cluster_series.index.name
-        index_name = index_name if index_name else 'index'
-        grouped = cluster_series.reset_index().groupby('cluster')
-        first = list(grouped[index_name].first())
-        node_lists = list(grouped[index_name].agg(lambda s: list(s)))
+    #  take twice max value for outer zones
+    d_max = zone_df['distance_threshold'].max() * 2
 
-        node_geo_dict = nodes['geometry'].to_dict()
+    def group_clusters(g, zone_df=zone_df):
+        z_id = g['zone_id'].values[0]
 
-        def link_geometry(a, b):
-            return shapely.geometry.LineString([node_geo_dict[a], node_geo_dict[b]])
+        if len(g) > 1:
+            # a quarter of the characteristic distance of the zone
+            if z_id != 'outer':
+                d = zone_df.loc[z_id, 'distance_threshold']
+            else:
+                d = d_max
 
-        values = []
-        for node_list in node_lists:
-            for a in node_list:
-                for b in node_list:
-                    if a != b:
-                        values.append([a, b, link_geometry(a, b)])
+            cluster_ids = spatial.agglomerative_clustering(g, d)
 
-        links = pd.DataFrame(values, columns=['a', 'b', 'geometry'])
-        if coordinates_unit=='degree':
-            links['length'] = skims.distance_from_geometry(links['geometry'])
         else:
-            links['length'] = gpd.GeoDataFrame(links).length
+            cluster_ids = [0]
 
-        return first, links
+        g['adaptive_cluster_id'] = ['{}_{}'.format(z_id, x) for x in cluster_ids]
+
+        return g
+
+    # find zone
+    nodes['zone_id'] = 'outer'
+    for z_id, z in zones.iterrows():
+        nodes.loc[nodes.within(z.geometry), 'zone_id'] = z_id
+
+    # perform clustering
+    nodes = nodes.groupby('zone_id').apply(group_clusters)
+
+    return nodes

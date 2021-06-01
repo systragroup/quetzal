@@ -1,5 +1,6 @@
-from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
+
+from tqdm import tqdm
 
 
 def map_kwargs(func, iterables=[], show_progress=False, **kwargs):
@@ -24,7 +25,7 @@ def parallel_map_kwargs(func, iterables, workers=1, **kwargs):
                 executor.submit(
                     map_kwargs,
                     func,
-                    iterables[i*chunk_size:(i+1)*chunk_size], 
+                    iterables[i * chunk_size:(i + 1) * chunk_size],
                     **kwargs
                 )
             )

@@ -1,14 +1,15 @@
 
-from quetzal.model import timeexpandedmodel
-from quetzal.engine import csa
-import pandas as pd
-import numpy as np
 import bisect
-import shutil
 import ntpath
+import shutil
 import uuid
+
+import numpy as np
+import pandas as pd
+from quetzal.engine import csa, parallelization
+from quetzal.model import timeexpandedmodel
 from tqdm import tqdm
-from quetzal.engine import parallelization
+
 
 def read_hdf(filepath, *args, **kwargs):
     m = ConnectionScanModel(hdf_database=filepath, *args, **kwargs)
@@ -19,7 +20,7 @@ def read_zip(filepath, *args, **kwargs):
     try:
         m = ConnectionScanModel(zip_database=filepath, *args, **kwargs)
         return m
-    except:
+    except Exception:
         # the zip is a zipped hdf and can not be decompressed
         return read_zipped_hdf(filepath, *args, **kwargs)
 
@@ -43,12 +44,31 @@ def read_zippedpickles(folder, *args, **kwargs):
     return m
 
 
+def get_alighting_links(link_path, link_trip_dict):
+    try:
+        if len(link_path) == 0:
+            return []
+    except TypeError:  # object of type 'float' has no len()
+        return []
+    alighting_links = []
+    trip = link_trip_dict[link_path[0]]
+    former_link = link_path[0]
+    for link in link_path[0:]:
+        link_trip = link_trip_dict[link]
+        if link_trip != trip:
+            trip = link_trip
+            alighting_links.append(former_link)
+        former_link = link
+    alighting_links.append(link)
+    return alighting_links
+
+
 class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if 'time_interval' not in dir(self):
-            self.time_interval = [0, 24*3600-1]
+            self.time_interval = [0, 24 * 3600 - 1]
 
     def lighten_pt_los(self):
         super(ConnectionScanModel, self).lighten_pt_los()
@@ -57,7 +77,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             'last_connection', 'ntransfers'
         ]
         self.pt_los = self.pt_los.drop(to_drop, axis=1, errors='ignore')
-    
+
     def lighten_pseudo_connections(self):
         self.pseudo_connections = self.pseudo_connections[
             ['csa_index', 'link_index', 'model_index', 'trip_id']
@@ -71,9 +91,10 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             pass
 
     def preparation_build_connection_dataframe(
-        self, min_transfer_time=0, 
-        time_interval=None, cutoff=np.inf
-        ):
+        self, min_transfer_time=0,
+        time_interval=None, cutoff=np.inf,
+        reindex=True,
+    ):
         time_interval = time_interval if time_interval is not None else self.time_interval
 
         links = self.links.loc[self.links['a'] != self.links['b']]
@@ -82,8 +103,8 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
 
         try:
             links = pd.merge(
-                links, self.nodes[['transfer_duration']], 
-                how='left', left_on='a', 
+                links, self.nodes[['transfer_duration']],
+                how='left', left_on='a',
                 right_index=True
             )
             links['min_transfer_time'] = links['transfer_duration'].fillna(0) + min_transfer_time
@@ -91,25 +112,33 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             links['min_transfer_time'] = min_transfer_time
 
         pseudo_links = links[
-            ['a', 'b', 'departure_time', 'arrival_time',
-            'min_transfer_time', 'trip_id', 'link_sequence',
+            [
+                'a', 'b', 'departure_time', 'arrival_time',
+                'min_transfer_time', 'trip_id', 'link_sequence',
             ]
         ].copy()
         pseudo_links['link_index'] = pseudo_links['model_index'] = pseudo_links.index
+        pseudo_links['actual_departure_time'] = pseudo_links['departure_time']
         pseudo_links['departure_time'] -= links['min_transfer_time']
         zone_to_transit = csa.time_zone_to_transit(pseudo_links, self.zone_to_transit)
         footpaths = csa.time_footpaths(pseudo_links, self.footpaths)
         self.time_expended_footpaths = footpaths
         self.time_expended_zone_to_transit = zone_to_transit
-        
+
         pseudo_connections = pd.concat([pseudo_links, footpaths, zone_to_transit])
         pseudo_connections = pseudo_connections[pseudo_connections['a'] != pseudo_connections['b']]
 
         # connections of each trip are consecutive
         pseudo_connections.sort_values(by=['trip_id', 'link_sequence'], inplace=True)
-        pseudo_connections['csa_index'] = range(len(pseudo_connections)) # use int as index
-        pseudo_connections.sort_values('departure_time', ascending=False, inplace=True)
-        
+        if reindex:
+            pseudo_connections['csa_index'] = range(len(pseudo_connections))  # use int as index
+        else:
+            pseudo_connections['csa_index'] = pseudo_connections['csa_index'].fillna(
+                pseudo_connections['model_index']
+            )
+        pseudo_connections['actual_departure_time'].fillna(
+            pseudo_connections['departure_time'], inplace=True)
+        pseudo_connections.sort_values('actual_departure_time', ascending=False, inplace=True)
         self.pseudo_connections = pseudo_connections
 
     def step_pt_pathfinder(
@@ -121,13 +150,16 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         targets=None,
         od_set=None,
         workers=1,
+        reindex=True
     ):
-
         time_interval = time_interval if time_interval is not None else self.time_interval
 
         if build_connections:
             self.preparation_build_connection_dataframe(
-                min_transfer_time=min_transfer_time
+                min_transfer_time=min_transfer_time,
+                time_interval=time_interval,
+                cutoff=cutoff,
+                reindex=reindex,
             )
         seta = set(self.time_expended_zone_to_transit['a'])
         setb = set(self.time_expended_zone_to_transit['b'])
@@ -145,8 +177,12 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             cutoff=cutoff,
             workers=workers
         )
-        
-    def analysis_paths(self, workers=1):
+
+    def analysis_paths(
+        self, workers=1,
+        alighting_links=True, alightings=True,
+        keep_connection_path=False
+    ):
         pseudo_connections = self.pseudo_connections
         clean = pseudo_connections[['csa_index', 'trip_id']].dropna()
         clean.sort_values(by='csa_index', inplace=True)
@@ -178,7 +214,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         d = pool.set_index('csa_index')['model_index'].to_dict()
         df['path'] = [
             [origin] + [d[i] for i in p if i in d] + [destination]
-            for origin, destination, p in 
+            for origin, destination, p in
             df[['origin', 'destination', 'connection_path']].values
         ]
 
@@ -189,20 +225,29 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             [d[i] for i in p if i in d]
             for p in df['connection_path']
         ]
-        del df['connection_path']
+        if not keep_connection_path:
+            del df['connection_path']
 
         df['boarding_links'] = [
-            [d[i] for i in p if i in d] 
+            [d[i] for i in p if i in d]
             for p in df['first_connections']
         ]
-        del df['first_connections']
+        if not keep_connection_path:
+            del df['first_connections']
 
-        df['ntransfers'] = df['boarding_links'].apply(lambda b: len(b)-1)
+        df['ntransfers'] = df['boarding_links'].apply(lambda b: len(b) - 1)
         df['ntransfers'] = np.clip(df['ntransfers'], 0, a_max=None)
         linka = self.links['a'].to_dict()
         df['boardings'] = [[linka[b] for b in bl] for bl in df['boarding_links']]
 
+        if alighting_links or alightings:
+            link_trip_dict = self.links['trip_id'].to_dict()
+
+            df['alighting_links'] = df['link_path'].apply(
+                get_alighting_links, link_trip_dict=link_trip_dict
+            )
+        if alightings:
+            linkb = self.links['b'].to_dict()
+            df['alightings'] = [[linkb[a] for a in al] for al in df['alighting_links']]
+
         self.pt_los = df
-
-    
-

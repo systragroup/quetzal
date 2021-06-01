@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 def node_path(path):
     return {
         int(p.split('node_')[1])
@@ -28,9 +26,6 @@ def checkpoint_demand(
         lambda r: select(r, link_checkpoints, node_checkpoints),
         axis=1
     )
-
     for column in volume_columns:
         df[column + suffixe] = df[column] * df['select_bool']
-
     return df
-

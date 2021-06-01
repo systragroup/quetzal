@@ -1,12 +1,10 @@
-# -*- coding: utf-8 -*-
-
 __author__ = 'qchasserieau'
 
 import pandas as pd
 
 
 def link_from_stop_times(
-    stop_times, 
+    stop_times,
     max_shortcut=False,
     stop_id='stop_id',
     trip_id='trip_id',
@@ -21,7 +19,6 @@ def link_from_stop_times(
     From a set of trips, represented as a table of events (stop time for
     example), returns a table of links between these events, given two trips:
     a-b-c-d and f-g-h. we should return : ab, bc, cd, fg and gh.
-
 
     :param stop_times: DataFrame
     :param max_shortcut:
@@ -38,13 +35,11 @@ def link_from_stop_times(
                           in_sequence] + keep_origin_columns].copy()
     destinations = stop_times[[stop_id, trip_id,
                                in_sequence] + keep_destination_columns].copy()
-
     links = []
-    
+
     max_sequence = stop_times[in_sequence].max()
     assert max_sequence
     max_shortcut = max_shortcut if max_shortcut and max_shortcut < max_sequence else max_sequence
-    
     for i in range(int(max_shortcut)):
         origins['next'] = origins[in_sequence] + 1 + i
         links.append(pd.merge(origins, destinations,
@@ -63,21 +58,16 @@ def link_from_stop_times(
             stop_id + '_destination': stop_id_destination
         }
     ).drop([in_sequence + '_destination', 'next'], axis=1)
-
     return concat
 
 
 def clean_sequences(df, sequence='stop_sequence', group_id='trip_id'):
     """ Clean the sequence column, drop the index"""
     df = df.sort_values([group_id, sequence]).reset_index(drop=True)
-    sequence_series = df.groupby(group_id).count()[
-        sequence].sort_index()
-
+    sequence_series = df.groupby(group_id).count()[sequence].sort_index()
     all_sequences = []
     for group_sequences in list(sequence_series):
         for seq in range(group_sequences):
             all_sequences.append(seq + 1)
-
     df[sequence] = pd.Series(all_sequences)
-
     return df

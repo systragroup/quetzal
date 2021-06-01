@@ -1,53 +1,55 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <title>quetzal.engine.add_network module &mdash; quetzal  documentation</title>
   
 
   
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
   
 
   
 
   
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-
-  
-  
-    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-    <link rel="top" title="quetzal  documentation" href="index.html"/>
-        <link rel="up" title="quetzal.engine package" href="quetzal.engine.html"/>
-        <link rel="next" title="quetzal.engine.connectivity module" href="quetzal.engine.connectivity.html"/>
-        <link rel="prev" title="quetzal.engine package" href="quetzal.engine.html"/> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="quetzal.engine.connectivity module" href="quetzal.engine.connectivity.html" />
+    <link rel="prev" title="quetzal.engine package" href="quetzal.engine.html" /> 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
+   
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -74,11 +76,15 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
             
-                <ul class="current">
+              
+            
+            
+              <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="quetzal.engine.html">quetzal.engine package</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="quetzal.engine.html#submodules">Submodules</a><ul class="current">
 <li class="toctree-l3 current"><a class="current reference internal" href="#">quetzal.engine.add_network module</a></li>
@@ -100,42 +106,65 @@
             
           
         </div>
+        
       </div>
     </nav>
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="index.html">quetzal</a>
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">quetzal</a>
+        
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
- 
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="index.html">Docs</a> &raquo;</li>
-      
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
           <li><a href="quetzal.engine.html">quetzal.engine package</a> &raquo;</li>
-      
-    <li>quetzal.engine.add_network module</li>
+        
+      <li>quetzal.engine.add_network module</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
           
-            <a href="_sources/quetzal.engine.add_network.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/quetzal.engine.add_network.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -143,96 +172,97 @@
             
   <div class="section" id="module-quetzal.engine.add_network">
 <span id="quetzal-engine-add-network-module"></span><h1>quetzal.engine.add_network module<a class="headerlink" href="#module-quetzal.engine.add_network" title="Permalink to this headline">¶</a></h1>
-<dl class="class">
+<dl class="py class">
 <dt id="quetzal.engine.add_network.NetworkCaster">
-<em class="property">class </em><code class="descclassname">quetzal.engine.add_network.</code><code class="descname">NetworkCaster</code><span class="sig-paren">(</span><em>nodes</em>, <em>links</em>, <em>road_nodes</em>, <em>road_links=None</em>, <em>weight='length'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#NetworkCaster"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.add_network.NetworkCaster" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
-<dl class="method">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">quetzal.engine.add_network.</span></code><code class="sig-name descname"><span class="pre">NetworkCaster</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nodes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">road_nodes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">road_links</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'length'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#NetworkCaster"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.add_network.NetworkCaster" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
 <dt id="quetzal.engine.add_network.NetworkCaster.add_road_nodes">
-<code class="descname">add_road_nodes</code><span class="sig-paren">(</span><em>penalties=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#NetworkCaster.add_road_nodes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.add_network.NetworkCaster.add_road_nodes" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">add_road_nodes</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">penalties</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#NetworkCaster.add_road_nodes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.add_network.NetworkCaster.add_road_nodes" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="quetzal.engine.add_network.NetworkCaster.build">
-<code class="descname">build</code><span class="sig-paren">(</span><em>penalty_factor</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#NetworkCaster.build"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.add_network.NetworkCaster.build" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">build</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">penalty_factor</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#NetworkCaster.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.add_network.NetworkCaster.build" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="quetzal.engine.add_network.NetworkCaster.build_nearest_neighbors">
-<code class="descname">build_nearest_neighbors</code><span class="sig-paren">(</span><em>nearest_method='nodes'</em>, <em>coordinates_unit='degree'</em>, <em>**nearest_geometry_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#NetworkCaster.build_nearest_neighbors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.add_network.NetworkCaster.build_nearest_neighbors" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">build_nearest_neighbors</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nearest_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'nodes'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coordinates_unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'degree'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">nearest_geometry_kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#NetworkCaster.build_nearest_neighbors"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.add_network.NetworkCaster.build_nearest_neighbors" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="quetzal.engine.add_network.NetworkCaster.build_road_access">
-<code class="descname">build_road_access</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#NetworkCaster.build_road_access"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.add_network.NetworkCaster.build_road_access" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">build_road_access</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#NetworkCaster.build_road_access"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.add_network.NetworkCaster.build_road_access" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="quetzal.engine.add_network.NetworkCaster.build_road_dataframe">
-<code class="descname">build_road_dataframe</code><span class="sig-paren">(</span><em>merge_on_links=True</em>, <em>replace_geometry=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#NetworkCaster.build_road_dataframe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.add_network.NetworkCaster.build_road_dataframe" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">build_road_dataframe</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">merge_on_links</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">replace_geometry</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#NetworkCaster.build_road_dataframe"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.add_network.NetworkCaster.build_road_dataframe" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="quetzal.engine.add_network.NetworkCaster.dumb_cast">
-<code class="descname">dumb_cast</code><span class="sig-paren">(</span><em>replace_geometry=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#NetworkCaster.dumb_cast"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.add_network.NetworkCaster.dumb_cast" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">dumb_cast</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">replace_geometry</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#NetworkCaster.dumb_cast"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.add_network.NetworkCaster.dumb_cast" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="quetzal.engine.add_network.build_node_dict">
-<code class="descclassname">quetzal.engine.add_network.</code><code class="descname">build_node_dict</code><span class="sig-paren">(</span><em>links</em>, <em>road_graph</em>, <em>nearest_neighbors</em>, <em>penalties</em>, <em>group='trip_id'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#build_node_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.add_network.build_node_dict" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">quetzal.engine.add_network.</span></code><code class="sig-name descname"><span class="pre">build_node_dict</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">road_graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nearest_neighbors</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">penalties</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">group</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'trip_id'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#build_node_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.add_network.build_node_dict" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="quetzal.engine.add_network.find_node_path">
-<code class="descclassname">quetzal.engine.add_network.</code><code class="descname">find_node_path</code><span class="sig-paren">(</span><em>links</em>, <em>line</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#find_node_path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.add_network.find_node_path" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">quetzal.engine.add_network.</span></code><code class="sig-name descname"><span class="pre">find_node_path</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">line</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#find_node_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.add_network.find_node_path" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="quetzal.engine.add_network.link_road_nodes">
-<code class="descclassname">quetzal.engine.add_network.</code><code class="descname">link_road_nodes</code><span class="sig-paren">(</span><em>links</em>, <em>road_graph</em>, <em>nearest_neighbors</em>, <em>penalties</em>, <em>group='trip_id'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#link_road_nodes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.add_network.link_road_nodes" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">quetzal.engine.add_network.</span></code><code class="sig-name descname"><span class="pre">link_road_nodes</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">road_graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nearest_neighbors</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">penalties</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">group</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'trip_id'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#link_road_nodes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.add_network.link_road_nodes" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="quetzal.engine.add_network.node_join_dataframe">
-<code class="descclassname">quetzal.engine.add_network.</code><code class="descname">node_join_dataframe</code><span class="sig-paren">(</span><em>node_path</em>, <em>road_graph</em>, <em>nearest_neighbors</em>, <em>penalties=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#node_join_dataframe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.add_network.node_join_dataframe" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">quetzal.engine.add_network.</span></code><code class="sig-name descname"><span class="pre">node_join_dataframe</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">road_graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nearest_neighbors</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">penalties</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#node_join_dataframe"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.add_network.node_join_dataframe" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="quetzal.engine.add_network.road_dataframe">
-<code class="descclassname">quetzal.engine.add_network.</code><code class="descname">road_dataframe</code><span class="sig-paren">(</span><em>links</em>, <em>road_links</em>, <em>road_graph</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#road_dataframe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#quetzal.engine.add_network.road_dataframe" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">quetzal.engine.add_network.</span></code><code class="sig-name descname"><span class="pre">road_dataframe</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">road_links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">road_graph</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/add_network.html#road_dataframe"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.add_network.road_dataframe" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
 
 
            </div>
+           
           </div>
           <footer>
-  
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="quetzal.engine.connectivity.html" class="btn btn-neutral float-right" title="quetzal.engine.connectivity module" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="quetzal.engine.html" class="btn btn-neutral" title="quetzal.engine package" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
+        <a href="quetzal.engine.connectivity.html" class="btn btn-neutral float-right" title="quetzal.engine.connectivity module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="quetzal.engine.html" class="btn btn-neutral float-left" title="quetzal.engine package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
-  
 
   <hr/>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2018, Systra.
+        &#169; Copyright 2018, Systra.
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
-
         </div>
       </div>
 
@@ -241,36 +271,15 @@
   </div>
   
 
-
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>

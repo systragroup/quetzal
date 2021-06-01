@@ -59,9 +59,8 @@ class LinedraftClient:
             requests.post(self.api_locations, data=location_json)
             print("New location created - id : " + location_id)
 
-
-# TODO: ajouter les locations et zonal_data existants à self rename to
-# post_zona_data_from_shp
+    # TODO: ajouter les locations et zonal_data existants à self rename to
+    # post_zona_data_from_shp
     def post_zonal_data(
         self,
         pop_emp_shp,
@@ -179,8 +178,7 @@ class LinedraftClient:
                        axis=1, errors='ignore')
 
         nodes['geometry'] = nodes.apply(
-            lambda r: shapely.geometry.point.Point(r[
-                                        'longitude'], r['latitude']), axis=1)
+            lambda r: shapely.geometry.point.Point(r['longitude'], r['latitude']), axis=1)
 
         def line_neighbors(line):
             return links.loc[links['line'] == line].groupby('a')['b'].agg(lambda s: set(s)).to_dict()
@@ -271,7 +269,7 @@ class LinedraftClient:
         links, nodes = self.graph_from_network(
             network,
             include_items=include_items
-            )
+        )
 
         links['length'] = skims.distance_from_geometry(links['geometry'])
         links['speed'] = links['speed'].fillna(np.sqrt(links['length']))
@@ -294,5 +292,3 @@ class LinedraftClient:
             nodes['color'] = 'gray'
 
         return links, nodes, zones
-
-

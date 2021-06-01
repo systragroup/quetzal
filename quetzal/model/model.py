@@ -1,25 +1,24 @@
-# -*- coding: utf-8 -*-
-
 import json
-import zlib
+import ntpath
 import os
-import sys
 import pickle
-import geopandas as gpd
-import pandas as pd
-from shapely.geometry import Point
-
+import shutil
+import sys
+import uuid
+import zlib
+from concurrent.futures import ProcessPoolExecutor
 from copy import deepcopy
 from functools import wraps
-from tqdm import tqdm
-import shutil
-import uuid
-import ntpath
-from quetzal.io import hdf_io
 
-from syspy.syspy_utils.data_visualization import add_basemap
-from concurrent.futures import ProcessPoolExecutor
+import geopandas as gpd
+import pandas as pd
+from quetzal.io import hdf_io
 from quetzal.model.integritymodel import IntegrityModel
+from shapely.geometry import Point
+from syspy.io.geojson_utils import set_geojson_crs
+from syspy.syspy_utils.data_visualization import (add_basemap, add_north,
+                                                  add_raster, add_scalebar)
+from tqdm import tqdm
 
 
 def read_hdf(filepath):
@@ -44,11 +43,10 @@ def authorized_column(
 
 
 def track_args(method):
-
     # wraps changes decorated attributes for method attributes
     # decorated.__name__ = method.__name__ etc...
     @wraps(method)
-    def decorated(self,  *args, **kwargs):
+    def decorated(self, *args, **kwargs):
         """
         All the parameters are stored
         if use_tracked_args=True is passed to a method, the last parameters
@@ -73,7 +71,6 @@ def track_args(method):
             self.parameters[name]['args'] = args
             self.parameters[name]['kwargs'] = kwargs
         return method(self, *args, **kwargs)
-
     return decorated
 
 
@@ -107,15 +104,16 @@ def merge_links_and_nodes(
     links = pd.concat([left_links, right_links], join=join_links)
 
     if reindex:
-
         reindex_series = pd.Series(range(len(nodes)), index=nodes.index)
         reindex_dict = reindex_series.to_dict()
-        def reindex_function(n): return reindex_dict[n]
+
+        def reindex_function(n):
+            return reindex_dict[n]
+
         links['a'] = links['a'].apply(reindex_function).astype(str)
         links['b'] = links['b'].apply(reindex_function).astype(str)
         nodes.index = pd.Series(nodes.index).apply(
             reindex_function).astype(str)
-
     return links, nodes
 
 
@@ -142,7 +140,6 @@ def merge(
         join_links=how,
         reindex=reindex
     )
-
     return model
 
 
@@ -150,15 +147,14 @@ def obj_size_fmt(num):
     if num < 10**3:
         return "{:.2f}{}".format(num, "B")
     elif ((num >= 10**3) & (num < 10**6)):
-        return "{:.2f}{}".format(num/(1.024*10**3), "KB")
+        return "{:.2f}{}".format(num / (1.024 * 10**3), "KB")
     elif ((num >= 10**6) & (num < 10**9)):
-        return "{:.2f}{}".format(num/(1.024*10**6), "MB")
+        return "{:.2f}{}".format(num / (1.024 * 10**6), "MB")
     else:
-        return "{:.2f}{}".format(num/(1.024*10**9), "GB")
+        return "{:.2f}{}".format(num / (1.024 * 10**9), "GB")
 
 
 class Model(IntegrityModel):
-
     def __init__(
         self,
         json_database=None,
@@ -220,10 +216,10 @@ class Model(IntegrityModel):
 
     def memory_usage(model, head=10):
         memory_usage_by_variable = pd.DataFrame(
-            {k: sys.getsizeof(v) for (k, v) in model.__dict__.items()},index=['Size']
-            )
+            {k: sys.getsizeof(v) for (k, v) in model.__dict__.items()}, index=['Size']
+        )
         memory_usage_by_variable = memory_usage_by_variable.T
-        memory_usage_by_variable = memory_usage_by_variable.sort_values(by='Size',ascending=False)
+        memory_usage_by_variable = memory_usage_by_variable.sort_values(by='Size', ascending=False)
         memory_usage_by_variable['Size'] = memory_usage_by_variable['Size'].apply(lambda x: obj_size_fmt(x))
         return memory_usage_by_variable
 
@@ -232,6 +228,10 @@ class Model(IntegrityModel):
         basemap_url=None, zoom=12,
         title=None, fontsize=24,
         fname=None,
+        basemap_raster=None,
+        keep_ax_limits=True,
+        north_arrow=None,
+        scalebar=None,
         *args, **kwargs
     ):
         gdf = gpd.GeoDataFrame(self.__dict__[attribute])
@@ -249,10 +249,15 @@ class Model(IntegrityModel):
 
         if basemap_url is not None:
             add_basemap(plot, zoom=zoom, url=basemap_url)
+        if basemap_raster is not None:
+            add_raster(plot, basemap_raster, keep_ax_limits=keep_ax_limits)
+        if north_arrow is not None:
+            add_north(plot)
+        if scalebar is not None:
+            add_scalebar(plot)
         if fname:
             fig = plot.get_figure()
             fig.savefig(fname, bbox_inches='tight')
-
         return plot
 
     def split_attribute(self, attr, by=None, nchunks=None, drop=True):
@@ -273,8 +278,8 @@ class Model(IntegrityModel):
             pd.Series(range(length)) // chunk_size
             for i in range(nchunks):
                 self.__setattr__(
-                    '%s_%s' % (attr, str(i)), 
-                    pool.iloc[i*chunk_size: (i+1)*chunk_size]
+                    '%s_%s' % (attr, str(i)),
+                    pool.iloc[i * chunk_size: (i + 1) * chunk_size]
                 )
 
     def merge_attribute(self, attr, keys=None):
@@ -289,7 +294,7 @@ class Model(IntegrityModel):
         for key in keys:
             to_concat.append(self.__getattribute__(attr + '_' + key))
             self.__delattr__(attr + '_' + key)
-        self.__setattr__(attr, pd.concat(to_concat))  
+        self.__setattr__(attr, pd.concat(to_concat))
 
     def to_zippedpickles(
         self,
@@ -299,7 +304,6 @@ class Model(IntegrityModel):
         max_workers=1,
         complevel=-1,
         remove_first=True
-        
     ):
         if remove_first:
             shutil.rmtree(folder, ignore_errors=True)
@@ -324,17 +328,17 @@ class Model(IntegrityModel):
                     if only_attributes is not None and key not in only_attributes:
                         continue
                     executor.submit(
-                        hdf_io.to_zippedpickle, 
-                        value, 
+                        hdf_io.to_zippedpickle,
+                        value,
                         r'%s/%s.zippedpickle' % (folder, key),
                         complevel=complevel
                     )
-                
+
     def read_zippedpickles(self, folder, omitted_attributes=(), only_attributes=None):
         files = os.listdir(folder)
         keys = [
-            file.split('.zippedpickle')[0] 
-            for file in files 
+            file.split('.zippedpickle')[0]
+            for file in files
             if '.zippedpickle' in file
         ]
         iterator = tqdm(keys)
@@ -343,9 +347,9 @@ class Model(IntegrityModel):
                 continue
             if only_attributes is not None and key not in only_attributes:
                 continue
-                
+
             iterator.desc = key
-            with open ('%s/%s.zippedpickle' % (folder, key), 'rb') as file:
+            with open('%s/%s.zippedpickle' % (folder, key), 'rb') as file:
                 buffer = file.read()
                 bigbuffer = zlib.decompress(buffer)
                 self.__setattr__(key, pickle.loads(bigbuffer))
@@ -377,7 +381,7 @@ class Model(IntegrityModel):
         if only_attributes is not None:
             only_attributes = {'/' + a for a in only_attributes}.union(only_attributes)
         omitted_attributes = {'/' + a for a in omitted_attributes}.union(omitted_attributes)
-        
+
         # read the zip in a buffer
         with open(filepath, 'rb') as file:
             data = file.read()
@@ -400,11 +404,11 @@ class Model(IntegrityModel):
                     continue
                 if only_attributes is not None and key not in only_attributes:
                     continue
-                
+
                 value = store.select(key)
                 if isinstance(value, pd.DataFrame) and 'geometry' in value.columns:
                     value = gpd.GeoDataFrame(value)
-                
+
                 self.__setattr__(skey, value)
                 value = None
 
@@ -419,7 +423,7 @@ class Model(IntegrityModel):
     def to_excel(self, filepath, prefix='stack'):
         length = len(prefix)
         stacks = {
-            name[length+1:]: attr for name, attr in self.__dict__.items()
+            name[length + 1:]: attr for name, attr in self.__dict__.items()
             if name[:length] == prefix
         }
         with pd.ExcelWriter(filepath) as writer:
@@ -445,7 +449,7 @@ class Model(IntegrityModel):
                 df = pd.DataFrame(attribute)
                 try:
                     df['geometry'] = df['geometry'].astype(object)
-                except:
+                except Exception:
                     pass
                 frames[key] = df
             else:
@@ -494,7 +498,7 @@ class Model(IntegrityModel):
                 df = attribute
                 try:
                     df['geometry'] = df['geometry'].astype(object)
-                except:
+                except Exception:
                     pass
                 df.to_hdf(filepath, key=key, mode='a')
             else:
@@ -589,7 +593,6 @@ class Model(IntegrityModel):
                     df = pd.DataFrame(attribute).drop(
                         'geometry', axis=1, errors='ignore')
                     df.to_json(root_name + '.json')
-
             else:
                 try:
                     jsons[key] = json.dumps(attribute)
@@ -623,7 +626,7 @@ class Model(IntegrityModel):
             value.set_index('index', inplace=True)
             self.__setattr__(key, pd.DataFrame(value))
 
-        # some attributes may have been store in the json_series
+            # some attributes may have been store in the json_series
             try:
                 json_dict = self.jsons['json'].to_dict()
                 for key, value in json_dict.items():
@@ -664,7 +667,6 @@ class Model(IntegrityModel):
         Returns:
             json_database (json): the single json representation of the model
         """
-
         iterator = tqdm(self.__dict__.items(), desc='to_json_database')
 
         # Create json_database object
@@ -704,8 +706,7 @@ class Model(IntegrityModel):
 
             for key in attributeerrors:
                 print('could not save attribute: ' + key)
-
-        return(json.dumps(json_database))
+        return (json.dumps(json_database))
 
     def read_json_database(self, json_database):
         """
@@ -745,7 +746,6 @@ class Model(IntegrityModel):
 
     @track_args
     def change_epsg(self, epsg, coordinates_unit):
-
         projected_model = self.copy()
         iterator = tqdm(
             projected_model.__dict__.items(),
@@ -781,7 +781,7 @@ class Model(IntegrityModel):
                     temp.crs = {'init': 'epsg:{}'.format(self.epsg)}
                     attribute = pd.Series(temp.to_crs(epsg=epsg))
                     projected_model.__setattr__(key, attribute)
-                except:
+                except Exception:
                     if attribute.name == 'geometry':
                         failed.append(key)
         projected_model.epsg = epsg
@@ -790,7 +790,6 @@ class Model(IntegrityModel):
         if len(failed) > 0:
             print('could not change epsg for the following attributes: ')
             print(failed)
-
         return projected_model
 
     def describe(self):

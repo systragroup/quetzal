@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
-
-from quetzal.model import model, transportmodel
-import pandas as pd
 import numpy as np
+import pandas as pd
+from quetzal.model import model, transportmodel
+
 
 def densify(series):
     index = pd.MultiIndex.from_product(
@@ -10,17 +9,17 @@ def densify(series):
         names=series.index.names
     )
     dense = pd.Series(np.nan, index).fillna(series).fillna(0)
-    dense.name=series.name
+    dense.name = series.name
     return dense
 
-class SummaryModel(transportmodel.TransportModel):
 
+class SummaryModel(transportmodel.TransportModel):
     def summary_earning(self, inplace=False, dense=False):
         """
         summarize earnings by fare_id and by segment
         """
         df = self.los
-        
+
         df.dropna(subset=['route_fares'], inplace=True)
         df['fare_id_tuple'] = df['route_fares'].apply(
             lambda d: tuple(d.items())
@@ -35,8 +34,8 @@ class SummaryModel(transportmodel.TransportModel):
         temp = df.groupby('fare_id_tuple').agg(agg_dict)
 
         agency_dict = self.fare_attributes.set_index(['fare_id'])['agency_id']
-        fare_revenue_dict = {f:0 for f in set(self.fare_rules['fare_id'])}
-        agency_revenue_dict = {f:0 for f in set(self.fare_attributes['agency_id'])}
+        fare_revenue_dict = {f: 0 for f in set(self.fare_rules['fare_id'])}
+        agency_revenue_dict = {f: 0 for f in set(self.fare_attributes['agency_id'])}
 
         for volume, route_fares, od_fares in temp[['volume', 'route_fares', 'od_fares']].values:
             for fare_id, fare in route_fares.items():
@@ -44,7 +43,7 @@ class SummaryModel(transportmodel.TransportModel):
                 agency_revenue_dict[agency_dict[fare_id]] += fare * volume
             for agency_id, fare in od_fares:
                 agency_revenue_dict[agency_id] += volume * fare
-                
+
         fare_stack = pd.Series(fare_revenue_dict)
         agency_stack = pd.Series(agency_revenue_dict)
         stack = pd.concat([fare_stack, agency_stack])
@@ -60,13 +59,13 @@ class SummaryModel(transportmodel.TransportModel):
         """
         focuses on user perception
         processes self.car_los, self.pt_los and self.volume
-        summarize 'time', 'in_vehicle_time', 'in_vehicle_length', 
+        summarize 'time', 'in_vehicle_time', 'in_vehicle_length',
         'count', 'price', 'ntransfers' by segment and route_type
         """
         df = self.los.copy()
         df['count'] = 1
         columns = [
-            'time', 'in_vehicle_time', 'in_vehicle_length', 
+            'time', 'in_vehicle_time', 'in_vehicle_length',
             'price', 'ntransfers', 'length', 'count'
 
         ]
@@ -82,11 +81,10 @@ class SummaryModel(transportmodel.TransportModel):
             return stack
 
     def summary_link_sum(self, route_label='route_id', inplace=False, dense=False):
-
         """
         focuses on network use
         processes self.loaded_links
-        summarize 'boardings' and 'length' 
+        summarize 'boardings' and 'length'
         by segment, route_type, route_id and trip_id
         """
         df = self.links[['length', 'boardings', 'time', 'route_type', route_label, 'trip_id']]
@@ -119,10 +117,10 @@ class SummaryModel(transportmodel.TransportModel):
             self.stack_link_max = stack
         else:
             return stack
-    
+
     def summary_path_average(self, inplace=False, dense=False, complete=True):
         us = self.summary_path_sum().unstack('indicator')
-        us = us.apply(lambda c: c/us['count'])
+        us = us.apply(lambda c: c / us['count'])
         us = us.drop('count', axis=1)
         stack = us.fillna(0).stack()
         stack.name = 'average'
@@ -133,7 +131,8 @@ class SummaryModel(transportmodel.TransportModel):
             return stack
 
     def summary_aggregated_path_average(
-        self, inplace=False, dense=False,  pt_route_types=set(), complete=True):
+        self, inplace=False, dense=False, pt_route_types=set(), complete=True
+    ):
         """
         focuses on user perception
         by route_type
@@ -154,7 +153,7 @@ class SummaryModel(transportmodel.TransportModel):
 
         us = total['sum'].unstack('indicator')
         share = (us['count'] / us['count'].sum())
-        us = us.apply(lambda c: c/us['count'])
+        us = us.apply(lambda c: c / us['count'])
         us['share'] = share
         stack = us.stack()
         stack.name = 'average'
@@ -165,9 +164,9 @@ class SummaryModel(transportmodel.TransportModel):
             return stack
 
     def summary_od(
-        self, 
+        self,
         costs=['price', 'time', 'in_vehicle_time', 'in_vehicle_length', 'ntransfers'],
-        pt_route_types=set(), 
+        pt_route_types=set(),
         inplace=False
     ):
         segments = self.segments
@@ -175,20 +174,18 @@ class SummaryModel(transportmodel.TransportModel):
             left = pd.concat([self.car_los, self.pt_los])
         except AttributeError:
             try:
-                left =self.pt_los
+                left = self.pt_los
             except AttributeError:
-                left =self.car_los
+                left = self.car_los
 
         right = self.volumes[['origin', 'destination'] + list(segments)]
         los = pd.merge(left, right, on=['origin', 'destination'], suffixes=['_old', ''])
         columns = []
         los['mode'] = los['route_type']
         los.loc[los['route_type'].isin(pt_route_types), 'mode'] = 'pt'
-        
 
         for segment in segments:
             los[(segment, 'volume')] = los[(segment, 'probability')] * los[segment]
-
 
         for segment in segments:
             columns.append((segment, 'volume'))
@@ -197,7 +194,7 @@ class SummaryModel(transportmodel.TransportModel):
                 columns.append(column)
                 los[column] = los[(segment, 'probability')] * los[service]
 
-        df = los.groupby(['origin', 'destination', 'mode'])[columns].sum()      
+        df = los.groupby(['origin', 'destination', 'mode'])[columns].sum()
         df.columns = pd.MultiIndex.from_tuples(df.columns)
 
         # add root (weighted mean of segments)
@@ -208,10 +205,10 @@ class SummaryModel(transportmodel.TransportModel):
             [
                 df[segment][costs].apply(lambda s: s * df[(segment, 'volume')]).fillna(0)
                 for segment in segments
-            ]      
+            ]
         )
 
-        for c in costs: 
+        for c in costs:
             df[('root', c)] = (weighted_sum[c] / df[('root', 'volume')]).fillna(0)
 
         df.columns.names = 'segment', 'sum'
@@ -220,5 +217,3 @@ class SummaryModel(transportmodel.TransportModel):
             self.od_los = df
         else:
             return df
-
-

@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 
 def od_weighted_time_delta(reference_od, scenario_od):
@@ -46,5 +44,4 @@ def od_weighted_time_delta(reference_od, scenario_od):
         'volume_car_to_pt', 'duration_car_to_pt', 'time_car_to_pt',
         'volume_pt_to_car', 'duration_pt_to_car', 'time_pt_to_car'
     ]
-
     return weighted_time_delta[ordered_columns]

@@ -1,14 +1,11 @@
-# -*- coding: utf-8 -*-
-
-import pandas as pd
-import numpy as np
 import networkx as nx
-
+import numpy as np
+import pandas as pd
+import syspy.assignment.raw as assignment_raw
 from syspy.distribution import distribution
+from syspy.routing.frequency import graph as frequency_graph
 from syspy.skims import skims
 from syspy.spatial import spatial
-from syspy.routing.frequency import graph as frequency_graph
-import syspy.assignment.raw as assignment_raw
 from tqdm import tqdm
 
 
@@ -289,7 +286,7 @@ def path_and_duration_from_links_and_ntlegs(
     duration_stack = assignment_raw.nested_dict_to_stack_matrix(
         alllengths, pole_set, name='gtime')
     # Remove access and egress ntlegs penalty
-    duration_stack['gtime'] -= 2*ntlegs_penalty
+    duration_stack['gtime'] -= 2 * ntlegs_penalty
     duration_stack['gtime'] = np.clip(duration_stack['gtime'], 0, None)
 
     path_stack = assignment_raw.nested_dict_to_stack_matrix(
@@ -364,7 +361,7 @@ def emission_share_pt(shared, origin):
     try:
         df = shared.loc[shared['origin'] == origin]
         return np.average(df['share_pt'], weights=df['volume'])
-    except:
+    except Exception:
         return np.nan
 
 
@@ -372,7 +369,7 @@ def attraction_share_pt(shared, destination):
     try:
         df = shared.loc[shared['destination'] == destination]
         return np.average(df['share_pt'], weights=df['volume'])
-    except:
+    except Exception:
         return np.nan
 
 
@@ -398,7 +395,7 @@ def aggregate_shares(shared, zones):
         aggregated_shares[
             ['emission', 'attraction']] = zones[
             ['emission', 'attraction']]
-    except:
+    except Exception:
         pass
 
     return aggregated_shares
