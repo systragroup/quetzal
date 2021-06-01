@@ -1,13 +1,13 @@
-import numpy as np
-import networkx as nx
+from concurrent.futures import ProcessPoolExecutor
+
 import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from concurrent.futures import ProcessPoolExecutor
 
 
 def rank_paths(paths, by='utility'):
-
     assert paths[by].isnull().sum() == 0
 
     columns = ['origin', 'destination', 'route_type']
@@ -24,7 +24,7 @@ def rank_paths(paths, by='utility'):
 def nest_probabilities(utilities, phi=1):
     # designed for dataframes
     if phi == 0:
-        ones = (utilities.apply(lambda c: c-utilities.max(axis=1)) >= 0).astype(int) 
+        ones = (utilities.apply(lambda c: c - utilities.max(axis=1)) >= 0).astype(int)
         return ones.apply(lambda c: c / ones.sum(axis=1))
     exponential_df = np.exp(np.multiply(utilities, 1 / phi))
     exponential_s = exponential_df.sum(axis=1)
@@ -52,7 +52,7 @@ def plot_nests(nests):
     pos = {}
     levels = [0] * (max(lengths.values()) + 1)
     for key, x in lengths.items():
-        pos[key] = [levels[x],  - x]
+        pos[key] = [levels[x], - x]
         levels[x] += 1
 
     plot = plt.axes()
@@ -94,14 +94,14 @@ def nested_logit_from_paths(
         [
             index[i + nchunks * n]
             for n in range(len(index) // nchunks + 1)
-            if i+nchunks*n < len(index)
+            if i + nchunks * n < len(index)
         ]
         for i in range(nchunks)
     ]
     groups = [g for g in groups if len(g)]
 
     if workers > 1:
-        #print('%i workers' % workers)
+        # print('%i workers' % workers)
 
         results = []
         with ProcessPoolExecutor(max_workers=workers) as executor:
@@ -115,9 +115,7 @@ def nested_logit_from_paths(
                     decimals=decimals,
                     n_paths_max=n_paths_max,
                     return_od_tables=return_od_tables,
-
-                )
-            )    
+                ))
 
         paths_list = []
         mode_utilities_list = []
@@ -162,11 +160,10 @@ def one_block_nested_logit_from_paths(
     mode_nests=None,
     phi=None,
     verbose=False,
-    decimals=None,  #  minimum probability
+    decimals=None,  # minimum probability
     n_paths_max=None,
     return_od_tables=True
 ):
-    
     if 'segment' not in paths.columns:
         paths['segment'] = 'all'
 
@@ -206,8 +203,8 @@ def one_block_nested_logit_from_paths(
         paths = paths.loc[paths['rank'] <= n_paths_max]
     stack = paths.set_index(
         od_cols + ['route_type', 'segment', 'rank']
-        )['utility']
-    rank_utilities = stack.unstack(['route_type',  'rank'])
+    )['utility']
+    rank_utilities = stack.unstack(['route_type', 'rank'])
     rank_utilities.fillna(-np.inf, inplace=True)
     mode_utilities = pd.DataFrame(index=rank_utilities.index)
     mode_utilities.columns.name = 'route_type'
@@ -280,7 +277,7 @@ def one_block_nested_logit_from_paths(
     rank_probabilities_s.name = 'assignment_share'
 
     mode_probabilities_s = mode_probabilities.stack()
-    mode_probabilities_s = mode_probabilities_s.loc[mode_probabilities_s>0]
+    mode_probabilities_s = mode_probabilities_s.loc[mode_probabilities_s > 0]
     mode_probabilities_s.name = 'modal_split_share'
 
     merged = pd.merge(
@@ -289,7 +286,7 @@ def one_block_nested_logit_from_paths(
         on=od_cols + ['route_type', 'segment']
     )
     merged['probability'] = merged['assignment_share'] * merged['modal_split_share']
-    
+
     merge_columns = od_cols + ['route_type', 'segment', 'rank']
 
     paths['index'] = paths.index
@@ -297,10 +294,10 @@ def one_block_nested_logit_from_paths(
         paths.drop('probability', axis=1, errors='ignore'),
         merged[merge_columns + ['probability']],
         on=merge_columns,
-        suffixes=['_old',  ''],
+        suffixes=['_old', ''],
         how='left'
     ).set_index('index')
     if not return_od_tables:
         mode_utilities = pd.DataFrame()
         mode_probabilities = pd.DataFrame()
-    return paths,  mode_utilities.reset_index(), mode_probabilities.reset_index()
+    return paths, mode_utilities.reset_index(), mode_probabilities.reset_index()

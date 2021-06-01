@@ -1,15 +1,11 @@
-# -*- coding: utf-8 -*-
-
-import shapely
-import pandas as pd
-import networkx as nx
 import geopandas as gpd
-
-from tqdm import tqdm
-from syspy.spatial import polygons, spatial
-from syspy.syspy_utils import neighbors, syscolors
-from syspy.syspy_utils import pandas_utils
+import networkx as nx
+import pandas as pd
+import shapely
 from shapely.ops import cascaded_union
+from syspy.spatial import polygons, spatial
+from syspy.syspy_utils import neighbors, pandas_utils, syscolors
+from tqdm import tqdm
 
 
 def compute_coverage_layer(layer, buffer, extensive_cols=[]):
@@ -19,12 +15,12 @@ def compute_coverage_layer(layer, buffer, extensive_cols=[]):
     Inputs:
         - layer: a GeoDataFrame object
         - buffer: a shapely Polygon or MultiPolygon
-        - extensives_cols: a subset of columns whose value are extensives and have to be recomputed
+        - extensives_cols: a subset of columns whose value are extensives and have to be recomputed
             for the new layer (for instance the population of the zone)
     Outputs:
         a GeoDataFrame with the same columns as the input layer, but different geometry and extensive_cols
     """
-    # Create 
+    # Create
     layer_in_buffer = layer.copy()
     layer_in_buffer['geometry_intersect'] = layer_in_buffer.intersection(buffer)
 
@@ -39,25 +35,23 @@ def compute_coverage_layer(layer, buffer, extensive_cols=[]):
 
     # Drop row with null areas
     layer_in_buffer_exploded.drop(
-        layer_in_buffer_exploded[layer_in_buffer_exploded['area_intersected']==0].index,
+        layer_in_buffer_exploded[layer_in_buffer_exploded['area_intersected'] == 0].index,
         inplace=True
     )
-    
+
     # Recompute extensive columns values
     for col in extensive_cols:
         layer_in_buffer_exploded[col] = layer_in_buffer_exploded.apply(
             lambda x: x[col] * x['geometries'].area / x['geometry'].area, 1
         )
-    
+
     layer_in_buffer_exploded.drop(['geometry', 'geometry_intersect', 'area_intersected'], 1, inplace=True)
     layer_in_buffer_exploded.rename(columns={'geometries': 'geometry'}, inplace=True)
     layer_in_buffer_exploded = gpd.GeoDataFrame(layer_in_buffer_exploded)
-    
     return layer_in_buffer_exploded
 
 
 def merge_zonings(background, foreground, min_area_factor=0.01, min_area=None):
-
     back = background.copy()
     front = foreground.copy()
 
@@ -95,7 +89,6 @@ def merge_zonings(background, foreground, min_area_factor=0.01, min_area=None):
         unite_gaps=True
     )
     df['geometry'] = clean_zones
-
     return df.reset_index(drop=True)
 
 
@@ -115,7 +108,6 @@ def pool_and_geometries(pool, geometries):
                     current = geometries[p]
                     pool = [p for p in pool if p not in done]
                     break
-
     return done
 
 
@@ -137,8 +129,7 @@ def snail_number(zones, center, distance_to='zone'):
     snail.name = 'cluster'
 
     indexed = snail.reset_index().set_index('cluster')['cluster_snail']
-
-    return indexed.loc[zones.index] # we use zones.index to sort the result
+    return indexed.loc[zones.index]  # we use zones.index to sort the result
 
 
 def cluster_snail_number(zones, n_clusters=20, centre=None, buffer=10):
@@ -146,11 +137,11 @@ def cluster_snail_number(zones, n_clusters=20, centre=None, buffer=10):
     zones: GeoSeries
     """
     df = pd.DataFrame(zones).reset_index().copy()
-    
+
     if centre is None:
         union = cascaded_union(df.geometry).buffer(buffer)
         centre = union.centroid
-        
+
     # Snail clusterize
     clusters, cluster_series = spatial.zone_clusters(df, n_clusters=n_clusters)
     df['cluster'] = cluster_series
@@ -158,16 +149,16 @@ def cluster_snail_number(zones, n_clusters=20, centre=None, buffer=10):
     clusters['snail'] = snail
     df = df.merge(snail.reset_index(), on='cluster')
     df.drop('cluster', 1, inplace=True)
-    
+
     # snail numbering within cluster
     to_concat = []
     for cluster in set(df['cluster_snail']):
-        temp_df = df.loc[df['cluster_snail']==cluster]
+        temp_df = df.loc[df['cluster_snail'] == cluster]
         temp_centre = cascaded_union(temp_df.geometry).centroid
         temp_snail = snail_number(temp_df, temp_centre)
         temp_df['snail'] = temp_snail
         to_concat.append(temp_df)
-    
+
     concat = pd.concat(to_concat)
     concat = concat.sort_values(['cluster_snail', 'snail']).reset_index(drop=True)
     concat = concat.reset_index().rename(
@@ -199,14 +190,13 @@ def greedy_color(zoning, colors=syscolors.rainbow_shades, buffer=1e-6):
 
     def index_to_color(index):
         return color_list[index]
-
     return pd.Series(d).apply(index_to_color)
+
 
 ########################################################################
 
 
 def intersection_area(geoa, geob):
-
     if geoa.intersects(geob):
         intersection = geoa.intersection(geob)
         return intersection.area
@@ -237,7 +227,6 @@ def intersection_area_dataframe(front, back):
     df = pd.DataFrame(ia_matrix)
     df.index = front.index
     df.columns = back.index
-
     return df
 
 
@@ -263,13 +252,13 @@ def back_distribution(front_zone, intersection_dataframe):
 
 def share_intensive_columns(front_zone, back, intersection_dataframe, columns):
     shares = front_distribution(front_zone, intersection_dataframe)
-    shared_series = back[columns].apply(lambda s: s*shares)
+    shared_series = back[columns].apply(lambda s: s * shares)
     return shared_series.sum()
 
 
 def share_extensive_columns(front_zone, back, intersection_dataframe, columns):
     shares = back_distribution(front_zone, intersection_dataframe)
-    shared_series = back[columns].apply(lambda s: s*shares)
+    shared_series = back[columns].apply(lambda s: s * shares)
     return shared_series.sum()
 
 
@@ -311,7 +300,7 @@ def share_od_extensive_columns(
     destination_stack.index.names = dest_index_names
 
     # dense matrix of OD shares (origin_share * destination_share)
-    share_matrix = origin_stack.apply(lambda v: v*destination_stack)
+    share_matrix = origin_stack.apply(lambda v: v * destination_stack)
     share_matrix = share_matrix.sort_index(axis=0).sort_index(axis=1)
 
     # we stack the two columns index
@@ -321,8 +310,8 @@ def share_od_extensive_columns(
 
     pool = od_dataframe.rename(
         columns={
-            'origin':'back_index_origin',
-            'destination':'back_index_destination'
+            'origin': 'back_index_origin',
+            'destination': 'back_index_destination'
         }
     )
 
@@ -338,7 +327,7 @@ def share_od_extensive_columns(
     # multiplying each row by its' share
     shared = merged.copy()
     shared[extensive_columns] = shared[extensive_columns].apply(
-        lambda c: c*shared['shares'])
+        lambda c: c * shared['shares'])
 
     grouped = shared.groupby(
         ['front_index_origin', 'front_index_destination'],

@@ -1,7 +1,8 @@
-from quetzal.engine import engine
 import numpy as np
-from quetzal.engine.pathfinder import path_and_duration_from_graph
 import pandas as pd
+from quetzal.engine import engine
+from quetzal.engine.pathfinder import path_and_duration_from_graph
+
 
 class ParkRidePathFinder:
     def __init__(self, model, walk_on_road=False):
@@ -15,7 +16,7 @@ class ParkRidePathFinder:
             model.zone_to_road['direction'] == 'access']
         self.transit_to_zone = model.zone_to_transit.loc[
             model.zone_to_transit['direction'] != 'access']
-        self.footpaths=model.footpaths
+        self.footpaths = model.footpaths
 
     def build_graph(self, **kwargs):
         self.nx_graph = engine.multimodal_graph(
@@ -29,7 +30,7 @@ class ParkRidePathFinder:
     def find_best_path(self, cutoff=np.inf, od_set=None, **kwargs):
         self.build_graph(**kwargs)
         pr_los = path_and_duration_from_graph(
-            self.nx_graph, 
+            self.nx_graph,
             pole_set=set(self.zones.index),
             cutoff=cutoff,
             od_set=od_set

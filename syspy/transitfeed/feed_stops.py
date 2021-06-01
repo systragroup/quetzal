@@ -1,12 +1,8 @@
-# -*- coding: utf-8 -*-
-
 __author__ = 'qchasserieau'
 
-import shapely
 import networkx as nx
 import pandas as pd
-
-
+import shapely
 from syspy.skims import skims
 
 
@@ -32,7 +28,6 @@ def stop_clusters(
     method='connected_components',
     geometry=False
 ):
-
     """
     Clusterizes a collection of stops to a smaller collection of centroids.
     For a given station, every trip may be linked to a different entry in the
@@ -46,7 +41,7 @@ def stop_clusters(
     :param method: clustering method, connected components builds a station
         for every connected components of a graph where every stop is linked
         to its neighbors that are nearer than reach.
-    :param geometry: if True : the geometry of the centroids of the clusters
+    :param geometry: if True: the geometry of the centroids of the clusters
         is added to the centroid table
     :return: {
         'transfers': transfers,
@@ -55,9 +50,8 @@ def stop_clusters(
     }
         "transfers" are the edges of the graph (the ones shorter than reach) ;
         "centroids" contains the centroids' data ;
-        "clusters" joins the stops to the clusters ; 
+        "clusters" joins the stops to the clusters ;
     """
-
     stops[[longitude, latitude]] = stops[[longitude, latitude]].astype(float)
     euclidean = skims.euclidean(
         stops, latitude=latitude, longitude=longitude)
@@ -85,12 +79,10 @@ def stop_clusters(
         'centroids': centroids,
         'clusters': cluster_list
     }
-
     return return_dict
 
 
 def stops_with_parent_station(stops, stop_cluster_kwargs={}, sort_column=None):
-
     clusters = pd.DataFrame(
         stop_clusters(
             stops.set_index('stop_id'),
@@ -137,5 +129,4 @@ def stops_with_parent_station(stops, stop_cluster_kwargs={}, sort_column=None):
     _stops['location_type'] = (
         _stops['stop_id'] == _stops['parent_station']
     ).astype(int)
-
     return _stops.drop('parent_station_merged', axis=1, errors='ignore')

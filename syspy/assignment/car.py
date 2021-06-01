@@ -1,16 +1,17 @@
-# -*- coding: utf-8 -*-
-
 __author__ = 'qchasserieau'
 
-import pandas as pd
-import numpy as np
 import networkx as nx
-from syspy.assignment.raw import *
-from tqdm import tqdm
+import numpy as np
+import pandas as pd
+from syspy.assignment.raw import (assign, build_edges, label_links,
+                                  label_ntlegs, label_volumes,
+                                  link_list_from_path, remove_ab_prefix,
+                                  remove_od_prefix)
 from syspy.routing import networkx_wrapper as nxw
+from tqdm import tqdm
+
 
 def path_matrix(edges, centroid_set):
-
     digraph = nx.DiGraph()
     digraph.add_weighted_edges_from(edges.values.tolist())
     allpaths = nx.all_pairs_dijkstra_path(digraph)
@@ -22,14 +23,13 @@ def path_matrix(edges, centroid_set):
                 if _key in centroid_set
             }
             for key, value in allpaths.items() if key in centroid_set
-         }
+        }
     )
 
     return matrix
 
 
 def load_edges(edges, volumes):
-
     digraph = nx.DiGraph()
     digraph.add_weighted_edges_from(edges.values.tolist())
 
@@ -44,11 +44,13 @@ def load_edges(edges, volumes):
 
     # todo : factorize ?
     matrix = pd.DataFrame(
-        {key: {
-            _key: _value
-            for _key, _value in value.items() if _key in centroid_set
+        {
+            key: {
+                _key: _value
+                for _key, _value in value.items() if _key in centroid_set
             }
-         for key, value in allpaths.items() if key in centroid_set}
+            for key, value in allpaths.items() if key in centroid_set
+        }
     )
 
     ab_index = edges.reset_index().set_index(['a', 'b'])['index'].to_dict()
@@ -74,7 +76,6 @@ def load_edges(edges, volumes):
 
 
 def load_links(links, ntlegs, volumes):
-
     edges = build_edges(links, ntlegs)
     loaded_edges = load_edges(edges, label_volumes(volumes))
 
@@ -91,7 +92,6 @@ def load_links(links, ntlegs, volumes):
 
 
 def jam_time(links, ref_time='time', alpha=0.4, beta=4, capacity=1500):
-
     alpha = links['alpha'] if 'alpha' in links.columns else alpha
     beta = links['beta'] if 'beta' in links.columns else beta
     capacity = links['capacity'] if 'capacity' in links.columns else capacity
@@ -109,7 +109,6 @@ def assign_wardrop(
     penalty=1e9,
     force=True
 ):
-
     penalty_ntlegs = ntlegs.copy()
     penalty_ntlegs['time'] += penalty
 
@@ -140,7 +139,6 @@ def assign_wardrop(
             capacity=capacity
         )
         links = loaded_links
-
     return links
 
 
@@ -178,5 +176,4 @@ def time_matrix(links, ntlegs, penalty=1e9):
 
     # we remove the penalty added to the ntlegs
     stack.loc[stack['origin'] != stack['destination'], 'length'] -= 2 * penalty
-
     return remove_od_prefix(stack)

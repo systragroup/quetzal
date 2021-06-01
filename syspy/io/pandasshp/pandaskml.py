@@ -1,16 +1,15 @@
-# -*- coding: utf-8 -*-
-
-import os
 import itertools
-import zipfile
-import kml2geojson
-from shapely import geometry
-import shapely
 import json
+import os
+import zipfile
+
+import kml2geojson
 import pandas as pd
+import shapely
+from shapely import geometry
+from syspy.io.pandasshp import pandasshp
 from tqdm import tqdm
 
-from syspy.io.pandasshp import pandasshp
 
 def list_files(path, patterns):
     files = [
@@ -23,7 +22,8 @@ def list_files(path, patterns):
         for dir in os.listdir(path)
         if os.path.isdir(os.path.join(path, dir))
     ]
-    files += list(itertools.chain(
+    files += list(
+        itertools.chain(
             *[
                 list_files(subdirectory, patterns)
                 for subdirectory in subdirectories
@@ -38,9 +38,7 @@ def read_kmz_folder(folder):
     files = list_files(folder, ['kmz'])
 
     for filename in files:
-
         # ValueError: Unknown geometry type: geometrycollection
-
         kmz = zipfile.ZipFile(filename, 'r')
         kml = kmz.open('doc.kml', 'r')
         to_write = kml.read().decode()
@@ -67,28 +65,24 @@ def read_kmz_folder(folder):
                         kmlname
                     )
                 )
-            except:
+            except Exception:
                 print('fail')
 
         geometries += to_add
-
     return pd.DataFrame(geometries, columns=['name', 'geometry', 'kml'])
 
 
 def read_kmz(folder, kmzname):
-    
     kmzfilename = (folder + kmzname + '.kmz').replace('.kmz.kmz', '.kmz')
     geometries = []
     # ValueError: Unknown geometry type: geometrycollection
-    
     kmz = zipfile.ZipFile(kmzfilename, 'r')
 
     with kmz.open('doc.kml', 'r') as kml:
         to_write = kml.read().decode()
 
-    to_format = to_write.split('<Folder>')[0] + '%s'+ to_write.split('</Folder>')[-1]
+    to_format = to_write.split('<Folder>')[0] + '%s' + to_write.split('</Folder>')[-1]
     insert_strings = [s.split('</Folder>')[0] for s in to_write.split('<Folder>')[1:]]
-    
     kmlfilename = folder + 'temp.kml'
 
     for insert in tqdm(insert_strings):
@@ -111,7 +105,7 @@ def read_kmz(folder, kmzname):
         for g in d['features']:
             try:
                 desc = g['properties']['description']
-            except:
+            except Exception:
                 desc = ''
             try:
                 to_add.append(
@@ -123,29 +117,26 @@ def read_kmz(folder, kmzname):
                         name
                     )
                 )
-            except ValueError: # Unknown geometry type: geometrycollection
+            except ValueError:  # Unknown geometry type: geometrycollection
                 pass
 
         geometries += to_add
-        
+
     layers = pd.DataFrame(
-        geometries, 
-        columns=['name', 'desc','geometry', 'kmz', 'folder']
+        geometries,
+        columns=['name', 'desc', 'geometry', 'kmz', 'folder']
     )
-    
-    
     return layers
 
-def write_shp_by_folder(layers, shapefile_folder, **kwargs) :
-            
-        for folder in tqdm(set(layers['folder'])):
-            
-            try:
-                layer = layers.loc[layers['folder'] == folder]
-                pandasshp.write_shp(
-                    shapefile_folder +'//'+ folder + '.shp',
-                    layer, 
-                    **kwargs
-                )
-            except KeyError:
-                print(folder)
+
+def write_shp_by_folder(layers, shapefile_folder, **kwargs):
+    for folder in tqdm(set(layers['folder'])):
+        try:
+            layer = layers.loc[layers['folder'] == folder]
+            pandasshp.write_shp(
+                shapefile_folder + '//' + folder + '.shp',
+                layer,
+                **kwargs
+            )
+        except KeyError:
+            print(folder)

@@ -1,18 +1,16 @@
-# -*- coding: utf-8 -*-
-
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from shapely import geometry, ops
 import os
-import geopandas as gpd
-from syspy.io.pandasshp import pandasshp
-from syspy.syspy_utils import data_visualization as visual
-from syspy.spatial.geometries import line_list_to_polyline
-from syspy.spatial import spatial, geometries
-from tqdm import tqdm
-from syspy.paths import gis_resources
 
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from shapely import geometry, ops
+from syspy.io.pandasshp import pandasshp
+from syspy.paths import gis_resources
+from syspy.spatial import geometries, spatial
+from syspy.spatial.geometries import line_list_to_polyline
+from syspy.syspy_utils import data_visualization as visual
+from tqdm import tqdm
 
 epsg4326 = gis_resources + r'projections/epsg4326.prj'
 epsg4326_string = pandasshp.read_prj(gis_resources + 'projections/epsg4326.prj')
@@ -25,7 +23,9 @@ polygon_style = gis_resources + 'styles/polygon.qml'
 
 RdYlGn = [
     '#a50026', '#d73027', '#f46d43', '#fdae61', '#fee08b',
-    '#d9ef8b', '#a6d96a', '#66bd63', '#1a9850', '#006837']
+    '#d9ef8b', '#a6d96a', '#66bd63', '#1a9850', '#006837'
+]
+
 
 def get_road_links(self, trip_id='trip_id'):
     l = self.links.copy()
@@ -39,14 +39,15 @@ def get_road_links(self, trip_id='trip_id'):
     merged = pd.merge(merged, self.road_links, left_on='road', right_index=True, suffixes=['_transit', ''])
     return merged[['a', 'b', 'transit', 'geometry', 'road', trip_id]]
 
+
 def connected_geometries(sorted_edges):
     edges = sorted_edges.copy()
     a = list(edges.index)
-    #a = [i for i in a if i in edges.index]
-    b = [edges.loc[a[i], 'b'] == edges.loc[a[i+1], 'a'] for i in range(len(a) - 1)]
+    # a = [i for i in a if i in edges.index]
+    b = [edges.loc[a[i], 'b'] == edges.loc[a[i + 1], 'a'] for i in range(len(a) - 1)]
 
-    s = [0] + [i+1 for i in range(len(b) - 1) if not b[i]] + [len(a)]
-    slices = [(s[i], s[i+1]) for i in range(len(s) - 1)]
+    s = [0] + [i + 1 for i in range(len(b) - 1) if not b[i]] + [len(a)]
+    slices = [(s[i], s[i + 1]) for i in range(len(s) - 1)]
 
     geometry_list = []
     for s in slices:
@@ -55,32 +56,30 @@ def connected_geometries(sorted_edges):
         geometry_list.append(geometry)
     return geometry_list
 
+
 def line_tuple_geometry(self, line_tuple, edges):
-    
     sorted_road_links = []
     selected = self.links.loc[self.links['trip_id'] == line_tuple[0]]
     for road_link_list in selected.sort_values('link_sequence')['road_link_list']:
         for road_link in road_link_list:
             sorted_road_links.append(road_link)
-            
+
     sorted_edges = edges.loc[sorted_road_links].dropna(subset=['a', 'b'])
     return connected_geometries(sorted_edges)
 
-def geometries_with_side(
-    tuple_indexed_geometry_lists, 
-    width=1
-    ):
+
+def geometries_with_side(tuple_indexed_geometry_lists, width=1):
     tigl = tuple_indexed_geometry_lists
-    
+
     # explode geometry lists
     tuples = []
-    for index_tuple,  geometry_list in tigl.items():
-        for geometry in geometry_list:
-            tuples.append([index_tuple , geometry])
-            
+    for index_tuple, geometry_list in tigl.items():
+        for geometry_item in geometry_list:
+            tuples.append([index_tuple, geometry_item])
+
     tuple_geometries = pd.DataFrame(tuples, columns=['index_tuple', 'geometry'])
 
-    # explode line tuples
+    # explode line tuples
     tuples = []
     for index_tuple in tigl.keys():
         for item in index_tuple:
@@ -88,7 +87,7 @@ def geometries_with_side(
 
     df = pd.DataFrame(tuples, columns=['id', 'index_tuple'])
     df = pd.merge(tuple_geometries, df, on='index_tuple').dropna()
-    
+
     df['geometry_string'] = df['geometry'].astype(str)
     l = df.copy()
     groupby_columns = ['geometry_string']
@@ -101,16 +100,16 @@ def geometries_with_side(
 
     l['side'] = sides
     l['width'] = width
-    l['offset'] =  l['width'] *( l['side'] + 0.5)
-
+    l['offset'] = l['width'] * (l['side'] + 0.5)
     return gpd.GeoDataFrame(l[['geometry', 'width', 'side', 'offset', 'id']])
 
+
 def get_lines_with_offset(self, width=1, trip_id='trip_id'):
-    # get road_links
+    # get road_links
     l = get_road_links(self)
     l['ab'] = l.apply(lambda r: tuple(sorted([r['a'], r['b']])), axis=1)
 
-    # line_tuples geometry
+    # line_tuples geometry
     line_tuples = l.groupby(['road'])[trip_id].agg(lambda s: tuple(sorted(tuple(s))))
     road_links = gpd.GeoDataFrame(self.road_links)
     road_links['line_tuple'] = line_tuples
@@ -119,7 +118,6 @@ def get_lines_with_offset(self, width=1, trip_id='trip_id'):
     line_tuples = list(set(line_tuples))
     line_tuple_geometries = dict()
     for line_tuple in tqdm(line_tuples):
-        
         # build sorted_edges
         edges = road_links.loc[road_links['line_tuple'] == line_tuple]
         sorted_road_links = []
@@ -128,10 +126,10 @@ def get_lines_with_offset(self, width=1, trip_id='trip_id'):
             for road_link in road_link_list:
                 sorted_road_links.append(road_link)
         sorted_edges = edges.loc[sorted_road_links].dropna(subset=['a', 'b'])
-        
+
         line_tuple_geometries[line_tuple] = connected_geometries(sorted_edges)
-    
     return geometries_with_side(line_tuple_geometries, width=width)
+
 
 def shares_to_shp(
     aggregated_shares,
@@ -325,7 +323,7 @@ def loaded_links_to_shp(
     )
 
     # Legend
-    if create_legend==True:
+    if create_legend:
         create_load_legend(
             legend_file_path=gis_path + name.split('.shp')[0] + '_legend.shp',
             outer_average_width=outer_average_width,
@@ -335,8 +333,7 @@ def loaded_links_to_shp(
             legend_type='LineString',
             *args,
             **kwargs
-            )
-
+        )
 
 
 def ntlegs_centroids_to_shp(
@@ -363,7 +360,7 @@ def ntlegs_centroids_to_shp(
     try:
         centroids['color'] = visual.color_series(
             centroids['emission_rate'].fillna(0))
-    except:
+    except Exception:
         pass
     pandasshp.write_shp(
         gis_path + 'centroids.shp',
@@ -383,9 +380,9 @@ def ntlegs_centroids_to_shp(
             projection_file=projection_file
         )
 
-def build_lines(links, line_columns='all', group_id='trip_id', sum_columns=[], mean_columns=[], force_linestring=True):
 
-    if line_columns is 'all':
+def build_lines(links, line_columns='all', group_id='trip_id', sum_columns=[], mean_columns=[], force_linestring=True):
+    if line_columns == 'all':
         # all the columns that are shared by all the links of the group are listed
         variability = links.groupby(group_id).agg(lambda s: s.nunique()).max()
         line_columns = list(variability.loc[variability == 1].index)
@@ -399,17 +396,17 @@ def build_lines(links, line_columns='all', group_id='trip_id', sum_columns=[], m
 
     links = links.loc[~links['geometry'].apply(lambda g: g.is_empty)]
     lines['geometry'] = links.groupby(group_id)['geometry'].agg(
-        lambda s: ops.linemerge(list(s))) # force the series to a list
-    lines = lines.dropna(subset =['geometry'])
+        lambda s: ops.linemerge(list(s)))  # force the series to a list
+    lines = lines.dropna(subset=['geometry'])
 
     if force_linestring:
         lines['geometry'] = links.groupby(group_id)['geometry'].agg(
-            lambda s: line_list_to_polyline(list(s))) # force the series to a list
+            lambda s: line_list_to_polyline(list(s)))  # force the series to a list
 
-    lines = lines.dropna(subset =['geometry'])
+    lines = lines.dropna(subset=['geometry'])
     lines = lines.loc[~lines['geometry'].apply(lambda g: g.is_empty)]
-    
     return lines.reset_index()
+
 
 def lines_to_shp(
     links,
@@ -433,16 +430,14 @@ def lines_to_shp(
             l = list(sample['geometry'])
 
             to_concat.append((line, color, ops.linemerge(l)))
-        
 
-        df = pd.DataFrame(to_concat, columns=[group_id,'color' ,'geometry'])
-
+        df = pd.DataFrame(to_concat, columns=[group_id, 'color', 'geometry'])
 
     df = build_lines(links, [color_id] if color_id else None)
-    
+
     if not color_id:
         df['color'] = pd.Series(colors * 10000)
-    
+
     df['width'] = width
     pandasshp.write_shp(
         gis_path + 'lines.shp',
@@ -534,7 +529,6 @@ def save_line_load(lines, path):
 
 
 def save_line_plots(lines, path):
-
     mean_lines = lines.groupby(['name']).mean()
     mean_lines['color'] = lines.groupby('name')['color'].first()
     sum_lines = lines.groupby(['name']).mean()
@@ -553,7 +547,6 @@ def save_line_plots(lines, path):
 
 
 def aggregation_summary(micro_zones, macro_zones, cluster_series, size=1):
-
     macro_centroids_dict = macro_zones['geometry'].apply(
         lambda g: g.centroid).to_dict()
     micro_centroids_dict = micro_zones['geometry'].apply(
@@ -573,9 +566,8 @@ def aggregation_summary(micro_zones, macro_zones, cluster_series, size=1):
         pd.Series(micro_centroids_dict), columns=['geometry'])
 
     centroid_links['width'], centroid_links['color'] = size, 'gray'
-    macro_centroids['width'], macro_centroids['color'] = 1.5*size, 'gray'
+    macro_centroids['width'], macro_centroids['color'] = 1.5 * size, 'gray'
     micro_centroids['width'], micro_centroids['color'] = size, 'gray'
-
     return micro_centroids, macro_centroids, centroid_links
 
 
@@ -656,7 +648,7 @@ def three_level_aggregation_summary_to_shp(
         style_file=polygon_style)
 
 
-def create_load_legend(legend_file_path, coordinates, legend_type, values, max_value=None,  style_file=line_style,
+def create_load_legend(legend_file_path, coordinates, legend_type, values, max_value=None, style_file=line_style,
                        categories=None, outer_average_width=20, colors=True, delta=[1000, 1500], method='linear',
                        epsg=None, projection_file=None):
     """
@@ -670,7 +662,7 @@ def create_load_legend(legend_file_path, coordinates, legend_type, values, max_v
         max_value: max value to calibrate the legend
         categories: categories associated with the values
         outer_average_width: width
-        delta: legend spacing (one value for Point legend, two values for Linestring)        
+        delta: legend spacing (one value for Point legend, two values for Linestring)
     """
     x = coordinates[0]
     y = coordinates[1]
@@ -690,8 +682,8 @@ def create_load_legend(legend_file_path, coordinates, legend_type, values, max_v
             legend_geometries.append(
                 geometry.LineString(
                     [
-                        (x + (i +1) * delta_x, y ),
-                        (x + (i + 2) * delta_x, y )
+                        (x + (i + 1) * delta_x, y),
+                        (x + (i + 2) * delta_x, y)
                     ]
                 )
             )
@@ -725,4 +717,4 @@ def create_load_legend(legend_file_path, coordinates, legend_type, values, max_v
         style_file=style_file,
         epsg=epsg,
         projection_file=projection_file
-        )
+    )

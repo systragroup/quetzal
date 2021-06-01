@@ -1,7 +1,6 @@
-# -*- coding: utf-8 -*-
-
-import os
 import itertools
+import os
+
 from syspy.pycube.application import Application
 
 
@@ -26,7 +25,6 @@ def list_apps(path):
 
 
 def replace_in_file(filename, old, new):
-
     with open(filename, 'r') as file:
         soup = file.read()
     count = soup.count(old)
@@ -35,14 +33,10 @@ def replace_in_file(filename, old, new):
     return count
 
 
-
-
 class Project:
-
     """
     Object for processing text, scripts an apps in a cube project, based on top of pycube.application.
     """
-
     def __init__(self, catalog_dir):
         self.catalog_dir = catalog_dir
         self.apps = [Application(app_file) for app_file in list_apps(self.catalog_dir)]
@@ -58,7 +52,6 @@ class Project:
         :type new_dir: str
         :return: None
         """
-
         _new_dir = self.catalog_dir if new_dir == 'default' else new_dir
         occurrences = 0
         for filename in self.cube_generated_text_like_files:
@@ -75,10 +68,8 @@ class Project:
         :type new_dir: str
         :return: None
         """
-
         occurrences = 0
         for filename in self.cube_generated_text_like_files:
             occurrences += replace_in_file(filename, old_string, new_string)
 
         print(str(occurrences) + ' change(s)')
-
