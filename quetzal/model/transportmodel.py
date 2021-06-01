@@ -23,9 +23,9 @@ def read_hdf(filepath):
     return m
 
 
-def read_json(folder):
+def read_json(folder, **kwargs):
     m = TransportModel()
-    m.read_json(folder)
+    m.read_json(folder, **kwargs)
     return m
 
 track_args = model.track_args

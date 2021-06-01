@@ -520,7 +520,7 @@ class Model(IntegrityModel):
         shutil.rmtree(tempdir)
 
     @track_args
-    def to_json(self, folder, omitted_attributes=(), only_attributes=None, verbose=False):
+    def to_json(self, folder, omitted_attributes=(), only_attributes=None, verbose=False, encoding='utf-8'):
         """
         export the full model to a hdf database
         """
@@ -569,7 +569,7 @@ class Model(IntegrityModel):
                     c for c in df.columns if c not in geojson_columns]
                 try:
                     gpd.GeoDataFrame(attribute[geojson_columns]).to_file(
-                        geojson_file, driver='GeoJSON'
+                        geojson_file, driver='GeoJSON', encoding=encoding
                     )
                     if len(json_columns):
                         attribute[json_columns + ['index']
@@ -604,7 +604,7 @@ class Model(IntegrityModel):
         json_series = json_series.reset_index()
         json_series.to_json(folder + '/' + 'jsons.json')
 
-    def read_json(self, folder):
+    def read_json(self, folder, encoding='utf-8'):
         files = os.listdir(folder)
         geojson_attributes = [file.split('.geojson')[0]
                               for file in files if '.geojson' in file]
@@ -619,7 +619,7 @@ class Model(IntegrityModel):
 
         for key in geojson_attributes:
 
-            value = gpd.read_file('%s/%s.geojson' % (folder, key))
+            value = gpd.read_file('%s/%s.geojson' % (folder, key), encoding=encoding)
             value.set_index('index', inplace=True)
             self.__setattr__(key, pd.DataFrame(value))
 
