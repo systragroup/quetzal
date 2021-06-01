@@ -36,7 +36,8 @@ def geodataframe_place_holder(geom_type, prefix=None):
 
 class IntegrityModel:
 
-    def __init__(self, debug=False, walk_on_road=False, epsg=None, coordinates_unit=None):
+    def __init__(self, debug=False, walk_on_road=False, epsg=None, coordinates_unit=None, **kwargs):
+
         self.parameters = {}
         self.debug = debug
         self.walk_on_road = walk_on_road
