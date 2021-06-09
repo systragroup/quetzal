@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from quetzal.engine import connectivity, engine, gps_tracks
 from quetzal.engine.add_network import NetworkCaster
-from quetzal.model import cubemodel, model
+from quetzal.model import cubemodel, model, integritymodel
 from syspy.renumber import renumber
 from syspy.skims import skims
 from tqdm import tqdm
@@ -97,9 +97,11 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 max_ntleg_length=5000
             )
         """
-        self.centroids = self.zones.copy()
-        self.centroids['geometry'] = self.centroids['geometry'].apply(
-            lambda g: g.centroid)
+        # if some centroids are missing, we build them
+        if self.centroids.equals(integritymodel.geodataframe_place_holder('Point')):
+            self.centroids = self.zones.copy()
+            self.centroids['geometry'] = self.centroids['geometry'].apply(
+                lambda g: g.centroid)
 
         length = max_ntleg_length
 
