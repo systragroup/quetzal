@@ -3,6 +3,7 @@ import json
 import osmnx as ox
 import pandas as pd
 from . import gps_tracks
+from shapely.geometry import Point
 
 
 def _merge_reversed_geometries_dict(geojson_dict):
@@ -70,6 +71,18 @@ def _get_type(x):
 
 
 def get_osm_data(north, south, east, west, network_type, epsg, output_folder):
+    """
+    Download OSM road data and project into new coordinate system.
+    params:
+        - north: latitude of northern end
+        - south: latitude of southern end
+        - east: longitude of eastern end
+        - west: longituted of western end
+        - epsg: epsg code defining projection coordinate system
+        - output_folder: folder in which to save data
+
+    returns: None
+    """
 
     # download
     osm_graph = ox.graph_from_bbox(north, south, east, west, network_type)
@@ -140,6 +153,16 @@ def _create_shape_df(osm_road_links, road_links, shape_id):
     return shapes
 
 
+def _gps_pts_to_gdf(pts, epsg):
+
+    points = gpd.GeoDataFrame(columns=['x', 'y', 'z'], data=pts)
+    points['geometry'] = points.apply(lambda x: Point([x['x'], x['y']]), 1)
+    points.crs = {'init': 'epsg:4326'}
+    points = points.to_crs(epsg=epsg)
+
+    return points
+
+
 def _get_osm_links(points, road_links, road_nodes, buffer, penalty_factor):
     # TODO: improve with networkcaster
 
@@ -152,8 +175,21 @@ def _get_osm_links(points, road_links, road_nodes, buffer, penalty_factor):
     return osm_road_links
 
 
-def get_shape_and_osm_links(points, road_links, road_nodes, buffer=50, penalty_factor=2):
+def get_shape_and_osm_links(points, road_links, road_nodes, epsg, buffer=20, penalty_factor=2):
+    """
+    Match a list of gps points on a road network (road_links, road_nodes)
+    Returns the output shape coordinates and list of road_links.
+    params:
+        - points: list of gps coordinates (lon, lat, ele)
+        - road_links: geodataframe with network links
+        - road_nodes: geodataframe with network nodes
+        - epsg: coordinate system to use
 
+    returns:
+        - shape_coordinates: list of road coordinates (lat, lon)
+        - osm_road_links: list of road_link ids
+    """
+    points = _gps_pts_to_gdf(points, epsg)
     osm_road_links = _get_osm_links(points, road_links, road_nodes, buffer=buffer, penalty_factor=penalty_factor)
     shape_coordinates = _get_shape_coordinates(osm_road_links, road_links)
 
