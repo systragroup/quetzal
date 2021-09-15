@@ -140,10 +140,10 @@ def _create_shape_df(osm_road_links, road_links, shape_id):
     return shapes
 
 
-def _get_osm_links(points, road_links, road_nodes, buffer=50, penalty_factor=2):
+def _get_osm_links(points, road_links, road_nodes, buffer, penalty_factor):
     # TODO: improve with networkcaster
 
-    path = gps_tracks.get_path(points, road_links, road_nodes, buffer=50, penalty_factor=2)
+    path = gps_tracks.get_path(points, road_links, road_nodes, buffer=buffer, penalty_factor=penalty_factor)
     p = path[1:-1]
 
     osm_road_links = road_links.reset_index().set_index(['a', 'b']).loc[
@@ -154,7 +154,7 @@ def _get_osm_links(points, road_links, road_nodes, buffer=50, penalty_factor=2):
 
 def get_shape_and_osm_links(points, road_links, road_nodes, buffer=50, penalty_factor=2):
 
-    osm_road_links = _get_osm_links(points, road_links, road_nodes, buffer=50, penalty_factor=2)
+    osm_road_links = _get_osm_links(points, road_links, road_nodes, buffer=buffer, penalty_factor=penalty_factor)
     shape_coordinates = _get_shape_coordinates(osm_road_links, road_links)
 
     # shapes = _create_shape_df(osm_road_links, road_links, shape_id)
