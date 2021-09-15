@@ -37,7 +37,7 @@ def get_path(points, road_links, road_nodes, buffer=50, penalty_factor=2, n_neig
             points=points,
             road_links=base_road_links,
             road_nodes=base_road_nodes,
-            buffer=buffer * 2,
+            buffer=buffer * 1.2,
             penalty_factor=penalty_factor,
         )
     return path
