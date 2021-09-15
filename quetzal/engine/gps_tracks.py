@@ -19,7 +19,7 @@ def get_path(points, road_links, road_nodes, buffer=50, penalty_factor=2, n_neig
     od = points.iloc[[1, -1]]
     od.index = ['o', 'd']
     connectors = spatial.nearest(od, road_nodes, geometry=False, n_neighbors=n_neighbors)
-    connectors = connectors.loc[connectors['distance'] < buffer]
+    # connectors = connectors.loc[connectors['distance'] < buffer]
     connectors['weight'] = connectors['distance'] * penalty_factor
     connectors.index = connectors['ix_one']
     try:
@@ -33,11 +33,12 @@ def get_path(points, road_links, road_nodes, buffer=50, penalty_factor=2, n_neig
         path = nx.dijkstra_path(g, 'o', 'd')
 
     except (nx.NetworkXNoPath, KeyError):
+        print('Matching failed -> increasing buffer to ', buffer * 1.2)
         path = get_path(
             points=points,
             road_links=base_road_links,
             road_nodes=base_road_nodes,
-            buffer=buffer * 2,
+            buffer=buffer * 1.2,
             penalty_factor=penalty_factor,
         )
     return path
