@@ -1,12 +1,13 @@
 import pandas as pd
+import numpy as np
 
 
 def add_load_difference(df):
     boarding_cols = [c for c in df.columns if 'boardings_' in c]
     df['boardings'] = df[boarding_cols].T.sum()
-    df.iloc[-1, df.columns.get_loc('number_of_passengers')] = 0
+    df.iloc[-1, df.columns.get_loc('number_passengers')] = 0
     df['load'] = df['boardings'].cumsum() - df['alightings'].cumsum()
-    df['load_difference'] = df['number_of_passengers'] - df['load']
+    df['load_difference'] = df['number_passengers'] - df['load']
     df['load_difference'].fillna(0, inplace=True)
 
     return df
@@ -26,6 +27,8 @@ def _correct_ba_last(boarding_list, alightings, load_difference):
 
 
 def correct_ba(boarding_list, alightings, load_difference, first=False, last=False):
+
+    # TODO: handle case where boarding or alighting data are missing
 
     if first:
         return _correct_ba_first(boarding_list, alightings, load_difference)
@@ -84,6 +87,7 @@ def correct_boarding_alighting_data(input_dict):
     df = df.sort_values('stop_time').reset_index().rename(
         columns={'index': 'stop_id'}
     )
+    df = df.replace(-1, np.nan)
     df = add_load_difference(df)
 
     new_df = pd.DataFrame()
@@ -105,7 +109,12 @@ def correct_boarding_alighting_data(input_dict):
         new_df = new_df.append(new_row)
 
     new_df = new_df.merge(
-        df[['stop_id', 'stop_time', 'number_of_passengers']],
+        df[['stop_id', 'stop_time', 'number_passengers']],
         left_index=True, right_index=True
     )
+    # fillna values for number passengers
+    new_df = add_load_difference(new_df)
+    new_df['number_passengers'] = new_df['load']
+    new_df = new_df.drop(['load', 'load_difference', 'boardings'], 1)
+
     return new_df.set_index('stop_id').T.to_dict()
