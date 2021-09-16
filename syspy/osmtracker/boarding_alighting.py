@@ -80,7 +80,10 @@ def correct_ba_row(row, first, last):
 
 
 def correct_boarding_alighting_data(input_dict):
-    df = pd.DataFrame(input_dict).T.reset_index().rename(columns={'index': 'stop_id'})
+    df = pd.DataFrame(input_dict).T
+    df = df.sort_values('stop_time').reset_index().rename(
+        columns={'index': 'stop_id'}
+    )
     df = add_load_difference(df)
 
     new_df = pd.DataFrame()
