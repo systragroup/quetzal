@@ -2,7 +2,7 @@ import geopandas as gpd
 import json
 import osmnx as ox
 import pandas as pd
-from . import gps_tracks
+from quetzal.engine import gps_tracks
 from shapely.geometry import Point
 
 
