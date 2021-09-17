@@ -4,7 +4,7 @@ from shapely import geometry
 from syspy.spatial import spatial
 
 
-def get_path(points, road_links, road_nodes, buffer=50, penalty_factor=2, n_neighbors=10):
+def get_path(points, road_links, road_nodes, buffer=50, penalty_factor=2, n_neighbors=2):
     # create copies for the recursion
     base_road_links, base_road_nodes = road_links.copy(), road_nodes.copy()
 
