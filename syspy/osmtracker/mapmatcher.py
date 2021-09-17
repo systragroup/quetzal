@@ -71,6 +71,38 @@ def _get_type(x):
     return 'other'
 
 
+def clean_osm_links(road_links, road_nodes):
+    links = road_links.copy()
+    decimal_threshold = 1
+    ng = road_nodes['geometry'].to_dict()
+
+    def directed(row):
+        a = tuple([round(x, decimal_threshold) for x in list(ng[row['a']].coords)[0]])
+        b = tuple([round(x, decimal_threshold) for x in list(row['geometry'].coords)[0]])
+        return a == b
+
+    def return_directed(row):
+        a = tuple([round(x, decimal_threshold) for x in list(ng[row['a']].coords)[0]])
+        b = tuple([round(x, decimal_threshold) for x in list(row['geometry'].coords)[-1]])
+        return a == b
+
+    import shapely
+
+    def reversed_polyline(polyline):
+        coords = list(polyline.coords)
+        return shapely.geometry.LineString(reversed(coords))
+
+    reverse = links.apply(
+        return_directed,
+        axis=1
+    )
+    loc = (reverse, 'geometry')
+    links.loc[loc] = links.loc[loc].apply(
+        reversed_polyline
+    )
+    return links
+
+
 def get_osm_data(north, south, east, west, network_type, epsg, output_folder):
     """
     Download OSM road data and project into new coordinate system.
@@ -124,21 +156,25 @@ def get_osm_data(north, south, east, west, network_type, epsg, output_folder):
     road_nodes.crs = {'init': 'epsg:4326'}
     road_nodes = road_nodes.to_crs({'init': 'epsg:{}'.format(epsg)})
 
+    # fix reversed geometries
+    road_links = clean_osm_links(road_links, road_nodes)
+
     # save
     road_links.to_file(output_folder + 'road_links.shp')
     road_nodes.to_file(output_folder + 'road_nodes.shp')
 
-# def _get_shape_coordinates(osm_road_links, road_links):
-#     shape_coordinates = []
 
-#     def append_coordinates(row):
-#         for x in row.coords[:]:
-#             shape_coordinates.append(x)
+def _get_shape_coordinates(osm_road_links, road_links):
+    shape_coordinates = []
 
-#     road_links.loc[osm_road_links].to_crs(epsg=4326).geometry.apply(
-#         lambda x: append_coordinates(x), 1)
+    def append_coordinates(row):
+        for x in row.coords[:]:
+            shape_coordinates.append(x)
 
-#     return shape_coordinates
+    road_links.loc[osm_road_links].to_crs(epsg=4326).geometry.apply(
+        lambda x: append_coordinates(x), 1)
+
+    return shape_coordinates
 
 
 def _create_shape_df(osm_road_links, road_links, road_nodes, shape_id):
@@ -191,59 +227,8 @@ def get_shape_and_osm_links(points, road_links, road_nodes, epsg, buffer=20, pen
     """
     points = _gps_pts_to_gdf(points, epsg)
     osm_road_links = _get_osm_links(points, road_links, road_nodes, buffer=buffer, penalty_factor=penalty_factor)
-    shape_coordinates = _get_shape_coordinates(osm_road_links, road_links, road_nodes)
+    shape_coordinates = _get_shape_coordinates(osm_road_links, road_links)
 
     # shapes = _create_shape_df(osm_road_links, road_links, shape_id)
 
     return shape_coordinates, osm_road_links
-
-
-def clean_links(osm_road_links, road_links, road_nodes):
-    links = road_links.loc[osm_road_links]
-    decimal_threshold = 1
-    ng = road_nodes['geometry'].to_dict()
-
-    def directed(row):
-        a = tuple([round(x, decimal_threshold) for x in list(ng[row['a']].coords)[0]])
-        b = tuple([round(x, decimal_threshold) for x in list(row['geometry'].coords)[0]])
-        return a == b
-
-    def return_directed(row):
-        a = tuple([round(x, decimal_threshold) for x in list(ng[row['a']].coords)[0]])
-        b = tuple([round(x, decimal_threshold) for x in list(row['geometry'].coords)[-1]])
-        return a == b
-
-    import shapely
-
-    def reversed_polyline(polyline):
-        coords = list(polyline.coords)
-        return shapely.geometry.LineString(reversed(coords))
-
-    # direct = links.apply(
-    #     directed,
-    #     axis=1
-    # )
-    reverse = links.apply(
-        return_directed,
-        axis=1
-    )
-    loc = (reverse, 'geometry')
-    links.loc[loc] = links.loc[loc].apply(
-        reversed_polyline
-    )
-    return links
-
-
-def _get_shape_coordinates(osm_road_links, road_links, road_nodes):
-    shape_coordinates = []
-
-    links = clean_links(osm_road_links, road_links, road_nodes)
-
-    def append_coordinates(row):
-        for x in row.coords[:]:
-            shape_coordinates.append(x)
-#     links =, road_nodes, decimal_threshold=2)
-    links.to_crs(epsg=4326).geometry.apply(
-        lambda x: append_coordinates(x), 1)
-
-    return shape_coordinates
