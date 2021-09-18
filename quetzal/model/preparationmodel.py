@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from quetzal.engine import connectivity, engine, gps_tracks
 from quetzal.engine.add_network import NetworkCaster
+from quetzal.engine.add_network_mapmatching import NetworkCaster_MapMaptching
 from quetzal.model import cubemodel, model
 from syspy.renumber import renumber
 from syspy.skims import skims
@@ -267,6 +268,30 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             self.road_to_transit = concatenated.reindex().reset_index(drop=True)
 
     @track_args
+    def preparation_map_matching(self,
+                                 routing=True,
+                                 n_neighbors_centroid=100,
+                                 n_neighbors=10,
+                                 distance_max=5000):
+        ncm = NetworkCaster_MapMaptching(self.nodes, self.road_links, self.links)
+        matched_links, links_mat, unmatched_trip = ncm.Multi_Mapmatching(routing=routing,
+                                                                         n_neighbors_centroid=n_neighbors_centroid,
+                                                                         n_neighbors=n_neighbors,
+                                                                         distance_max=distance_max,
+                                                                         by='trip_id')
+
+        matched_links['road_id_a'] = matched_links['road_id_a'].apply(lambda x: ncm.links_index_dict.get(x))
+        matched_links['road_id_b'] = matched_links['road_id_b'].apply(lambda x: ncm.links_index_dict.get(x))
+
+        road_a_dict = matched_links['road_id_a'].to_dict()
+        road_b_dict = matched_links['road_id_b'].to_dict()
+        length_dict = matched_links['length'].to_dict()
+        self.links['road_a'] = self.links.index.map(road_a_dict.get)
+        self.links['road_b'] = self.links.index.map(road_b_dict.get)
+        self.links['length'] = self.links.index.map(length_dict.get)
+        self.links = self.links.merge(links_mat[['road_node_list', 'road_link_list']], left_index=True, right_index=True, how='left')
+
+    @track_args
     def preparation_logit(
         self,
         mode=1,
@@ -391,11 +416,11 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             if 'clustering_zones' not in self.__dict__.keys():
                 self.clustering_zones = self.zones.copy()
             self.nodes = connectivity.adaptive_clustering(self.nodes, self.clustering_zones, **kwargs)
-            self.links, self.nodes,  self.node_clusters, self.node_parenthood = connectivity.node_clustering(
+            self.links, self.nodes, self.node_clusters, self.node_parenthood = connectivity.node_clustering(
                 self.links, self.nodes, n_clusters, group_id='adaptive_cluster_id'
             )
         else:
-            self.links, self.nodes,  self.node_clusters, self.node_parenthood = connectivity.node_clustering(
+            self.links, self.nodes, self.node_clusters, self.node_parenthood = connectivity.node_clustering(
                 self.links, self.nodes, n_clusters, **kwargs
             )
 
