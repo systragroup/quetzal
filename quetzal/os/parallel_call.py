@@ -47,7 +47,7 @@ def parallel_call_jobs(jobs, mode='w', leave=False, workers=1, sleep=1):
                 os.remove(file)
             except FileNotFoundError:
                 pass
-        with open(stderr_file, 'r') as stderr:
+        with open(stderr_file, 'r', encoding='latin') as stderr:
             content = stderr.read()
             if 'Error' in content and "end_of_notebook" not in content:
                 print("subprocess **{} {}** terminated with an error.".format(subprocess_name, arg))

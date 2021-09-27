@@ -19,9 +19,9 @@ def read_hdf(filepath):
     return m
 
 
-def read_json(folder):
+def read_json(folder, **kwargs):
     m = TransportModel()
-    m.read_json(folder)
+    m.read_json(folder, **kwargs)
     return m
 
 
@@ -607,14 +607,18 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         else:
             logit_los = self.los
         mode_utility = self.mode_utility[segment].to_dict()
-        # route type utilities
-        rtu = {
-            rt: get_combined_mode_utility(
-                rt, how=how, mode_utility=mode_utility
-            )
-            for rt in logit_los['route_types'].unique()
-        }
-        logit_los['mode_utility'] = logit_los['route_types'].map(rtu.get)
+        
+        if how == 'main': # the utility of the 'route_type' is used
+            logit_los['mode_utility'] = logit_los['route_type'].apply(mode_utility.get)
+        else : # how = 'min', 'max', 'mean', 'sum'
+            # route type utilities
+            rtu = {
+                rt: get_combined_mode_utility(
+                    rt, how=how, mode_utility=mode_utility
+                )
+                for rt in logit_los['route_types'].unique()
+            }
+            logit_los['mode_utility'] = logit_los['route_types'].map(rtu.get)
 
         utility_values = self.utility_values[segment].to_dict()
         u = 0

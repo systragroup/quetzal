@@ -118,6 +118,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             ]
         ].copy()
         pseudo_links['link_index'] = pseudo_links['model_index'] = pseudo_links.index
+        pseudo_links['actual_departure_time'] = pseudo_links['departure_time']
         pseudo_links['departure_time'] -= links['min_transfer_time']
         zone_to_transit = csa.time_zone_to_transit(pseudo_links, self.zone_to_transit)
         footpaths = csa.time_footpaths(pseudo_links, self.footpaths)
@@ -135,7 +136,9 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             pseudo_connections['csa_index'] = pseudo_connections['csa_index'].fillna(
                 pseudo_connections['model_index']
             )
-        pseudo_connections.sort_values('departure_time', ascending=False, inplace=True)
+        pseudo_connections['actual_departure_time'].fillna(
+            pseudo_connections['departure_time'], inplace=True)
+        pseudo_connections.sort_values('actual_departure_time', ascending=False, inplace=True)
         self.pseudo_connections = pseudo_connections
 
     def step_pt_pathfinder(

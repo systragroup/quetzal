@@ -66,7 +66,9 @@ def time_footpaths(links, footpaths):
 
     transfers[['departure_time', 'arrival_time']] = transfers[
         ['arrival_time', 'departure_time']]
-    transfers['str'] = [str(i) for i in transfers.index]
+    transfers['str'] = transfers['model_index'].astype(str) 
+    transfers['str'] += '_'+  transfers['departure_time'].astype(str) 
+    transfers['str'] += '_' + transfers['arrival_time'].astype(str)
     transfers['csa_index'] = 'footpath_' + transfers['str']
     transfers['trip_id'] = 'footpath_trip_' + transfers['str']
     columns = ['a', 'b', 'departure_time', 'arrival_time', 'trip_id', 'csa_index', 'model_index']
