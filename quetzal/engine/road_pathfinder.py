@@ -6,11 +6,29 @@ from syspy.assignment import raw as raw_assignment
 from tqdm import tqdm
 
 
-def jam_time(links, ref_time='time', flow='load', alpha=0.15, beta=4, capacity=1500):
-    alpha = links['alpha'] if 'alpha' in links.columns else alpha
-    beta = links['beta'] if 'beta' in links.columns else beta
-    capacity = links['capacity'] if 'capacity' in links.columns else capacity
-    return links[ref_time] * (1 + alpha * np.power((links[flow] / capacity), beta))
+
+def default_bpr(links):
+    alpha = 0.15
+    beta = 4
+    V = links['flow']
+    Q = links['capacity']
+    t0 = links['time']
+    return t0 * (1 + alpha*np.power(V/Q, beta))
+
+
+def smock(links):
+    V = links['flow']
+    Qs = links['capacity']
+    t0 = links['time']
+    return t0 * np.exp(V/Qs)
+
+
+def jam_time(links, vdf={'default_bpr': default_bpr, 'smock': smock}):
+    # vdf is a {function_name: function } to apply on links 
+    keys = set(links['vdf'])
+    missing_vdf = keys - set(vdf.keys())
+    assert len(missing_vdf) == 0, 'you should provide methods for the following vdf keys' + missing_vdf
+    return pd.concat([vdf[key](links) for key in keys])
 
 
 def z_prime(row, phi):
@@ -104,16 +122,18 @@ class RoadPathFinder:
         iteration=0,
         log=False,
         speedup=True,
-        volume_column='volume_car'
+        volume_column='volume_car',
+        vdf={'default_bpr': default_bpr, 'smock': smock},
+        **kwargs,
     ):
         links = self.road_links  # not a copy
 
         # a
         links['eq_jam_time'] = links['jam_time'].copy()
-        links['jam_time'] = jam_time(links, ref_time='time', flow='flow')
+        links['jam_time'] = jam_time(links, vdf=vdf)
 
         # b
-        self.aon_road_pathfinder(time='jam_time')
+        self.aon_road_pathfinder(time='jam_time', **kwargs)
         merged = pd.merge(
             self.volumes,
             self.car_los,
@@ -210,12 +230,16 @@ class RoadPathFinder:
         maxiters=20,
         tolerance=0.01,
         log=False,
+        vdf={'default_bpr': default_bpr, 'smock': smock},
         *args,
         **kwargs
     ):
         if all_or_nothing:
             self.aon_road_pathfinder(*args, **kwargs)
             return
+        if 'vdf' in self.road_links.columns:
+            self.road_links['vdf'] = 'default_bpr'
+        assert 'capacity' in self.road_links.columns
 
         if reset_jam_time:
             self.road_links['flow'] = 0
@@ -223,7 +247,7 @@ class RoadPathFinder:
 
         car_los_list = []
         for i in range(maxiters):
-            done = self.frank_wolfe_step(iteration=i, log=log, *args, **kwargs)
+            done = self.frank_wolfe_step(iteration=i, log=log, vdf=vdf, *args, **kwargs)
             c = self.car_los
             car_los_list.append(c)
 
