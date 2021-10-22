@@ -42,21 +42,16 @@ python -m ipykernel install --user --name=quetzal_env
 `Anaconda 3 + Python 3.8` is supposed to be installed.
 
 #### PIP with Wheels 
-#### To create quetzal_env automatically and install quetzal
 ```bash
-(base) C:users\you\path\to\quetzal> windows-install-whl.bat
+(base) C:users\you\path\to\quetzal>windows-install-whl.bat
 ```
 press enter to accept default environment name
 #### PIP and Anaconda 
-##### create quetzal_env automatically and install quetzal 
+To create quetzal_env automatically and install quetzal 
 ```bash
 (base) C:users\you\path\to\quetzal> windows-install.bat
 ```
 press enter to accept default environment name
-#### To install quetzal in active environment
-```bash
-(your_env) C:users\you\path\to\quetzal> windows-install-here.bat
-```
 #### If you are facing SSL issues
 ```bash
 (base) pip config set global.trusted-host "pypi.org files.pythonhosted.org"
@@ -64,3 +59,9 @@ press enter to accept default environment name
 ```
 security warning: the host is added to pip.ini
 
+#### If you are facing DLL or dependencies issues
+Anaconda and Pip do not get along well, your Anaconda install may have been corrupted at some point.
+- Remove your envs
+- Uninstall Anaconda
+- Delete your Python and Anaconda folders (users\you\Anaconda3, users\you\Appdata\Roaming\Python, ...etc)
+- Install Anaconda 
