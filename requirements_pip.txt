@@ -1,0 +1,15 @@
+ipykernel
+networkx
+tqdm
+requests
+geopy
+scipy
+sklearn
+matplotlib
+
+simpledbf
+xlrd
+branca
+ipywidgets # remove
+openpyxl
+osmnx
