@@ -175,6 +175,73 @@ class OptimalModel(preparationmodel.PreparationModel):
             # todo remove 'load' from analysis module:
             self.road_links['load'] = self.road_links[volume_column]
 
+    def analysis_strategy_time(self, boarding_time=0, alighting_time=0, inf=1e9, walk_on_road=True):
+        assert walk_on_road == True # TODO implement for ACF
+        zero = 1 / inf
+        # add a column for each type of time to the os edges
+        edges = self.optimal_strategy_edges
+        edges['rtt_time'] = self.road_to_transit['time']
+        edges['ztr_time'] = self.zone_to_road['time']
+        edges['in_vehicle_time'] = self.links['time']
+        edges.loc[['boarding_' in i for i in edges.index], 'boarding_time'] = boarding_time
+        edges.loc[['alighting_' in i for i in edges.index], 'alighting_time'] = alighting_time
+        if walk_on_road:
+            edges['road_time'] = self.road_links['walk_time']
+            edges.fillna(0, inplace=True)
+            edges['walk_time'] = edges['road_time'] + edges['rtt_time'] + edges['ztr_time']
+
+        self.optimal_strategy_edges = edges
+        
+        # sum over the edges of a strategy the varios types of times    
+        od_cost = []
+        columns = ['in_vehicle_time', 'boarding_time', 'walk_time']
+        
+        indexed_edges = self.optimal_strategy_edges[['i', 'j', 'f', 'c']]
+        edges = indexed_edges.reset_index().values.tolist()
+
+        nodes = set.union(*[{i, j} for ix, i, j, f, c in edges])
+        edge_data = {ix: (i, j, fa, ca) for ix, i, j, fa, ca in edges}
+
+        cost_dict = {
+            key: self.optimal_strategy_edges[key].to_dict()
+            for key in columns
+        }
+
+        origins = destinations = list(self.zones.index)
+        for destination in tqdm(destinations):
+
+            u = {
+                key:{node:0 for node in nodes}
+                for key in columns
+            }
+            f = {node:0 for node in nodes} # here 0 * inf = 0 because inf = 1e9
+
+            F = {node: zero for node in nodes} # here zero * inf = 1
+            U = {node: inf for node in nodes}
+            U[destination] = 0
+            for ix in self.optimal_strategy_sets[destination]:
+                i, j, fa, _ = edge_data[ix]
+                for key in columns:
+                    ca = cost_dict[key][ix]
+                    u[key][i] = (f[i] * u[key][i] + fa * (u[key][j] + ca)) / (f[i] + fa)
+
+                U[i] = (F[i] * U[i]  + fa * (U[j])) / (F[i] + fa)
+                F[i] = F[i] + fa
+                f[i] = f[i] + fa
+
+            u['waiting_time'] = U
+
+            time_columns = columns + ['waiting_time']
+            for key in time_columns :
+                for origin in origins:
+                    od_cost.append([key, origin, destination, u[key][origin]])
+
+        data = pd.DataFrame(od_cost, columns=['key', 'origin', 'destination', 'cost'])
+        right = data.set_index(['key', 'origin', 'destination'])['cost'].unstack('key').reset_index()
+        self.pt_los.drop(time_columns, axis=1, inplace=True, errors='ignore')
+        self.pt_los = pd.merge(self.pt_los, right, on=['origin', 'destination'])
+        self.pt_los['time'] = self.pt_los[time_columns].sum(axis=1)
+
     def get_aggregated_edges(self, origin, destination, irrelevant_nodes=None):
         # restrection to the destination edges
         edges = self.optimal_strategy_edges[['i', 'j', 'f', 'c']].copy()
