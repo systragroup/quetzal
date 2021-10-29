@@ -151,10 +151,10 @@ class AnalysisModel(summarymodel.SummaryModel):
         )
         self.pt_los['route_type'] = self.pt_los['route_types'].apply(higher_route_type)
         try:
-            self.pr_los['route_types'] = self.pr_los['link_path'].apply(
+            self.pr_los['route_types'] = self.pr_los['link_path_transit'].apply(
                 lambda p: ('car',) + tuple({route_type_dict[l] for l in p})
             )
-            self.pr_los['route_type'] = self.pr_los['route_types'].apply(higher_route_type)
+            self.pr_los['route_type'] = 'parkride'
         except (AttributeError, KeyError):
             pass
 
@@ -512,6 +512,28 @@ class AnalysisModel(summarymodel.SummaryModel):
             sorted_edges = edges.loc[indexer].dropna(subset=['a', 'b'])
             line_tuple_geometries[line_tuple] = geometries.connected_geometries(sorted_edges)
         return geometries.geometries_with_side(line_tuple_geometries, width=width)
+
+    def compute_transfers_list(self):
+        route_dict = self.links['route_id'].to_dict()
+        stop_code_dict = self.nodes['stop_code'].to_dict()
+        df = self.pt_los[['alightings', 'boardings', 'alighting_links', 'boarding_links']]
+        leg_tuples = [tuple(zip(*[r[0][:-1], r[1][1:], r[2][:-1], r[3][1:]])) for r in df.values]
+
+        values = []
+        for leg in leg_tuples:
+            transfers_lists = []
+        
+            for transfer_node_a, transfer_node_b, alighting_link, boarding_link in leg:
+                route_id_a = route_dict[alighting_link]
+                route_id_b = route_dict[boarding_link]
+                stop_code_a = stop_code_dict[transfer_node_a]
+                stop_code_b = stop_code_dict[transfer_node_b]
+                
+                transfers_lists.append(
+                    (stop_code_a, stop_code_b, route_id_a, route_id_b)
+                )
+            values.append(transfers_lists)
+        self.pt_los['transfers_list'] = values
 
     def compute_arod_list(self):
         agency_dict = self.links['agency_id'].to_dict()
