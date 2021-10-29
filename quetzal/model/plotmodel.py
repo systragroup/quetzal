@@ -332,6 +332,7 @@ class PlotModel(summarymodel.SummaryModel):
         links = self.road_links if road else self.links
         links = links.dropna(subset=['dummy'])
         links = links.loc[links['dummy'] > 0]
+        links = gpd.GeoDataFrame(links)
 
         norm = TwoSlopeNorm(vmin=0, vcenter=0.5, vmax=1)
         ax = self.od_basemap(origin, destination, *args, **kwargs)
@@ -339,7 +340,7 @@ class PlotModel(summarymodel.SummaryModel):
         # access['dummy'] = 1
         access.plot(ax=ax, alpha=1, color='black', linewidth=2)
         links.plot(ax=ax, alpha=1, color='white', linewidth=7, zorder=3)
-        links.plot(ax=ax, alpha=1, color='black', linewidth=6, zorder=4)
+        #links.plot(ax=ax, alpha=1, color='black', linewidth=6, zorder=4)
         if road:
             divider = make_axes_locatable(ax)
             cax = divider.append_axes(legend, size="2%", pad=0.05)
@@ -350,7 +351,7 @@ class PlotModel(summarymodel.SummaryModel):
         else:
             links.plot(ax=ax, alpha=1, color='white', linewidth=5)
             for alpha in set(links['dummy']):
-                links.loc[links['dummy'] == alpha].plot(color=color, ax=ax, alpha=alpha, linewidth=5)
+                links.loc[links['dummy'] == alpha].plot(color=color, ax=ax, alpha=alpha, linewidth=5, zorder=5)
         ax.set_yticks([])
         ax.set_xticks([])
 
