@@ -7,30 +7,67 @@ from tqdm import tqdm
 
 
 
-def default_bpr(links):
+def default_bpr(links,flow='flow'):
     alpha = 0.15
+    limit=10
     beta = 4
-    V = links['flow']
+    V = links[flow]
     Q = links['capacity']
     t0 = links['time']
-    return t0 * (1 + alpha*np.power(V/Q, beta))
+    res = t0 * (1 + alpha*np.power(V/Q, beta))
+    res.loc[res>limit*t0]=limit*t0
+    return res
 
 
-def smock(links):
-    V = links['flow']
+
+
+
+def smock(links,flow='flow'):
+    V = links[flow]
     Qs = links['capacity']
     t0 = links['time']
     return t0 * np.exp(V/Qs)
 
 
-def jam_time(links, vdf={'default_bpr': default_bpr, 'smock': smock}):
+def jam_time(links, vdf={'default_bpr': default_bpr, 'smock': smock},flow='flow'):
     # vdf is a {function_name: function } to apply on links 
     keys = set(links['vdf'])
     missing_vdf = keys - set(vdf.keys())
     assert len(missing_vdf) == 0, 'you should provide methods for the following vdf keys' + missing_vdf
-    return pd.concat([vdf[key](links) for key in keys])
+    return pd.concat([vdf[key](links,flow) for key in keys])
 
+def z_prime(links, phi):
+    # min sum(on links) integral from 0 to formerflow + φΔ of Time(f) df
+    # approx constant + jam_time(FormerFlow) x φΔ + 1/2 (jam_time(Formerflow + φΔ) - jam_time(FormerFlow) ) x φΔ
+    # Δ = links['aux_flow'] - links['former_flow']
+    delta = links['aux_flow'] - links['former_flow']
+    links['new_flow'] = delta*phi+links['former_flow']
+    #z = (jam_time(links,vdf={'default_bpr': default_bpr_phi},flow='delta',phi=phi) - links['jam_time']) / (links['delta']*phi + links['former_flow'])
+    t_f = jam_time(links,vdf={'default_bpr': default_bpr},flow='former_flow')
+    t_del = jam_time(links,vdf={'default_bpr': default_bpr},flow='new_flow')
+    z = t_f*delta*phi + (t_del-t_f)*delta*phi*0.5
 
+    return np.ma.masked_invalid(z).sum()    
+
+def find_phi(links, inf=0, sup=1, tolerance=1e-5):
+    #solution inf plus petite que sup, on diminue la limit sup
+    a = z_prime(links,inf)
+    b = z_prime(links,sup)
+    m = (inf + sup) / 2
+    c = z_prime(links,m)
+    limits = [(a,inf),(b,sup),(c,m)]
+    limits.sort()
+    # loop infini. les deux bornes sont dans des minimims locales. prend le min des deux.
+    if inf == limits[0][1] and sup == limits[1][1]:
+        print('loop')
+        return (inf+sup)/2
+    inf=limits[0][1]
+    sup=limits[1][1]   
+    if abs(sup-inf)<=tolerance:
+        return inf
+    return find_phi(links, inf, sup, tolerance)
+
+'''
 def z_prime(row, phi):
     delta = row['aux_flow'] - row['former_flow']
     return (delta * row['time'] * (row['former_flow'] + phi * delta)).sum()
@@ -55,7 +92,7 @@ def find_phi(links, inf=0, sup=1, tolerance=1e-6):
     elif z_prime_m > 0:
         sup = m
     return find_phi(links, inf, sup, tolerance)
-
+'''
 
 class RoadPathFinder:
     def __init__(self, model):
