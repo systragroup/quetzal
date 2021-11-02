@@ -15,12 +15,10 @@ def default_bpr(links,flow='flow'):
     Q = links['capacity']
     t0 = links['time']
     res = t0 * (1 + alpha*np.power(V/Q, beta))
-    res.loc[res>limit*t0]=limit*t0
+    #res.loc[res>limit*t0]=limit*t0
+    speed = links['length']/res *(60*60/1000)
+    res.loc[speed<limit]=links['length']/limit *(60*60/1000)
     return res
-
-
-
-
 
 def smock(links,flow='flow'):
     V = links[flow]
@@ -34,38 +32,37 @@ def jam_time(links, vdf={'default_bpr': default_bpr, 'smock': smock},flow='flow'
     keys = set(links['vdf'])
     missing_vdf = keys - set(vdf.keys())
     assert len(missing_vdf) == 0, 'you should provide methods for the following vdf keys' + missing_vdf
-    return pd.concat([vdf[key](links,flow) for key in keys])
+    return pd.concat([vdf[key](links[links['vdf']==key],flow) for key in keys])
 
-def z_prime(links, phi):
+def z_prime(links,vdf, phi):
     # min sum(on links) integral from 0 to formerflow + φΔ of Time(f) df
     # approx constant + jam_time(FormerFlow) x φΔ + 1/2 (jam_time(Formerflow + φΔ) - jam_time(FormerFlow) ) x φΔ
     # Δ = links['aux_flow'] - links['former_flow']
     delta = links['aux_flow'] - links['former_flow']
     links['new_flow'] = delta*phi+links['former_flow']
     #z = (jam_time(links,vdf={'default_bpr': default_bpr_phi},flow='delta',phi=phi) - links['jam_time']) / (links['delta']*phi + links['former_flow'])
-    t_f = jam_time(links,vdf={'default_bpr': default_bpr},flow='former_flow')
-    t_del = jam_time(links,vdf={'default_bpr': default_bpr},flow='new_flow')
+    t_f = jam_time(links,vdf=vdf,flow='former_flow')
+    t_del = jam_time(links,vdf=vdf,flow='new_flow')
     z = t_f*delta*phi + (t_del-t_f)*delta*phi*0.5
 
     return np.ma.masked_invalid(z).sum()    
 
-def find_phi(links, inf=0, sup=1, tolerance=1e-5):
+def find_phi(links,vdf, inf=0, sup=1, tolerance=1e-5):
     #solution inf plus petite que sup, on diminue la limit sup
-    a = z_prime(links,inf)
-    b = z_prime(links,sup)
+    a = z_prime(links,vdf,inf)
+    b = z_prime(links,vdf,sup)
     m = (inf + sup) / 2
-    c = z_prime(links,m)
+    c = z_prime(links,vdf,m)
     limits = [(a,inf),(b,sup),(c,m)]
     limits.sort()
     # loop infini. les deux bornes sont dans des minimims locales. prend le min des deux.
     if inf == limits[0][1] and sup == limits[1][1]:
-        print('loop')
         return (inf+sup)/2
     inf=limits[0][1]
     sup=limits[1][1]   
     if abs(sup-inf)<=tolerance:
         return inf
-    return find_phi(links, inf, sup, tolerance)
+    return find_phi(links,vdf, inf, sup, tolerance)
 
 '''
 def z_prime(row, phi):
@@ -166,8 +163,8 @@ class RoadPathFinder:
         links = self.road_links  # not a copy
 
         # a
-        links['eq_jam_time'] = links['jam_time'].copy()
-        links['jam_time'] = jam_time(links, vdf=vdf)
+        links['eq_jam_time'] = links['jam_time']
+        links['jam_time'] = jam_time(links, vdf=vdf,flow='flow')
 
         # b
         self.aon_road_pathfinder(time='jam_time', **kwargs)
@@ -188,7 +185,7 @@ class RoadPathFinder:
         # c
         phi = 2 / (iteration + 2)
         if iteration > 0 and speedup:
-            phi = find_phi(links)
+            phi = find_phi(links,vdf)
         if phi == 0:
             return True
         if log:
@@ -274,8 +271,9 @@ class RoadPathFinder:
         if all_or_nothing:
             self.aon_road_pathfinder(*args, **kwargs)
             return
-        if 'vdf' in self.road_links.columns:
-            self.road_links['vdf'] = 'default_bpr'
+       # if 'vdf' in self.road_links.columns:
+        #    self.road_links['vdf'] = 'default_bpr'
+        assert 'vdf' in self.road_links.columns
         assert 'capacity' in self.road_links.columns
 
         if reset_jam_time:
