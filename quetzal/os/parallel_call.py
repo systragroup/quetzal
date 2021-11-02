@@ -110,7 +110,13 @@ def parallel_call_notebook(
 
     for i in range(len(arg_list)):
         arg = arg_list[i]
-        suffix = arg if errout_suffix else ''
+        suffix = ''
+        if errout_suffix:
+            try:
+                temp = json.loads(arg)
+                suffix = '_'.join(temp.values())
+            except json.JSONDecodeError:
+                suffix = arg
         suffix += '_' + notebook.split('.')[0]
         stdout_file = stdout_path.replace('.txt', '_' + suffix + '.txt')
         stderr_file = stderr_path.replace('.txt', '_' + suffix + '.txt')
