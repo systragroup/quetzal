@@ -217,7 +217,7 @@ class ParkRideModel(preparationmodel.PreparationModel):
         paths['gtime'] = paths['length']
         return paths
 
-    def lighten_pr_los(self):
+    def lighten_pr_los(self, los_attributes=['pr_los']):
 
         time_columns = [
             'access_time', 'in_vehicle_time', 'footpath_time',
@@ -234,7 +234,10 @@ class ParkRideModel(preparationmodel.PreparationModel):
                 to_drop.append(c)
                 to_drop.append(c + '_car')
                 to_drop.append(c + '_transit')
-        self.pr_los.drop(to_drop, axis=1, errors='ignore', inplace=True)
+        for los in los_attributes:
+            self.__getattribute__(los).drop(to_drop, axis=1, errors='ignore', inplace=True)
+
+
 
     def analysis_pr_los(
         self,

@@ -189,31 +189,36 @@ class AnalysisModel(summarymodel.SummaryModel):
             centroids=self.zones,
         )
 
-    def lighten_car_los(self):
-        self.car_los = self.car_los.drop(
-            ['node_path', 'link_path', 'ntlegs'],
-            axis=1, errors='ignore'
-        )
+    def lighten_car_los(self, los_attributes=['car_los']):
+        to_drop = ['node_path', 'link_path', 'ntlegs']
+        for los in los_attributes:
+            self.__getattribute__(los).drop(to_drop, axis=1, errors='ignore', inplace=True)
 
-    def lighten_pt_los(self):
+    def lighten_pt_los(self, los_attributes=['pt_los']):
         to_drop = [
             'alighting_links', 'alightings', 'all_walk', 'boarding_links', 'boardings',
             'footpaths', 'length_link_path', 'link_path', 'node_path', 'ntlegs',
             'time_link_path', 'transfers'
         ]
-        self.pt_los = self.pt_los.drop(to_drop, axis=1, errors='ignore')
+        for los in los_attributes:
+            try:
+                self.__getattribute__(los).drop(to_drop, axis=1, errors='ignore', inplace=True)
+            except AttributeError as e:
+                print(e)
+
+
 
     def lighten_los(self):
         try:
-            self.lighten_pt_los()
+            self.lighten_pt_los(los_attributes=['pt_los', 'los'])
         except AttributeError:
             pass
         try:
-            self.lighten_pr_los()
+            self.lighten_pr_los(los_attributes=['pr_los')
         except AttributeError:
             pass
         try:
-            self.lighten_car_los()
+            self.lighten_car_los(los_attributes=['car_los', 'los'])
         except AttributeError:
             pass
 

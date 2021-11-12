@@ -15,8 +15,9 @@ from syspy.routing.frequency import graph as frequency_graph
 from syspy.skims import skims
 from syspy.spatial import spatial
 from tqdm import tqdm
+from numba import jit
 
-
+@jit(nopython=True)
 def get_path(predecessors, i, j):
     path = [j]
     k = j
@@ -453,6 +454,7 @@ class PublicPathFinder:
         ntlegs_penalty=1e9,
         boarding_time=None,
         speedup=True,
+        prune=True,
         **kwargs
     ):
         pole_set = set(self.zones.index)
@@ -462,9 +464,21 @@ class PublicPathFinder:
         for route_id, zones in iterator:
             if not speedup:
                 zones = set(self.zones.index).intersection(set(self.ntlegs['a']))
+            
+            route_od_set = {(o, d) for o, d in od_set if o in zones}
+            route_do_set = {(d, o) for d, o in do_set if d in zones}
             iterator.desc = 'breaking route: ' + str(route_id) + ' '
+            links=self.links.loc[self.links[route_column] != route_id]
+            footpaths = self.footpaths
+            ntlegs = self.ntlegs 
+            if prune:
+                removed_nodes = set(self.links['a']).union(self.links['b']) - set(links['a']).union(links['b'])
+                removed_nodes = removed_nodes.union(self.zones)
+                footpaths = footpaths.loc[(~footpaths['a'].isin(removed_nodes)) & (~footpaths['b'].isin(removed_nodes))]
+                ntlegs  = ntlegs.loc[(~ntlegs['a'].isin(removed_nodes)) & (~ntlegs['b'].isin(removed_nodes))]
+
             matrix, node_index = adjacency_matrix(
-                links=self.links.loc[self.links[route_column] != route_id],
+                links=links,
                 ntlegs=self.ntlegs,
                 footpaths=self.footpaths,
                 ntlegs_penalty=ntlegs_penalty,
@@ -476,7 +490,7 @@ class PublicPathFinder:
                 csgraph=matrix,
                 node_index=node_index,
                 pole_set=pole_set,
-                od_set=od_set,
+                od_set=route_od_set,
                 sources=zones,
                 cutoff=cutoff,
                 ntlegs_penalty=ntlegs_penalty
@@ -490,7 +504,7 @@ class PublicPathFinder:
                 csgraph=matrix.transpose(),
                 node_index=node_index,
                 pole_set=pole_set,
-                od_set=do_set,
+                od_set=route_do_set,
                 sources=zones,
                 cutoff=cutoff,
                 ntlegs_penalty=ntlegs_penalty
@@ -510,6 +524,7 @@ class PublicPathFinder:
         mode_column='mode_type',
         ntlegs_penalty=1e9,
         boarding_time=None,
+        prune=True,
         **kwargs
     ):
         pole_set = set(self.zones.index)
@@ -517,10 +532,20 @@ class PublicPathFinder:
         iterator = tqdm(self.mode_combinations)
         for combination in iterator:
             iterator.desc = 'breaking modes: ' + str(combination) + ' '
+
+            links=self.links.loc[~self.links[mode_column].isin(combination)]
+            footpaths = self.footpaths
+            ntlegs = self.ntlegs 
+            if prune:
+                removed_nodes = set(self.links['a']).union(self.links['b']) - set(links['a']).union(links['b'])
+                removed_nodes = removed_nodes.union(self.zones)
+                footpaths = footpaths.loc[(~footpaths['a'].isin(removed_nodes)) & (~footpaths['b'].isin(removed_nodes))]
+                ntlegs  = ntlegs.loc[(~ntlegs['a'].isin(removed_nodes)) & (~ntlegs['b'].isin(removed_nodes))]
+
             matrix, node_index = adjacency_matrix(
-                links=self.links.loc[~self.links[mode_column].isin(combination)],
-                ntlegs=self.ntlegs,
-                footpaths=self.footpaths,
+                links=links,
+                ntlegs=ntlegs,
+                footpaths=footpaths,
                 ntlegs_penalty=ntlegs_penalty,
                 boarding_time=boarding_time,
                 **kwargs
