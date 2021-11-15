@@ -234,6 +234,7 @@ class ParkRideModel(preparationmodel.PreparationModel):
                 to_drop.append(c)
                 to_drop.append(c + '_car')
                 to_drop.append(c + '_transit')
+                to_drop = [td for td in to_drop if td != 'path']
         for los in los_attributes:
             self.__getattribute__(los).drop(to_drop, axis=1, errors='ignore', inplace=True)
 

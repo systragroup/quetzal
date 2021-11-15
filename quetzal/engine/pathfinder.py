@@ -338,10 +338,20 @@ class PublicPathFinder:
         if walk_on_road:
             road_links = model.road_links.copy()
             road_links['time'] = road_links['walk_time']
-            self.footpaths = pd.concat([model.footpaths, road_links, model.road_to_transit])
-            self.ntlegs = pd.concat(
-                [model.zone_to_road, model.zone_to_transit]
-            )
+            to_concat = [road_links, model.road_to_transit]
+            try:
+                to_concat.append(model.footpaths)
+            except AttributeError:
+                pass
+            self.footpaths = pd.concat(to_concat)
+
+            to_concat = [model.zone_to_road]
+            try:
+                to_concat.append(model.zone_to_transit)
+            except AttributeError:
+                pass
+            self.ntlegs = pd.concat(to_concat)
+
         else:
             self.footpaths = model.footpaths.copy()
             self.ntlegs = model.zone_to_transit.copy()

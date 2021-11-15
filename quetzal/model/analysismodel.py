@@ -214,7 +214,7 @@ class AnalysisModel(summarymodel.SummaryModel):
         except AttributeError:
             pass
         try:
-            self.lighten_pr_los(los_attributes=['pr_los')
+            self.lighten_pr_los(los_attributes=['pr_los', 'los'])
         except AttributeError:
             pass
         try:
@@ -302,16 +302,28 @@ class AnalysisModel(summarymodel.SummaryModel):
 
         assert alighting_time is None, 'cannot perform analysis_pt_time with alighting_time'
 
-        footpaths = self.footpaths
-        access = self.zone_to_transit
-
         if walk_on_road:
             road_links = self.road_links.copy()
             road_links['time'] = road_links['walk_time']
             road_to_transit = self.road_to_transit.copy()
             road_to_transit['length'] = road_to_transit['distance']
-            footpaths = pd.concat([road_links, road_to_transit, self.footpaths])
-            access = pd.concat([self.zone_to_road, self.zone_to_transit])
+            
+            to_concat = [road_links, road_to_transit]
+            try:
+                to_concat.append(self.footpaths)
+            except AttributeError:
+                pass
+            footpaths = pd.concat(to_concat)
+
+            to_concat = [self.zone_to_road]
+            try:
+                to_concat.append(self.zone_to_transit)
+            except AttributeError:
+                pass
+            access = pd.concat(to_concat)
+        else :
+            footpaths = self.footpaths
+            access = self.zone_to_transit
 
         d = access.set_index(['a', 'b'])['time'].to_dict()
         self.pt_los['access_time'] = self.pt_los['ntlegs'].apply(
@@ -342,16 +354,31 @@ class AnalysisModel(summarymodel.SummaryModel):
         ].T.sum()
 
     def analysis_pt_length(self, walk_on_road=False):
-        footpaths = self.footpaths
-        access = self.zone_to_transit
+
 
         if walk_on_road:
             road_links = self.road_links.copy()
             road_links['time'] = road_links['walk_time']
             road_to_transit = self.road_to_transit.copy()
             road_to_transit['length'] = road_to_transit['distance']
-            footpaths = pd.concat([road_links, road_to_transit, self.footpaths])
-            access = pd.concat([self.zone_to_road, self.zone_to_transit])
+
+            to_concat = [road_links, road_to_transit]
+            try:
+                to_concat.append(self.footpaths)
+            except AttributeError:
+                pass
+            footpaths = pd.concat(to_concat)
+
+            to_concat = [self.zone_to_road]
+            try:
+                to_concat.append(self.zone_to_transit)
+            except AttributeError:
+                pass
+            access = pd.concat(to_concat)
+        else :
+            footpaths = self.footpaths
+            access = self.zone_to_transit
+
 
         d = access.set_index(['a', 'b'])['distance'].to_dict()
         self.pt_los['access_length'] = self.pt_los['ntlegs'].apply(
