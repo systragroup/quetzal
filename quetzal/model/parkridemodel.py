@@ -30,7 +30,8 @@ class ParkRideModel(preparationmodel.PreparationModel):
 
     def get_node_transit_zone(
         self, pr_nodes, reverse=False,
-        boarding_time=None, alighting_time=None
+        boarding_time=None, alighting_time=None,
+        cutoff=np.inf
     ):
         ntz_edges = self.node_transit_zone_edges(
             pr_nodes=pr_nodes, reverse=reverse,
@@ -49,6 +50,7 @@ class ParkRideModel(preparationmodel.PreparationModel):
             node_index=node_index,
             sources=sources,
             targets=targets,
+            cutoff=cutoff
         )
 
         node_transit_zone['reverse'] = reverse
@@ -78,6 +80,7 @@ class ParkRideModel(preparationmodel.PreparationModel):
     def get_zone_road_node(
         self, pr_nodes=None, reverse=False,
         zrn_access_time='time',
+        cutoff=np.inf,
     ):
         zn = 'b' if reverse else 'a'
         zones = set(self.zones.index).intersection(self.zone_to_road[zn])
@@ -93,7 +96,8 @@ class ParkRideModel(preparationmodel.PreparationModel):
             csgraph=matrix,
             node_index=node_index,
             sources=sources,
-            targets=targets
+            targets=targets,
+            cutoff=cutoff
         )
         zone_road_node['reverse'] = reverse
         return zone_road_node
@@ -102,16 +106,19 @@ class ParkRideModel(preparationmodel.PreparationModel):
         self, pr_nodes,
         zrn_access_time='time',
         boarding_time=None, alighting_time=None,
-        reverse=False
+        reverse=False,
+        cutoff=np.inf
     ):
         # MORNING
         self.node_transit_zone = self.get_node_transit_zone(
             pr_nodes=pr_nodes, reverse=reverse,
-            boarding_time=boarding_time, alighting_time=alighting_time
+            boarding_time=boarding_time, alighting_time=alighting_time,
+            cutoff=cutoff
         )
         self.zone_road_node = self.get_zone_road_node(
             zrn_access_time=zrn_access_time,
-            pr_nodes=pr_nodes, reverse=reverse
+            pr_nodes=pr_nodes, reverse=reverse,
+            cutoff=cutoff
         )
 
     def combine_shortcuts(

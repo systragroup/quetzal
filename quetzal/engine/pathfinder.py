@@ -27,7 +27,7 @@ def get_path(predecessors, i, j):
         path.append(p)
     return path[::-1][1:]
 
-
+@jit(nopython=True)
 def get_reversed_path(predecessors, i, j):
     path = [j]
     k = j
@@ -79,6 +79,33 @@ def path_and_duration_from_graph(
     los = los.loc[[t in od_set for t in tuples]]
     return los
 
+def split_od_set(od_set, maxiter=10000):
+    df = pd.DataFrame(od_set)
+    o = d = 'init'
+    o_set = set()
+    d_set = set()
+
+    i = 0
+    while len(df) and i < maxiter:
+        i += 1
+        
+        vco = df[0].value_counts() 
+        vcd = df[1].value_counts()
+        
+        firsto = list(vco.loc[vco >= vcd.max()].index)
+        firstd = list(vcd.loc[vcd > vco.max()].index)
+        if len(firsto):
+            df = df.loc[~df[0].isin(firsto)]
+            o_set = o_set.union(firsto) 
+        if len(firstd):
+            df = df.loc[~df[1].isin(firstd)]
+            d_set = d_set.union(firstd) 
+  
+    o_od_set = {(o, d) for o, d in od_set if o in o_set}
+    d_od_set = {(o, d) for o, d in od_set if d in d_set}
+
+    assert o_od_set.union(d_od_set)==od_set
+    return o_od_set, d_od_set-o_od_set
 
 def sparse_los_from_nx_graph(
     nx_graph,
@@ -183,6 +210,40 @@ def link_edges(links, boarding_time=None, alighting_time=None):
     transit_edges = transit[['index_x', 'index_y', 'time']].values.tolist()
     return boarding_edges + transit_edges + alighting_edges
 
+def link_edge_array(links, boarding_time=None, alighting_time=None):
+    assert not (boarding_time is not None and 'boarding_time' in links.columns)
+    boarding_time = 0 if boarding_time is None else boarding_time
+
+    assert not (alighting_time is not None and 'alighting_time' in links.columns)
+    alighting_time = 0 if alighting_time is None else alighting_time
+
+    l = links.copy()
+    l['index'] = l.index
+    l['next'] = l['link_sequence'] + 1
+
+    if 'cost' not in l.columns:
+        l['cost'] = l['time'] + l['headway'] / 2
+
+    if 'boarding_time' not in l.columns:
+        l['boarding_time'] = boarding_time
+
+    if 'alighting_time' not in l.columns:
+        l['alighting_time'] = alighting_time
+
+    l['total_time'] = l['boarding_time'] + l['cost']
+
+    boarding_edges = l[['a', 'index', 'total_time']].values
+    alighting_edges = l[['index', 'b', 'alighting_time']].values
+
+    transit = pd.merge(
+        l[['index', 'next', 'trip_id']],
+        l[['index', 'link_sequence', 'trip_id', 'time']],
+        left_on=['trip_id', 'next'],
+        right_on=['trip_id', 'link_sequence'],
+    )
+    transit_edges = transit[['index_x', 'index_y', 'time']].values
+    return np.concatenate([boarding_edges,transit_edges,alighting_edges])
+
 
 def adjacency_matrix(
     links,
@@ -244,7 +305,14 @@ def los_from_graph(
     df.columns.name = 'destination'
     df.index.name = 'origin'
 
-    stack = df[pole_list].stack()
+    od_weight = df[pole_list]
+    if od_set is not None:
+        mask = pd.Series(index=od_set, data=1).unstack()
+        mask.index.name = 'origin'
+        mask.columns.name = 'destination'
+        od_weight = od_weight.multiply(mask)
+
+    stack = od_weight.stack()
     stack.name = 'gtime'
     los = stack.reset_index()
 
@@ -307,11 +375,14 @@ def paths_from_graph(
     df.index.name = 'origin'
 
     if od_set is not None:
-        mask_series = pd.Series(0, index=pd.MultiIndex.from_tuples(list(od_set)))
-        mask = mask_series.unstack().loc[sources, targets]
-        df += mask
+        od_index = {(d, o) for o, d in od_set} if reverse else od_set
+        mask = pd.Series(index=od_index, data=1).unstack()
+        mask.index.name = 'origin'
+        mask.columns.name = 'destination'
+        df = df.multiply(mask)
 
     stack = df.stack()
+
     stack.name = 'length'
     odl = stack.reset_index()
     od_list = odl[['origin', 'destination']].values
