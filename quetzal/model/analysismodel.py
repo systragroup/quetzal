@@ -208,13 +208,16 @@ class AnalysisModel(summarymodel.SummaryModel):
 
 
 
-    def lighten_los(self):
+    def lighten_los(self, keep_summary_columns=False):
         try:
             self.lighten_pt_los(los_attributes=['pt_los', 'los'])
         except AttributeError:
             pass
         try:
-            self.lighten_pr_los(los_attributes=['pr_los', 'los'])
+            self.lighten_pr_los(
+                los_attributes=['pr_los', 'los'], 
+                keep_summary_columns=keep_summary_columns
+            )
         except AttributeError:
             pass
         try:
@@ -222,9 +225,9 @@ class AnalysisModel(summarymodel.SummaryModel):
         except AttributeError:
             pass
 
-    def lighten(self):
+    def lighten(self, keep_summary_columns=False):
         # to be completed
-        self.lighten_los()
+        self.lighten_los(keep_summary_columns=keep_summary_columns)
 
     def analysis_car_route_type(self):
         self.car_los['route_types'] = [tuple(['car']) for i in self.car_los.index]

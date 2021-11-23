@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from quetzal.engine import pathfinder
+from quetzal.engine import pathfinder_utils
 from quetzal.model import preparationmodel
 
 
@@ -13,7 +13,7 @@ class ParkRideModel(preparationmodel.PreparationModel):
         alighting_time=None
     ):
         # link edges
-        edges = pathfinder.link_edges(
+        edges = pathfinder_utils.link_edges(
             self.links,
             boarding_time=boarding_time,
             alighting_time=alighting_time
@@ -38,14 +38,14 @@ class ParkRideModel(preparationmodel.PreparationModel):
             boarding_time=boarding_time, alighting_time=alighting_time
         )
 
-        matrix, node_index = pathfinder.sparse_matrix(ntz_edges)
+        matrix, node_index = pathfinder_utils.sparse_matrix(ntz_edges)
 
         zn = 'a' if reverse else 'b'
 
         zones = set(self.zones.index).intersection(self.zone_to_road[zn])
         sources, targets = (zones, pr_nodes) if reverse else (pr_nodes, zones)
 
-        node_transit_zone = pathfinder.paths_from_graph(
+        node_transit_zone = pathfinder_utils.paths_from_graph(
             csgraph=matrix,
             node_index=node_index,
             sources=sources,
@@ -89,10 +89,10 @@ class ParkRideModel(preparationmodel.PreparationModel):
             zrn_access_time=zrn_access_time,
             pr_nodes=pr_nodes, reverse=reverse
         )
-        matrix, node_index = pathfinder.sparse_matrix(zrt_edges)
+        matrix, node_index = pathfinder_utils.sparse_matrix(zrt_edges)
 
         sources, targets = (pr_nodes, zones) if reverse else (zones, pr_nodes)
-        zone_road_node = pathfinder.paths_from_graph(
+        zone_road_node = pathfinder_utils.paths_from_graph(
             csgraph=matrix,
             node_index=node_index,
             sources=sources,
@@ -160,7 +160,7 @@ class ParkRideModel(preparationmodel.PreparationModel):
             ]
         edges = shortcuts[['origin', 'destination', 'length']].values
 
-        matrix, node_index = pathfinder.sparse_matrix(edges)
+        matrix, node_index = pathfinder_utils.sparse_matrix(edges)
 
         s_path = shortcuts.set_index(['origin', 'destination'])['path'].to_dict()
 
@@ -171,7 +171,7 @@ class ParkRideModel(preparationmodel.PreparationModel):
                 return path
 
         zone_set = set(self.zones.index)
-        paths = pathfinder.paths_from_graph(
+        paths = pathfinder_utils.paths_from_graph(
             csgraph=matrix,
             node_index=node_index,
             sources=zone_set,
@@ -224,13 +224,17 @@ class ParkRideModel(preparationmodel.PreparationModel):
         paths['gtime'] = paths['length']
         return paths
 
-    def lighten_pr_los(self, los_attributes=['pr_los']):
+    def lighten_pr_los(self, los_attributes=['pr_los'], keep_summary_columns=False):
 
         time_columns = [
-            'access_time', 'in_vehicle_time', 'footpath_time',
-            'waiting_time', 'boarding_time', 'time', 'gtime'
+            'access_time',  'footpath_time',
+            'waiting_time', 'boarding_time',  'gtime'
         ]
-        length_columns = ['access_length', 'in_vehicle_length', 'length']
+        if not keep_summary_columns:
+            time_columns += ['time', 'in_vehicle_time']
+        length_columns = ['access_length']
+        if not keep_summary_columns:
+            length_columns += ['length', 'in_vehicle_length']
         path_columns = ['path', 'link_path', 'node_path', 'ntlegs', 'footpaths']
         pt_columns = [
             'boardings', 'alightings', 'boarding_links', 'alighting_links', 'footpaths'
