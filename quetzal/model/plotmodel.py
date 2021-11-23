@@ -35,7 +35,7 @@ def plot_one_path(path, styles=styles, ax=None):
     coord_list += list(geometries[-1].centroid.coords)  # destination
     full_path = geometry.LineString(coord_list)
 
-    ax = gpd.GeoSeries(full_path).plot(color='black', linestyle='dotted', ax=ax)
+    ax = gpd.GeoSeries(full_path).plot(color='black', linewidth=2, ax=ax)
     grouped = df.groupby(['color', 'width', 'alpha', 'markersize'], as_index=False)['geometry'].agg(list)
     for color, width, alpha, geometries, markersize in grouped[
         ['color', 'width', 'alpha', 'geometry', 'markersize']
@@ -313,7 +313,7 @@ class PlotModel(summarymodel.SummaryModel):
         self.volumes = pd.DataFrame(
             data=[[origin, destination, 1]],
             columns=['origin', 'destination', 'dummy'])
-        self.step_strategy_assignment('dummy', road=road)
+        self.step_strategy_assignment('dummy', road=road, od_set={(origin, destination)})
 
         self.volumes.drop('dummy', inplace=True, axis=1)
 

@@ -123,13 +123,19 @@ class OptimalModel(preparationmodel.PreparationModel):
         pt_los['pathfinder_session'] = 'optimal_strategy'
         self.pt_los = pt_los
 
-    def step_strategy_assignment(self, volume_column, road=False):
-        dvol = self.volumes.groupby('destination')[volume_column].sum()
-        destinations = list(dvol.loc[dvol > 0].index)
+    def step_strategy_assignment(self, volume_column, road=False, od_set=None):
+        if od_set is not None:
+            destinations = list({d for o, d in od_set})
+            mask = self.optimal_strategy_nodes['destination'].isin(destinations)
+            destination_indexed_nodes = self.optimal_strategy_nodes[mask].set_index(
+                'destination', append=True).swaplevel()
+        else:
+            dvol = self.volumes.groupby('destination')[volume_column].sum()
+            destinations = list(dvol.loc[dvol > 0].index)
+            destination_indexed_nodes = self.optimal_strategy_nodes.set_index(
+                'destination', append=True).swaplevel()
 
         destination_indexed_volumes = self.volumes.set_index(['destination', 'origin'])[volume_column]
-        destination_indexed_nodes = self.optimal_strategy_nodes.set_index(
-            'destination', append=True).swaplevel()
         destination_indexed_strategies = self.optimal_strategy_sets
         indexed_edges = self.optimal_strategy_edges[['i', 'j', 'f', 'c']]
 
