@@ -189,37 +189,45 @@ class AnalysisModel(summarymodel.SummaryModel):
             centroids=self.zones,
         )
 
-    def lighten_car_los(self):
-        self.car_los = self.car_los.drop(
-            ['node_path', 'link_path', 'ntlegs'],
-            axis=1, errors='ignore'
-        )
+    def lighten_car_los(self, los_attributes=['car_los']):
+        to_drop = ['node_path', 'link_path', 'ntlegs']
+        for los in los_attributes:
+            self.__getattribute__(los).drop(to_drop, axis=1, errors='ignore', inplace=True)
 
-    def lighten_pt_los(self):
+    def lighten_pt_los(self, los_attributes=['pt_los']):
         to_drop = [
             'alighting_links', 'alightings', 'all_walk', 'boarding_links', 'boardings',
             'footpaths', 'length_link_path', 'link_path', 'node_path', 'ntlegs',
             'time_link_path', 'transfers'
         ]
-        self.pt_los = self.pt_los.drop(to_drop, axis=1, errors='ignore')
+        for los in los_attributes:
+            try:
+                self.__getattribute__(los).drop(to_drop, axis=1, errors='ignore', inplace=True)
+            except AttributeError as e:
+                print(e)
 
-    def lighten_los(self):
+
+
+    def lighten_los(self, keep_summary_columns=False):
         try:
-            self.lighten_pt_los()
+            self.lighten_pt_los(los_attributes=['pt_los', 'los'])
         except AttributeError:
             pass
         try:
-            self.lighten_pr_los()
+            self.lighten_pr_los(
+                los_attributes=['pr_los', 'los'], 
+                keep_summary_columns=keep_summary_columns
+            )
         except AttributeError:
             pass
         try:
-            self.lighten_car_los()
+            self.lighten_car_los(los_attributes=['car_los', 'los'])
         except AttributeError:
             pass
 
-    def lighten(self):
+    def lighten(self, keep_summary_columns=False):
         # to be completed
-        self.lighten_los()
+        self.lighten_los(keep_summary_columns=keep_summary_columns)
 
     def analysis_car_route_type(self):
         self.car_los['route_types'] = [tuple(['car']) for i in self.car_los.index]
@@ -297,16 +305,28 @@ class AnalysisModel(summarymodel.SummaryModel):
 
         assert alighting_time is None, 'cannot perform analysis_pt_time with alighting_time'
 
-        footpaths = self.footpaths
-        access = self.zone_to_transit
-
         if walk_on_road:
             road_links = self.road_links.copy()
             road_links['time'] = road_links['walk_time']
             road_to_transit = self.road_to_transit.copy()
             road_to_transit['length'] = road_to_transit['distance']
-            footpaths = pd.concat([road_links, road_to_transit, self.footpaths])
-            access = pd.concat([self.zone_to_road, self.zone_to_transit])
+            
+            to_concat = [road_links, road_to_transit]
+            try:
+                to_concat.append(self.footpaths)
+            except AttributeError:
+                pass
+            footpaths = pd.concat(to_concat)
+
+            to_concat = [self.zone_to_road]
+            try:
+                to_concat.append(self.zone_to_transit)
+            except AttributeError:
+                pass
+            access = pd.concat(to_concat)
+        else :
+            footpaths = self.footpaths
+            access = self.zone_to_transit
 
         d = access.set_index(['a', 'b'])['time'].to_dict()
         self.pt_los['access_time'] = self.pt_los['ntlegs'].apply(
@@ -337,16 +357,31 @@ class AnalysisModel(summarymodel.SummaryModel):
         ].T.sum()
 
     def analysis_pt_length(self, walk_on_road=False):
-        footpaths = self.footpaths
-        access = self.zone_to_transit
+
 
         if walk_on_road:
             road_links = self.road_links.copy()
             road_links['time'] = road_links['walk_time']
             road_to_transit = self.road_to_transit.copy()
             road_to_transit['length'] = road_to_transit['distance']
-            footpaths = pd.concat([road_links, road_to_transit, self.footpaths])
-            access = pd.concat([self.zone_to_road, self.zone_to_transit])
+
+            to_concat = [road_links, road_to_transit]
+            try:
+                to_concat.append(self.footpaths)
+            except AttributeError:
+                pass
+            footpaths = pd.concat(to_concat)
+
+            to_concat = [self.zone_to_road]
+            try:
+                to_concat.append(self.zone_to_transit)
+            except AttributeError:
+                pass
+            access = pd.concat(to_concat)
+        else :
+            footpaths = self.footpaths
+            access = self.zone_to_transit
+
 
         d = access.set_index(['a', 'b'])['distance'].to_dict()
         self.pt_los['access_length'] = self.pt_los['ntlegs'].apply(

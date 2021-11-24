@@ -18,7 +18,7 @@ def find_optimal_strategy(edges, destination, inf=1e9):
     j = r = destination
     u = {r: 0}  # node distance
     f = {node: zero for node in nodes}
-    strategy = set()
+    strategy = list()
 
     edge_data = {ix: (i, j, fa, ca) for ix, i, j, fa, ca in edges}
     heap = [(u[j] + ca, ix) for ix, i, j, fa, ca in j_edges[destination]]
@@ -47,7 +47,7 @@ def find_optimal_strategy(edges, destination, inf=1e9):
         if u.get(i, inf) >= u[j] + ca:
             u[i] = (f[i] * u.get(i, inf) + fa * (u[j] + ca)) / (f[i] + fa)
             f[i] = f[i] + fa
-            strategy.add(ix)
+            strategy.append(ix)
             for ixa, i, j, fa, ca in j_edges[i]:
                 heapq.heappush(heap, (u[j] + ca, ixa))
     return strategy, u, f

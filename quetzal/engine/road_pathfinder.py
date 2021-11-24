@@ -1,7 +1,7 @@
 import networkx as nx
 import numpy as np
 import pandas as pd
-from quetzal.engine.pathfinder import sparse_los_from_nx_graph
+from quetzal.engine.pathfinder_utils import sparse_los_from_nx_graph
 from syspy.assignment import raw as raw_assignment
 from tqdm import tqdm
 

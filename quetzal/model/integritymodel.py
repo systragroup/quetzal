@@ -45,34 +45,6 @@ class IntegrityModel:
         self.epsg = epsg
         self.segments = ['all']
 
-        self.checkpoint_links = geodataframe_place_holder('LineString')
-        self.loaded_links = geodataframe_place_holder('LineString')
-        self.links = geodataframe_place_holder('LineString')
-        self.road_links = geodataframe_place_holder('LineString', prefix='road_link_')
-        self.footpaths = geodataframe_place_holder('LineString')
-        self.lines = geodataframe_place_holder('LineString')
-        self.networkcaster_neighbors = geodataframe_place_holder('LineString')
-        self.networkcaster_road_access = geodataframe_place_holder('LineString')
-        self.node_parenthood = geodataframe_place_holder('LineString')
-        self.road_to_transit = geodataframe_place_holder('LineString')
-        self.zone_to_transit = geodataframe_place_holder('LineString')
-        self.zone_to_road = geodataframe_place_holder('LineString')
-        self.checkpoint_nodes = geodataframe_place_holder('Point')
-        self.loaded_nodes = geodataframe_place_holder('Point')
-        self.nodes = geodataframe_place_holder('Point', prefix='node_')
-        self.road_nodes = geodataframe_place_holder('Point', prefix='road_node_')
-        self.centroids = geodataframe_place_holder('Point')
-        self.disaggregated_nodes = geodataframe_place_holder('Point')
-        self.micro_zones = geodataframe_place_holder('Polygon')
-        self.zones = geodataframe_place_holder('Polygon')
-        self.node_clusters = geodataframe_place_holder('Polygon')
-
-        self.fare_rules = pd.DataFrame()
-        self.fare_attributes = pd.DataFrame()
-        self.mode_nests = pd.DataFrame()
-        self.logit_scales = pd.DataFrame()
-        self.utility_values = pd.DataFrame()
-
     def integrity_test_collision(
         self,
         sets=('links', 'nodes', 'zones', 'road_links', 'road_nodes')
