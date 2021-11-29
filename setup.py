@@ -19,8 +19,9 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-with open('requirements.txt') as reqs:
-    install_requires = [req.strip() for req in reqs if req and req[0] != '#']
+install_requires = []
+#with open('requirements.txt') as reqs:
+#    install_requires = [req.strip() for req in reqs if req and req[0] != '#']
 
 setup(
     name='quetzal',
