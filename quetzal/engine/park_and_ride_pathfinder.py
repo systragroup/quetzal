@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from quetzal.engine import engine
-from quetzal.engine.pathfinder import path_and_duration_from_graph
+from quetzal.engine.pathfinder_utils import path_and_duration_from_graph
 
 
 class ParkRidePathFinder:
