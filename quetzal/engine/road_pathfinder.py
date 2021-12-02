@@ -1,95 +1,14 @@
 import networkx as nx
 import numpy as np
 import pandas as pd
-from quetzal.engine.pathfinder_utils import sparse_los_from_nx_graph
+from quetzal.engine.pathfinder_utils import sparse_los_from_nx_graph, sparse_matrix, build_index
 from syspy.assignment import raw as raw_assignment
+from quetzal.engine.msa_utils import get_zone_index, assign_volume,default_bpr, free_flow, jam_time, find_phi, get_car_los
+
+from scipy.sparse.csgraph import dijkstra
 from tqdm import tqdm
 
 
-def default_bpr(links,flow='flow'):
-    alpha = 0.15
-    limit=10
-    beta = 4
-    V = links[flow]
-    Q = links['capacity']
-    t0 = links['time']
-    res = t0 * (1 + alpha*np.power(V/Q, beta))
-    #res.loc[res>limit*t0]=limit*t0
-    speed = links['length']/res *(60*60/1000)
-    res.loc[speed<limit]=links['length']/limit *(60*60/1000)
-    return res
-
-def smock(links,flow='flow'):
-    V = links[flow]
-    Qs = links['capacity']
-    t0 = links['time']
-    return t0 * np.exp(V/Qs)
-
-def jam_time(links, vdf={'default_bpr': default_bpr, 'smock': smock},flow='flow'):
-    # vdf is a {function_name: function } to apply on links 
-    keys = set(links['vdf'])
-    missing_vdf = keys - set(vdf.keys())
-    assert len(missing_vdf) == 0, 'you should provide methods for the following vdf keys' + missing_vdf
-    return pd.concat([vdf[key](links[links['vdf']==key],flow) for key in keys])
-
-def z_prime(links,vdf, phi):
-    # min sum(on links) integral from 0 to formerflow + φΔ of Time(f) df
-    # approx constant + jam_time(FormerFlow) x φΔ + 1/2 (jam_time(Formerflow + φΔ) - jam_time(FormerFlow) ) x φΔ
-    # Δ = links['aux_flow'] - links['former_flow']
-    delta = links['aux_flow'] - links['former_flow']
-    links['new_flow'] = delta*phi+links['former_flow']
-    #z = (jam_time(links,vdf={'default_bpr': default_bpr_phi},flow='delta',phi=phi) - links['jam_time']) / (links['delta']*phi + links['former_flow'])
-    t_f = jam_time(links,vdf=vdf,flow='former_flow')
-    t_del = jam_time(links,vdf=vdf,flow='new_flow')
-    z = t_f*delta*phi + (t_del-t_f)*delta*phi*0.5
-
-    return np.ma.masked_invalid(z).sum()    
-
-def find_phi(links,vdf, inf=0, sup=1, tolerance=1e-5):
-    #solution inf plus petite que sup, on diminue la limit sup
-    a = z_prime(links,vdf,inf)
-    b = z_prime(links,vdf,sup)
-    m = (inf + sup) / 2
-    c = z_prime(links,vdf,m)
-    limits = [(a,inf),(b,sup),(c,m)]
-    limits.sort()
-    # loop infini. les deux bornes sont dans des minimims locales. prend le min des deux.
-    if inf == limits[0][1] and sup == limits[1][1]:
-        return (inf+sup)/2
-    inf=limits[0][1]
-    sup=limits[1][1]   
-    if abs(sup-inf)<=tolerance:
-        return inf
-    return find_phi(links,vdf, inf, sup, tolerance)
-
-
-#old version
-'''
-def z_prime(row, phi):
-    delta = row['aux_flow'] - row['former_flow']
-    return (delta * row['time'] * (row['former_flow'] + phi * delta)).sum()
-
-
-def find_phi(links, inf=0, sup=1, tolerance=1e-6):
-    if z_prime(links, inf) > 0:
-        print('fin: ', inf)
-        return inf
-    if z_prime(links, sup) < 0:
-        return sup
-    m = (inf + sup) / 2
-
-    if (sup - inf) < tolerance:
-        return m
-
-    z_prime_m = z_prime(links, m)
-    if z_prime_m == 0:
-        return m
-    elif z_prime_m < 0:
-        inf = m
-    elif z_prime_m > 0:
-        sup = m
-    return find_phi(links, inf, sup, tolerance)
-'''
 
 class RoadPathFinder:
     def __init__(self, model):
@@ -157,7 +76,7 @@ class RoadPathFinder:
         log=False,
         speedup=True,
         volume_column='volume_car',
-        vdf={'default_bpr': default_bpr, 'smock': smock},
+        vdf={'default_bpr': default_bpr, 'free_flow': free_flow},
         **kwargs
     ):
         links = self.road_links  # not a copy
@@ -178,8 +97,7 @@ class RoadPathFinder:
             merged['link_path']
         )
 
-        auxiliary_flows.columns = ['flow']
-        links['aux_flow'] = auxiliary_flows['flow']
+        links['aux_flow'] = auxiliary_flows
         links['aux_flow'].fillna(0, inplace=True)
         links['former_flow'] = links['flow'].copy()
         # c
@@ -264,7 +182,7 @@ class RoadPathFinder:
         maxiters=20,
         tolerance=0.01,
         log=False,
-        vdf={'default_bpr': default_bpr, 'smock': smock},
+        vdf={'default_bpr': default_bpr, 'free_flow': free_flow},
         *args,
         **kwargs
     ):
@@ -293,3 +211,133 @@ class RoadPathFinder:
                 if done or relgap < tolerance:
                     break
         self.car_los = los.reset_index(drop=True)
+
+
+    def msa(self, 
+        maxiters=10,
+        tolerance=0.01,
+        log=False,
+        vdf={'default_bpr': default_bpr,'free_flow':free_flow},
+        volume_column='volume_car'):
+        '''
+        maxiters = 10 : number of iteration.
+        tolerance = 0.01 : stop condition for RelGap.
+        log = False : log data on each iteration.
+        vdf = {'default_bpr': default_bpr,'free_flow':free_flow} : dict of function for the jam time.
+        volume_column='volume_car' : column of self.volumes to use for volume
+        '''
+
+        v = self.volumes
+
+        self.zone_to_road_preparation()
+
+        #create DataFrame with road_links and zone top road
+        df = self.init_df()
+
+        # CREATE EDGES FOR SPARSE MATRIX
+        edges = df['time'].reset_index().values # to build the index once and for all
+        index = build_index(edges)
+        reversed_index = {v:k for k, v in index.items()}
+        # index V with sparse indexes, zones in sparse indexes
+        v,zones = get_zone_index(df,v,index)
+        
+        sparse, _ = sparse_matrix(edges, index=index)
+        
+        _, predecessors = dijkstra(sparse, directed=True, indices=zones, return_predecessors=True)
+        
+        odv = list(zip(v['o'].values, v['d'].values, v[volume_column].values))
+        
+        # BUILD PATHS FROM PREDECESSORS AND ASSIGN VOLUMES
+        # then convert index back to each links indexes
+        ab_volumes = assign_volume(odv,predecessors,reversed_index)
+        
+        
+        df['auxiliary_flow'] = pd.Series(ab_volumes)
+        df['auxiliary_flow'].fillna(0, inplace=True)
+        df['flow'] += df['auxiliary_flow'] # do not do += in a cell where the variable is not created! bad
+        df['jam_time'] = jam_time(df,vdf,'flow')
+        df['jam_time'].fillna(df['time'], inplace=True)
+
+        rel_gap = []
+        if log:
+            print('iteration | Phi | Rel Gap (%)')
+
+        for i in range(maxiters):
+            # CREATE EDGES AND SPARSE MATRIX
+            edges = df['jam_time'].reset_index().values # build the edges again, useless
+            sparse, _ = sparse_matrix(edges, index=index)
+            #shortest path
+            _, predecessors = dijkstra(sparse, directed=True, indices=zones, return_predecessors=True)
+
+            odv = list(zip(v['o'].values, v['d'].values, v[volume_column].values)) # volume for each od
+
+            # BUILD PATHS FROM PREDECESSORS AND ASSIGN VOLUMES
+            # then convert index back to each links indexes
+            ab_volumes = assign_volume(odv,predecessors,reversed_index)
+
+            df['auxiliary_flow'] = pd.Series(ab_volumes)
+            df['auxiliary_flow'].fillna(0, inplace=True)
+            
+            phi = find_phi(df,vdf,0,0.8,20)
+            
+            #  modelling transport eq 11.11. SUM currentFlow x currentCost - SUM AONFlow x currentCost / SUM currentFlow x currentCost
+            rel_gap.append(100*(np.sum(df['flow']*df['jam_time']) - np.sum(df['auxiliary_flow']*df['jam_time']))/np.sum(df['flow']*df['jam_time']))
+            if log:
+                print(i, round(phi,4), round(rel_gap[-1],3))
+
+            df['flow'] = (1 - phi) * df['flow'] + phi * df['auxiliary_flow']
+            df['flow'].fillna(0, inplace=True)
+
+            df['jam_time'] = jam_time(df,vdf,'flow')
+            df['jam_time'].fillna(df['time'], inplace=True)
+            if rel_gap[-1] <= tolerance:
+                break
+            
+        self.road_links['flow'] = self.road_links.set_index(['a','b']).index.map(df['flow'].to_dict().get)
+        self.road_links['jam_time'] = self.road_links.set_index(['a','b']).index.map(df['jam_time'].to_dict().get)
+        #remove penalty from jam_time
+        self.road_links['jam_time'] -= self.road_links['penalty']
+
+        self.car_los = get_car_los(v,df,index,reversed_index,zones,self.ntleg_penalty)
+        
+        #return df, rel_gap
+
+
+
+
+    def zone_to_road_preparation(self,time='time', ntleg_penalty=1e9, access_time='time'):
+        # prepare zone_to_road_links to the same format as road_links
+        # and initialize it's parameters
+        zone_to_road = self.zone_to_road.copy()
+        zone_to_road['time'] = zone_to_road[access_time]
+        zone_to_road['length'] = np.nan
+        zone_to_road = zone_to_road[['a', 'b','length', 'direction', 'time']]
+        zone_to_road.loc[zone_to_road['direction'] == 'access', 'time'] += ntleg_penalty 
+        
+        zone_to_road['capacity'] = np.nan
+        zone_to_road['vdf'] = 'free_flow'
+        zone_to_road['alpha'] = 0
+        zone_to_road['limit'] = 0
+        zone_to_road['beta'] = 0
+        zone_to_road['penalty'] = 0
+        self.zone_to_road = zone_to_road
+        # keep track of it (need to substract it in car_los)
+        self.ntleg_penalty = ntleg_penalty
+
+
+
+
+    def init_df(self):
+        #check if columns exist
+        assert 'vdf' in self.road_links.columns, 'vdf not found in road_links columns.'
+        assert 'capacity' in self.road_links.columns, 'capacity not found in road_links columns.'
+        for col in ['limit','penalty','alpha','beta']:
+            if col not in self.road_links.columns:
+                self.road_links[col] = 0
+                print(col, " not found in road_links columns. Values set to 0")
+        
+        columns = ['a', 'b','length', 'time', 'capacity', 'vdf', 'alpha', 'beta', 'limit','penalty']
+        df = pd.concat([self.road_links[columns], self.zone_to_road[columns]]).set_index(['a', 'b'], drop=False)
+        df['flow'] = 0
+        df['auxiliary_flow'] = 0
+        return df
