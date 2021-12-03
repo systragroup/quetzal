@@ -152,7 +152,6 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             self.road_links = roadpathfinder.road_links
             self.car_los = roadpathfinder.car_los
         elif method == 'frank-wolfe':  
-            print('frank-wolfe method is deprecated, use msa instead')
             roadpathfinder.frank_wolfe(maxiters=maxiters, *args, **kwargs)
             self.car_los = roadpathfinder.car_los
             self.road_links = roadpathfinder.road_links

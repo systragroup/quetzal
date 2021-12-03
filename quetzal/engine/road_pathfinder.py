@@ -4,6 +4,7 @@ import pandas as pd
 from quetzal.engine.pathfinder_utils import sparse_los_from_nx_graph, sparse_matrix, build_index
 from syspy.assignment import raw as raw_assignment
 from quetzal.engine.msa_utils import get_zone_index, assign_volume,default_bpr, free_flow, jam_time, find_phi, get_car_los
+from quetzal.model.integritymodel import deprecated_method
 
 from scipy.sparse.csgraph import dijkstra
 from tqdm import tqdm
@@ -174,7 +175,8 @@ class RoadPathFinder:
         gap = (los['delta'] * los['weight'] * los['volume_car']).sum()
         total_time = (los['actual_time_minimum'] * los['weight'] * los['volume_car']).sum()
         return gap / total_time
-
+        
+    @deprecated_method
     def frank_wolfe(
         self,
         all_or_nothing=False,
