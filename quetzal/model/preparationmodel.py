@@ -7,6 +7,7 @@ from syspy.renumber import renumber
 from syspy.skims import skims
 from tqdm import tqdm
 import networkx as nx
+import warnings
 
 
 def read_hdf(filepath):
@@ -76,7 +77,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         n_ntlegs=5,
         max_ntleg_length=5000,
         zone_to_transit=True,
-        zone_to_road=False
+        zone_to_road=False,
+        prefix=False
     ):
         """
         Builds the centroids and the ntlegs
@@ -117,6 +119,12 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             )
             ntlegs['walk_time'] = ntlegs['time']
             self.zone_to_transit = ntlegs.loc[ntlegs['distance'] < length].copy()
+            if prefix:
+                self.zone_to_transit.index =  'ztt_' + pd.Series(self.zone_to_transit.index).astype(str)
+            else:
+                warnings.warn(("zone_to_transit indexes does not have prefixes. This may cause collisions."
+                               "Consider using the option prefix=True. Prefixes will be added by default in"  
+                               "a future update"), FutureWarning)
 
         if zone_to_road:
             self.integrity_test_collision(sets=('road_nodes', 'zones'))
@@ -132,6 +140,12 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             )
             ntlegs['walk_time'] = ntlegs['time']
             self.zone_to_road = ntlegs.loc[ntlegs['distance'] < length].copy()
+            if prefix:
+                self.zone_to_road.index =  'ztr_' + pd.Series(self.zone_to_road.index).astype(str)
+            else: 
+                warnings.warn(("zone_to_road indexes does not have prefixes. This may cause collisions."
+                               "Consider using the option prefix=True. Prefixes will be added by default in"  
+                               "a future update"), FutureWarning)
 
             ntlegs = engine.ntlegs_from_centroids_and_nodes(
                 self.nodes,
@@ -144,6 +158,12 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             )
             ntlegs['walk_time'] = ntlegs['time']
             self.road_to_transit = ntlegs.loc[ntlegs['distance'] < length].copy()
+            if prefix:
+                self.road_to_transit.index =  'rtt_' + pd.Series(self.road_to_transit.index).astype(str)
+            else: 
+                warnings.warn(("road_to_transit indexes does not have prefixes. This may cause collisions."
+                               "Consider using the option prefix=True. Prefixes will be added by default in"  
+                               "a future update"), FutureWarning)
 
     def preparation_drop_redundant_zone_to_transit(self):
         self.zone_to_transit.sort_values('time', inplace=True)
