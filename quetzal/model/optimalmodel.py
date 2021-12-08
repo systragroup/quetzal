@@ -34,10 +34,11 @@ class OptimalModel(preparationmodel.PreparationModel):
         if walk_on_road:
             road_links = self.road_links.copy()
             road_links['time'] = road_links['walk_time']
-            footpaths = pd.concat([road_links, self.road_to_transit,
-                                               self.zone_to_transit,
-                                               self.footpaths])
-            access = self.zone_to_road.copy()
+            if hasattr(self, 'footpaths'):
+                footpaths = pd.concat([road_links, self.footpaths])
+            else:
+                footpaths = self.footpaths.copy()
+            access = pd.concat([self.zone_to_road, self.road_to_transit])
         else:
             access = self.zone_to_transit.copy()
             footpaths = self.footpaths.copy()
@@ -49,6 +50,9 @@ class OptimalModel(preparationmodel.PreparationModel):
         links['c'] = links['time']
         transit_edges = links[['i', 'j', 'f', 'c']].reset_index().values.tolist()
 
+        # Look for transit links with duplicated i, j (loop)
+        assert links.set_index(['i','j']).index.duplicated().sum() == 0
+
         # boarding edges
         links.index = 'boarding_' + links['index'].astype(str)
         links['f'] = 1 / links['headway'] / alpha
@@ -57,8 +61,8 @@ class OptimalModel(preparationmodel.PreparationModel):
         if 'boarding_time' not in links.columns:
             links['boarding_time'] = boarding_time
         links['c'] = links['boarding_time']
-
-        boarding_edges = links[['a', 'i', 'f', 'c']].reset_index().values.tolist()
+        boarding_links = links[['a', 'i', 'f', 'c']].drop_duplicates(subset='i')
+        boarding_edges = boarding_links.reset_index().values.tolist()
 
         # alighting edges
         links.index = 'alighting_' + links['index'].astype(str)
@@ -66,7 +70,8 @@ class OptimalModel(preparationmodel.PreparationModel):
         if 'alighting_time' not in links.columns:
             links['alighting_time'] = alighting_time
         links['c'] = links['alighting_time']
-        alighting_edges = links[['j', 'b', 'f', 'c']].reset_index().values.tolist()
+        alighting_links = links[['j', 'b', 'f', 'c']].drop_duplicates(subset='j')
+        alighting_edges = alighting_links.reset_index().values.tolist()
 
         # access edges
         if target is not None:
@@ -199,7 +204,7 @@ class OptimalModel(preparationmodel.PreparationModel):
             # todo remove 'load' from analysis module:
             self.road_links['load'] = self.road_links[volume_column]
 
-    def analysis_strategy_time(self, boarding_time=0, alighting_time=0, inf=1e9, walk_on_road=True):
+    def analysis_strategy_time(self, boarding_time=None, alighting_time=None, inf=1e9, walk_on_road=True):
         assert walk_on_road == True # TODO implement for ACF
         zero = 1 / inf
         # add a column for each type of time to the os edges
@@ -207,8 +212,25 @@ class OptimalModel(preparationmodel.PreparationModel):
         edges['rtt_time'] = self.road_to_transit['time']
         edges['ztr_time'] = self.zone_to_road['time']
         edges['in_vehicle_time'] = self.links['time']
-        edges.loc[['boarding_' in i for i in edges.index], 'boarding_time'] = boarding_time
-        edges.loc[['alighting_' in i for i in edges.index], 'alighting_time'] = alighting_time
+
+        # boarding and alighting
+        links = self.links.copy()
+        assert not (boarding_time is not None and 'boarding_time' in links.columns)
+        if boarding_time is not None:
+            edges.loc[['boarding_' in i for i in edges.index], 'boarding_time'] = boarding_time
+        else:
+            boardings = links['boarding_time'].copy()
+            boardings.index = 'boarding_' +boardings.index.astype(str)
+            edges['boarding_time'] = boardings
+
+        assert not (alighting_time is not None and 'alighting_time' in links.columns)
+        if alighting_time is not None:
+            edges.loc[['alighting_' in i for i in edges.index], 'alighting_time'] = alighting_time
+        else:
+            alighting = links['alighting_time'].copy()
+            alighting.index = 'alighting_' +alighting.index.astype(str)
+            edges['alighting_time'] = alighting
+        
         if walk_on_road:
             edges['road_time'] = self.road_links['walk_time']
             edges.fillna(0, inplace=True)
@@ -231,7 +253,8 @@ class OptimalModel(preparationmodel.PreparationModel):
             for key in columns
         }
 
-        origins = destinations = list(self.zones.index)
+        origins = list(self.zones.index)
+        destinations = list(self.optimal_strategy_sets.index)
         for destination in tqdm(destinations):
 
             u = {
