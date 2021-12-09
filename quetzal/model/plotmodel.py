@@ -142,6 +142,7 @@ class PlotModel(summarymodel.SummaryModel):
         ax=None,
         rows=1,
         title=None,
+        titlesize=12,
         basemap_url=None,
         basemap_raster=None,
         north_arrow=None,
@@ -177,7 +178,7 @@ class PlotModel(summarymodel.SummaryModel):
                 styles.reindex(g_id_set).dropna(subset=['color'])
             ).plot(alpha=0, ax=ax)
             if len(t):
-                ax.set_title(t)
+                ax.set_title(t, fontsize=titlesize)
             ax.set_xticks([])
             ax.set_yticks([])
             i += 1

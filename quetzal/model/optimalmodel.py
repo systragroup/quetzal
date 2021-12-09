@@ -51,7 +51,7 @@ class OptimalModel(preparationmodel.PreparationModel):
         transit_edges = links[['i', 'j', 'f', 'c']].reset_index().values.tolist()
 
         # Look for transit links with duplicated i, j (loop)
-        assert links.set_index(['i','j']).index.duplicated().sum() == 0
+        #assert links.set_index(['i','j']).index.duplicated().sum() == 0
 
         # boarding edges
         links.index = 'boarding_' + links['index'].astype(str)
@@ -61,8 +61,7 @@ class OptimalModel(preparationmodel.PreparationModel):
         if 'boarding_time' not in links.columns:
             links['boarding_time'] = boarding_time
         links['c'] = links['boarding_time']
-        boarding_links = links[['a', 'i', 'f', 'c']].drop_duplicates(subset='i')
-        boarding_edges = boarding_links.reset_index().values.tolist()
+        boarding_edges = links[['a', 'i', 'f', 'c']].reset_index().values.tolist()
 
         # alighting edges
         links.index = 'alighting_' + links['index'].astype(str)
@@ -70,8 +69,7 @@ class OptimalModel(preparationmodel.PreparationModel):
         if 'alighting_time' not in links.columns:
             links['alighting_time'] = alighting_time
         links['c'] = links['alighting_time']
-        alighting_links = links[['j', 'b', 'f', 'c']].drop_duplicates(subset='j')
-        alighting_edges = alighting_links.reset_index().values.tolist()
+        alighting_edges = links[['j', 'b', 'f', 'c']].reset_index().values.tolist()
 
         # access edges
         if target is not None:
@@ -167,34 +165,27 @@ class OptimalModel(preparationmodel.PreparationModel):
         loaded_edges = self.optimal_strategy_edges
         loaded_edges.drop(volume_column, axis=1, errors='ignore', inplace=True)
         loaded_edges[volume_column] = pd.Series(edge_volume)
-        df = loaded_edges[['i', 'j', volume_column]].dropna(subset=[volume_column])
+        df = loaded_edges[volume_column]
 
-        self.links.drop(volume_column, axis=1, errors='ignore', inplace=True)
+        # Loading links
         links = self.links.copy()
-        links['index'] = links.index
-        # transit edges
-        links['j'] = [tuple(l) for l in links[['b', 'trip_id']].values]
-        links['i'] = [tuple(l) for l in links[['a', 'trip_id']].values]
+        links.drop(volume_column, axis=1, errors='ignore', inplace=True)
+        links[volume_column] = df.loc[links.index]
+        links['boardings'] = df.loc['boarding_' +links.index.astype(str)].values
+        links['alightings'] = df.loc['alighting_' +links.index.astype(str)].values
+        links[[volume_column,'boardings','alightings']] = links[[volume_column,'boardings','alightings']].fillna(0.0)
 
-        transit = pd.merge(links, df, on=['i', 'j'])
-        boardings = pd.merge(links, df, left_on=['a', 'i'], right_on=['i', 'j'])
-        alightings = pd.merge(links, df, left_on=['j', 'b'], right_on=['i', 'j'])
-
-        loaded_links = self.links.copy()
-
-        loaded_links[volume_column] = transit.set_index('index')[volume_column]
-        loaded_links['boardings'] = boardings.set_index('index')[volume_column]
-        loaded_links['alightings'] = alightings.set_index('index')[volume_column]
-
-        loaded_nodes = self.nodes.copy()
-        loaded_nodes.drop('boardings', axis=1, errors='ignore', inplace=True)
-        loaded_nodes.drop('alightings', axis=1, errors='ignore', inplace=True)
-        loaded_nodes['boardings'] = boardings.groupby('a')[volume_column].sum()
-        loaded_nodes['alightings'] = alightings.groupby('b')[volume_column].sum()
+        # Loading nodes
+        nodes = self.nodes.copy()
+        nodes.drop('boardings', axis=1, errors='ignore', inplace=True)
+        nodes.drop('alightings', axis=1, errors='ignore', inplace=True)
+        nodes['boardings'] = links.groupby('a')['boardings'].sum()
+        nodes['alightings'] = links.groupby('b')['alightings'].sum()
+        nodes[['boardings','alightings']] = nodes[['boardings','alightings']].fillna(0.0)
 
         self.loaded_edges = loaded_edges
-        self.nodes = loaded_nodes
-        self.links = loaded_links
+        self.nodes = nodes
+        self.links = links
 
         if road:
             self.road_links[volume_column] = raw_assignment.assign(
