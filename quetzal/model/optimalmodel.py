@@ -232,9 +232,11 @@ class OptimalModel(preparationmodel.PreparationModel):
             edges['alighting_time'] = alighting
         
         if walk_on_road:
+            edges['footpath_time'] = self.footpaths['time']
             edges['road_time'] = self.road_links['walk_time']
             edges.fillna(0, inplace=True)
-            edges['walk_time'] = edges['road_time'] + edges['rtt_time'] + edges['ztr_time']
+            times = ['footpath_time', 'road_time', 'rtt_time', 'ztr_time']
+            edges['walk_time'] = edges[times].sum(axis=1)
 
         self.optimal_strategy_edges = edges
         
