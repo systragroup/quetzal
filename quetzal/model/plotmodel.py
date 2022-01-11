@@ -332,7 +332,7 @@ class PlotModel(summarymodel.SummaryModel):
 
         links = self.road_links if road else self.links
         links = links.dropna(subset=['dummy'])
-        links = links.loc[links['dummy'] > 0]
+        links = links.loc[links['dummy'] > 1e-9]
         links = gpd.GeoDataFrame(links)
 
         norm = TwoSlopeNorm(vmin=0, vcenter=0.5, vmax=1)
@@ -356,7 +356,8 @@ class PlotModel(summarymodel.SummaryModel):
         ax.set_yticks([])
         ax.set_xticks([])
 
-        nodes = self.nodes.dropna(subset=['boardings', 'alightings'], how='all').fillna(0)
+        mask = (self.nodes['boardings'] +self.nodes['alightings']) > 1e-9
+        nodes = self.nodes[mask]
         nodes.plot(ax=ax, marker=10, markersize=200, zorder=10, column='boardings', cmap=cmap, norm=norm, linewidth=0)
         nodes.plot(ax=ax, marker=11, markersize=200, zorder=10, column='alightings', cmap=cmap, norm=norm, linewidth=0)
 
