@@ -15,8 +15,8 @@ class OptimalModel(preparationmodel.PreparationModel):
 
     def get_optimal_strategy_edges(
         self,
-        boarding_time=0,
-        alighting_time=0,
+        boarding_time=None,
+        alighting_time=None,
         alpha=0.5,
         target=None,
         inf=1e9,
@@ -25,10 +25,18 @@ class OptimalModel(preparationmodel.PreparationModel):
         links = self.links.copy()
         links['index'] = links.index
 
+        assert not (boarding_time is not None and 'boarding_time' in links.columns)
+        boarding_time = 0 if boarding_time is None else boarding_time
+
+        assert not (alighting_time is not None and 'alighting_time' in links.columns)
+        alighting_time = 0 if alighting_time is None else alighting_time
+
         if walk_on_road:
             road_links = self.road_links.copy()
             road_links['time'] = road_links['walk_time']
-            footpaths = pd.concat([road_links, self.road_to_transit])
+            footpaths = pd.concat([road_links, self.road_to_transit,
+                                               self.zone_to_transit,
+                                               self.footpaths])
             access = self.zone_to_road.copy()
         else:
             access = self.zone_to_transit.copy()
@@ -46,14 +54,18 @@ class OptimalModel(preparationmodel.PreparationModel):
         links['f'] = 1 / links['headway'] / alpha
         if 'boarding_stochastic_utility' in links.columns:
             links['f'] *= np.exp(links['boarding_stochastic_utility'])
-        links['c'] = boarding_time
+        if 'boarding_time' not in links.columns:
+            links['boarding_time'] = boarding_time
+        links['c'] = links['boarding_time']
 
         boarding_edges = links[['a', 'i', 'f', 'c']].reset_index().values.tolist()
 
         # alighting edges
         links.index = 'alighting_' + links['index'].astype(str)
         links['f'] = inf
-        links['c'] = alighting_time
+        if 'alighting_time' not in links.columns:
+            links['alighting_time'] = alighting_time
+        links['c'] = links['alighting_time']
         alighting_edges = links[['j', 'b', 'f', 'c']].reset_index().values.tolist()
 
         # access edges
@@ -73,13 +85,22 @@ class OptimalModel(preparationmodel.PreparationModel):
         edges = [tuple(e) for e in edges]
         return edges
 
-    def step_strategy_finder(self, *args, **kwargs):
+    def step_strategy_finder(self, od_set=None, *args, **kwargs):
         s_dict = {}
         node_df_list = []
 
+        if od_set is not None:
+            destinations = {d for o, d in od_set}
+        else:
+            destinations = set(self.zones.index)
+
         all_edges = self.get_optimal_strategy_edges(*args, **kwargs)
-        for destination in tqdm(self.zones.index):
-            forbidden = set(self.zones.index) - {destination}
+        optimal_strategy_edges = pd.DataFrame(
+                    all_edges, columns=['ix', 'i', 'j', 'f', 'c']).set_index('ix')
+        assert optimal_strategy_edges.index.is_unique
+
+        for destination in tqdm(destinations):
+            forbidden = destinations - {destination}
             edges = [e for e in all_edges if e[2] not in forbidden]
             strategy, u, f = optimal_strategy.find_optimal_strategy(edges, destination)
             s_dict[destination] = strategy
@@ -88,11 +109,7 @@ class OptimalModel(preparationmodel.PreparationModel):
             node_df_list.append(node_df)
 
         optimal_strategy_nodes = pd.concat(node_df_list)
-        edges = self.get_optimal_strategy_edges(*args, **kwargs)
         optimal_strategy_sets = pd.Series(s_dict).apply(list)
-        optimal_strategy_edges = pd.DataFrame(
-            edges, columns=['ix', 'i', 'j', 'f', 'c']).set_index('ix')
-        assert optimal_strategy_edges.index.is_unique
 
         self.optimal_strategy_edges = optimal_strategy_edges
         self.optimal_strategy_sets = optimal_strategy_sets
@@ -100,18 +117,25 @@ class OptimalModel(preparationmodel.PreparationModel):
 
         nodes = optimal_strategy_nodes.copy()
         nodes.index.name = 'origin'
+        nodes = nodes.loc[list(self.zones.index)]
         nodes.set_index('destination', append=True, inplace=True)
-        pt_los = nodes.loc[self.zones.index]['u'].reset_index().rename(columns={'u': 'gtime'})
+        pt_los = nodes['u'].reset_index().rename(columns={'u': 'gtime'})
         pt_los['pathfinder_session'] = 'optimal_strategy'
         self.pt_los = pt_los
 
-    def step_strategy_assignment(self, volume_column, road=False):
-        dvol = self.volumes.groupby('destination')[volume_column].sum()
-        destinations = list(dvol.loc[dvol > 0].index)
+    def step_strategy_assignment(self, volume_column, road=False, od_set=None):
+        if od_set is not None:
+            destinations = list({d for o, d in od_set})
+            mask = self.optimal_strategy_nodes['destination'].isin(destinations)
+            destination_indexed_nodes = self.optimal_strategy_nodes[mask].set_index(
+                'destination', append=True).swaplevel()
+        else:
+            dvol = self.volumes.groupby('destination')[volume_column].sum()
+            destinations = list(dvol.loc[dvol > 0].index)
+            destination_indexed_nodes = self.optimal_strategy_nodes.set_index(
+                'destination', append=True).swaplevel()
 
         destination_indexed_volumes = self.volumes.set_index(['destination', 'origin'])[volume_column]
-        destination_indexed_nodes = self.optimal_strategy_nodes.set_index(
-            'destination', append=True).swaplevel()
         destination_indexed_strategies = self.optimal_strategy_sets
         indexed_edges = self.optimal_strategy_edges[['i', 'j', 'f', 'c']]
 

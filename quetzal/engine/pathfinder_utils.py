@@ -29,6 +29,13 @@ def get_reversed_path(predecessors, i, j):
         path.append(p)
     return path[:-1]
 
+def get_node_path(predecessors, i, j):
+    #remove zones nodes (first and last one)
+    return get_path(predecessors, i, j)[1:-1]
+
+def get_edge_path(p):
+    return list(zip(p[:-1], p[1:]))
+
 def get_first_and_last(path, link_dict):
     s = set()
 
@@ -192,15 +199,20 @@ def sparse_los_from_nx_graph(
     los['path'] = paths
     return los
 
-
-def sparse_matrix(edges):
+# buildindex
+def build_index(edges):
     nodelist = {e[0] for e in edges}.union({e[1] for e in edges})
     nlen = len(nodelist)
-    index = dict(zip(nodelist, range(nlen)))
+    return dict(zip(nodelist, range(nlen)))
+
+# build matrix
+def sparse_matrix(edges, index=None):
+    if index is None:
+        index = build_index(edges)
+    nlen = len(index)
     coefficients = zip(*((index[u], index[v], w) for u, v, w in edges))
     row, col, data = coefficients
     return csr_matrix((data, (row, col)), shape=(nlen, nlen)), index
-
 
 
 

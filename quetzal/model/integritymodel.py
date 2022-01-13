@@ -7,6 +7,24 @@ from shapely.geometry import LineString, Point, Polygon
 from syspy.spatial.graph import network as networktools
 from syspy.transitfeed import feed_links
 from tqdm import tqdm
+from functools import wraps
+import warnings
+
+
+
+def deprecated_method(method):
+    @wraps(method)
+    def decorated(self, *args, **kwargs):
+        message = 'Deprecated: replaced by %s' % method.__name__
+        warnings.warn(
+            message,
+            DeprecationWarning
+        )
+        print(message)
+        return method(self, *args, **kwargs)
+
+    decorated.__doc__ = 'deprecated! ' + str(decorated.__doc__)
+    return decorated
 
 
 def label_links(links, node_prefixe):

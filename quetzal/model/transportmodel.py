@@ -141,15 +141,23 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             )
 
     @track_args
-    def step_road_pathfinder(self, maxiters=1, *args, **kwargs):
+    def step_road_pathfinder(self, maxiters=1,method='msa', *args, **kwargs):
         """
         * requires: zones, road_links, zone_to_road
         * builds: car_los, road_links
         """
         roadpathfinder = RoadPathFinder(self)
-        roadpathfinder.frank_wolfe(maxiters=maxiters, *args, **kwargs)
-        self.car_los = roadpathfinder.car_los
-        self.road_links = roadpathfinder.road_links
+        if method == 'msa':
+            roadpathfinder.msa(maxiters=maxiters, *args, **kwargs)
+            self.road_links = roadpathfinder.road_links
+            self.car_los = roadpathfinder.car_los
+        elif method == 'frank-wolfe':  
+            roadpathfinder.frank_wolfe(maxiters=maxiters, *args, **kwargs)
+            self.car_los = roadpathfinder.car_los
+            self.road_links = roadpathfinder.road_links
+        else:
+            print(method,' not supported. use msa or frank-wolfe')
+
 
     @track_args
     def step_pr_pathfinder(
