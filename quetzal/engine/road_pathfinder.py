@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from quetzal.engine.pathfinder_utils import sparse_los_from_nx_graph, sparse_matrix, build_index
 from syspy.assignment import raw as raw_assignment
-from quetzal.engine.msa_utils import get_zone_index, assign_volume,default_bpr, free_flow, jam_time, find_phi, get_car_los
+from quetzal.engine.msa_utils import get_zone_index, assign_volume,default_bpr, free_flow, jam_time, find_phi, get_car_los, find_beta
 from quetzal.model.integritymodel import deprecated_method
 
 from scipy.sparse.csgraph import dijkstra
@@ -175,7 +175,7 @@ class RoadPathFinder:
         gap = (los['delta'] * los['weight'] * los['volume_car']).sum()
         total_time = (los['actual_time_minimum'] * los['weight'] * los['volume_car']).sum()
         return gap / total_time
-        
+
     @deprecated_method
     def frank_wolfe(
         self,
@@ -220,7 +220,9 @@ class RoadPathFinder:
         tolerance=0.01,
         log=False,
         vdf={'default_bpr': default_bpr,'free_flow':free_flow},
-        volume_column='volume_car'):
+        volume_column='volume_car',
+        BFW = False,
+        beta=None):
         '''
         maxiters = 10 : number of iteration.
         tolerance = 0.01 : stop condition for RelGap.
@@ -262,38 +264,61 @@ class RoadPathFinder:
 
         rel_gap = []
         if log:
-            print('iteration | Phi | Rel Gap (%)')
+            print('iteration | Phi |  Rel Gap (%)')
 
         for i in range(maxiters):
             # CREATE EDGES AND SPARSE MATRIX
             edges = df['jam_time'].reset_index().values # build the edges again, useless
             sparse, _ = sparse_matrix(edges, index=index)
             #shortest path
-            _, predecessors = dijkstra(sparse, directed=True, indices=zones, return_predecessors=True)
+            dist_matrix, predecessors = dijkstra(sparse, directed=True, indices=zones, return_predecessors=True)
 
             odv = list(zip(v['o'].values, v['d'].values, v[volume_column].values)) # volume for each od
 
             # BUILD PATHS FROM PREDECESSORS AND ASSIGN VOLUMES
             # then convert index back to each links indexes
             ab_volumes = assign_volume(odv,predecessors,reversed_index)
-
             df['auxiliary_flow'] = pd.Series(ab_volumes)
             df['auxiliary_flow'].fillna(0, inplace=True)
+            if BFW: # if biconjugate: takes the 2 last direction : direction is flow-auxflow.
+                if i>=2:
+                    if not beta:
+                        df['derivative'] = jam_time(df,vdf,'flow',der=True)
+                        b = find_beta(df,phi) #this is the previous phi (phi_-1)
+                    else :
+                        assert sum(beta)==1 , 'beta must sum to 1.'
+                        b = beta
+                    df['auxiliary_flow'] = b[0]*df['auxiliary_flow'] + b[1]*df['s_k-1'] + b[2]*df['s_k-2']
+
+                if i>0 :
+                    df['s_k-2'] = df['s_k-1']
+                df['s_k-1'] =  df['auxiliary_flow'] 
             
-            phi = find_phi(df,vdf,0,0.8,20)
-            
+        
+            phi = find_phi(df,vdf,0,0.8,10)
+           # phi Olga
+           # df['direction'] = df['auxiliary_flow']-df['flow']
+           # df['derivative'] = jam_time(df,vdf,'flow',der=True)
+           # phi = -sum(df['jam_time']*df['direction']) / sum(df['derivative']*df['direction']**2)
+
+
             #  modelling transport eq 11.11. SUM currentFlow x currentCost - SUM AONFlow x currentCost / SUM currentFlow x currentCost
             rel_gap.append(100*(np.sum(df['flow']*df['jam_time']) - np.sum(df['auxiliary_flow']*df['jam_time']))/np.sum(df['flow']*df['jam_time']))
             if log:
                 print(i, round(phi,4), round(rel_gap[-1],3))
+            #Aux-flow direction a l'etape
 
-            df['flow'] = (1 - phi) * df['flow'] + phi * df['auxiliary_flow']
+            # conventional frank-wolfe
+            # df['flow'] + phi*(df['auxiliary_flow'] - df['flow'])  flow +step x direction
+            df['flow'] = (1 - phi) * df['flow'] + phi * df['auxiliary_flow']     
             df['flow'].fillna(0, inplace=True)
+
 
             df['jam_time'] = jam_time(df,vdf,'flow')
             df['jam_time'].fillna(df['time'], inplace=True)
-            if rel_gap[-1] <= tolerance:
+            if rel_gap[-1] <= tolerance*100:
                 break
+
             
         self.road_links['flow'] = self.road_links.set_index(['a','b']).index.map(df['flow'].to_dict().get)
         self.road_links['jam_time'] = self.road_links.set_index(['a','b']).index.map(df['jam_time'].to_dict().get)
@@ -301,8 +326,7 @@ class RoadPathFinder:
         self.road_links['jam_time'] -= self.road_links['penalty']
 
         self.car_los = get_car_los(v,df,index,reversed_index,zones,self.ntleg_penalty)
-        
-        #return df, rel_gap
+        self.relgap  = rel_gap
 
 
 

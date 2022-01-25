@@ -151,12 +151,19 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             roadpathfinder.msa(maxiters=maxiters, *args, **kwargs)
             self.road_links = roadpathfinder.road_links
             self.car_los = roadpathfinder.car_los
+            self.relgap = roadpathfinder.relgap
+        elif method == 'BFW':
+            #bi-conjugate frank-wolfe
+            roadpathfinder.msa(maxiters=maxiters,BFW=True, *args, **kwargs)
+            self.road_links = roadpathfinder.road_links
+            self.car_los = roadpathfinder.car_los
+            self.relgap = roadpathfinder.relgap
         elif method == 'frank-wolfe':  
             roadpathfinder.frank_wolfe(maxiters=maxiters, *args, **kwargs)
             self.car_los = roadpathfinder.car_los
             self.road_links = roadpathfinder.road_links
         else:
-            print(method,' not supported. use msa or frank-wolfe')
+            print(method,' not supported. use msa, BFW or frank-wolfe')
 
 
     @track_args

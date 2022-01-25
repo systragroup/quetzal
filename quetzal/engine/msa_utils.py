@@ -4,7 +4,7 @@ import numpy as np
 from quetzal.engine.pathfinder_utils import get_node_path, get_edge_path, get_path, sparse_matrix
 from scipy.sparse.csgraph import dijkstra
 
-def default_bpr(links,flow='flow'):
+def default_bpr(links,flow='flow',derivative=False):
     alpha = 0.15
     limit=10
     beta = 4
@@ -15,7 +15,12 @@ def default_bpr(links,flow='flow'):
     #res.loc[res>limit*t0]=limit*t0
     speed = links['length']/res *(60*60/1000)
     res.loc[speed<limit]=links['length']/limit *(60*60/1000)
-    return res
+    if derivative==False:
+        return res
+    else:
+        der = (t0*alpha*beta*(beta-1)/(Q**beta)) *V**(beta-2)
+        der.loc[speed<limit] = 0
+        return der
 
 def smock(links,flow='flow'):
     V = links[flow]
@@ -28,12 +33,12 @@ def free_flow(links,flow='flow'):
     return t0
 
 
-def jam_time(links, vdf={'default_bpr': default_bpr},flow='flow'):
+def jam_time(links, vdf={'default_bpr': default_bpr},flow='flow',der=False):
     # vdf is a {function_name: function } to apply on links 
     keys = set(links['vdf'])
     missing_vdf = keys - set(vdf.keys())
     assert len(missing_vdf) == 0, 'you should provide methods for the following vdf keys' + missing_vdf
-    return pd.concat([vdf[key](links[links['vdf']==key],flow) for key in keys])
+    return pd.concat([vdf[key](links[links['vdf']==key], flow, derivative=der) for key in keys])
 
 
 def z_prime(links,vdf, phi):
@@ -67,6 +72,20 @@ def find_phi(links,vdf, phi=0, step=0.5, num_it=10):
             step=-step
     return phi
 
+
+def find_phi(links,vdf, phi=0, step=0.5, num_it=10):
+    a = z_prime(links,vdf,phi)
+    for i in range(num_it):
+        b = z_prime(links,vdf,phi+step)
+        if b<a:
+            phi+=step
+            step=step/2
+            a=b
+        else: 
+            step=-step/2
+        if a+step<0:
+            step=-step
+    return phi
 
 
 def get_zone_index(df,v,index):
@@ -132,6 +151,23 @@ def get_car_los(v,df,index,reversed_index,zones,ntleg_penalty):
 
     return car_los
 
+def find_beta(df,phi_1):
+    # The Stiff is Moving - Conjugate Direction Frank-Wolfe Methods with Applications to Traffic Assignment from Mitradjieva maria
+
+    # do not use. it doesn't seems to work.
+    b = [0,0,0]
+    dk_1 = df['s_k-1'] - df['flow']
+    dk_2 = phi_1 * df['s_k-1'] + (1 - phi_1) * df['s_k-2'] - df['flow']
+    dk = df['auxiliary_flow'] - df['flow']
+    
+    mu = - sum( dk_2 * df['derivative'] * dk) / sum( dk_2 * df['derivative'] * ( df['s_k-2'] - df['s_k-1']  ) )
+    nu = sum( dk_1 * df['derivative'] * dk ) / sum( dk_1 * df['derivative'] * dk_1 )  + ( mu * phi_1 / ( 1 - phi_1 ) )
+    mu = max(0,mu) # beta_k >=0
+    nu = max(0,nu)
+    b[0] = 1 / ( 1+ mu + nu )
+    b[1] = nu * b[0]
+    b[2] = mu * b[0]
+    return b
 
 
 #old version
