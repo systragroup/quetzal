@@ -295,7 +295,7 @@ class RoadPathFinder:
                 df['s_k-1'] =  df['auxiliary_flow'] 
             
         
-            phi = find_phi(df,vdf,0,0.8,10)
+            phi = find_phi(df,vdf,0,0.8,15)
            # phi Olga
            # df['direction'] = df['auxiliary_flow']-df['flow']
            # df['derivative'] = jam_time(df,vdf,'flow',der=True)
