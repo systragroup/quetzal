@@ -141,18 +141,21 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             )
 
     @track_args
-    def step_road_pathfinder(self, maxiters=1,method='msa', *args, **kwargs):
+    def step_road_pathfinder(self, maxiters=1,method='bfw', *args, **kwargs):
         """
         * requires: zones, road_links, zone_to_road
         * builds: car_los, road_links
+        * method: msa, bfw or frank wolf.
         """
+    
         roadpathfinder = RoadPathFinder(self)
+        method = method.lower()
         if method == 'msa':
             roadpathfinder.msa(maxiters=maxiters, *args, **kwargs)
             self.road_links = roadpathfinder.road_links
             self.car_los = roadpathfinder.car_los
             self.relgap = roadpathfinder.relgap
-        elif method == 'BFW':
+        elif method == 'bfw':
             #bi-conjugate frank-wolfe
             roadpathfinder.msa(maxiters=maxiters,BFW=True, *args, **kwargs)
             self.road_links = roadpathfinder.road_links

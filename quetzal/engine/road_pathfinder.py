@@ -1,13 +1,14 @@
 import networkx as nx
 import numpy as np
 import pandas as pd
-from quetzal.engine.pathfinder_utils import sparse_los_from_nx_graph, sparse_matrix, build_index
+from quetzal.engine.pathfinder_utils import sparse_los_from_nx_graph, sparse_matrix, build_index, parallel_dijkstra
 from syspy.assignment import raw as raw_assignment
 from quetzal.engine.msa_utils import get_zone_index, assign_volume,default_bpr, free_flow, jam_time, find_phi, get_car_los, find_beta
 from quetzal.model.integritymodel import deprecated_method
-
 from scipy.sparse.csgraph import dijkstra
 from tqdm import tqdm
+import numba as nb
+import ray
 
 
 
@@ -222,7 +223,8 @@ class RoadPathFinder:
         vdf={'default_bpr': default_bpr,'free_flow':free_flow},
         volume_column='volume_car',
         BFW = False,
-        beta=None):
+        beta=None,
+        num_cores=1):
         '''
         maxiters = 10 : number of iteration.
         tolerance = 0.01 : stop condition for RelGap.
@@ -247,14 +249,22 @@ class RoadPathFinder:
         
         sparse, _ = sparse_matrix(edges, index=index)
         
-        _, predecessors = dijkstra(sparse, directed=True, indices=zones, return_predecessors=True)
+
+        _ , predecessors = parallel_dijkstra(sparse, directed=True, indices=zones, return_predecessors=True, num_core=num_cores, keep_running=True)
+
         
-        odv = list(zip(v['o'].values, v['d'].values, v[volume_column].values))
-        
+        df['sparse_a'] = df['a'].apply(lambda x:index.get(x))
+        df['sparse_b'] = df['b'].apply(lambda x:index.get(x))
+        volumes_sparse_keys = list(zip(df['sparse_a'],df['sparse_b']))
+   
+
+        odv = v[['o','d',volume_column]].values
         # BUILD PATHS FROM PREDECESSORS AND ASSIGN VOLUMES
         # then convert index back to each links indexes
-        ab_volumes = assign_volume(odv,predecessors,reversed_index)
+        nb.set_num_threads(num_cores)
+        ab_volumes = assign_volume(odv,predecessors,volumes_sparse_keys,reversed_index)
         
+     
         
         df['auxiliary_flow'] = pd.Series(ab_volumes)
         df['auxiliary_flow'].fillna(0, inplace=True)
@@ -271,13 +281,11 @@ class RoadPathFinder:
             edges = df['jam_time'].reset_index().values # build the edges again, useless
             sparse, _ = sparse_matrix(edges, index=index)
             #shortest path
-            dist_matrix, predecessors = dijkstra(sparse, directed=True, indices=zones, return_predecessors=True)
-
-            odv = list(zip(v['o'].values, v['d'].values, v[volume_column].values)) # volume for each od
+            _, predecessors = parallel_dijkstra(sparse, directed=True, indices=zones, return_predecessors=True, num_core=num_cores, keep_running=True)
 
             # BUILD PATHS FROM PREDECESSORS AND ASSIGN VOLUMES
-            # then convert index back to each links indexes
-            ab_volumes = assign_volume(odv,predecessors,reversed_index)
+            ab_volumes = assign_volume(odv,predecessors,volumes_sparse_keys,reversed_index)
+        
             df['auxiliary_flow'] = pd.Series(ab_volumes)
             df['auxiliary_flow'].fillna(0, inplace=True)
             if BFW: # if biconjugate: takes the 2 last direction : direction is flow-auxflow.
@@ -295,7 +303,8 @@ class RoadPathFinder:
                 df['s_k-1'] =  df['auxiliary_flow'] 
             
         
-            phi = find_phi(df,vdf,0,0.8,15)
+            phi = find_phi(df,vdf,0,0.8,10)
+            #phi = 2 / (i + 2)
            # phi Olga
            # df['direction'] = df['auxiliary_flow']-df['flow']
            # df['derivative'] = jam_time(df,vdf,'flow',der=True)
@@ -319,7 +328,7 @@ class RoadPathFinder:
             if rel_gap[-1] <= tolerance*100:
                 break
 
-            
+        # finish.. format to quetzal object
         self.road_links['flow'] = self.road_links.set_index(['a','b']).index.map(df['flow'].to_dict().get)
         self.road_links['jam_time'] = self.road_links.set_index(['a','b']).index.map(df['jam_time'].to_dict().get)
         #remove penalty from jam_time
@@ -327,6 +336,9 @@ class RoadPathFinder:
 
         self.car_los = get_car_los(v,df,index,reversed_index,zones,self.ntleg_penalty)
         self.relgap  = rel_gap
+        if ray.is_initialized():
+            print('shutdown ray')
+            ray.shutdown()
 
 
 
