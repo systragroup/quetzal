@@ -7,9 +7,53 @@ from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import dijkstra
 from tqdm import tqdm
 from numba import jit
+import numba as nb
+import ray
+
+#Simple wrapper to call dijkstra with ray (parallel computing)
+@ray.remote
+def ray_dijkstra(csgraph,indices,**kwargs):
+    return dijkstra(csgraph=csgraph, 
+                    indices=indices, 
+                    **kwargs)
+  
+# Wrapper to split the indices (destination) into parallel batchs and compute the shortest path on each batchs.
+def parallel_dijkstra(csgraph,indices=None,return_predecessors=True, num_core=1, keep_running=False,**kwargs):
+    '''
+    num_core = 1 : number of threads.
+    keep_running = False : if you want to keep the subprocesses alive (mmutiple dijktra in a loop for example)
+    '''
+    if num_core == 1:
+        return  dijkstra(csgraph=csgraph, indices=indices, return_predecessors=return_predecessors,**kwargs)
+
+    if ray.is_initialized() == False:
+        ray.init(num_cpus=num_core)
+        #ray.shutdown()
+
+    batch = round(len(indices)/num_core)
+    indices_mat = [indices[i*batch:(1+i)*batch] for i in range(num_core-1)]
+    indices_mat.append(indices[(num_core-1)*batch:])
+    
+    csgraph_id = ray.put(csgraph)
+    result = ray.get([ray_dijkstra.remote(csgraph=csgraph_id,indices=indices_mat[i], return_predecessors=return_predecessors,**kwargs) for i in range(num_core)])
+    #shutdown Ray if not specify to keep it running.
+    if not keep_running:
+        ray.shutdown()
+
+    if return_predecessors == True: # result is a tuple
+        dist_matrix = [res[0] for res in result]
+        dist_matrix = np.concatenate(dist_matrix,axis=0)
+        predecessors = [res[1] for res in result]
+        predecessors = np.concatenate(predecessors,axis=0)
+        return dist_matrix, predecessors
+    else:
+        dist_matrix = np.concatenate(result,axis=0)
+        return dist_matrix
 
 
-@jit(nopython=True)
+
+
+@jit(nopython=True,locals={'predecessors':nb.int32[:,::1],'i':nb.int32,'j':nb.int32})
 def get_path(predecessors, i, j):
     path = [j]
     k = j
@@ -28,7 +72,8 @@ def get_reversed_path(predecessors, i, j):
         k = p = predecessors[i, k]
         path.append(p)
     return path[:-1]
-
+    
+@jit(nopython=True)
 def get_node_path(predecessors, i, j):
     #remove zones nodes (first and last one)
     return get_path(predecessors, i, j)[1:-1]
