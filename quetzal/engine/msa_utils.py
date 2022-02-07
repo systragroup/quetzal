@@ -7,67 +7,49 @@ import ray
 import numba as nb
 
 
-@jit(nopython=True)
-def default_bpr(mat, derivative=False):
-    #columns in mat : 'alpha','beta','limit','flow','time','penalty','capacity'
-    #derivative return the first derivative (for the find beta...)
+
+def default_bpr(links,flow='flow',derivative=False):
     alpha = 0.15
+    limit=10
     beta = 4
-    jam_time=[]
-    for i in range(mat.shape[0]):
-        #alpha = mat[i,0]
-        #beta = mat[i,1]
-        V = mat[i,3]
-        t0 = mat[i,4]
-        penalty = mat[i,5]
-        Q = mat[i,6]
-        if derivative == False:
-            res =  t0 * (1 + alpha*np.power(V/Q, beta))
-            jam_time.append(res + penalty)     
-        else:
-            der = (t0*alpha*beta/(Q**beta)) *np.power(V,beta-1)
-            jam_time.append(der)
-    return jam_time
-
-@jit(nopython=True)
-def smock(mat, derivative=False):
-    #columns in mat : 'alpha','beta','limit','flow','time','penalty','capacity'
-    #derivative return the first derivative (for the find beta...)
-    jam_time=[]
-    for i in range(mat.shape[0]):
-        V = mat[i,3]
-        Qs = mat[i,6]
-        t0 = mat[i,4]
-        if derivative == False:
-            res =  t0 * np.exp(V/Qs)
-            jam_time.append(res)
-        else:
-            der =  t0 * np.exp(V/Qs)/Qs
-            jam_time.append(der)
-    return jam_time
-
-@jit(nopython=True)
-def free_flow(mat,derivative=False):
-    #columns in mat : 'alpha','beta','limit','flow','time','penalty','capacity'
-    #derivative return the first derivative (for the find beta...)
-    t0 = mat[:,4]
-    penalty = mat[:,5]
-    if derivative == False:
-        return t0 + penalty
+    V = links[flow]
+    Q = links['capacity']
+    t0 = links['time']
+    res = t0 * (1 + alpha*np.power(V/Q, beta))
+    #res.loc[res>limit*t0]=limit*t0
+    speed = links['length']/res *(60*60/1000)
+    res.loc[speed<limit]=links['length']/limit *(60*60/1000)
+    if derivative==False:
+        return res
     else:
-        return t0*0
+        der = (t0*alpha*beta*(beta-1)/(Q**beta)) *V**(beta-2)
+        der.loc[speed<limit] = 0
+        return der
 
+def smock(links,flow='flow'):
+    V = links[flow]
+    Qs = links['capacity']
+    t0 = links['time']
+    return t0 * np.exp(V/Qs)
 
+def free_flow(links,flow='flow'):
+    t0 = links['time']
+    return t0
 
+    
 
 
 def jam_time(links, vdf={'default_bpr': default_bpr},flow='flow',der=False):
     # vdf is a {function_name: function } to apply on links 
     keys = set(links['vdf'])
     missing_vdf = keys - set(vdf.keys())
+    #todo : utiliser lancienne methode si les mVDF sont en python et non en numba.
     assert len(missing_vdf) == 0, 'you should provide methods for the following vdf keys' + str(missing_vdf)
     for key in keys:
-        links.loc[links['vdf']==key,'result'] = vdf[key](links.loc[links['vdf']==key,['alpha','beta','limit',flow,'time','penalty','capacity']].values, der) 
+        if type(vdf[key]).__name__=='function': #normal python function.
+            links.loc[links['vdf']==key,'result'] = vdf[key](links.loc[links['vdf']==key], flow, der) 
+        else: # numba function.
+            links.loc[links['vdf']==key,'result'] = vdf[key](links.loc[links['vdf']==key,['alpha','beta','limit',flow,'time','penalty','capacity']].values, der) 
         
     return links['result']
 
