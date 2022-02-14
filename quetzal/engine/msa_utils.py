@@ -1,8 +1,7 @@
 from numba import jit
 import pandas as pd
 import numpy as np
-from quetzal.engine.pathfinder_utils import get_node_path, get_edge_path, get_path, sparse_matrix
-from scipy.sparse.csgraph import dijkstra
+from quetzal.engine.pathfinder_utils import get_node_path, get_edge_path, get_path, sparse_matrix, parallel_dijkstra
 import ray
 import numba as nb
 
@@ -159,11 +158,11 @@ def assign_volume(odv,predecessors,volumes_sparse_keys,reversed_index):
 
 
 
-def get_car_los(v,df,index,reversed_index,zones,ntleg_penalty):
+def get_car_los(v,df,index,reversed_index,zones,ntleg_penalty,num_cores=1):
     car_los = v[['origin','destination','o','d']]
     edges = df['jam_time'].reset_index().values # build the edges again, useless
     sparse, _ = sparse_matrix(edges, index=index)
-    dist_matrix, predecessors = dijkstra(sparse, directed=True, indices=zones, return_predecessors=True)
+    dist_matrix, predecessors = parallel_dijkstra(sparse, directed=True, indices=zones, return_predecessors=True, num_core=num_cores, keep_running=False)
 
     odlist = list(zip(car_los['o'].values, car_los['d'].values))
     time_dict = {(o,d):dist_matrix[o,d]-ntleg_penalty for o,d in odlist} # time for each od

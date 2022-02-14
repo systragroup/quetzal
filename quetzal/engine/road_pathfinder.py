@@ -334,7 +334,7 @@ class RoadPathFinder:
         #remove penalty from jam_time
         self.road_links['jam_time'] -= self.road_links['penalty']
 
-        self.car_los = get_car_los(v,df,index,reversed_index,zones,self.ntleg_penalty)
+        self.car_los = get_car_los(v,df,index,reversed_index,zones,self.ntleg_penalty,num_cores)
         self.relgap  = rel_gap
         if ray.is_initialized():
             print('shutdown ray')
