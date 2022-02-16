@@ -1,3 +1,4 @@
+from keyword import kwlist
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -224,7 +225,8 @@ class RoadPathFinder:
         volume_column='volume_car',
         BFW = False,
         beta=None,
-        num_cores=1):
+        num_cores=1,
+        **kwargs):
         '''
         maxiters = 10 : number of iteration.
         tolerance = 0.01 : stop condition for RelGap.
@@ -235,7 +237,7 @@ class RoadPathFinder:
 
         v = self.volumes
 
-        self.zone_to_road_preparation()
+        self.zone_to_road_preparation(**kwargs)
 
         #create DataFrame with road_links and zone top road
         df = self.init_df()
@@ -343,7 +345,7 @@ class RoadPathFinder:
 
 
 
-    def zone_to_road_preparation(self,time='time', ntleg_penalty=1e9, access_time='time'):
+    def zone_to_road_preparation(self, ntleg_penalty=1e9, access_time='time'):
         # prepare zone_to_road_links to the same format as road_links
         # and initialize it's parameters
         zone_to_road = self.zone_to_road.copy()
