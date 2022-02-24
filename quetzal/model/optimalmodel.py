@@ -172,7 +172,9 @@ class OptimalModel(preparationmodel.PreparationModel):
         loaded_links = self.links.copy()
 
         loaded_links[volume_column] = transit.set_index('index')[volume_column]
+        boardings.drop_duplicates(subset=['index'], inplace=True)
         loaded_links['boardings'] = boardings.set_index('index')[volume_column]
+        alightings.drop_duplicates(subset=['index'], inplace=True)
         loaded_links['alightings'] = alightings.set_index('index')[volume_column]
 
         loaded_nodes = self.nodes.copy()
