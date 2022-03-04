@@ -7,16 +7,20 @@ import pandas as pd
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import dijkstra
 from sklearn.neighbors import NearestNeighbors
+from quetzal.engine.pathfinder_utils import sparse_matrix
+from syspy.spatial.spatial import add_geometry_coordinates
 from tqdm import tqdm
 
 
 class NetworkCaster_MapMaptching:
     def __init__(self, nodes, road_links, links):
-        self.road_links = road_links
-        self.links = gpd.GeoDataFrame(self.road_links)
+        self.links = gpd.GeoDataFrame(road_links)
         self.nodes = gpd.GeoDataFrame(nodes)
 
         # Reindex road links to integer
+        if self.links.index.name in self.links.columns:
+            #if index already in column, the reset index will bug. remove it first
+            self.links = self.links.drop(columns=self.links.index.name)
         self.links = self.links.reset_index()
         self.links_index_dict = self.links['index'].to_dict()
         self.links = self.links.drop(columns=['index'])
@@ -27,6 +31,9 @@ class NetworkCaster_MapMaptching:
         # gps_tracks['geometry'] = gps_tracks['b'].apply(lambda x: node_dict.get(x))
         self.gps_tracks['node_seq'] = self.gps_tracks['b']
         # apply node a for the first link
+        counter = self.gps_tracks.groupby('trip_id').agg(len)['a'].values
+        order = [i for j in range(len(counter)) for i in range(counter[j])]
+        self.gps_tracks['link_sequence'] = order
 
         # for trip with single links, duplicate them to have a mapmatching between a and b.
         single_points = self.gps_tracks[self.gps_tracks['link_sequence'] == 1]
@@ -44,23 +51,7 @@ class NetworkCaster_MapMaptching:
         self.gps_tracks = gpd.GeoDataFrame(self.gps_tracks)
         self.gps_tracks = self.gps_tracks.drop(columns=['a', 'b', 'link_sequence'])
 
-    def add_geometry_coordinates(self, df, columns=['x_geometry', 'y_geometry']):
-        df_copy = df.copy()
-        # If the geometry is not a point...
-        centroids = df_copy['geometry'].apply(lambda g: g.centroid)
-        df_copy[columns[0]] = centroids.apply(lambda g: g.coords[0][0])
-        df_copy[columns[1]] = centroids.apply(lambda g: g.coords[0][1])
-        return df_copy
 
-    def sparse_matrix(self, edges):
-        # edges = [['a', 'b', 'length']] dataframe
-        edges = edges.values.tolist()
-        nodelist = {e[0] for e in edges}.union({e[1] for e in edges})
-        nlen = len(nodelist)
-        index = dict(zip(nodelist, range(nlen)))
-        coefficients = zip(*((index[u], index[v], w) for u, v, w in edges))
-        row, col, data = coefficients
-        return csr_matrix((data, (row, col)), shape=(nlen, nlen)), index
 
     def Multi_Mapmatching(self,
                           routing=False,
@@ -71,9 +62,9 @@ class NetworkCaster_MapMaptching:
         # ====================
         # Map preparation
         # ====================
-        self.links = self.add_geometry_coordinates(self.links, columns=['x_geometry', 'y_geometry'])
+        self.links = add_geometry_coordinates(self.links, columns=['x_geometry', 'y_geometry'])
         # create sparse matrix of road network
-        mat, node_index = self.sparse_matrix(self.links[['a', 'b', 'length']])
+        mat, node_index = sparse_matrix(self.links[['a', 'b', 'length']].values.tolist())
         # dict du node ID des road_id
         dict_node_a = self.links['a'].to_dict()
         dict_node_b = self.links['b'].to_dict()
@@ -145,7 +136,7 @@ class NetworkCaster_MapMaptching:
                 print(msg)
                 warnings.warn(msg)
 
-            df_one = self.add_geometry_coordinates(one.copy())
+            df_one = add_geometry_coordinates(one.copy())
 
             # x = df_many[['x_geometry','y_geometry']].values
             y = df_one[['x_geometry', 'y_geometry']].values
@@ -273,7 +264,7 @@ class NetworkCaster_MapMaptching:
         try:  # for multi-mapmatching, feeding it as an input save time (it's the same mat every time)
             mat
         except Exception:
-            mat, node_index = self.sparse_matrix(self.links[['a', 'b', 'length']])
+            mat, node_index = sparse_matrix(self.links[['a', 'b', 'length']].values.tolist())
 
         index_node = {v: k for k, v in node_index.items()}
 
@@ -395,7 +386,7 @@ class NetworkCaster_MapMaptching:
         )
         first_node = candidat_links.iloc[0]['a']
         last_node = candidat_links.iloc[-1]['b']
-        pseudo_mat, pseudo_node_index = self.sparse_matrix(candidat_links[['a', 'b', 'path_prob']])
+        pseudo_mat, pseudo_node_index = sparse_matrix(candidat_links[['a', 'b', 'path_prob']].values.tolist())
         pseudo_index_node = {v: k for k, v in pseudo_node_index.items()}
 
         # Dijkstra on the road network from node = indices to every other nodes.
