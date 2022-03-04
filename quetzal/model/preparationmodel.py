@@ -7,6 +7,8 @@ from quetzal.model import cubemodel, model
 from syspy.renumber import renumber
 from syspy.skims import skims
 from tqdm import tqdm
+import networkx as nx
+import warnings
 
 
 def read_hdf(filepath):
@@ -76,7 +78,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         n_ntlegs=5,
         max_ntleg_length=5000,
         zone_to_transit=True,
-        zone_to_road=False
+        zone_to_road=False,
+        prefix=False
     ):
         """
         Builds the centroids and the ntlegs
@@ -117,6 +120,12 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             )
             ntlegs['walk_time'] = ntlegs['time']
             self.zone_to_transit = ntlegs.loc[ntlegs['distance'] < length].copy()
+            if prefix:
+                self.zone_to_transit.index =  'ztt_' + pd.Series(self.zone_to_transit.index).astype(str)
+            else:
+                warnings.warn(("zone_to_transit indexes does not have prefixes. This may cause collisions."
+                               "Consider using the option prefix=True. Prefixes will be added by default in"  
+                               "a future update"), FutureWarning)
 
         if zone_to_road:
             self.integrity_test_collision(sets=('road_nodes', 'zones'))
@@ -132,6 +141,12 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             )
             ntlegs['walk_time'] = ntlegs['time']
             self.zone_to_road = ntlegs.loc[ntlegs['distance'] < length].copy()
+            if prefix:
+                self.zone_to_road.index =  'ztr_' + pd.Series(self.zone_to_road.index).astype(str)
+            else: 
+                warnings.warn(("zone_to_road indexes does not have prefixes. This may cause collisions."
+                               "Consider using the option prefix=True. Prefixes will be added by default in"  
+                               "a future update"), FutureWarning)
 
             ntlegs = engine.ntlegs_from_centroids_and_nodes(
                 self.nodes,
@@ -144,6 +159,12 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             )
             ntlegs['walk_time'] = ntlegs['time']
             self.road_to_transit = ntlegs.loc[ntlegs['distance'] < length].copy()
+            if prefix:
+                self.road_to_transit.index =  'rtt_' + pd.Series(self.road_to_transit.index).astype(str)
+            else: 
+                warnings.warn(("road_to_transit indexes does not have prefixes. This may cause collisions."
+                               "Consider using the option prefix=True. Prefixes will be added by default in"  
+                               "a future update"), FutureWarning)
 
     def preparation_drop_redundant_zone_to_transit(self):
         self.zone_to_transit.sort_values('time', inplace=True)
@@ -184,6 +205,48 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                     ztt = ztt.loc[ztt['n_trips'] > 0]
                     keep.append(index)
         self.zone_to_transit = self.zone_to_transit.loc[list(set(keep))]
+
+    def preparation_drop_redundant_footpaths(self, access_time='time', log=False):
+        a = len(self.footpaths)
+        g = nx.DiGraph()
+        g.add_weighted_edges_from(self.road_links[['a','b', 'walk_time']].values)
+        g.add_weighted_edges_from(self.road_to_transit[['a','b', access_time]].values)
+        g.add_weighted_edges_from(self.footpaths[['a','b', access_time]].values)
+        self.footpaths['dijkstra_time'] = [
+            nx.dijkstra_path_length(g, a, b) for a, b in self.footpaths[['a', 'b']].values
+        ]
+        self.footpaths = self.footpaths.loc[self.footpaths[access_time] <= self.footpaths['dijkstra_time']]
+        self.footpaths.drop('dijkstra_time', axis=1, inplace=True)
+        if log:
+            print('reduced number of footpaths from', a, 'to', len(self.footpaths))
+        
+    def preparation_drop_redundant_zone_to_road(self, access_time='time', log=False):
+        a = len(self.zone_to_road)
+        g = nx.DiGraph()
+        g.add_weighted_edges_from(self.road_links[['a','b', 'walk_time']].values)
+        g.add_weighted_edges_from(self.zone_to_road[['a','b', access_time]].values)
+       
+        self.zone_to_road['dijkstra_time'] = [
+            nx.dijkstra_path_length(g, a, b) for a, b in self.zone_to_road[['a', 'b']].values
+        ]
+        self.zone_to_road = self.zone_to_road.loc[self.zone_to_road[access_time] <= self.zone_to_road['dijkstra_time']]
+        self.zone_to_road.drop('dijkstra_time', axis=1, inplace=True)
+        if log:
+            print('reduced number of zone_to_road from', a, 'to', len(self.zone_to_road))
+        
+    def preparation_drop_redundant_road_to_transit(self, access_time='time', log=False):
+        a = len(self.road_to_transit)
+        g = nx.DiGraph()
+        g.add_weighted_edges_from(self.road_links[['a','b', 'walk_time']].values)
+        g.add_weighted_edges_from(self.road_to_transit[['a','b', access_time]].values)
+        
+        self.road_to_transit['dijkstra_time'] = [
+            nx.dijkstra_path_length(g, a, b) for a, b in self.road_to_transit[['a', 'b']].values
+        ]
+        self.road_to_transit = self.road_to_transit.loc[self.road_to_transit[access_time] <= self.road_to_transit['dijkstra_time']]
+        self.road_to_transit.drop('dijkstra_time', axis=1, inplace=True)
+        if log:
+            print('reduced number of road_to_transit from', a, 'to', len(self.road_to_transit))
 
     @track_args
     def preparation_cast_network(

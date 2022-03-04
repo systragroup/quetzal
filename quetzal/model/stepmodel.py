@@ -1,25 +1,11 @@
 import ntpath
 import shutil
 import uuid
-import warnings
-from functools import wraps
-
 from quetzal.model import analysismodel, docmodel, plotmodel
+from quetzal.model.integritymodel import deprecated_method
 
 
-def deprecated_method(method):
-    @wraps(method)
-    def decorated(self, *args, **kwargs):
-        message = 'Deprecated: replaced by %s' % method.__name__
-        warnings.warn(
-            message,
-            DeprecationWarning
-        )
-        print(message)
-        return method(self, *args, **kwargs)
 
-    decorated.__doc__ = 'deprecated! ' + str(decorated.__doc__)
-    return decorated
 
 
 def read_hdf(filepath, *args, **kwargs):

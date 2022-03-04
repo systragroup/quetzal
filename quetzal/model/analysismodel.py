@@ -151,10 +151,10 @@ class AnalysisModel(summarymodel.SummaryModel):
         )
         self.pt_los['route_type'] = self.pt_los['route_types'].apply(higher_route_type)
         try:
-            self.pr_los['route_types'] = self.pr_los['link_path'].apply(
+            self.pr_los['route_types'] = self.pr_los['link_path_transit'].apply(
                 lambda p: ('car',) + tuple({route_type_dict[l] for l in p})
             )
-            self.pr_los['route_type'] = self.pr_los['route_types'].apply(higher_route_type)
+            self.pr_los['route_type'] = 'parkride'
         except (AttributeError, KeyError):
             pass
 
@@ -189,37 +189,45 @@ class AnalysisModel(summarymodel.SummaryModel):
             centroids=self.zones,
         )
 
-    def lighten_car_los(self):
-        self.car_los = self.car_los.drop(
-            ['node_path', 'link_path', 'ntlegs'],
-            axis=1, errors='ignore'
-        )
+    def lighten_car_los(self, los_attributes=['car_los']):
+        to_drop = ['node_path', 'link_path', 'ntlegs']
+        for los in los_attributes:
+            self.__getattribute__(los).drop(to_drop, axis=1, errors='ignore', inplace=True)
 
-    def lighten_pt_los(self):
+    def lighten_pt_los(self, los_attributes=['pt_los']):
         to_drop = [
             'alighting_links', 'alightings', 'all_walk', 'boarding_links', 'boardings',
             'footpaths', 'length_link_path', 'link_path', 'node_path', 'ntlegs',
             'time_link_path', 'transfers'
         ]
-        self.pt_los = self.pt_los.drop(to_drop, axis=1, errors='ignore')
+        for los in los_attributes:
+            try:
+                self.__getattribute__(los).drop(to_drop, axis=1, errors='ignore', inplace=True)
+            except AttributeError as e:
+                print(e)
 
-    def lighten_los(self):
+
+
+    def lighten_los(self, keep_summary_columns=False):
         try:
-            self.lighten_pt_los()
+            self.lighten_pt_los(los_attributes=['pt_los', 'los'])
         except AttributeError:
             pass
         try:
-            self.lighten_pr_los()
+            self.lighten_pr_los(
+                los_attributes=['pr_los', 'los'], 
+                keep_summary_columns=keep_summary_columns
+            )
         except AttributeError:
             pass
         try:
-            self.lighten_car_los()
+            self.lighten_car_los(los_attributes=['car_los', 'los'])
         except AttributeError:
             pass
 
-    def lighten(self):
+    def lighten(self, keep_summary_columns=False):
         # to be completed
-        self.lighten_los()
+        self.lighten_los(keep_summary_columns=keep_summary_columns)
 
     def analysis_car_route_type(self):
         self.car_los['route_types'] = [tuple(['car']) for i in self.car_los.index]
@@ -297,16 +305,28 @@ class AnalysisModel(summarymodel.SummaryModel):
 
         assert alighting_time is None, 'cannot perform analysis_pt_time with alighting_time'
 
-        footpaths = self.footpaths
-        access = self.zone_to_transit
-
         if walk_on_road:
             road_links = self.road_links.copy()
             road_links['time'] = road_links['walk_time']
             road_to_transit = self.road_to_transit.copy()
             road_to_transit['length'] = road_to_transit['distance']
-            footpaths = pd.concat([road_links, road_to_transit, self.footpaths])
-            access = pd.concat([self.zone_to_road, self.zone_to_transit])
+            
+            to_concat = [road_links, road_to_transit]
+            try:
+                to_concat.append(self.footpaths)
+            except AttributeError:
+                pass
+            footpaths = pd.concat(to_concat)
+
+            to_concat = [self.zone_to_road]
+            try:
+                to_concat.append(self.zone_to_transit)
+            except AttributeError:
+                pass
+            access = pd.concat(to_concat)
+        else :
+            footpaths = self.footpaths
+            access = self.zone_to_transit
 
         d = access.set_index(['a', 'b'])['time'].to_dict()
         self.pt_los['access_time'] = self.pt_los['ntlegs'].apply(
@@ -337,16 +357,31 @@ class AnalysisModel(summarymodel.SummaryModel):
         ].T.sum()
 
     def analysis_pt_length(self, walk_on_road=False):
-        footpaths = self.footpaths
-        access = self.zone_to_transit
+
 
         if walk_on_road:
             road_links = self.road_links.copy()
             road_links['time'] = road_links['walk_time']
             road_to_transit = self.road_to_transit.copy()
             road_to_transit['length'] = road_to_transit['distance']
-            footpaths = pd.concat([road_links, road_to_transit, self.footpaths])
-            access = pd.concat([self.zone_to_road, self.zone_to_transit])
+
+            to_concat = [road_links, road_to_transit]
+            try:
+                to_concat.append(self.footpaths)
+            except AttributeError:
+                pass
+            footpaths = pd.concat(to_concat)
+
+            to_concat = [self.zone_to_road]
+            try:
+                to_concat.append(self.zone_to_transit)
+            except AttributeError:
+                pass
+            access = pd.concat(to_concat)
+        else :
+            footpaths = self.footpaths
+            access = self.zone_to_transit
+
 
         d = access.set_index(['a', 'b'])['distance'].to_dict()
         self.pt_los['access_length'] = self.pt_los['ntlegs'].apply(
@@ -512,6 +547,28 @@ class AnalysisModel(summarymodel.SummaryModel):
             sorted_edges = edges.loc[indexer].dropna(subset=['a', 'b'])
             line_tuple_geometries[line_tuple] = geometries.connected_geometries(sorted_edges)
         return geometries.geometries_with_side(line_tuple_geometries, width=width)
+
+    def compute_transfers_list(self):
+        route_dict = self.links['route_id'].to_dict()
+        stop_code_dict = self.nodes['stop_code'].to_dict()
+        df = self.pt_los[['alightings', 'boardings', 'alighting_links', 'boarding_links']]
+        leg_tuples = [tuple(zip(*[r[0][:-1], r[1][1:], r[2][:-1], r[3][1:]])) for r in df.values]
+
+        values = []
+        for leg in leg_tuples:
+            transfers_lists = []
+        
+            for transfer_node_a, transfer_node_b, alighting_link, boarding_link in leg:
+                route_id_a = route_dict[alighting_link]
+                route_id_b = route_dict[boarding_link]
+                stop_code_a = stop_code_dict[transfer_node_a]
+                stop_code_b = stop_code_dict[transfer_node_b]
+                
+                transfers_lists.append(
+                    (stop_code_a, stop_code_b, route_id_a, route_id_b)
+                )
+            values.append(transfers_lists)
+        self.pt_los['transfers_list'] = values
 
     def compute_arod_list(self):
         agency_dict = self.links['agency_id'].to_dict()
