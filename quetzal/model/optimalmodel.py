@@ -295,8 +295,12 @@ class OptimalModel(preparationmodel.PreparationModel):
 
         # transform node -> (node, trip_id) to node -> trip_id
         links = self.links.copy()
-        links['j'] = [tuple(l) for l in links[['b', 'trip_id']].values]
-        links['i'] = [tuple(l) for l in links[['a', 'trip_id']].values]
+        if 'disaggregated_a' in links.columns and 'disaggregated_b' in links.columns:
+            links['j'] = [tuple(l) for l in links[['disaggregated_b', 'trip_id']].values]
+            links['i'] = [tuple(l) for l in links[['disaggregated_a', 'trip_id']].values]
+        else:
+            links['j'] = [tuple(l) for l in links[['b', 'trip_id']].values]
+            links['i'] = [tuple(l) for l in links[['a', 'trip_id']].values]
         transit = pd.merge(links, ode[['i', 'j', 'ix']], on=['i', 'j'])
         boardings = pd.merge(links[['a', 'i', 'trip_id']], ode[['i', 'j', 'ix']], left_on=['a', 'i'], right_on=['i', 'j'])
         alightings = pd.merge(links[['j', 'b', 'trip_id']], ode[['i', 'j', 'ix']], left_on=['j', 'b'], right_on=['i', 'j'])

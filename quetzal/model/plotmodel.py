@@ -276,6 +276,7 @@ class PlotModel(summarymodel.SummaryModel):
     def display_aggregated_edges(self, origin, destination, ranksep=0.1, rankdir='LR', *args, **kwargs):
         from graphviz import Source
         a = self.get_aggregated_edges(origin, destination, *args, **kwargs)
+        a = a.groupby(['i', 'j'], as_index=False)[['p']].sum() # for clusters
         a['l'] = 'p=' + np.round(a['p'], 2).astype(str)  # + '\nh:' + a['h'].astype(str)
         a.loc[a['p'] == 1, 'l'] = ''
 
