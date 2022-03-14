@@ -33,6 +33,8 @@ def interstitial_polygons(geometries, buffer=1e-9, hull_buffer=1):
     convex_hull = multi.convex_hull
     convex_hull_buffer = convex_hull.buffer(hull_buffer)
     voids = convex_hull_buffer.difference(multi)
+    if isinstance(voids, shapely.geometry.Polygon):
+        voids = shapely.geometry.MultiPolygon([voids])
     voids = [v for v in voids if convex_hull.contains(v)]
     return voids
 
