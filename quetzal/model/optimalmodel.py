@@ -339,3 +339,51 @@ class OptimalModel(preparationmodel.PreparationModel):
             a.loc[a['j'].isin(irrelevant_nodes), 'j'] = loc.apply(
                 lambda j: get_relevant_node(j, irrelevant_nodes, g))
         return a
+
+    def analysis_strategy_paths(self, with_demand_only=True):
+        """
+        Split each strategy into all its paths with probabilities to compute indicators
+        """
+
+        strategy_edges = self.optimal_strategy_edges[['i', 'j', 'f', 'c']].copy()
+        strategy_sets = self.optimal_strategy_sets.copy()
+        if with_demand_only:
+            destination_origins = self.volumes.groupby('destination')['origin'].agg(list).to_dict()
+        else:
+            destination_origins = {z: self.zones.index for z in self.zones.index}
+
+        all_paths = get_strategy_paths(strategy_edges, strategy_sets, destination_origins)
+        self.optimal_strategy_paths = pd.DataFrame(all_paths, columns=['origin', 'destination', 'link_path', 'path', 'probability'])
+
+
+def get_strategy_paths(strategy_edges, strategy_sets, destination_origins):
+    all_paths = []
+    
+    for destination, origins in tqdm(destination_origins.items()):
+        edges = strategy_edges.loc[strategy_sets.loc[destination]]
+        edges['ix'] = edges.index
+
+        # removing the edges that are non relevant (p<1e-6)
+        f_total = edges.groupby('i')[['f']].sum()
+        edges = pd.merge(edges, f_total, left_on='i', right_index=True, suffixes=['', '_total'])
+        edges['p'] = np.round(edges['f'] / edges['f_total'], 6)
+        edges = edges.loc[edges['p'] > 0]
+
+        # restriction to the origin
+        g = nx.DiGraph()
+        for e in edges.to_dict(orient='records'):
+            g.add_edge(e['i'], e['j'])
+
+        # edge probabilities
+        edges_prob = edges.set_index(['i', 'j'])['p'].to_dict()
+
+        for origin in origins:
+            paths = nx.all_simple_paths(g, source=origin, target=destination)
+            for p in paths:
+                p_edges = list(zip(p[:-1], p[1:]))
+                probabilities = np.prod(
+                    [edges_prob.get(ij) for ij in p_edges]
+                )
+                all_paths.append([origin, destination, p_edges, tuple(p), np.prod(probabilities)])
+
+    return all_paths
