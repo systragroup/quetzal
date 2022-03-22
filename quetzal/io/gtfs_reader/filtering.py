@@ -50,7 +50,7 @@ def restrict_to_services(feed, service_ids: List[str], drop_unused=True):
     if drop_unused:
         feed.drop_unused()
 
-    return restrict_to_trips(feed, trip_ids)
+    return restrict_to_trips(feed, trip_ids, drop_unused=drop_unused)
 
 
 def restrict_to_timerange(feed, time_range, drop_unused=True):
@@ -113,7 +113,7 @@ def restrict_to_timerange(feed, time_range, drop_unused=True):
 
     if drop_unused:
         feed.drop_unused()
-    return restrict_to_trips(feed, trip_ids)
+    return restrict_to_trips(feed, trip_ids, drop_unused=drop_unused)
 
 
 def restrict_to_trips(feed, trip_ids, drop_unused=True):
@@ -136,12 +136,13 @@ def restrict_to_trips(feed, trip_ids, drop_unused=True):
     feed.stop_times = feed.stop_times.loc[lambda x: x.trip_id.isin(trip_ids)]
 
     # Slice stops
-    stop_ids = feed.stop_times.stop_id.unique()
-    f = feed.stops.copy()
-    cond = f.stop_id.isin(stop_ids)
-    if "location_type" in f.columns:
-        cond |= ~f.location_type.isin([0, np.nan])
-    feed.stops = f[cond].copy()
+    if drop_unused:
+        stop_ids = feed.stop_times.stop_id.unique()
+        f = feed.stops.copy()
+        cond = f.stop_id.isin(stop_ids)
+        if "location_type" in f.columns:
+            cond |= ~f.location_type.isin([0, np.nan])
+        feed.stops = f[cond].copy()
 
     # Slice calendar
     service_ids = feed.trips['service_id'].unique()
@@ -241,7 +242,7 @@ def restrict_to_dates(feed, dates, drop_unused=True):
         active_services = active_services.union(set(services))
 
     active_services = list(active_services)
-    feed = restrict_to_services(feed, active_services)
+    feed = restrict_to_services(feed, active_services, drop_unused=drop_unused)
     feed.calendar = None
     feed.calendar_dates = new_calendar_dates
 
@@ -266,7 +267,7 @@ def restrict_to_area(feed, polygon_4326, how='inner', drop_unused=True):
         f.transfers = f.transfers.loc[f.transfers['from_stop_id'].isin(f.stops['stop_id'])]
         f.transfers = f.transfers.loc[f.transfers['to_stop_id'].isin(f.stops['stop_id'])]
     relevant_trips = (f.stop_times['trip_id'])
-    f = f.restrict(trip_ids=relevant_trips)
+    f = f.restrict(trip_ids=relevant_trips, drop_unused=drop_unused)
 
     if drop_unused:
         f.drop_unused()
@@ -274,4 +275,4 @@ def restrict_to_area(feed, polygon_4326, how='inner', drop_unused=True):
     if how == 'inner':
         return f
     else:
-        return feed.restrict(trip_ids=relevant_trips)
+        return feed.restrict(trip_ids=relevant_trips, drop_unused=drop_unused)

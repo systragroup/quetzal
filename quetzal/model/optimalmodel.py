@@ -43,8 +43,12 @@ class OptimalModel(preparationmodel.PreparationModel):
             footpaths = self.footpaths.copy()
 
         # transit edges
-        links['j'] = [tuple(l) for l in links[['b', 'trip_id']].values]
-        links['i'] = [tuple(l) for l in links[['a', 'trip_id']].values]
+        if 'disaggregated_a' in links.columns and 'disaggregated_b' in links.columns:
+            links['j'] = [tuple(l) for l in links[['disaggregated_b', 'trip_id']].values]
+            links['i'] = [tuple(l) for l in links[['disaggregated_a', 'trip_id']].values]
+        else:
+            links['j'] = [tuple(l) for l in links[['b', 'trip_id']].values]
+            links['i'] = [tuple(l) for l in links[['a', 'trip_id']].values]
         links['f'] = inf
         links['c'] = links['time']
         transit_edges = links[['i', 'j', 'f', 'c']].reset_index().values.tolist()
@@ -103,6 +107,7 @@ class OptimalModel(preparationmodel.PreparationModel):
             forbidden = destinations - {destination}
             edges = [e for e in all_edges if e[2] not in forbidden]
             strategy, u, f = optimal_strategy.find_optimal_strategy(edges, destination)
+            # print(strategy, u, f)
             s_dict[destination] = strategy
             node_df = pd.DataFrame({'f': pd.Series(f), 'u': pd.Series(u)})
             node_df['destination'] = destination
@@ -168,8 +173,12 @@ class OptimalModel(preparationmodel.PreparationModel):
         links = self.links.copy()
         links['index'] = links.index
         # transit edges
-        links['j'] = [tuple(l) for l in links[['b', 'trip_id']].values]
-        links['i'] = [tuple(l) for l in links[['a', 'trip_id']].values]
+        if 'disaggregated_a' in links.columns and 'disaggregated_b' in links.columns:
+            links['j'] = [tuple(l) for l in links[['disaggregated_b', 'trip_id']].values]
+            links['i'] = [tuple(l) for l in links[['disaggregated_a', 'trip_id']].values]
+        else:
+            links['j'] = [tuple(l) for l in links[['b', 'trip_id']].values]
+            links['i'] = [tuple(l) for l in links[['a', 'trip_id']].values]
 
         transit = pd.merge(links, df, on=['i', 'j'])
         boardings = pd.merge(links, df, left_on=['a', 'i'], right_on=['i', 'j'])
@@ -178,7 +187,9 @@ class OptimalModel(preparationmodel.PreparationModel):
         loaded_links = self.links.copy()
 
         loaded_links[volume_column] = transit.set_index('index')[volume_column]
+        boardings.drop_duplicates(subset=['index'], inplace=True)
         loaded_links['boardings'] = boardings.set_index('index')[volume_column]
+        alightings.drop_duplicates(subset=['index'], inplace=True)
         loaded_links['alightings'] = alightings.set_index('index')[volume_column]
 
         loaded_nodes = self.nodes.copy()
@@ -206,13 +217,14 @@ class OptimalModel(preparationmodel.PreparationModel):
         edges = self.optimal_strategy_edges
         edges['rtt_time'] = self.road_to_transit['time']
         edges['ztr_time'] = self.zone_to_road['time']
+        edges['ztt_time'] = self.zone_to_transit['time']
         edges['in_vehicle_time'] = self.links['time']
         edges.loc[['boarding_' in i for i in edges.index], 'boarding_time'] = boarding_time
         edges.loc[['alighting_' in i for i in edges.index], 'alighting_time'] = alighting_time
         if walk_on_road:
             edges['road_time'] = self.road_links['walk_time']
             edges.fillna(0, inplace=True)
-            edges['walk_time'] = edges['road_time'] + edges['rtt_time'] + edges['ztr_time']
+            edges['walk_time'] = edges['road_time'] + edges['rtt_time'] + edges['ztr_time'] + edges['ztt_time']
 
         self.optimal_strategy_edges = edges
         
@@ -289,8 +301,12 @@ class OptimalModel(preparationmodel.PreparationModel):
 
         # transform node -> (node, trip_id) to node -> trip_id
         links = self.links.copy()
-        links['j'] = [tuple(l) for l in links[['b', 'trip_id']].values]
-        links['i'] = [tuple(l) for l in links[['a', 'trip_id']].values]
+        if 'disaggregated_a' in links.columns and 'disaggregated_b' in links.columns:
+            links['j'] = [tuple(l) for l in links[['disaggregated_b', 'trip_id']].values]
+            links['i'] = [tuple(l) for l in links[['disaggregated_a', 'trip_id']].values]
+        else:
+            links['j'] = [tuple(l) for l in links[['b', 'trip_id']].values]
+            links['i'] = [tuple(l) for l in links[['a', 'trip_id']].values]
         transit = pd.merge(links, ode[['i', 'j', 'ix']], on=['i', 'j'])
         boardings = pd.merge(links[['a', 'i', 'trip_id']], ode[['i', 'j', 'ix']], left_on=['a', 'i'], right_on=['i', 'j'])
         alightings = pd.merge(links[['j', 'b', 'trip_id']], ode[['i', 'j', 'ix']], left_on=['j', 'b'], right_on=['i', 'j'])
@@ -329,3 +345,51 @@ class OptimalModel(preparationmodel.PreparationModel):
             a.loc[a['j'].isin(irrelevant_nodes), 'j'] = loc.apply(
                 lambda j: get_relevant_node(j, irrelevant_nodes, g))
         return a
+
+    def analysis_strategy_paths(self, with_demand_only=True):
+        """
+        Split each strategy into all its paths with probabilities to compute indicators
+        """
+
+        strategy_edges = self.optimal_strategy_edges[['i', 'j', 'f', 'c']].copy()
+        strategy_sets = self.optimal_strategy_sets.copy()
+        if with_demand_only:
+            destination_origins = self.volumes.groupby('destination')['origin'].agg(list).to_dict()
+        else:
+            destination_origins = {z: self.zones.index for z in self.zones.index}
+
+        all_paths = get_strategy_paths(strategy_edges, strategy_sets, destination_origins)
+        self.optimal_strategy_paths = pd.DataFrame(all_paths, columns=['origin', 'destination', 'link_path', 'path', 'probability'])
+
+
+def get_strategy_paths(strategy_edges, strategy_sets, destination_origins):
+    all_paths = []
+    
+    for destination, origins in tqdm(destination_origins.items()):
+        edges = strategy_edges.loc[strategy_sets.loc[destination]]
+        edges['ix'] = edges.index
+
+        # removing the edges that are non relevant (p<1e-6)
+        f_total = edges.groupby('i')[['f']].sum()
+        edges = pd.merge(edges, f_total, left_on='i', right_index=True, suffixes=['', '_total'])
+        edges['p'] = np.round(edges['f'] / edges['f_total'], 6)
+        edges = edges.loc[edges['p'] > 0]
+
+        # restriction to the origin
+        g = nx.DiGraph()
+        for e in edges.to_dict(orient='records'):
+            g.add_edge(e['i'], e['j'])
+
+        # edge probabilities
+        edges_prob = edges.set_index(['i', 'j'])['p'].to_dict()
+
+        for origin in origins:
+            paths = nx.all_simple_paths(g, source=origin, target=destination)
+            for p in paths:
+                p_edges = list(zip(p[:-1], p[1:]))
+                probabilities = np.prod(
+                    [edges_prob.get(ij) for ij in p_edges]
+                )
+                all_paths.append([origin, destination, p_edges, tuple(p), np.prod(probabilities)])
+
+    return all_paths

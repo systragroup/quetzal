@@ -101,9 +101,11 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 max_ntleg_length=5000
             )
         """
-        self.centroids = self.zones.copy()
-        self.centroids['geometry'] = self.centroids['geometry'].apply(
-            lambda g: g.centroid)
+        # if some centroids are missing, we build them
+        if self.centroids.equals(integritymodel.geodataframe_place_holder('Point')):
+            self.centroids = self.zones.copy()
+            self.centroids['geometry'] = self.centroids['geometry'].apply(
+                lambda g: g.centroid)
 
         length = max_ntleg_length
 
