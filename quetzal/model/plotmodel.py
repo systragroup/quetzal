@@ -106,6 +106,9 @@ class PlotModel(summarymodel.SummaryModel):
         ax=None,
         separated=False,
         basemap_url=None,
+        basemap_raster=None,
+        north_arrow=None,
+        scalebar=None,
         zoom=9,
         *args,
         **kwargs
@@ -116,21 +119,33 @@ class PlotModel(summarymodel.SummaryModel):
         paths = self.car_los.set_index(['origin', 'destination']).loc[origin, destination]
         if paths.ndim == 1: # their is only one path 
             paths = pd.DataFrame(data=paths).T 
-            
+        def build_road_path(p, lp):
+            if len(p):
+                rp = p[:2]
+                rp += lp
+                rp += p[-2:]
+                return rp
+            else:
+                return lp
+        paths['road_path'] = paths[['path', 'link_path']].apply(
+            lambda x: build_road_path(x['path'], x['link_path']), 1
+        )
         # the path is added to the ax
-        for p in tqdm(list(paths['path'])):
+        for p in tqdm(list(paths['road_path'])):
             ax = plot_one_path(p, styles, ax=ax)
             ax.set_xticks([])
             ax.set_yticks([])
 
-        for p in tqdm(list(paths['link_path'])):
-            ax = plot_one_path(p, styles, ax=ax)
-            ax.set_xticks([])
-            ax.set_yticks([])
 
         if basemap_url is not None:
             assert self.epsg == 3857
             data_visualization.add_basemap(ax, url=basemap_url, zoom=zoom)
+        if north_arrow is not None:
+            data_visualization.add_north(ax)
+        if scalebar is not None:
+            data_visualization.add_scalebar(ax)
+        if basemap_raster is not None:
+            data_visualization.add_raster(ax, raster=basemap_raster)
         
         return ax
 

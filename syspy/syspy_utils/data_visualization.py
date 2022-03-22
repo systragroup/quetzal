@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import rasterio
-from rasterio import plot as _
+from rasterio import plot
 import six
 from shapely import geometry
 from sklearn import linear_model
