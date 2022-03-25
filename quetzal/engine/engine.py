@@ -452,11 +452,11 @@ def loaded_links_and_nodes(
 
     analysis_col = []
     if boardings:
-        analysis_col.append('boardings', 'boarding_links')
+        analysis_col += ['boardings', 'boarding_links']
     if alightings:
-        analysis_col.append('alightings', 'alighting_links')
+        analysis_col += ['alightings', 'alighting_links']
     if transfers:
-        analysis_col.append('transfers')
+        analysis_col += ['transfers']
 
     # use it in order to add probability to paths
     path_finder_stack['pivot'] = 1

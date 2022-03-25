@@ -4,31 +4,38 @@ import pandas as pd
 from tqdm import tqdm
 
 
-def read_var(file='parameters.xlsx', scenario='base'):
-    parameter_frame = pd.read_excel(file)
+def read_var(file='parameters.xlsx', scenario='base', period=None):
+    parameter_frame = pd.read_excel(file).dropna(axis=1, how='all')
     try:
         types = parameter_frame.set_index(
             ['category', 'parameter']
         )['type'].dropna().to_dict()
     except KeyError:
         types = dict()
-    parameter_frame.drop(['description', 'unit', 'type'], axis=1, errors='ignore', inplace=True)
+    if period is not None:
+        mask  = ((parameter_frame['period'].isna()) | 
+                (parameter_frame['period'].str.casefold() == period.casefold()))
+        parameter_frame = parameter_frame[mask]
+    parameter_frame.drop(['description', 'unit', 'type', 'period'], axis=1, errors='ignore', inplace=True)
     parameter_frame.set_index(['category', 'parameter'], inplace=True)
     for c in parameter_frame.columns:
         parent = parameter_frame[c][('general', 'parent')]
         parameter_frame[c] = parameter_frame[c].fillna(parameter_frame[parent])
     var = parameter_frame[scenario]
     for k, v in types.items():
-        if v == 'float':
-            var.loc[k] = float(var.loc[k])
-        elif v == 'int':
-            var.loc[k] = int(var.loc[k])
-        elif v == 'bool':
-            var.loc[k] = bool(var.loc[k])
-        elif v == 'str':
-            var.loc[k] = str(var.loc[k])
-        elif v == 'json':
-            var.loc[k] = json.loads(var.loc[k])
+        try:
+            if v == 'float':
+                var.loc[k] = float(var.loc[k])
+            elif v == 'int':
+                var.loc[k] = int(var.loc[k])
+            elif v == 'bool':
+                var.loc[k] = bool(var.loc[k])
+            elif v == 'str':
+                var.loc[k] = str(var.loc[k])
+            elif v == 'json':
+                var.loc[k] = json.loads(var.loc[k])
+        except KeyError:
+            pass
     return var
 
 
