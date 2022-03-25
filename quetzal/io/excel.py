@@ -23,16 +23,19 @@ def read_var(file='parameters.xlsx', scenario='base', period=None):
         parameter_frame[c] = parameter_frame[c].fillna(parameter_frame[parent])
     var = parameter_frame[scenario]
     for k, v in types.items():
-        if v == 'float':
-            var.loc[k] = float(var.loc[k])
-        elif v == 'int':
-            var.loc[k] = int(var.loc[k])
-        elif v == 'bool':
-            var.loc[k] = bool(var.loc[k])
-        elif v == 'str':
-            var.loc[k] = str(var.loc[k])
-        elif v == 'json':
-            var.loc[k] = json.loads(var.loc[k])
+        try:
+            if v == 'float':
+                var.loc[k] = float(var.loc[k])
+            elif v == 'int':
+                var.loc[k] = int(var.loc[k])
+            elif v == 'bool':
+                var.loc[k] = bool(var.loc[k])
+            elif v == 'str':
+                var.loc[k] = str(var.loc[k])
+            elif v == 'json':
+                var.loc[k] = json.loads(var.loc[k])
+        except KeyError:
+            pass
     return var
 
 
