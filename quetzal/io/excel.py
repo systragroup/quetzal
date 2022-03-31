@@ -1,4 +1,5 @@
 import json
+import os
 
 import pandas as pd
 from tqdm import tqdm
@@ -16,7 +17,10 @@ def read_var(file='parameters.xlsx', scenario='base', period=None):
         mask  = ((parameter_frame['period'].isna()) | 
                 (parameter_frame['period'].str.casefold() == period.casefold()))
         parameter_frame = parameter_frame[mask]
-    parameter_frame.drop(['description', 'unit', 'type', 'period'], axis=1, errors='ignore', inplace=True)
+        parameter_frame.sort_values('period', inplace=True)
+        parameter_frame.drop_duplicates(subset=['category','parameter'], inplace=True)
+        parameter_frame.sort_index(inplace=True)
+    parameter_frame.drop(['description', 'desc', 'unit', 'type', 'period'], axis=1, errors='ignore', inplace=True)
     parameter_frame.set_index(['category', 'parameter'], inplace=True)
     for c in parameter_frame.columns:
         parent = parameter_frame[c][('general', 'parent')]
@@ -68,3 +72,33 @@ def merge_files(
     with pd.ExcelWriter(merged_filepath) as writer:  # doctest: +SKIP
         for name, stack in tqdm(stacks.items(), desc='writing'):
             stack.to_excel(writer, sheet_name=name, index=False)
+
+def get_ancestry(file='parameters.xlsx', scenario='base'):
+    parameter_frame = pd.read_excel(file).dropna(axis=1, how='all')
+    parameter_frame.set_index(['category', 'parameter'], inplace=True)
+    parameter_frame.sort_index(inplace=True)
+    child = scenario
+    ancestry = [child]
+    while True:
+        parent = parameter_frame.loc[('general','parent'), child].values[0]
+        if parent == child: break
+        ancestry.append(parent)
+        child = parent
+    return ancestry
+
+def get_filepath(filepath, inputs_folder= 'inputs/', ancestry=['base'], log=True):
+    for scen in ancestry:
+        scenpath = inputs_folder+scen+'/'
+        if log and not os.path.exists(scenpath): 
+            print(scenpath+" does not exist, skipping to its parent")
+            continue
+        relpath = scenpath+filepath
+        if os.path.exists(relpath):
+            if log: 
+                print("specified file found: "+relpath)
+            return relpath
+        if log:
+            print("specified file does not exist in "+scenpath)
+    if log:
+        print("specified file or input path does not exist")
+    return None
