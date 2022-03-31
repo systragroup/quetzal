@@ -5,14 +5,15 @@ import pandas as pd
 from tqdm import tqdm
 
 
-def read_var(file='parameters.xlsx', scenario='base', period=None):
-    parameter_frame = pd.read_excel(file).dropna(axis=1, how='all')
+def read_var(file='parameters.xlsx', scenario='base', period=None, return_ancestry=False):
+    parameter_frame = pd.read_excel(file, sheet_name='parameters').dropna(axis=1, how='all')
     try:
         types = parameter_frame.set_index(
             ['category', 'parameter']
         )['type'].dropna().to_dict()
     except KeyError:
         types = dict()
+    
     if period is not None:
         mask  = ((parameter_frame['period'].isna()) | 
                 (parameter_frame['period'].str.casefold() == period.casefold()))
@@ -22,6 +23,8 @@ def read_var(file='parameters.xlsx', scenario='base', period=None):
         parameter_frame.sort_index(inplace=True)
     parameter_frame.drop(['description', 'desc', 'unit', 'type', 'period'], axis=1, errors='ignore', inplace=True)
     parameter_frame.set_index(['category', 'parameter'], inplace=True)
+    if return_ancestry:
+        ancestry = get_ancestry(parameter_frame, scenario=scenario)
     for c in parameter_frame.columns:
         parent = parameter_frame[c][('general', 'parent')]
         parameter_frame[c] = parameter_frame[c].fillna(parameter_frame[parent])
@@ -40,6 +43,8 @@ def read_var(file='parameters.xlsx', scenario='base', period=None):
                 var.loc[k] = json.loads(var.loc[k])
         except KeyError:
             pass
+    if return_ancestry:
+        return var, ancestry
     return var
 
 
@@ -73,32 +78,25 @@ def merge_files(
         for name, stack in tqdm(stacks.items(), desc='writing'):
             stack.to_excel(writer, sheet_name=name, index=False)
 
-def get_ancestry(file='parameters.xlsx', scenario='base'):
-    parameter_frame = pd.read_excel(file).dropna(axis=1, how='all')
-    parameter_frame.set_index(['category', 'parameter'], inplace=True)
-    parameter_frame.sort_index(inplace=True)
+def get_ancestry(parameter_frame, scenario='base'):
     child = scenario
     ancestry = [child]
     while True:
-        parent = parameter_frame.loc[('general','parent'), child].values[0]
+        parent = parameter_frame.loc[('general','parent'), child]
         if parent == child: break
         ancestry.append(parent)
         child = parent
     return ancestry
 
-def get_filepath(filepath, inputs_folder= 'inputs/', ancestry=['base'], log=True):
+def get_filepath(filepath, ancestry=['base'], log=True):
     for scen in ancestry:
-        scenpath = inputs_folder+scen+'/'
-        if log and not os.path.exists(scenpath): 
-            print(scenpath+" does not exist, skipping to its parent")
-            continue
-        relpath = scenpath+filepath
+        relpath = filepath.format(s=scen)
         if os.path.exists(relpath):
             if log: 
-                print("specified file found: "+relpath)
+                print(f"specified file found: {relpath}")
             return relpath
         if log:
-            print("specified file does not exist in "+scenpath)
+            print(f"{relpath} does not exist")
     if log:
         print("specified file or input path does not exist")
     return None
