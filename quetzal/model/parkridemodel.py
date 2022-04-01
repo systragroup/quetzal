@@ -61,6 +61,7 @@ class ParkRideModel(preparationmodel.PreparationModel):
         pr_nodes=None,
         reverse=False,
         zrn_access_time='time',
+        road_time = 'time'
     ):
         # zn = 'a' keeps zone->road zn='b' keeps road->zone
         zn, pn = ('b', 'a') if reverse else ('a', 'b')
@@ -74,20 +75,23 @@ class ParkRideModel(preparationmodel.PreparationModel):
 
         edges = ztr[['a', 'b', 'time']].values.tolist()
         edges += rtt[['a', 'b', 'time']].values.tolist()
-        edges += self.road_links[['a', 'b', 'time']].values.tolist()
+        edges += self.road_links[['a', 'b', road_time]].values.tolist()
         return edges
 
     def get_zone_road_node(
         self, pr_nodes=None, reverse=False,
         zrn_access_time='time',
-        cutoff=np.inf,
+        road_time='time',
+        cutoff=np.inf
+
     ):
         zn = 'b' if reverse else 'a'
         zones = set(self.zones.index).intersection(self.zone_to_road[zn])
 
         zrt_edges = self.zone_road_node_edges(
             zrn_access_time=zrn_access_time,
-            pr_nodes=pr_nodes, reverse=reverse
+            pr_nodes=pr_nodes, reverse=reverse,
+            road_time=road_time
         )
         matrix, node_index = pathfinder_utils.sparse_matrix(zrt_edges)
 
@@ -105,9 +109,10 @@ class ParkRideModel(preparationmodel.PreparationModel):
     def build_park_ride_shortcuts(
         self, pr_nodes,
         zrn_access_time='time',
+        road_time='time',
         boarding_time=None, alighting_time=None,
         reverse=False,
-        cutoff=np.inf
+        cutoff=np.inf,
     ):
         # MORNING
         self.node_transit_zone = self.get_node_transit_zone(
@@ -118,7 +123,8 @@ class ParkRideModel(preparationmodel.PreparationModel):
         self.zone_road_node = self.get_zone_road_node(
             zrn_access_time=zrn_access_time,
             pr_nodes=pr_nodes, reverse=reverse,
-            cutoff=cutoff
+            cutoff=cutoff,
+            road_time=road_time
         )
 
     def combine_shortcuts(

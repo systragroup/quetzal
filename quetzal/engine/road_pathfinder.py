@@ -229,17 +229,20 @@ class RoadPathFinder:
         **kwargs):
         '''
         maxiters = 10 : number of iteration.
-        tolerance = 0.01 : stop condition for RelGap.
+        tolerance = 0.01 : stop condition for RelGap. (in percent)
         log = False : log data on each iteration.
         vdf = {'default_bpr': default_bpr,'free_flow':free_flow} : dict of function for the jam time.
         volume_column='volume_car' : column of self.volumes to use for volume
+        BFW = False: if true, biconjugate-frank-wolfe algorithm
+        beta = None. give constant value foir BFW batas. ex: [0.7,0.2,0.1]
+        num_cores = 1 : for parallelization. 
         '''
 
         v = self.volumes
 
         self.zone_to_road_preparation(**kwargs)
 
-        #create DataFrame with road_links and zone top road
+        #create DataFrame with road_links and zone to road
         df = self.init_df()
 
         # CREATE EDGES FOR SPARSE MATRIX
@@ -271,9 +274,11 @@ class RoadPathFinder:
         df['auxiliary_flow'] = pd.Series(ab_volumes)
         df['auxiliary_flow'].fillna(0, inplace=True)
         df['flow'] += df['auxiliary_flow'] # do not do += in a cell where the variable is not created! bad
-        df['jam_time'] = jam_time(df,vdf,'flow')
-        df['jam_time'].fillna(df['time'], inplace=True)
-
+        if maxiters!=0:
+            df['jam_time'] = jam_time(df,vdf,'flow')
+            df['jam_time'].fillna(df['time'], inplace=True)
+        else:
+            df['jam_time'] = df['time']
         rel_gap = []
         if log:
             print('iteration | Phi |  Rel Gap (%)')
@@ -327,14 +332,15 @@ class RoadPathFinder:
 
             df['jam_time'] = jam_time(df,vdf,'flow')
             df['jam_time'].fillna(df['time'], inplace=True)
-            if rel_gap[-1] <= tolerance*100:
+            if rel_gap[-1] <= tolerance:
                 break
 
         # finish.. format to quetzal object
         self.road_links['flow'] = self.road_links.set_index(['a','b']).index.map(df['flow'].to_dict().get)
         self.road_links['jam_time'] = self.road_links.set_index(['a','b']).index.map(df['jam_time'].to_dict().get)
         #remove penalty from jam_time
-        self.road_links['jam_time'] -= self.road_links['penalty']
+        #keep it.
+        #self.road_links['jam_time'] -= self.road_links['penalty']
 
         self.car_los = get_car_los(v,df,index,reversed_index,zones,self.ntleg_penalty,num_cores)
         self.relgap  = rel_gap
