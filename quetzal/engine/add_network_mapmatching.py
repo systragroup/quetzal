@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 
 class NetworkCaster_MapMaptching:
-    def __init__(self, nodes, road_links, links,by='trip_id'):
+    def __init__(self, nodes, road_links, links, by='trip_id', sequence='link_sequence'):
         self.links = gpd.GeoDataFrame(road_links)
         self.nodes = gpd.GeoDataFrame(nodes)
 
@@ -26,19 +26,19 @@ class NetworkCaster_MapMaptching:
         self.links = self.links.drop(columns=['index'])
 
         # Format links to a "gps track". keep node a,b of first links and node b of evey other ones.
-        self.gps_tracks = links[['a', 'b', by, 'link_sequence', 'route_id']]
+        self.gps_tracks = links[['a', 'b', by, sequence, 'route_id']]
         node_dict = self.nodes['geometry'].to_dict()
         # gps_tracks['geometry'] = gps_tracks['b'].apply(lambda x: node_dict.get(x))
         self.gps_tracks['node_seq'] = self.gps_tracks['b']
         # apply node a for the first link
         counter = self.gps_tracks.groupby(by).agg(len)['a'].values
         order = [i for j in range(len(counter)) for i in range(counter[j])]
-        self.gps_tracks['link_sequence'] = order
+        self.gps_tracks[sequence] = order
 
         # for trip with single links, duplicate them to have a mapmatching between a and b.
-        single_points = self.gps_tracks[self.gps_tracks['link_sequence'] == 0]
+        single_points = self.gps_tracks[self.gps_tracks[sequence] == 0]
         single_points['node_seq'] = single_points['a']
-        single_points['link_sequence'] = -1
+        single_points[sequence] = -1
         single_points.index = 'node_a_' + single_points.index.map(str)
 
         self.gps_tracks = self.gps_tracks.append(single_points)
@@ -47,9 +47,9 @@ class NetworkCaster_MapMaptching:
         self.gps_tracks = self.gps_tracks[self.gps_tracks['a'] != self.gps_tracks['b']]
         self.gps_tracks['geometry'] = self.gps_tracks['node_seq'].apply(lambda x: node_dict.get(x))
 
-        self.gps_tracks = self.gps_tracks.sort_values([by, 'link_sequence'])
+        self.gps_tracks = self.gps_tracks.sort_values([by, sequence])
         self.gps_tracks = gpd.GeoDataFrame(self.gps_tracks)
-        self.gps_tracks = self.gps_tracks.drop(columns=['a', 'b', 'link_sequence'])
+        self.gps_tracks = self.gps_tracks.drop(columns=['a', 'b', sequence])
 
 
 
