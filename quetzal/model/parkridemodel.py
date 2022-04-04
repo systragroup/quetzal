@@ -271,7 +271,8 @@ class ParkRideModel(preparationmodel.PreparationModel):
         length_columns = ['access_length', 'in_vehicle_length', 'length']
         path_columns = ['path', 'link_path', 'node_path', 'ntlegs', 'footpaths']
         pt_columns = [
-            'boardings', 'alightings', 'boarding_links', 'alighting_links', 'footpaths', 'transfers'
+            'boardings', 'alightings', 'boarding_links',
+            'alighting_links', 'footpaths', 'transfers', 'ntransfers'
         ]
 
         # node_transit_zone
