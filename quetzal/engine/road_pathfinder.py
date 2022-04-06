@@ -119,7 +119,7 @@ class RoadPathFinder:
                 df['s_k-1'] =  df['auxiliary_flow'] 
             
             if method == 'msa':
-                phi = 2 / (i + 2)
+                phi = 1 / (i + 2)
             else:
                 phi = find_phi(df,vdf,0,0.8,10)
             #
