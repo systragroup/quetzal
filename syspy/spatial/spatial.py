@@ -212,6 +212,36 @@ def nearest(one, many, geometry=False, n_neighbors=1):
 
     return links
 
+def nearest_radius(one, many, radius=1):
+    try:
+        assert many.index.is_unique
+        assert one.index.is_unique
+    except AssertionError:
+        msg = 'index of one and many should not contain duplicates'
+        print(msg)
+
+    df_many = add_geometry_coordinates(many.copy(), columns=['x_geometry', 'y_geometry'])
+    df_one = add_geometry_coordinates(one.copy(), columns=['x_geometry', 'y_geometry'])
+
+    x = df_many[['x_geometry', 'y_geometry']].values
+    y = df_one[['x_geometry', 'y_geometry']].values
+
+    nbrs = NearestNeighbors(radius=radius, algorithm='ball_tree').fit(x)
+    distances, indices = nbrs.radius_neighbors(y, sort_results=True)
+
+    index_one = pd.DataFrame(df_one.index.values, columns=['ix_one'])
+    index_many = pd.DataFrame(df_many.index.values, columns=['ix_many'])
+
+    df = pd.merge(index_one, pd.Series(indices, name='index_nn'), left_index=True, right_index=True)
+    df = pd.merge(df, pd.Series(distances, name='distance'), left_index=True, right_index=True)
+    df = df.set_index('ix_one').apply(pd.Series.explode).reset_index()
+    df['rank'] = df.groupby('ix_one').cumcount().astype(int)
+    df['distance'] = df['distance'].astype(float)
+
+    df = pd.merge(df, index_many, left_on='index_nn', right_index=True)
+    
+    return df[['ix_one', 'ix_many', 'distance', 'rank']]
+
 
 def nearest_geometry(
     one,

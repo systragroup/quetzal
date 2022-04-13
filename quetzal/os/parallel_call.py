@@ -82,6 +82,7 @@ def parallel_call_notebooks(
     leave=False,
     errout_suffix=False,
     freeze_support=True,
+    return_jobs=False
 ):
     start = time.time()
     mode = 'w' if errout_suffix else 'a+'
@@ -105,6 +106,7 @@ def parallel_call_notebooks(
     parallel_call_jobs(jobs, mode=mode, leave=leave, workers=workers, sleep=sleep)
     end = time.time()
     print(int(end - start), 'seconds')
+    if return_jobs: return jobs
 
 
 def parallel_call_notebook(
@@ -117,6 +119,7 @@ def parallel_call_notebook(
     leave=False,
     errout_suffix=False,
     freeze_support=True,
+    return_jobs=False
 ):
 
     start = time.time()
@@ -139,6 +142,7 @@ def parallel_call_notebook(
     parallel_call_jobs(jobs, mode=mode, leave=leave, workers=workers, sleep=sleep)
     end = time.time()
     print(int(end - start), 'seconds')
+    if return_jobs: return jobs
 
 
 def parallel_call_python(
