@@ -21,10 +21,10 @@ def set_shp_crs(file, prj_file=default_prj_file):
     copyfile(prj_file, file_without_extension + r'.prj')
 
 
-def gdf_to_geojson(gdf, filename, crs_string=default_crs_string):
+def gdf_to_geojson(gdf, filename, crs_string=default_crs_string, **kwargs):
     try:
         os.remove(filename)
     except OSError:
         pass
-    gdf.to_file(filename, driver='GeoJSON')
+    gdf.to_file(filename, driver='GeoJSON', **kwargs)
     set_geojson_crs(filename, crs_string)
