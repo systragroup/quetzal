@@ -181,6 +181,7 @@ def restrict_to_trips(feed, trip_ids, drop_unused=True):
 
     # Get transfers for stops
     if feed.transfers is not None:
+        stop_ids = feed.stop_times.stop_id.unique()
         feed.transfers = feed.transfers.loc[
             lambda x: x.from_stop_id.isin(stop_ids)
             & x.to_stop_id.isin(stop_ids)
