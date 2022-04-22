@@ -141,15 +141,31 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             )
 
     @track_args
-    def step_road_pathfinder(self, maxiters=1, *args, **kwargs):
+    def step_road_pathfinder(self,method='bfw', maxiters=1, *args, **kwargs):
         """
-        * requires: zones, road_links, zone_to_road
+        * requires: road_links, zone_to_road, volumes
         * builds: car_los, road_links
+        * method: msa, bfw, fw, or aon.
+        * all_or_nothing=True replaced with method = 'aon'
         """
+    
         roadpathfinder = RoadPathFinder(self)
-        roadpathfinder.frank_wolfe(maxiters=maxiters, *args, **kwargs)
-        self.car_los = roadpathfinder.car_los
-        self.road_links = roadpathfinder.road_links
+        method = method.lower()
+
+        if 'all_or_nothing' in kwargs:
+            kwargs.pop('all_or_nothing', None)
+            method = 'aon'
+            print(" 'all_or_nothing'=True is deprecated. use method = 'aon' instead")
+
+        if method in ['msa','fw','bfw','aon']:
+            roadpathfinder.msa(method=method, maxiters=maxiters, *args, **kwargs)
+            self.car_los = roadpathfinder.car_los
+            if method != 'aon': # do not overwrite road_links if its all-or-nothing
+                self.road_links = roadpathfinder.road_links
+                self.relgap = roadpathfinder.relgap
+        else:
+            print(method,' not supported. use msa, fw, bfw or aon')
+
 
     @track_args
     def step_pr_pathfinder(

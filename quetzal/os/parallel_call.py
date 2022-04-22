@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 import shutil
 import time
 import uuid
@@ -22,17 +23,35 @@ def add_freeze_support(file):
     with open(file, 'w') as pyfile:
         pyfile.writelines(lines)
 
+def split_cwd_and_file(path):
+    path_list = path.split('/')
+    if len(path_list) != 1:
+        relpath = '/'.join(path_list[:-1])
+        cwd = os.path.abspath(relpath)
+    else:
+        cwd = os.getcwd()
+    return cwd, path_list[-1]
+
 
 def parallel_call_jobs(jobs, mode='w', leave=False, workers=1, sleep=1):
     popens = {}
     for i, file, arg, stdout_file, stderr_file in jobs:
+        cwd, file = split_cwd_and_file(file)
         print(i, file, arg)
         with open(stdout_file, mode) as stdout:
             with open(stderr_file, mode) as stderr:
+                if type(arg) == tuple:
+                    command_list = ['python', file] +list(arg)
+                else:
+                    command_list = ['python', file] +[arg]
+                my_env = os.environ
+                my_env["PYTHONPATH"] = ";".join(sys.path)[1:]
                 popens[i] = Popen(
-                    ['python', file, arg],
+                    command_list,
                     stdout=stdout,
-                    stderr=stderr
+                    stderr=stderr,
+                    env=my_env,
+                    cwd=cwd
                 )
                 if (i + 1) % workers == 0 or (i + 1) == len(jobs):
                     # print('waiting')
@@ -41,10 +60,11 @@ def parallel_call_jobs(jobs, mode='w', leave=False, workers=1, sleep=1):
         time.sleep(sleep)
 
     for i, file, arg, stdout_file, stderr_file in jobs:
+        cwd, file = split_cwd_and_file(file)
         subprocess_name = str(file) + str(i)
         if not leave:
             try:
-                os.remove(file)
+                os.remove(os.path.join(cwd,file))
             except FileNotFoundError:
                 pass
         with open(stderr_file, 'r', encoding='latin') as stderr:
@@ -62,6 +82,7 @@ def parallel_call_notebooks(
     leave=False,
     errout_suffix=False,
     freeze_support=True,
+    return_jobs=False
 ):
     start = time.time()
     mode = 'w' if errout_suffix else 'a+'
@@ -76,7 +97,7 @@ def parallel_call_notebooks(
         for i in range(len(arg_list)):
             arg = arg_list[i]
             suffix = arg if errout_suffix else ''
-            suffix += '_' + notebook.split('.')[0]
+            suffix += '_' + file.split('/')[-1].split('.')[0]
             stdout_file = stdout_path.replace('.txt', '_' + suffix + '.txt')
             stderr_file = stderr_path.replace('.txt', '_' + suffix + '.txt')
             jobs.append([outer_i, file, arg, stdout_file, stderr_file])
@@ -85,6 +106,7 @@ def parallel_call_notebooks(
     parallel_call_jobs(jobs, mode=mode, leave=leave, workers=workers, sleep=sleep)
     end = time.time()
     print(int(end - start), 'seconds')
+    if return_jobs: return jobs
 
 
 def parallel_call_notebook(
@@ -97,6 +119,7 @@ def parallel_call_notebook(
     leave=False,
     errout_suffix=False,
     freeze_support=True,
+    return_jobs=False
 ):
 
     start = time.time()
@@ -117,7 +140,8 @@ def parallel_call_notebook(
                 suffix = '_'.join(temp.values())
             except json.JSONDecodeError:
                 suffix = arg
-        suffix += '_' + notebook.split('.')[0]
+        suffix += '_' + file.split('/')[-1].split('.')[0]
+
         stdout_file = stdout_path.replace('.txt', '_' + suffix + '.txt')
         stderr_file = stderr_path.replace('.txt', '_' + suffix + '.txt')
         jobs.append([i, file, arg, stdout_file, stderr_file])
@@ -125,6 +149,7 @@ def parallel_call_notebook(
     parallel_call_jobs(jobs, mode=mode, leave=leave, workers=workers, sleep=sleep)
     end = time.time()
     print(int(end - start), 'seconds')
+    if return_jobs: return jobs
 
 
 def parallel_call_python(

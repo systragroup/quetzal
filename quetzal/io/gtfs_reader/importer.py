@@ -68,10 +68,10 @@ class GtfsImporter(Feed):
         feed.build_links_and_nodes()
         return feed
 
-    def build_links_and_nodes(self, time_expanded=False):
+    def build_links_and_nodes(self, time_expanded=False, log=True):
         self.to_seconds()
         self.build_links(time_expanded=time_expanded)
-        self.build_geometries()
+        self.build_geometries(log=log)
 
     def to_seconds(self):
         # stop_times
@@ -117,11 +117,11 @@ class GtfsImporter(Feed):
         links_trips = pd.merge(self.trips, self.routes, on='route_id')
         self.links = pd.merge(self.links, links_trips, on='trip_id')
 
-    def build_geometries(self, use_utm=True):
+    def build_geometries(self, use_utm=True, log=True):
         self.nodes = gk.stops.geometrize_stops_0(self.stops)
         if use_utm:
             epsg = get_epsg(self.stops.iloc[1]['stop_lat'], self.stops.iloc[1]['stop_lon'])
-            print('export geometries in epsg:', epsg)
+            if log: print('export geometries in epsg:', epsg)
             self.nodes = self.nodes.to_crs(epsg=epsg)
 
         self.links['geometry'] = linestring_geometry(

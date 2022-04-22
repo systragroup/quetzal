@@ -3,9 +3,13 @@ import pandas as pd
 from quetzal.engine import connectivity, engine, gps_tracks
 from quetzal.engine.add_network import NetworkCaster
 from quetzal.model import cubemodel, model, integritymodel
+from quetzal.engine.add_network_mapmatching import NetworkCaster_MapMaptching
+from quetzal.model import cubemodel, model
 from syspy.renumber import renumber
 from syspy.skims import skims
 from tqdm import tqdm
+import networkx as nx
+import warnings
 
 
 def read_hdf(filepath):
@@ -75,7 +79,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         n_ntlegs=5,
         max_ntleg_length=5000,
         zone_to_transit=True,
-        zone_to_road=False
+        zone_to_road=False,
+        prefix=False
     ):
         """
         Builds the centroids and the ntlegs
@@ -118,6 +123,12 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             )
             ntlegs['walk_time'] = ntlegs['time']
             self.zone_to_transit = ntlegs.loc[ntlegs['distance'] < length].copy()
+            if prefix:
+                self.zone_to_transit.index =  'ztt_' + pd.Series(self.zone_to_transit.index).astype(str)
+            else:
+                warnings.warn(("zone_to_transit indexes does not have prefixes. This may cause collisions."
+                               "Consider using the option prefix=True. Prefixes will be added by default in"  
+                               "a future update"), FutureWarning)
 
         if zone_to_road:
             self.integrity_test_collision(sets=('road_nodes', 'zones'))
@@ -133,6 +144,12 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             )
             ntlegs['walk_time'] = ntlegs['time']
             self.zone_to_road = ntlegs.loc[ntlegs['distance'] < length].copy()
+            if prefix:
+                self.zone_to_road.index =  'ztr_' + pd.Series(self.zone_to_road.index).astype(str)
+            else: 
+                warnings.warn(("zone_to_road indexes does not have prefixes. This may cause collisions."
+                               "Consider using the option prefix=True. Prefixes will be added by default in"  
+                               "a future update"), FutureWarning)
 
             ntlegs = engine.ntlegs_from_centroids_and_nodes(
                 self.nodes,
@@ -145,6 +162,12 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             )
             ntlegs['walk_time'] = ntlegs['time']
             self.road_to_transit = ntlegs.loc[ntlegs['distance'] < length].copy()
+            if prefix:
+                self.road_to_transit.index =  'rtt_' + pd.Series(self.road_to_transit.index).astype(str)
+            else: 
+                warnings.warn(("road_to_transit indexes does not have prefixes. This may cause collisions."
+                               "Consider using the option prefix=True. Prefixes will be added by default in"  
+                               "a future update"), FutureWarning)
 
     def preparation_drop_redundant_zone_to_transit(self):
         self.zone_to_transit.sort_values('time', inplace=True)
@@ -185,6 +208,48 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                     ztt = ztt.loc[ztt['n_trips'] > 0]
                     keep.append(index)
         self.zone_to_transit = self.zone_to_transit.loc[list(set(keep))]
+
+    def preparation_drop_redundant_footpaths(self, access_time='time', log=False):
+        a = len(self.footpaths)
+        g = nx.DiGraph()
+        g.add_weighted_edges_from(self.road_links[['a','b', 'walk_time']].values)
+        g.add_weighted_edges_from(self.road_to_transit[['a','b', access_time]].values)
+        g.add_weighted_edges_from(self.footpaths[['a','b', access_time]].values)
+        self.footpaths['dijkstra_time'] = [
+            nx.dijkstra_path_length(g, a, b) for a, b in self.footpaths[['a', 'b']].values
+        ]
+        self.footpaths = self.footpaths.loc[self.footpaths[access_time] <= self.footpaths['dijkstra_time']]
+        self.footpaths.drop('dijkstra_time', axis=1, inplace=True)
+        if log:
+            print('reduced number of footpaths from', a, 'to', len(self.footpaths))
+        
+    def preparation_drop_redundant_zone_to_road(self, access_time='time', log=False):
+        a = len(self.zone_to_road)
+        g = nx.DiGraph()
+        g.add_weighted_edges_from(self.road_links[['a','b', 'walk_time']].values)
+        g.add_weighted_edges_from(self.zone_to_road[['a','b', access_time]].values)
+       
+        self.zone_to_road['dijkstra_time'] = [
+            nx.dijkstra_path_length(g, a, b) for a, b in self.zone_to_road[['a', 'b']].values
+        ]
+        self.zone_to_road = self.zone_to_road.loc[self.zone_to_road[access_time] <= self.zone_to_road['dijkstra_time']]
+        self.zone_to_road.drop('dijkstra_time', axis=1, inplace=True)
+        if log:
+            print('reduced number of zone_to_road from', a, 'to', len(self.zone_to_road))
+        
+    def preparation_drop_redundant_road_to_transit(self, access_time='time', log=False):
+        a = len(self.road_to_transit)
+        g = nx.DiGraph()
+        g.add_weighted_edges_from(self.road_links[['a','b', 'walk_time']].values)
+        g.add_weighted_edges_from(self.road_to_transit[['a','b', access_time]].values)
+        
+        self.road_to_transit['dijkstra_time'] = [
+            nx.dijkstra_path_length(g, a, b) for a, b in self.road_to_transit[['a', 'b']].values
+        ]
+        self.road_to_transit = self.road_to_transit.loc[self.road_to_transit[access_time] <= self.road_to_transit['dijkstra_time']]
+        self.road_to_transit.drop('dijkstra_time', axis=1, inplace=True)
+        if log:
+            print('reduced number of road_to_transit from', a, 'to', len(self.road_to_transit))
 
     @track_args
     def preparation_cast_network(
@@ -267,6 +332,33 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             from_road['direction'] = 'from_road'
             concatenated = pd.concat([from_road, to_road])
             self.road_to_transit = concatenated.reindex().reset_index(drop=True)
+
+    @track_args
+    def preparation_map_matching(self,
+                                 routing=True,
+                                 n_neighbors_centroid=100,
+                                 n_neighbors=10,
+                                 distance_max=5000,
+                                 by='trip_id',
+                                 sequence = 'link_sequence'):
+        #mapmatch each trip_id in self.links to the road_network (self.road_links)
+        ncm = NetworkCaster_MapMaptching(self.nodes, self.road_links, self.links, by, sequence)
+        matched_links, links_mat, unmatched_trip = ncm.Multi_Mapmatching(routing=routing,
+                                                                         n_neighbors_centroid=n_neighbors_centroid,
+                                                                         n_neighbors=n_neighbors,
+                                                                         distance_max=distance_max,
+                                                                         by=by)
+
+        matched_links['road_id_a'] = matched_links['road_id_a'].apply(lambda x: ncm.links_index_dict.get(x))
+        matched_links['road_id_b'] = matched_links['road_id_b'].apply(lambda x: ncm.links_index_dict.get(x))
+
+        road_a_dict = matched_links['road_id_a'].to_dict()
+        road_b_dict = matched_links['road_id_b'].to_dict()
+        length_dict = matched_links['length'].to_dict()
+        self.links['road_a'] = self.links.index.map(road_a_dict.get)
+        self.links['road_b'] = self.links.index.map(road_b_dict.get)
+        self.links['length'] = self.links.index.map(length_dict.get)
+        self.links = self.links.merge(links_mat[['road_node_list', 'road_link_list']], left_index=True, right_index=True, how='left')
 
     @track_args
     def preparation_logit(
@@ -393,11 +485,11 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             if 'clustering_zones' not in self.__dict__.keys():
                 self.clustering_zones = self.zones.copy()
             self.nodes = connectivity.adaptive_clustering(self.nodes, self.clustering_zones, **kwargs)
-            self.links, self.nodes,  self.node_clusters, self.node_parenthood = connectivity.node_clustering(
+            self.links, self.nodes, self.node_clusters, self.node_parenthood = connectivity.node_clustering(
                 self.links, self.nodes, n_clusters, group_id='adaptive_cluster_id'
             )
         else:
-            self.links, self.nodes,  self.node_clusters, self.node_parenthood = connectivity.node_clustering(
+            self.links, self.nodes, self.node_clusters, self.node_parenthood = connectivity.node_clustering(
                 self.links, self.nodes, n_clusters, **kwargs
             )
 
