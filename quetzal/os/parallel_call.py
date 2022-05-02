@@ -96,7 +96,7 @@ def parallel_call_notebooks(
 
         for i in range(len(arg_list)):
             arg = arg_list[i]
-            suffix = arg if errout_suffix else ''
+            suffix = ''.join(arg) if errout_suffix else ''
             suffix += '_' + file.split('/')[-1].split('.')[0]
             stdout_file = stdout_path.replace('.txt', '_' + suffix + '.txt')
             stderr_file = stderr_path.replace('.txt', '_' + suffix + '.txt')
