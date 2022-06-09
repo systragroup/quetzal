@@ -15,7 +15,16 @@ class RoadPathFinder:
         try:
             self.volumes = model.volumes.copy()
         except AttributeError:
-            pass
+            print('self.volumes does not exist. od generated with self.zones')
+            od_set = []
+            for o in model.zones.index.values:
+                for d in model.zones.index.values:
+                    if o!=d:
+                        od_set.append((o,d))
+            self.volumes = pd.DataFrame(od_set,columns=['origin','destination'])
+            self.volumes['volume'] = 0   
+
+        assert len(self.volumes)>0
     
     def msa(self, 
         maxiters=10,
@@ -35,6 +44,7 @@ class RoadPathFinder:
         vdf = {'default_bpr': default_bpr,'limited_bpr':limited_bpr, 'free_flow': free_flow} : dict of function for the jam time.
         volume_column='volume_car' : column of self.volumes to use for volume
         method = bfw, fw, msa, aon
+        od_set = None. od_set
         beta = None. give constant value foir BFW betas. ex: [0.7,0.2,0.1]
         num_cores = 1 : for parallelization. 
         '''
@@ -181,9 +191,21 @@ class RoadPathFinder:
     def init_df(self,aon=False):
         #check if columns exist
         if not aon:
-            assert 'vdf' in self.road_links.columns, 'vdf not found in road_links columns.'
-            assert 'capacity' in self.road_links.columns, 'capacity not found in road_links columns.'
-            for col in ['limit','penalty','alpha','beta']:
+
+            assert 'capacity' in self.road_links.columns, 'capacity not found in road_links columns. add a capacity for each link'
+            
+            if 'vdf' not in self.road_links.columns:
+                self.road_links['vdf'] = 'default_bpr'
+                print("vdf not found in road_links columns. Values set to 'default_bpr'")
+
+            if 'alpha' not in self.road_links.columns:
+                self.road_links['alpha'] = 0.15
+                print("alpha not found in road_links columns. Values set to 0.15")
+            if 'beta' not in self.road_links.columns:
+                self.road_links['beta'] = 4
+                print("beta not found in road_links columns. Values set to 4")
+
+            for col in ['limit','penalty']:
                 if col not in self.road_links.columns:
                     self.road_links[col] = 0
                     print(col, " not found in road_links columns. Values set to 0")
