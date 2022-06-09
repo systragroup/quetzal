@@ -205,10 +205,13 @@ class RoadPathFinder:
                 self.road_links['beta'] = 4
                 print("beta not found in road_links columns. Values set to 4")
 
-            for col in ['limit','penalty']:
-                if col not in self.road_links.columns:
-                    self.road_links[col] = 0
-                    print(col, " not found in road_links columns. Values set to 0")
+            if 'limit' not in self.road_links.columns:
+                self.road_links['limit'] = 20
+                print("limit not found in road_links columns. Values set to 20")
+
+            if 'penalty' not in self.road_links.columns:
+                self.road_links['penalty'] = 0
+                print("penalty not found in road_links columns. Values set to 0")
             
             columns = ['a', 'b','length', 'time', 'capacity', 'vdf', 'alpha', 'beta', 'limit','penalty']
             df = pd.concat([self.road_links[columns], self.zone_to_road[columns]]).set_index(['a', 'b'], drop=False)
