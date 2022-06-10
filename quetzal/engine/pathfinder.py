@@ -231,30 +231,52 @@ class PublicPathFinder:
             links=self.links.loc[self.links[route_column] != route_id]
             footpaths = self.footpaths
             ntlegs = self.ntlegs 
-            if prune:
-                removed_nodes = set(self.links['a']).union(self.links['b']) - set(links['a']).union(links['b'])
-                removed_nodes = removed_nodes.union(self.zones)
-                footpaths = footpaths.loc[(~footpaths['a'].isin(removed_nodes)) & (~footpaths['b'].isin(removed_nodes))]
-                ntlegs  = ntlegs.loc[(~ntlegs['a'].isin(removed_nodes)) & (~ntlegs['b'].isin(removed_nodes))]
+            try:
+                if prune:
+                    removed_nodes = set(self.links['a']).union(self.links['b']) - set(links['a']).union(links['b'])
+                    removed_nodes = removed_nodes.union(self.zones)
+                    footpaths = footpaths.loc[(~footpaths['a'].isin(removed_nodes)) & (~footpaths['b'].isin(removed_nodes))]
+                    ntlegs  = ntlegs.loc[(~ntlegs['a'].isin(removed_nodes)) & (~ntlegs['b'].isin(removed_nodes))]
 
-            matrix, node_index = adjacency_matrix(
-                links=links,
-                ntlegs=self.ntlegs,
-                footpaths=self.footpaths,
-                ntlegs_penalty=ntlegs_penalty,
-                boarding_time=boarding_time,
-                **kwargs
-            )
+                matrix, node_index = adjacency_matrix(
+                    links=links,
+                    ntlegs=ntlegs,
+                    footpaths=footpaths,
+                    ntlegs_penalty=ntlegs_penalty,
+                    boarding_time=boarding_time,
+                    **kwargs
+                )
 
-            los = los_from_graph(
-                csgraph=matrix,
-                node_index=node_index,
-                pole_set=pole_set,
-                od_set=route_od_set,
-                sources=zones,
-                cutoff=cutoff,
-                ntlegs_penalty=ntlegs_penalty
-            )
+                los = los_from_graph(
+                    csgraph=matrix,
+                    node_index=node_index,
+                    pole_set=pole_set,
+                    od_set=od_set,
+                    cutoff=cutoff,
+                    ntlegs_penalty=ntlegs_penalty
+                )
+            except:
+                if prune:
+                    tqdm.write('Pathfinder failed with prune=True. Trying with prune=False')
+                footpaths = self.footpaths
+                ntlegs = self.ntlegs
+
+                matrix, node_index = adjacency_matrix(
+                    links=links,
+                    ntlegs=ntlegs,
+                    footpaths=footpaths,
+                    ntlegs_penalty=ntlegs_penalty,
+                    boarding_time=boarding_time,
+                    **kwargs
+                )
+
+                los = los_from_graph(
+                    csgraph=matrix,
+                    node_index=node_index,
+                    pole_set=pole_set,
+                    od_set=od_set,
+                    cutoff=cutoff,
+                    ntlegs_penalty=ntlegs_penalty)
             los['reversed'] = False
             los['broken_route'] = route_id
             los['pathfinder_session'] = 'route_breaker'
@@ -295,30 +317,55 @@ class PublicPathFinder:
 
             links=self.links.loc[~self.links[mode_column].isin(combination)]
             footpaths = self.footpaths
-            ntlegs = self.ntlegs 
-            if prune:
-                removed_nodes = set(self.links['a']).union(self.links['b']) - set(links['a']).union(links['b'])
-                removed_nodes = removed_nodes.union(self.zones)
-                footpaths = footpaths.loc[(~footpaths['a'].isin(removed_nodes)) & (~footpaths['b'].isin(removed_nodes))]
-                ntlegs  = ntlegs.loc[(~ntlegs['a'].isin(removed_nodes)) & (~ntlegs['b'].isin(removed_nodes))]
+            ntlegs = self.ntlegs
 
-            matrix, node_index = adjacency_matrix(
-                links=links,
-                ntlegs=ntlegs,
-                footpaths=footpaths,
-                ntlegs_penalty=ntlegs_penalty,
-                boarding_time=boarding_time,
-                **kwargs
-            )
+            try:
+                if prune:
+                    removed_nodes = set(self.links['a']).union(self.links['b']) - set(links['a']).union(links['b'])
+                    removed_nodes = removed_nodes.union(self.zones)
+                    footpaths = footpaths.loc[(~footpaths['a'].isin(removed_nodes)) & (~footpaths['b'].isin(removed_nodes))]
+                    ntlegs  = ntlegs.loc[(~ntlegs['a'].isin(removed_nodes)) & (~ntlegs['b'].isin(removed_nodes))]
 
-            los = los_from_graph(
-                csgraph=matrix,
-                node_index=node_index,
-                pole_set=pole_set,
-                od_set=od_set,
-                cutoff=cutoff,
-                ntlegs_penalty=ntlegs_penalty
-            )
+                matrix, node_index = adjacency_matrix(
+                    links=links,
+                    ntlegs=ntlegs,
+                    footpaths=footpaths,
+                    ntlegs_penalty=ntlegs_penalty,
+                    boarding_time=boarding_time,
+                    **kwargs
+                )
+
+                los = los_from_graph(
+                    csgraph=matrix,
+                    node_index=node_index,
+                    pole_set=pole_set,
+                    od_set=od_set,
+                    cutoff=cutoff,
+                    ntlegs_penalty=ntlegs_penalty
+                )
+            except:
+                if prune:
+                    tqdm.write('Pathfinder failed with prune=True. Trying with prune=False')
+                footpaths = self.footpaths
+                ntlegs = self.ntlegs
+
+                matrix, node_index = adjacency_matrix(
+                    links=links,
+                    ntlegs=ntlegs,
+                    footpaths=footpaths,
+                    ntlegs_penalty=ntlegs_penalty,
+                    boarding_time=boarding_time,
+                    **kwargs
+                )
+
+                los = los_from_graph(
+                    csgraph=matrix,
+                    node_index=node_index,
+                    pole_set=pole_set,
+                    od_set=od_set,
+                    cutoff=cutoff,
+                    ntlegs_penalty=ntlegs_penalty)
+
             los['reversed'] = False
             los['pathfinder_session'] = 'mode_breaker'
             los['broken_modes'] = [combination for i in range(len(los))]
@@ -416,6 +463,10 @@ class PublicPathFinder:
         boarding_time=None,
         **kwargs
     ):
+        if od_set is None:
+            pole_set = set(self.zones.index)
+            od_set = set([(i, j) for i in pole_set for j in pole_set])
+
         to_concat = []
         if broken_routes:
             self.find_best_path(
@@ -431,7 +482,8 @@ class PublicPathFinder:
                 od_set=od_set,
                 boarding_time=boarding_time,
                 cutoff=cutoff,
-                route_column=route_column
+                route_column=route_column,
+                **kwargs
             )
             to_concat.append(self.broken_route_paths)
 
@@ -442,7 +494,8 @@ class PublicPathFinder:
                 od_set=od_set,
                 cutoff=cutoff,
                 boarding_time=boarding_time,
-                mode_column=mode_column
+                mode_column=mode_column,
+                **kwargs
             )
             to_concat.append(self.broken_mode_paths)
 
@@ -457,6 +510,7 @@ class PublicPathFinder:
 
         self.paths = pd.concat(to_concat)
         self.paths['path'] = self.paths['path'].apply(tuple)
+        self.paths.loc[self.paths['origin'] == self.paths['destination'], ['gtime']] = 0.0
 
         if drop_duplicates:
             self.paths.drop_duplicates(subset=['path'], inplace=True)

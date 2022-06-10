@@ -145,8 +145,20 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         """
         * requires: road_links, zone_to_road, volumes
         * builds: car_los, road_links
-        * method: msa, bfw, fw, or aon.
-        * all_or_nothing=True replaced with method = 'aon'
+
+        parameters
+        ----------
+        method = bfw, fw, msa, aon
+        maxiters = 10 : number of iteration.
+        tolerance = 0.01 : stop condition for RelGap. (in percent)
+        volume_column = 'volume_car' : column of self.volumes to use for volume
+        ntleg_penalty = 1e9 : ntleg penality for acces_time
+        access_time = 'time' : zone_to_road acces_time
+        od_set = None : set of od to use
+        num_cores = 1 : for parallelization. 
+        log = False : log data on each iteration.
+        vdf = {'default_bpr': default_bpr,'limited_bpr':limited_bpr, 'free_flow': free_flow} : dict of function for the jam time.
+        beta = None. give constant value for BFW betas. ex: [0.7,0.2,0.1]
         """
     
         roadpathfinder = RoadPathFinder(self)
@@ -165,6 +177,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 self.relgap = roadpathfinder.relgap
         else:
             print(method,' not supported. use msa, fw, bfw or aon')
+
+        self.car_los['origin'] == self.car_los['destination']
 
 
     @track_args
@@ -588,6 +602,11 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         """
         if volume_column is None:
             self.segmented_car_assignment()
+        else:
+            merged = pd.merge(self.car_los, self.volumes, on=['origin', 'destination'])
+            merged['to_assign'] = merged[(volume_column, 'probability')] * merged[volume_column].fillna(0)
+            assigned = raw_assignment.assign(merged['to_assign'], merged['link_path']).fillna(0)
+            self.road_links[(volume_column, 'car')] = assigned
 
     def segmented_car_assignment(self):
         segments = self.segments
