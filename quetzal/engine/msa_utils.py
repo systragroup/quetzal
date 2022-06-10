@@ -207,6 +207,8 @@ def get_car_los(v,df,index,reversed_index,zones,ntleg_penalty,num_cores=1):
         path = [*map(reversed_index.get, path)]
         path_dict[(origin,destination)] = path
 
+    car_los.loc[car_los['origin'] == car_los['destination'], 'time'] = 0.0
+
     car_los['path'] = car_los.set_index(['o','d']).index.map(path_dict)
     car_los['gtime'] = car_los['time']
 

@@ -166,6 +166,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         else:
             print(method,' not supported. use msa, fw, bfw or aon')
 
+        self.car_los['origin'] == self.car_los['destination']
+
 
     @track_args
     def step_pr_pathfinder(
@@ -588,6 +590,11 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         """
         if volume_column is None:
             self.segmented_car_assignment()
+        else:
+            merged = pd.merge(self.car_los, self.volumes, on=['origin', 'destination'])
+            merged['to_assign'] = merged[(volume_column, 'probability')] * merged[volume_column].fillna(0)
+            assigned = raw_assignment.assign(merged['to_assign'], merged['link_path']).fillna(0)
+            self.road_links[(volume_column, 'car')] = assigned
 
     def segmented_car_assignment(self):
         segments = self.segments
