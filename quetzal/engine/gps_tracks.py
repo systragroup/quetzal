@@ -3,6 +3,68 @@ from scipy import interpolate
 from shapely import geometry
 from syspy.spatial import spatial
 
+from shapely.geometry import LineString
+from quetzal.engine.add_network import NetworkCaster
+
+def get_path_with_waypoints(points, road_links, road_nodes, buffer=100, n_segments=10, **kwargs):
+    # create copy for the recursion
+    base_road_links, base_road_nodes = road_links.copy(), road_nodes.copy()
+
+    # build links for each segment
+    step = int(len(points) / n_segments)
+
+    os = list(np.arange(n_segments) * step)
+    ds = os[1:] + [len(points) - 1]
+
+    points_a = points.iloc[os]
+    points_a = points_a.rename(columns={'geometry': 'geom_a'})
+    points_a['a'] = points_a.index
+    points_a.reset_index(inplace=True, drop=True)
+
+    points_b = points.iloc[ds]
+    points_b = points_b.rename(columns={'geometry': 'geom_b'})
+    points_b['b'] = points_b.index
+    points_b.reset_index(inplace=True, drop=True)
+
+    links = pd.concat([points_a, points_b], axis=1)
+    links['link_sequence'] = np.arange(1, len(links)+1)
+    links['trip_id'] = '1'
+    links['route_id'] = '1'
+    links['geometry'] = links[['geom_a', 'geom_b']].apply(LineString, 1)
+    links.drop(['geom_a', 'geom_b'], axis=1, inplace=True)
+    
+    # geographic filter
+    linestring = geometry.LineString(list(points['geometry']))
+    polygon = linestring.buffer(buffer).simplify(buffer)
+    road_links = road_links.loc[road_links['geometry'].intersects(polygon)]
+    road_node_set = list(set(road_links['a']).union(road_links['b']))
+    road_nodes = road_nodes.loc[road_node_set]
+
+    # networkcaster
+    nc = NetworkCaster(
+        points.iloc[list(set(os).union(set(ds)))],
+        links,
+        road_nodes,
+        road_links
+    )
+
+    nc.build(**kwargs)
+
+
+    link_path = []
+    node_path = []
+
+    for n_, l_ in nc.links[['road_node_list', 'road_link_list']].values:
+        link_path += list(l_)
+        if len(node_path) > 0 and len(n_) > 0:
+            if n_[0]==node_path[-1]:
+                n_.pop(0)
+        node_path += list(n_)
+
+    # node_path = ['o'] + node_path + ['d']
+
+    return node_path, link_path
+
 
 def get_path(points, road_links, road_nodes, buffer=50, penalty_factor=2, n_neighbors=2):
     # create copies for the recursion
@@ -12,7 +74,7 @@ def get_path(points, road_links, road_nodes, buffer=50, penalty_factor=2, n_neig
     linestring = geometry.LineString(list(points['geometry']))
     polygon = linestring.buffer(buffer).simplify(buffer)
     road_links = road_links.loc[road_links['geometry'].within(polygon)]
-    road_node_set = set(road_links['a']).union(road_links['b'])
+    road_node_set = list(set(road_links['a']).union(road_links['b']))
     road_nodes = road_nodes.loc[road_node_set]
 
     # access to origin and destination
