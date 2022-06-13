@@ -475,7 +475,7 @@ def bandwidth(
     df_label = create_label_dataframe(df, label_column)
     df_label.apply(
         lambda x: plot.annotate(
-            s=x[label_column],
+            text=x[label_column],
             xy=x.geometry.centroid.coords[0],
             xytext=x['label_offset'],
             textcoords='offset pixels',
@@ -502,7 +502,7 @@ def add_basemap(
     try:
         import contextily as ctx
         xmin, xmax, ymin, ymax = ax.axis()
-        basemap, extent = ctx.bounds2img(xmin, ymin, xmax, ymax, zoom=zoom, url=url)
+        basemap, extent = ctx.bounds2img(xmin, ymin, xmax, ymax, zoom=zoom, source=url)
         ax.imshow(basemap, extent=extent, interpolation='bilinear')
         # restore original x/y limits
         ax.axis((xmin, xmax, ymin, ymax))

@@ -524,7 +524,7 @@ class Model(IntegrityModel):
         shutil.rmtree(tempdir)
 
     @track_args
-    def to_json(self, folder, omitted_attributes=(), only_attributes=None, verbose=False, encoding='utf-8'):
+    def to_json(self, folder, omitted_attributes=(), only_attributes=None, verbose=False, encoding='utf-8', use_fiona=True):
         """
         export the full model to a hdf database
         """
@@ -572,9 +572,20 @@ class Model(IntegrityModel):
                 json_columns = [
                     c for c in df.columns if c not in geojson_columns]
                 try:
-                    gpd.GeoDataFrame(attribute[geojson_columns]).to_file(
-                        geojson_file, driver='GeoJSON', encoding=encoding
-                    )
+                    if use_fiona:
+                        gpd.GeoDataFrame(attribute[geojson_columns]).to_file(
+                            geojson_file, driver='GeoJSON', encoding=encoding
+                        )
+                    else:
+                        gdf = gpd.GeoDataFrame(attribute[geojson_columns])
+                        geojson = gdf.to_json()
+                        crs_json = json.dumps({"crs": { "type": "name", "properties": 
+                                                      { "name": "EPSG:{e}".format(e=gdf.crs.to_epsg())}}})[1:-1]
+                        splitted = geojson.split(',', 1)
+                        geojson = splitted[0]+','+crs_json+','+splitted[1]
+                        with open(geojson_file, 'w') as outfile:
+                            outfile.write(geojson)
+
                     if len(json_columns):
                         attribute[json_columns + ['index']
                                   ].to_json(root_name + '_quetzaldata.json')

@@ -7,33 +7,66 @@ import numba as nb
 
 
 
-def default_bpr(links,flow='flow',derivative=False):
-    alpha = 0.15
-    limit=10
-    beta = 4
-    V = links[flow]
-    Q = links['capacity']
-    t0 = links['time']
-    res = t0 * (1 + alpha*np.power(V/Q, beta))
-    #res.loc[res>limit*t0]=limit*t0
-    speed = links['length']/res *(60*60/1000)
-    res.loc[speed<limit]=links['length']/limit *(60*60/1000)
-    if derivative==False:
-        return res
+@jit(nopython=True)
+def default_bpr(mat,der=False):
+    #columns in mat : 'alpha','beta','limit','flow','time','penalty','capacity'
+    #der return the first derivative (for the find beta...)
+    jam_time=[]
+    for i in range(mat.shape[0]):
+        alpha = mat[i,0]
+        beta = mat[i,1]
+        V = mat[i,3]
+        t0 = mat[i,4]
+        penalty = mat[i,5]
+        Q = mat[i,6]
+        if der == False:
+            res =  t0 * (1 + alpha*np.power(V/Q, beta))
+            jam_time.append(res + penalty)     
+        else:
+            der = (t0*alpha*beta/(Q**beta)) *np.power(V,beta-1)
+            jam_time.append(der)
+    return jam_time
+
+@jit(nopython=True)
+def limited_bpr(mat,der=False):
+    #columns in mat : 'alpha','beta','limit','flow','time','penalty','capacity'
+    #der return the first derivative (for the find beta...)
+    jam_time=[]
+    for i in range(mat.shape[0]):
+        alpha = mat[i,0]
+        beta = mat[i,1]
+        limit = mat[i,2]
+        V = mat[i,3]
+        t0 = mat[i,4]
+        penalty = mat[i,5]
+        Q = mat[i,6]
+        res =  t0 * (1 + alpha*np.power(V/Q, beta))
+        if res > t0*limit: # we plateau the curve at limit.
+            if der == False:
+                jam_time.append(t0*limit + penalty)
+            else:
+                jam_time.append(0)
+                
+        else:
+            if der == False:
+                jam_time.append(res + penalty)     
+            else:
+                der = (t0*alpha*beta/(Q**beta)) *np.power(V,beta-1)
+                jam_time.append(der)
+    return jam_time
+
+@jit(nopython=True)
+def free_flow(mat,der=False):
+    #columns in mat : 'alpha','beta','limit','flow','time','penalty','capacity'
+    #der return the derivative (for the find beta...)
+    t0 = mat[:,4]
+    penalty = mat[:,5]
+    if der == False:
+        return t0+penalty
     else:
-        der = (t0*alpha*beta*(beta-1)/(Q**beta)) *V**(beta-2)
-        der.loc[speed<limit] = 0
-        return der
+        return t0*0
 
-def smock(links,flow='flow'):
-    V = links[flow]
-    Qs = links['capacity']
-    t0 = links['time']
-    return t0 * np.exp(V/Qs)
 
-def free_flow(links,flow='flow'):
-    t0 = links['time']
-    return t0
 
     
 
@@ -173,6 +206,8 @@ def get_car_los(v,df,index,reversed_index,zones,ntleg_penalty,num_cores=1):
         path = get_path(predecessors, origin, destination)
         path = [*map(reversed_index.get, path)]
         path_dict[(origin,destination)] = path
+
+    car_los.loc[car_los['origin'] == car_los['destination'], 'time'] = 0.0
 
     car_los['path'] = car_los.set_index(['o','d']).index.map(path_dict)
     car_los['gtime'] = car_los['time']
