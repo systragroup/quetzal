@@ -397,7 +397,7 @@ def add_north_and_scalebar(ax, fontsize=14):
 def bandwidth(
     gdf, value_column, max_value=None, power=1, legend=True, legend_values=None, legend_length=1 / 3,
     label_column=None, max_linewidth_meters=100, variable_width=True, line_offset=True, cmap=spectral,
-    geographical_bounds=None, label_kwargs={'size': 12}, *args, **kwargs
+    arrows=False, geographical_bounds=None, label_kwargs={'size': 12}, *args, **kwargs
 ):
     # TODO:
     # 1. add to plot model
@@ -448,7 +448,28 @@ def bandwidth(
         # https://github.com/Toblerity/Shapely/issues/284
         df['geometry'] = df.geometry.apply(lambda x: geometry.LineString(x.coords[::-1]))
     # Plot
-    df.plot(color=df['color'], linewidth=df['linewidth'], ax=plot)
+    if arrows:
+        head_width = df['linewidth'].max() * 4
+        head_length = df.length.max() * 0.05
+        def plot_arrow(row):
+            g = row['geometry']
+            x_pos = g.coords[0][0]
+            y_pos = g.coords[0][1]
+            x_s = g.coords[1][0] - g.coords[0][0]
+            y_s = g.coords[1][1] - g.coords[0][1]
+            plot.arrow(
+                x_pos, y_pos,
+                x_s, y_s,
+                lw=row['linewidth']*0.9,
+                color=row['color'],
+                head_width=head_width,
+                head_length=head_length,
+                shape='left'
+            )
+            
+        df.apply(plot_arrow, axis=1)
+    else:
+        df.plot(color=df['color'], linewidth=df['linewidth'], ax=plot)
 
     # Plot label
     df_label = create_label_dataframe(df, label_column)
