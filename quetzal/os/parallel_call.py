@@ -140,7 +140,8 @@ def parallel_call_notebook(
                 suffix = '_'.join(temp.values())
             except json.JSONDecodeError:
                 suffix = arg
-        suffix += '_' + notebook.split('.')[0]
+        suffix += '_' + file.split('/')[-1].split('.')[0]
+
         stdout_file = stdout_path.replace('.txt', '_' + suffix + '.txt')
         stderr_file = stderr_path.replace('.txt', '_' + suffix + '.txt')
         jobs.append([i, file, arg, stdout_file, stderr_file])
