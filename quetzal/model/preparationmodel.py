@@ -340,9 +340,10 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                                  n_neighbors_centroid=100,
                                  n_neighbors=10,
                                  distance_max=5000,
-                                 by='trip_id'):
+                                 by='trip_id',
+                                 sequence = 'link_sequence'):
         #mapmatch each trip_id in self.links to the road_network (self.road_links)
-        ncm = NetworkCaster_MapMaptching(self.nodes, self.road_links, self.links, by)
+        ncm = NetworkCaster_MapMaptching(self.nodes, self.road_links, self.links, by, sequence)
         matched_links, links_mat, unmatched_trip = ncm.Multi_Mapmatching(routing=routing,
                                                                          n_neighbors_centroid=n_neighbors_centroid,
                                                                          n_neighbors=n_neighbors,

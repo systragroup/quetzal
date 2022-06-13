@@ -74,7 +74,8 @@ class Feed(gk.feed.Feed):  # Overwrite Feed class
     def drop_unused(self):
         # drop stops without stop_times
         stop_set = list(self.stop_times.stop_id.unique())
-        stop_set += list(self.stops.loc[self.stops.stop_id.isin(stop_set), 'parent_station'].values)
+        if not self.stops['parent_station'].isna().all():
+            stop_set += list(self.stops.loc[self.stops.stop_id.isin(stop_set), 'parent_station'].values)
         self.stops = self.stops.loc[self.stops.stop_id.isin(stop_set)]
 
         # drops trips without stop_times

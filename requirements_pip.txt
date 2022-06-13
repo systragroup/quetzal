@@ -6,10 +6,15 @@ geopy
 scipy
 sklearn
 matplotlib
-
+numba
+protobuf==3.20
+ray
 simpledbf
 xlrd
 branca
 ipywidgets # remove
 openpyxl
 osmnx
+gtfs_kit
+geojson
+redis
