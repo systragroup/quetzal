@@ -151,22 +151,23 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 warnings.warn(("zone_to_road indexes does not have prefixes. This may cause collisions."
                                "Consider using the option prefix=True. Prefixes will be added by default in"  
                                "a future update"), FutureWarning)
-
-            ntlegs = engine.ntlegs_from_centroids_and_nodes(
-                self.nodes,
-                self.road_nodes,
-                short_leg_speed=short_leg_speed,
-                long_leg_speed=long_leg_speed,
-                threshold=threshold,
-                n_neighbors=n_ntlegs,
-                coordinates_unit=self.coordinates_unit
-            )
-            ntlegs['walk_time'] = ntlegs['time']
-            self.road_to_transit = ntlegs.loc[ntlegs['distance'] < length].copy()
-            if prefix:
-                self.road_to_transit.index =  'rtt_' + pd.Series(self.road_to_transit.index).astype(str)
-            else: 
-                warnings.warn(("road_to_transit indexes does not have prefixes. This may cause collisions."
+            
+            if hasattr(self, 'nodes'):
+                ntlegs = engine.ntlegs_from_centroids_and_nodes(
+                    self.nodes,
+                    self.road_nodes,
+                    short_leg_speed=short_leg_speed,
+                    long_leg_speed=long_leg_speed,
+                    threshold=threshold,
+                    n_neighbors=n_ntlegs,
+                    coordinates_unit=self.coordinates_unit
+                )
+                ntlegs['walk_time'] = ntlegs['time']
+                self.road_to_transit = ntlegs.loc[ntlegs['distance'] < length].copy()
+                if prefix:
+                    self.road_to_transit.index =  'rtt_' + pd.Series(self.road_to_transit.index).astype(str)
+                else: 
+                    warnings.warn(("road_to_transit indexes does not have prefixes. This may cause collisions."
                                "Consider using the option prefix=True. Prefixes will be added by default in"  
                                "a future update"), FutureWarning)
 
