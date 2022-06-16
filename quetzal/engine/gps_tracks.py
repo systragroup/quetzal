@@ -1,38 +1,45 @@
+import geopandas as gpd
 import networkx as nx
+import numpy as np
 from scipy import interpolate
 from shapely import geometry
+from shapely.geometry import LineString, Point
+
+from quetzal.engine.add_network import NetworkCaster
 from syspy.spatial import spatial
 
-from shapely.geometry import LineString
-from quetzal.engine.add_network import NetworkCaster
 
-def get_path_with_waypoints(points, road_links, road_nodes, buffer=100, n_segments=10, **kwargs):
+def get_segments(curve):
+    return list(map(LineString, zip(curve.coords[:-1], curve.coords[1:])))
+
+def get_path_with_waypoints(points, road_links, road_nodes, buffer=100, tolerance=50, **kwargs):
+
     # create copy for the recursion
     base_road_links, base_road_nodes = road_links.copy(), road_nodes.copy()
 
     # build links for each segment
-    step = int(len(points) / n_segments)
+    linestring = LineString(points.geometry.values)
+    simplified_line = linestring.simplify(tolerance)
+    segments = get_segments(simplified_line)
 
-    os = list(np.arange(n_segments) * step)
-    ds = os[1:] + [len(points) - 1]
+    links = gpd.GeoDataFrame(
+        {
+            'geometry': segments,
+            'link_sequence': np.arange(1, len(segments) + 1),
+            'a': np.arange(0, len(segments)),
+            'b': np.arange(1, len(segments)+1),
+            'trip_id': '1',
+            'route_id': '1'
+        }
+    )
 
-    points_a = points.iloc[os]
-    points_a = points_a.rename(columns={'geometry': 'geom_a'})
-    points_a['a'] = points_a.index
-    points_a.reset_index(inplace=True, drop=True)
+    nodes = gpd.GeoDataFrame(
+        {
+            'geometry': [Point(x) for x in simplified_line.coords[:]],
+            'id': np.arange(0, len(segments)+1),       
+        }
+    )
 
-    points_b = points.iloc[ds]
-    points_b = points_b.rename(columns={'geometry': 'geom_b'})
-    points_b['b'] = points_b.index
-    points_b.reset_index(inplace=True, drop=True)
-
-    links = pd.concat([points_a, points_b], axis=1)
-    links['link_sequence'] = np.arange(1, len(links)+1)
-    links['trip_id'] = '1'
-    links['route_id'] = '1'
-    links['geometry'] = links[['geom_a', 'geom_b']].apply(LineString, 1)
-    links.drop(['geom_a', 'geom_b'], axis=1, inplace=True)
-    
     # geographic filter
     linestring = geometry.LineString(list(points['geometry']))
     polygon = linestring.buffer(buffer).simplify(buffer)
@@ -42,14 +49,18 @@ def get_path_with_waypoints(points, road_links, road_nodes, buffer=100, n_segmen
 
     # networkcaster
     nc = NetworkCaster(
-        points.iloc[list(set(os).union(set(ds)))],
+        nodes,
         links,
         road_nodes,
         road_links
     )
 
-    nc.build(**kwargs)
-
+    nc.build(
+        penalty_factor=kwargs.get('penalty_factor', 2),
+        geometry=True,
+        n_neighbors=kwargs.get('n_neighbors', 5),
+        nearest_method=kwargs.get('nearest_method', 'links')
+    )
 
     link_path = []
     node_path = []
@@ -60,10 +71,9 @@ def get_path_with_waypoints(points, road_links, road_nodes, buffer=100, n_segmen
             if n_[0]==node_path[-1]:
                 n_.pop(0)
         node_path += list(n_)
-
     # node_path = ['o'] + node_path + ['d']
 
-    return node_path, link_path
+    return node_path, link_path #
 
 
 def get_path(points, road_links, road_nodes, buffer=50, penalty_factor=2, n_neighbors=2):
