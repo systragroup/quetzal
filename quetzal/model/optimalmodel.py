@@ -34,9 +34,10 @@ class OptimalModel(preparationmodel.PreparationModel):
         if walk_on_road:
             road_links = self.road_links.copy()
             road_links['time'] = road_links['walk_time']
-            footpaths = pd.concat([road_links, self.road_to_transit,
-                                               self.zone_to_transit,
-                                               self.footpaths])
+            footpaths = pd.concat([road_links, self.road_to_transit])
+            for attr in ['footpaths', 'zone_to_transit']:
+                if hasattr(self, attr):
+                    footpaths = pd.concat([footpaths, getattr(self, attr)])
             access = self.zone_to_road.copy()
         else:
             access = self.zone_to_transit.copy()
@@ -215,9 +216,9 @@ class OptimalModel(preparationmodel.PreparationModel):
         zero = 1 / inf
         # add a column for each type of time to the os edges
         edges = self.optimal_strategy_edges
-        edges['rtt_time'] = self.road_to_transit['time']
-        edges['ztr_time'] = self.zone_to_road['time']
-        edges['ztt_time'] = self.zone_to_transit['time']
+        edges['rtt_time'] = self.road_to_transit['time'] if hasattr(self, 'road_to_transit') else 0
+        edges['ztr_time'] = self.zone_to_road['time']  if hasattr(self, 'zone_to_road') else 0
+        edges['ztt_time'] = self.zone_to_transit['time']  if hasattr(self, 'zone_to_transit') else 0
         edges['in_vehicle_time'] = self.links['time']
         edges.loc[['boarding_' in i for i in edges.index], 'boarding_time'] = boarding_time
         edges.loc[['alighting_' in i for i in edges.index], 'alighting_time'] = alighting_time

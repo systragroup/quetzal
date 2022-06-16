@@ -335,7 +335,10 @@ class PlotModel(summarymodel.SummaryModel):
 
         try:
             loc = set(self.loaded_edges.loc[self.loaded_edges['dummy'] > 0].index)
-            access = pd.concat([self.road_links, self.zone_to_road, self.road_to_transit])
+            access = self.road_links
+            for attr in ['zone_to_road', 'road_to_transit']:
+                if hasattr(self, attr):
+                    access = pd.concat([access, getattr(self, attr)])
             loc = loc.intersection(access.index)
             access = access.loc[loc]
             assert len(access) > 0
@@ -371,7 +374,7 @@ class PlotModel(summarymodel.SummaryModel):
         ax.set_yticks([])
         ax.set_xticks([])
 
-        nodes = self.nodes.dropna(subset=['boardings', 'alightings'], how='all').fillna(0)
+        nodes = gpd.GeoDataFrame(self.nodes.dropna(subset=['boardings', 'alightings'], how='all').fillna(0))
         nodes.plot(ax=ax, marker=10, markersize=200, zorder=10, column='boardings', cmap=cmap, norm=norm, linewidth=0)
         nodes.plot(ax=ax, marker=11, markersize=200, zorder=10, column='alightings', cmap=cmap, norm=norm, linewidth=0)
 
