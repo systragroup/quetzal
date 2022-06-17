@@ -397,7 +397,9 @@ def add_north_and_scalebar(ax, fontsize=14):
 def bandwidth(
     gdf, value_column, max_value=None, power=1, legend=True, offset_direction='right',
     label_column=None, max_linewidth_meters=100, variable_width=True, line_offset=True, cmap='Spectral',
-    arrows=False, geographical_bounds=None, label_kwargs={'size': 12}, *args, **kwargs
+    arrows=False, geographical_bounds=None, label_kwargs={'size': 12}, 
+    arrow_kwargs={'head_width': -150}, 
+    *args, **kwargs
 ):
     # TODO:
     # 1. add to plot model
@@ -429,7 +431,7 @@ def bandwidth(
     # Offset
     if line_offset:
         df['geometry'] = df.apply(
-            lambda x: x['geometry'].parallel_offset(x['geographical_width'] * 1, offset_direction), 1
+            lambda x: x['geometry'].parallel_offset(x['geographical_width'] * 0.5, offset_direction), 1
         )
         df = df[df.geometry.type == 'LineString']
         df = df[df.length > 0]  # offset can create empty LineString
@@ -460,10 +462,10 @@ def bandwidth(
                 x_s, y_s,
                 lw=row['linewidth']*0.9,
                 color=plt_cmap(norm(row[value_column])),
-                head_width=min(-row['linewidth'] * 20, -150), # désolé mais ça me soule…
                 head_length=row['length'] * 0.25,
                 shape=shape,
                 length_includes_head=False,
+                **arrow_kwargs
             )
             
         df.apply(plot_arrow, axis=1)
