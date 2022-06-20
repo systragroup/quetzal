@@ -78,7 +78,7 @@ def compute_pattern_headways(feed, time_range, pattern_column='pattern_id'):
 
     freq_conv = GTFS_frequencies_utils(temp_frequencies, feed.trips.copy())
     pattern_headways = feed.trips.groupby(pattern_column)[['trip_id']].agg(list)
-    pattern_headways['headway_secs'] = pattern_headways['trip_id'].progress_apply(
+    pattern_headways['headway_secs'] = pattern_headways['trip_id'].apply(
         lambda x: freq_conv.compute_average_headway(x, time_range_sec)
     )
 
