@@ -28,11 +28,11 @@ log = model.log
 
 
 class AnalysisModel(summarymodel.SummaryModel):
-    def _aggregate(self, nb_clusters, cluster_column=None, volume_column='volume'):
+    def _aggregate(self, nb_clusters, cluster_column=None, volume_column='volume_pt'):
         """
         Aggregates a model (in order to perform optimization)
             * requires: nb_clusters, cluster_series, od_stack, indicator
-            * builds: cluster_series, aggregated model, reduced indicator
+            * builds: cluster_series, aggregated model, reduced_indicator
         """
         self.agg = self.copy()
         self.agg.preparation_clusterize_zones(

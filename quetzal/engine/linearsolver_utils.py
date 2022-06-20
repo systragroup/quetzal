@@ -88,8 +88,8 @@ def reduce_indicator(big_indicator, cluster_series, volumes, volume_column='volu
                      right_index=True, suffixes=['_origin', '_destination'])
     grouped = proto.groupby(
         ['cluster_origin', 'cluster_destination'])[
-            [i for i in range(nb_keys)]]
-
+            [i for i in range(nb_keys)] + [volume_column]
+    ]
     indicator = pd.DataFrame([
         tuple(np.ma.average(table[k], weights=table[volume_column], axis=0) for k in range(nb_keys))
         for couple, table in grouped
