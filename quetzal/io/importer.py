@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import shapely
 from syspy.spatial import spatial
 from syspy.syspy_utils.syscolors import linedraft_shades, rainbow_shades
@@ -91,7 +92,7 @@ def links_and_nodes(linestring, node_index=0):
     return links, nodes
 
 
-def from_lines(lines, node_index=0, add_return=True):
+def from_lines(lines, node_index=0, add_return=True, to_keep=[]):
     """
     lines index is used, links and nodes are returned
     if add_return = True, return lines are created
@@ -108,6 +109,8 @@ def from_lines(lines, node_index=0, add_return=True):
         links['line'] = line
         links['trip_id'] = str(line)
         links['route_id'] = str(line)
+        for c in to_keep:
+            links[c] = lines.loc[line, c]        
         if not add_return:
             links = links[links['direction_id'] == 0]
         else:
@@ -119,3 +122,67 @@ def from_lines(lines, node_index=0, add_return=True):
     links = pd.concat(to_concat_links)
     nodes = pd.concat(to_concat_nodes)
     return links.reset_index(drop=True), nodes
+
+def from_lines_and_stations(lines, stations, buffer=1e-3, og_geoms=True, **kwargs):
+    """Convert a set of alignement and station into a table of links.
+
+    Parameters
+    ----------
+    lines : pd.DataFrame (or gpd.GeoDataFrame)
+        DataFrame describing the alignements as LineSring in a *geometry* column.
+    stations : pd.DataFrame (or gpd.GeoDataFrame)
+        DataFrame describing the stations as Point in a *geometry* column.
+    buffer : Float, optional
+        Buffer for station detection near each alignement, by default 1e-3
+    og_geoms : bool, optional
+        If True (by default), the original geometry will be split between stations.
+        If False, returned geometry will be a simplified geometry (st1 -> st2)
+
+    Returns
+    -------
+    pd.DataFrame
+        Table of links. As per, :func:`from_lines` output.
+
+    """
+    stations = stations.copy()
+    lines = lines.copy()
+    links_concat = []
+    for index, line in lines.iterrows():
+        linestring = line['geometry']
+        buffered = linestring.buffer(buffer)
+
+        # Filter stations using the buffer and project those stations
+        stations['keep'] = stations['geometry'].apply(lambda g: buffered.contains(g))
+        near = stations[stations['keep']].copy()
+        near['proj'] = [linestring.project(pt, normalized=True) 
+                            for pt in near['geometry'].to_list()]
+        near = near.sort_values(by='proj')
+        stations.drop(columns=['keep'], inplace=True)
+
+        # Create simplified geometry (st1 -> st2 -> ...)
+        nodes = [linestring.interpolate(d, normalized=True) for d in near['proj']]
+        lines.loc[index, 'geometry'] = shapely.geometry.LineString(nodes)
+
+        # Get links table from simplified geometry
+        links, nodes = from_lines(lines.loc[[index]], **kwargs)
+        index_dict = near.reset_index()['index'].to_dict()
+        links['a'] = links['a'].apply(lambda x: index_dict.get(x))
+        links['b'] = links['b'].apply(lambda x: index_dict.get(x))
+
+        # Split original geometry with stations to add orignal geometry at each links 
+        if og_geoms:
+            split_pts = shapely.geometry.MultiPoint(nodes['geometry'].to_list())
+            i1 = 0 if near.iloc[0]['proj'] == 0 else 1
+            i2 = None if near.iloc[-1]['proj'] == 1.0 else -1
+            og_geoms = list(split_line_by_point(linestring, split_pts).geoms)[i1:i2]
+            if kwargs.get('add_return', True):
+                og_geoms += og_geoms[::-1]
+        
+            links['geometry'] = og_geoms
+
+        links_concat.append(links)
+
+    return pd.concat(links_concat), og_geoms
+
+def split_line_by_point(line, point, tolerance: float=1.0e-9):
+    return shapely.ops.split(shapely.ops.snap(line, point, tolerance), point)
