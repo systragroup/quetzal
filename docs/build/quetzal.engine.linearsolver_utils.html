@@ -1,70 +1,34 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" />
-  
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
   <title>quetzal.engine.linearsolver_utils module &mdash; quetzal  documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-
-  
-  
-
-  
-  
-
-  
-
-  
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-    
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-
-    
+    <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="quetzal.engine.pathfinder module" href="quetzal.engine.pathfinder.html" />
     <link rel="prev" title="quetzal.engine.engine module" href="quetzal.engine.engine.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
-
-          
             <a href="index.html" class="icon icon-home"> quetzal
-          
-
-          
           </a>
-
-          
-            
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -72,18 +36,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-
-          
-        </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="quetzal.engine.html">quetzal.engine package</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="quetzal.engine.html#submodules">Submodules</a><ul class="current">
@@ -103,78 +56,36 @@
 <li class="toctree-l1"><a class="reference internal" href="quetzal.analysis.html">quetzal.analysis package</a></li>
 </ul>
 
-            
-          
         </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">quetzal</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
-        
           <li><a href="quetzal.engine.html">quetzal.engine package</a> &raquo;</li>
-        
       <li>quetzal.engine.linearsolver_utils module</li>
-    
-    
       <li class="wy-breadcrumbs-aside">
-        
-          
             <a href="_sources/quetzal.engine.linearsolver_utils.rst.txt" rel="nofollow"> View page source</a>
-          
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
-  <div class="section" id="module-quetzal.engine.linearsolver_utils">
-<span id="quetzal-engine-linearsolver-utils-module"></span><h1>quetzal.engine.linearsolver_utils module<a class="headerlink" href="#module-quetzal.engine.linearsolver_utils" title="Permalink to this headline">¶</a></h1>
+             
+  <section id="module-quetzal.engine.linearsolver_utils">
+<span id="quetzal-engine-linearsolver-utils-module"></span><h1>quetzal.engine.linearsolver_utils module<a class="headerlink" href="#module-quetzal.engine.linearsolver_utils" title="Permalink to this headline"></a></h1>
 <dl class="py function">
-<dt id="quetzal.engine.linearsolver_utils.build_constraints">
-<code class="sig-prename descclassname"><span class="pre">quetzal.engine.linearsolver_utils.</span></code><code class="sig-name descname"><span class="pre">build_constraints</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">indicator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values_links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">od_stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_emissions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_tot_emissions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pas_distance</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volume_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'volume_pt'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/linearsolver_utils.html#build_constraints"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.linearsolver_utils.build_constraints" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.engine.linearsolver_utils.build_constraints">
+<span class="sig-prename descclassname"><span class="pre">quetzal.engine.linearsolver_utils.</span></span><span class="sig-name descname"><span class="pre">build_constraints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">indicator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values_links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">od_stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_emissions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_tot_emissions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pas_distance</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volume_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'volume_pt'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/linearsolver_utils.html#build_constraints"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.linearsolver_utils.build_constraints" title="Permalink to this definition"></a></dt>
 <dd><p>Ici on construit l’objectif et les contraintes du problème d’optimisation
 suivant:
 variable: pivot A
@@ -242,8 +153,8 @@ of the entire model</p></li>
 </dd></dl>
 
 <dl class="py function">
-<dt id="quetzal.engine.linearsolver_utils.build_indicator">
-<code class="sig-prename descclassname"><span class="pre">quetzal.engine.linearsolver_utils.</span></code><code class="sig-name descname"><span class="pre">build_indicator</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">od_stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constrained_links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">link_path_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'link_path'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/linearsolver_utils.html#build_indicator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.linearsolver_utils.build_indicator" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.engine.linearsolver_utils.build_indicator">
+<span class="sig-prename descclassname"><span class="pre">quetzal.engine.linearsolver_utils.</span></span><span class="sig-name descname"><span class="pre">build_indicator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">od_stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constrained_links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">link_path_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'link_path'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/linearsolver_utils.html#build_indicator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.linearsolver_utils.build_indicator" title="Permalink to this definition"></a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -258,8 +169,8 @@ of the entire model</p></li>
 </dd></dl>
 
 <dl class="py function">
-<dt id="quetzal.engine.linearsolver_utils.extrapolate">
-<code class="sig-prename descclassname"><span class="pre">quetzal.engine.linearsolver_utils.</span></code><code class="sig-name descname"><span class="pre">extrapolate</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agg_pivot_stack_matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">od_stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cluster_series</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/linearsolver_utils.html#extrapolate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.linearsolver_utils.extrapolate" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.engine.linearsolver_utils.extrapolate">
+<span class="sig-prename descclassname"><span class="pre">quetzal.engine.linearsolver_utils.</span></span><span class="sig-name descname"><span class="pre">extrapolate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agg_pivot_stack_matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">od_stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cluster_series</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/linearsolver_utils.html#extrapolate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.linearsolver_utils.extrapolate" title="Permalink to this definition"></a></dt>
 <dd><p>Extrapolates the model.
 Given the aggregated model and its pivot_stack_matrix, we build the
 pivot_stack_matrix for the whole model.</p>
@@ -277,8 +188,8 @@ pivot_stack_matrix for the whole model.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="quetzal.engine.linearsolver_utils.linearsolver">
-<code class="sig-prename descclassname"><span class="pre">quetzal.engine.linearsolver_utils.</span></code><code class="sig-name descname"><span class="pre">linearsolver</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">indicator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constrained_links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">od_stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_emissions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_tot_emissions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pas_distance</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxiter</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tolerance</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/linearsolver_utils.html#linearsolver"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.linearsolver_utils.linearsolver" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.engine.linearsolver_utils.linearsolver">
+<span class="sig-prename descclassname"><span class="pre">quetzal.engine.linearsolver_utils.</span></span><span class="sig-name descname"><span class="pre">linearsolver</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">indicator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constrained_links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">od_stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_emissions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_tot_emissions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pas_distance</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxiter</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tolerance</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/linearsolver_utils.html#linearsolver"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.linearsolver_utils.linearsolver" title="Permalink to this definition"></a></dt>
 <dd><p>Cette fonction est le coeur de la méthode linear_solver.
 - Elle construit les contraintes et l’objectif dans build_constraints
 - Elle résoud le problème d’optimisation linéaire ainsi formé, avec les
@@ -289,8 +200,8 @@ bonnes contraintes et paramètres.</p>
 <li><p><strong>(</strong><strong>pd.DataFrame</strong><strong>)</strong> (<em>od_stack</em>) – indicator of the model</p></li>
 <li><p><strong>(</strong><strong>dict</strong><strong>)</strong> (<em>constrained_links</em>) – dict of constrained links with volumes</p></li>
 <li><p><strong>(</strong><strong>pd.DataFrame</strong><strong>)</strong> – od_stack of the model</p></li>
-<li><p><strong>bounds_emissions</strong><strong>, </strong><strong>bounds_tot_emissions</strong><strong>, </strong><strong>pas_distance</strong> (<em>bounds_A</em><em>,</em>) – parameters for building constraints</p></li>
-<li><p><strong>tolerance</strong><strong> (</strong><strong>int</strong><strong>)</strong> (<em>maxiter</em><em>,</em>) – maximum iterations and tolerance on
+<li><p><strong>pas_distance</strong> (<em>bounds_A</em><em>, </em><em>bounds_emissions</em><em>, </em><em>bounds_tot_emissions</em><em>,</em>) – parameters for building constraints</p></li>
+<li><p><strong>(</strong><strong>int</strong><strong>)</strong> (<em>maxiter</em><em>, </em><em>tolerance</em>) – maximum iterations and tolerance on
 objective for the linprog function</p></li>
 </ul>
 </dd>
@@ -301,8 +212,8 @@ objective for the linprog function</p></li>
 </dd></dl>
 
 <dl class="py function">
-<dt id="quetzal.engine.linearsolver_utils.reduce_indicator">
-<code class="sig-prename descclassname"><span class="pre">quetzal.engine.linearsolver_utils.</span></code><code class="sig-name descname"><span class="pre">reduce_indicator</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">big_indicator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cluster_series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volumes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volume_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'volume_pt'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/linearsolver_utils.html#reduce_indicator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.linearsolver_utils.reduce_indicator" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.engine.linearsolver_utils.reduce_indicator">
+<span class="sig-prename descclassname"><span class="pre">quetzal.engine.linearsolver_utils.</span></span><span class="sig-name descname"><span class="pre">reduce_indicator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">big_indicator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cluster_series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volumes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volume_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'volume_pt'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/engine/linearsolver_utils.html#reduce_indicator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.engine.linearsolver_utils.reduce_indicator" title="Permalink to this definition"></a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -317,54 +228,37 @@ objective for the linprog function</p></li>
 </dl>
 </dd></dl>
 
-</div>
+</section>
 
 
            </div>
-           
           </div>
-          <footer>
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-        <a href="quetzal.engine.pathfinder.html" class="btn btn-neutral float-right" title="quetzal.engine.pathfinder module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="quetzal.engine.engine.html" class="btn btn-neutral float-left" title="quetzal.engine.engine module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="quetzal.engine.pathfinder.html" class="btn btn-neutral float-right" title="quetzal.engine.pathfinder module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        &#169; Copyright 2018, Systra.
-
-    </p>
+    <p>&#169; Copyright 2018, Systra.</p>
   </div>
-    
-    
-    
-    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
-    
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
-    
-    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
 
 </footer>
         </div>
       </div>
-
     </section>
-
   </div>
-  
-
-  <script type="text/javascript">
+  <script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>

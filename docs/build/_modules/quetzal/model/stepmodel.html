@@ -1,68 +1,31 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8" />
-  
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
   <title>quetzal.model.stepmodel &mdash; quetzal  documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
-
-  
-  
-
-  
-  
-
-  
-
-  
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
-    
-    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
-
-    
+    <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
-
-          
             <a href="../../../index.html" class="icon icon-home"> quetzal
-          
-
-          
           </a>
-
-          
-            
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -70,18 +33,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-
-          
-        </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../quetzal.engine.html">quetzal.engine package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.html">quetzal.model package</a></li>
@@ -89,107 +41,54 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../quetzal.analysis.html">quetzal.analysis package</a></li>
 </ul>
 
-            
-          
         </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../../../index.html">quetzal</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
       <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
-        
           <li><a href="../../index.html">Module code</a> &raquo;</li>
-        
       <li>quetzal.model.stepmodel</li>
-    
-    
       <li class="wy-breadcrumbs-aside">
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
+             
   <h1>Source code for quetzal.model.stepmodel</h1><div class="highlight"><pre>
-<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
-
-<span class="kn">from</span> <span class="nn">quetzal.model</span> <span class="kn">import</span> <span class="n">analysismodel</span><span class="p">,</span> <span class="n">docmodel</span><span class="p">,</span> <span class="n">plotmodel</span>
-
-<span class="kn">import</span> <span class="nn">warnings</span>
-<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">wraps</span>
+<span></span><span class="kn">import</span> <span class="nn">ntpath</span>
 <span class="kn">import</span> <span class="nn">shutil</span>
-<span class="kn">import</span> <span class="nn">ntpath</span>
 <span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">from</span> <span class="nn">quetzal.model</span> <span class="kn">import</span> <span class="n">analysismodel</span><span class="p">,</span> <span class="n">docmodel</span><span class="p">,</span> <span class="n">plotmodel</span>
+<span class="kn">from</span> <span class="nn">quetzal.model.integritymodel</span> <span class="kn">import</span> <span class="n">deprecated_method</span>
 
 
-<div class="viewcode-block" id="deprecated_method"><a class="viewcode-back" href="../../../quetzal.model.stepmodel.html#quetzal.model.stepmodel.deprecated_method">[docs]</a><span class="k">def</span> <span class="nf">deprecated_method</span><span class="p">(</span><span class="n">method</span><span class="p">):</span>
-    <span class="nd">@wraps</span><span class="p">(</span><span class="n">method</span><span class="p">)</span>
-    <span class="k">def</span> <span class="nf">decorated</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;Deprecated: replaced by </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">method</span><span class="o">.</span><span class="vm">__name__</span>
-        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-            <span class="n">message</span><span class="p">,</span>
-            <span class="ne">DeprecationWarning</span>
-        <span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">method</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-    <span class="n">decorated</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="s1">&#39;deprecated! &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">decorated</span><span class="o">.</span><span class="vm">__doc__</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">decorated</span></div>
 
 
 <div class="viewcode-block" id="read_hdf"><a class="viewcode-back" href="../../../quetzal.model.stepmodel.html#quetzal.model.stepmodel.read_hdf">[docs]</a><span class="k">def</span> <span class="nf">read_hdf</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="n">m</span> <span class="o">=</span> <span class="n">StepModel</span><span class="p">(</span><span class="n">hdf_database</span><span class="o">=</span><span class="n">filepath</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">m</span></div>
 
+
 <div class="viewcode-block" id="read_zip"><a class="viewcode-back" href="../../../quetzal.model.stepmodel.html#quetzal.model.stepmodel.read_zip">[docs]</a><span class="k">def</span> <span class="nf">read_zip</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">m</span> <span class="o">=</span> <span class="n">StepModel</span><span class="p">(</span><span class="n">zip_database</span><span class="o">=</span><span class="n">filepath</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">m</span>
-    <span class="k">except</span> <span class="p">:</span> 
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
         <span class="c1"># the zip is a zipped hdf and can not be decompressed</span>
         <span class="k">return</span> <span class="n">read_zipped_hdf</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
 
 <div class="viewcode-block" id="read_zipped_hdf"><a class="viewcode-back" href="../../../quetzal.model.stepmodel.html#quetzal.model.stepmodel.read_zipped_hdf">[docs]</a><span class="k">def</span> <span class="nf">read_zipped_hdf</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="n">filedir</span> <span class="o">=</span> <span class="n">ntpath</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
@@ -200,9 +99,11 @@
     <span class="k">return</span> <span class="n">m</span></div>
 
 
-<div class="viewcode-block" id="read_json"><a class="viewcode-back" href="../../../quetzal.model.stepmodel.html#quetzal.model.stepmodel.read_json">[docs]</a><span class="k">def</span> <span class="nf">read_json</span><span class="p">(</span><span class="n">folder</span><span class="p">):</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">StepModel</span><span class="p">(</span><span class="n">json_folder</span><span class="o">=</span><span class="n">folder</span><span class="p">)</span>
+<div class="viewcode-block" id="read_json"><a class="viewcode-back" href="../../../quetzal.model.stepmodel.html#quetzal.model.stepmodel.read_json">[docs]</a><span class="k">def</span> <span class="nf">read_json</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">StepModel</span><span class="p">(</span><span class="n">json_folder</span><span class="o">=</span><span class="n">folder</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">m</span></div>
+
+
 <div class="viewcode-block" id="read_zippedpickles"><a class="viewcode-back" href="../../../quetzal.model.stepmodel.html#quetzal.model.stepmodel.read_zippedpickles">[docs]</a><span class="k">def</span> <span class="nf">read_zippedpickles</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwarg</span><span class="p">):</span>
     <span class="n">m</span> <span class="o">=</span> <span class="n">StepModel</span><span class="p">(</span><span class="n">zippedpickles_folder</span><span class="o">=</span><span class="n">folder</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwarg</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">m</span></div>
@@ -210,15 +111,168 @@
 
 <div class="viewcode-block" id="StepModel"><a class="viewcode-back" href="../../../quetzal.model.stepmodel.html#quetzal.model.stepmodel.StepModel">[docs]</a><span class="k">class</span> <span class="nc">StepModel</span><span class="p">(</span>
     <span class="n">plotmodel</span><span class="o">.</span><span class="n">PlotModel</span><span class="p">,</span>
-    <span class="n">analysismodel</span><span class="o">.</span><span class="n">AnalysisModel</span><span class="p">,</span> 
+    <span class="n">analysismodel</span><span class="o">.</span><span class="n">AnalysisModel</span><span class="p">,</span>
     <span class="n">docmodel</span><span class="o">.</span><span class="n">DocModel</span><span class="p">,</span>
-    <span class="p">):</span>
+<span class="p">):</span>
 
+    <span class="sd">&quot;&quot;&quot;Object StepModel : contains most of the transport model with : </span>
+<span class="sd">        * Attributes are the caracteristics of the model</span>
+<span class="sd">        * Methods are the steps and functions of the model</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    zones : geodataframe</span>
+<span class="sd">        Zoning system of the model.</span>
+<span class="sd">        </span>
+<span class="sd">        Main columns :</span>
+<span class="sd">            area, population, geometry</span>
+<span class="sd">    </span>
+<span class="sd">    centroids : geodataframe</span>
+<span class="sd">        Centroids of the zoning system of the model.</span>
+<span class="sd">        Usually created by method preparation_ntlegs.</span>
+<span class="sd">        </span>
+<span class="sd">        Main columns :</span>
+<span class="sd">            area, population, geometry</span>
+<span class="sd">    </span>
+<span class="sd">    segments : list</span>
+<span class="sd">        Demand segments of the model.</span>
+<span class="sd">        Created by the user.</span>
+<span class="sd">    </span>
+<span class="sd">    volumes : dataframe</span>
+<span class="sd">    	Volumes per OD pair.</span>
+<span class="sd">        Usually created by method step_distribution or user input.</span>
+<span class="sd">        </span>
+<span class="sd">        Main columns : </span>
+<span class="sd">            origin, destination, volume per demand segment</span>
+<span class="sd">    </span>
+<span class="sd">    epsg : string</span>
+<span class="sd">    	Projection</span>
+<span class="sd">    </span>
+<span class="sd">    links : geodataframe</span>
+<span class="sd">        Links of the public transport system and pt routes caracteristics.</span>
+<span class="sd">        Each line of the geodataframe correspond to a section of a PT route between two nodes=stops (&#39;a&#39; and &#39;b&#39;).</span>
+<span class="sd">        Usually created by shapefile importer or GTFS importer.</span>
+<span class="sd">        </span>
+<span class="sd">        Main columns : </span>
+<span class="sd">            * initial and final nodes of the link : &#39;a&#39;, &#39;b&#39; </span>
+<span class="sd">            * caracteristics of the line : &#39;trip_id&#39;, &#39;route_id&#39;, &#39;service_id&#39;, &#39;trip_headsign&#39;, &#39;trip_short_name&#39;,&#39;direction_id&#39;, &#39;block_id&#39;,&#39;agency_id&#39;, &#39;route_short_name&#39;,&#39;route_long_name&#39;,&#39;route_type&#39;</span>
+<span class="sd">            * caracteristics of the section :&#39;arrival_time&#39;, &#39;drop_off_type&#39;, &#39;time&#39;, &#39;headway&#39;, &#39;pattern_id&#39;,&#39;link_sequence&#39;, &#39;departure_time&#39;, &#39;pickup_type&#39;, &#39;geometry&#39;, &#39;length&#39;, &#39;duration&#39;, &#39;cost&#39;</span>
+<span class="sd">            * caracteristics of the roads sections which supports the link section (created by method preparation_cast_network) : &#39;road_a&#39;, &#39;road_b&#39;, &#39;road_node_list&#39;,&#39;road_link_list&#39;, &#39;road_length&#39;</span>
+<span class="sd">            * results of the step_assignment : &#39;volume&#39;, &#39;boardings&#39;, &#39;alightings&#39;</span>
+
+<span class="sd">    nodes: geodataframe</span>
+<span class="sd">        Public transport stations.</span>
+<span class="sd">        Usually created by shapefile importer or GTFS importer.</span>
+<span class="sd">        </span>
+<span class="sd">        Main columns : </span>
+<span class="sd">            geometry, name</span>
+<span class="sd">    </span>
+<span class="sd">    road_links: geodataframe</span>
+<span class="sd">        Links (edges) of the road network - between two road_nodes.</span>
+<span class="sd">        Usually created by shapefile importer or OSMNX.</span>
+<span class="sd">        </span>
+<span class="sd">        Main columns :</span>
+<span class="sd">            * initial and final road_nodes of the link : &#39;a&#39;, &#39;b&#39;, </span>
+<span class="sd">            * caracteristics of the section : &#39;length&#39;, &#39;geometry&#39;, &#39;time&#39;, &#39;walk_time&#39;, &#39;capacity&#39;</span>
+<span class="sd">            * description of the jam function : &#39;vdf&#39;, &#39;alpha&#39;, &#39;beta&#39;, &#39;limit&#39;, &#39;penalty&#39;</span>
+<span class="sd">            * results of the step_road_pathfinder : &#39;flow&#39;, &#39;jam_time&#39;</span>
+
+<span class="sd">    road_nodes: geodataframe</span>
+<span class="sd">        Nodes of the road network.</span>
+<span class="sd">        Usually created by shapefile importer or OSMNX.</span>
+<span class="sd">        </span>
+<span class="sd">        Main columns : </span>
+<span class="sd">            geometry</span>
+<span class="sd">    </span>
+<span class="sd">    zone_to_road : geodataframe</span>
+<span class="sd">        Connectors, aka non-transit leg (ntleg), from zones to road_nodes.</span>
+<span class="sd">        Usually created by method preparation_ntlegs.</span>
+<span class="sd">        </span>
+<span class="sd">        Main columns : </span>
+<span class="sd">            * initial and final zone/road_nodes of the ntleg :&#39;a&#39;, &#39;b&#39;</span>
+<span class="sd">            * description of the ntleg : &#39;rank&#39;, &#39;distance&#39;, &#39;geometry&#39;, &#39;direction&#39;</span>
+<span class="sd">            * description og the speed and time :&#39;speed_factor&#39;, &#39;short_leg_speed&#39;, &#39;long_leg_speed&#39;, &#39;speed&#39;, &#39;time&#39;, &#39;walk_time&#39;</span>
+<span class="sd">    </span>
+<span class="sd">    zone_to_transit : geodataframe</span>
+<span class="sd">        Connectors, aka non-transit leg (ntleg), from zones to nodes (PT stations).</span>
+<span class="sd">        Usually created by method preparation_ntlegs.</span>
+<span class="sd">        </span>
+<span class="sd">        Main columns : </span>
+<span class="sd">            * initial and final zone/nodes(stop) of the ntleg :&#39;a&#39;, &#39;b&#39;</span>
+<span class="sd">            * description of the ntleg : &#39;rank&#39;, &#39;distance&#39;, &#39;geometry&#39;, &#39;direction&#39;</span>
+<span class="sd">            * description og the speed and time :&#39;speed_factor&#39;, &#39;short_leg_speed&#39;, &#39;long_leg_speed&#39;, &#39;speed&#39;, &#39;time&#39;, &#39;walk_time&#39;</span>
+<span class="sd">    </span>
+<span class="sd">    road_to_transit : geodataframe</span>
+<span class="sd">        Connectors, aka non-transit leg (ntleg), from road_nodes to nodes (pt stations).</span>
+<span class="sd">        Usually created by method preparation_ntlegs.</span>
+<span class="sd">        </span>
+<span class="sd">        Main columns : </span>
+<span class="sd">            * initial and final node/road_nodes of the ntleg :&#39;a&#39;, &#39;b&#39;</span>
+<span class="sd">            * description of the ntleg : &#39;rank&#39;, &#39;distance&#39;, &#39;geometry&#39;, &#39;direction&#39;</span>
+<span class="sd">            * description og the speed and time :&#39;speed_factor&#39;, &#39;short_leg_speed&#39;, &#39;long_leg_speed&#39;, &#39;speed&#39;, &#39;time&#39;, &#39;walk_time&#39;</span>
+<span class="sd">    </span>
+<span class="sd">    footpaths : geodataframe</span>
+<span class="sd">        Pedestrian links between stations to allow connections.</span>
+<span class="sd">        Usually created by method preparation_footpaths.</span>
+<span class="sd">        </span>
+<span class="sd">        Main columns : </span>
+<span class="sd">            &#39;a&#39;, &#39;b&#39;, &#39;geometry&#39;, &#39;time&#39;</span>
+<span class="sd">    </span>
+<span class="sd">    pt_los : dataframe</span>
+<span class="sd">        Level of service of the pt network - for each OD pair, possible paths and their caracteristics. Each line of the df being a path.</span>
+<span class="sd">        Usually created by method step_pt_pathfinder.</span>
+<span class="sd">        </span>
+<span class="sd">        Main columns :</span>
+<span class="sd">            * OD pair : &#39;origin&#39;, &#39;destination&#39;</span>
+<span class="sd">            * description of the path : &#39;gtime&#39;, &#39;path&#39;, &#39;pathfinder_session&#39;, &#39;reversed&#39;, &#39;all_walk&#39;, &#39;ntransfers&#39;, &#39;time_link_path&#39;, &#39;length_link_path&#39; </span>
+<span class="sd">            * links taken by the path : &#39;link_path&#39;, &#39;footpaths&#39;, &#39;ntlegs&#39;,  &#39;boarding_links&#39;, &#39;alighting_links&#39;</span>
+<span class="sd">            * nodes where transfer is made : &#39;boardings&#39;, &#39;alightings&#39;, &#39;transfers&#39;, &#39;node_path&#39;</span>
+<span class="sd">            * results of the step_logit : utilities (per demand segment), probabilities (per demand segment)</span>
+<span class="sd">    </span>
+<span class="sd">    car_los	: dataframe</span>
+<span class="sd">        Level of service of the car network - for each OD pair results of pathfinder with/without capacity restriction.</span>
+<span class="sd">        Usually created by method step_road_pathfinder.</span>
+<span class="sd">        </span>
+<span class="sd">        Main columns :</span>
+<span class="sd">            * OD pair : &#39;origin&#39;, &#39;destination&#39;</span>
+<span class="sd">            * description of the path : &#39;time&#39;, &#39;path&#39;, &#39;gtime&#39;</span>
+<span class="sd">    </span>
+<span class="sd">    los : dataframe</span>
+<span class="sd">        Concatenation of the two tables pt_los and car_los to perform logit</span>
+<span class="sd">    </span>
+<span class="sd">    utility_values : dataframe</span>
+<span class="sd">        Values of the utility parameters per mode per segment.</span>
+<span class="sd">        Usually created by method preparation_logit - with parameters from the parameters file</span>
+<span class="sd">    </span>
+<span class="sd">    mode_utility : dataframe</span>
+<span class="sd">        Modal constants per mode per segment.</span>
+<span class="sd">        Usually created by method preparation_logit - with parameters from the parameters file</span>
+<span class="sd">    </span>
+<span class="sd">    mode_nests : dataframe</span>
+<span class="sd">    	Structure of the nested logit.</span>
+<span class="sd">        Usually created by method preparation_logit - with parameters from the parameters file</span>
+<span class="sd">    </span>
+<span class="sd">    logit_scales : dataframe</span>
+<span class="sd">    	Parameter phi of the nested logit.</span>
+<span class="sd">        Usually created by method preparation_logit - with parameters from the parameters file</span>
+<span class="sd">    </span>
+<span class="sd">    utilities : dataframe</span>
+<span class="sd">    	Agregaded utilities per OD per mode.</span>
+<span class="sd">        Usually created by method step_logit.</span>
+<span class="sd">    </span>
+<span class="sd">    probabilities : dataframe</span>
+<span class="sd">    	Agregaded probabilities per OD per mode.</span>
+<span class="sd">        Usually created by method step_logit.</span>
+
+
+
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
- 
 
 <span class="c1"># DEPRECATION</span>
+<span class="c1"># FOR DOCUMENTATION : parametrize so that those functions do not appear ?</span>
+
 
 <span class="c1"># deprecation method will be replaced by other data flow</span>
 <span class="n">StepModel</span><span class="o">.</span><span class="n">step_modal_split</span> <span class="o">=</span> <span class="n">deprecated_method</span><span class="p">(</span><span class="n">StepModel</span><span class="o">.</span><span class="n">step_modal_split</span><span class="p">)</span>
@@ -260,56 +314,40 @@
 <span class="n">StepModel</span><span class="o">.</span><span class="n">get_lines_integrity</span> <span class="o">=</span> <span class="n">deprecated_method</span><span class="p">(</span>
     <span class="n">StepModel</span><span class="o">.</span><span class="n">integrity_fix_sequences</span><span class="p">)</span>
 <span class="n">StepModel</span><span class="o">.</span><span class="n">get_no_circular_lines</span> <span class="o">=</span> <span class="n">deprecated_method</span><span class="p">(</span>
-    <span class="n">StepModel</span><span class="o">.</span><span class="n">integrity_fix_circular_lines</span><span class="p">)</span>  
+    <span class="n">StepModel</span><span class="o">.</span><span class="n">integrity_fix_circular_lines</span><span class="p">)</span>
 <span class="n">StepModel</span><span class="o">.</span><span class="n">get_no_collision</span> <span class="o">=</span> <span class="n">deprecated_method</span><span class="p">(</span>
     <span class="n">StepModel</span><span class="o">.</span><span class="n">integrity_fix_collision</span><span class="p">)</span>
 <span class="n">StepModel</span><span class="o">.</span><span class="n">clean_road_network</span> <span class="o">=</span> <span class="n">deprecated_method</span><span class="p">(</span>
     <span class="n">StepModel</span><span class="o">.</span><span class="n">integrity_fix_road_network</span><span class="p">)</span>
 
-<span class="c1"># renamed </span>
+<span class="c1"># renamed</span>
 </pre></div>
 
            </div>
-           
           </div>
           <footer>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        &#169; Copyright 2018, Systra.
-
-    </p>
+    <p>&#169; Copyright 2018, Systra.</p>
   </div>
-    
-    
-    
-    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
-    
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
-    
-    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
 
 </footer>
         </div>
       </div>
-
     </section>
-
   </div>
-  
-
-  <script type="text/javascript">
+  <script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>

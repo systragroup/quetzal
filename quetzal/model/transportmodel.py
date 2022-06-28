@@ -103,7 +103,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         walk_on_road=False,
         complete=True,
         **kwargs
-    ):
+            ):
+
         """
         * requires: links, footpaths, zone_to_transit, zone_to_road
         * builds: pt_los
@@ -188,6 +189,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         path_analysis=True,
         **kwargs
     ):
+
         if not force:
             sets = ['nodes', 'links', 'zones', 'road_nodes', 'road_links']
             self.integrity_test_collision(sets)
