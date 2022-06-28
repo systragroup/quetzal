@@ -171,7 +171,8 @@
         <span class="n">walk_on_road</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">complete</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="o">**</span><span class="n">kwargs</span>
-    <span class="p">):</span>
+            <span class="p">):</span>
+
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        * requires: links, footpaths, zone_to_transit, zone_to_road</span>
 <span class="sd">        * builds: pt_los</span>
@@ -256,6 +257,7 @@
         <span class="n">path_analysis</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="o">**</span><span class="n">kwargs</span>
     <span class="p">):</span>
+
         <span class="k">if</span> <span class="ow">not</span> <span class="n">force</span><span class="p">:</span>
             <span class="n">sets</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;nodes&#39;</span><span class="p">,</span> <span class="s1">&#39;links&#39;</span><span class="p">,</span> <span class="s1">&#39;zones&#39;</span><span class="p">,</span> <span class="s1">&#39;road_nodes&#39;</span><span class="p">,</span> <span class="s1">&#39;road_links&#39;</span><span class="p">]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">integrity_test_collision</span><span class="p">(</span><span class="n">sets</span><span class="p">)</span>

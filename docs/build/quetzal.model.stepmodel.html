@@ -89,17 +89,21 @@
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">quetzal.model.stepmodel.</span></span><span class="sig-name descname"><span class="pre">StepModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/stepmodel.html#StepModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.stepmodel.StepModel" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="quetzal.model.plotmodel.html#quetzal.model.plotmodel.PlotModel" title="quetzal.model.plotmodel.PlotModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">quetzal.model.plotmodel.PlotModel</span></code></a>, <a class="reference internal" href="quetzal.model.analysismodel.html#quetzal.model.analysismodel.AnalysisModel" title="quetzal.model.analysismodel.AnalysisModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">quetzal.model.analysismodel.AnalysisModel</span></code></a>, <a class="reference internal" href="quetzal.model.docmodel.html#quetzal.model.docmodel.DocModel" title="quetzal.model.docmodel.DocModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">quetzal.model.docmodel.DocModel</span></code></a></p>
-<p>Object StepModel : contains most of the transport model with :
-* Attributes are the caracteristics of the model
-* Methods are the steps and functions of the model</p>
+<dl class="simple">
+<dt>Object StepModel<span class="classifier">contains most of the transport model with :</span></dt><dd><ul class="simple">
+<li><p>Attributes are the caracteristics of the model</p></li>
+<li><p>Methods are the steps and functions of the model</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.zones">
 <span class="sig-name descname"><span class="pre">zones</span></span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.zones" title="Permalink to this definition"></a></dt>
-<dd><p>Zoning system of the model.
-Main columns :</p>
-<blockquote>
-<div><p>area, population, geometry</p>
-</div></blockquote>
+<dd><p>Zoning system of the model.</p>
+<dl class="simple">
+<dt>Main columns :</dt><dd><p>area, population, geometry</p>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>geodataframe</p>
@@ -111,11 +115,11 @@ Main columns :</p>
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.centroids">
 <span class="sig-name descname"><span class="pre">centroids</span></span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.centroids" title="Permalink to this definition"></a></dt>
 <dd><p>Centroids of the zoning system of the model.
-Usually created by method preparation_ntlegs.
-main columns :</p>
-<blockquote>
-<div><p>area, population, geometry</p>
-</div></blockquote>
+Usually created by method preparation_ntlegs.</p>
+<dl class="simple">
+<dt>Main columns :</dt><dd><p>area, population, geometry</p>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>geodataframe</p>
@@ -139,11 +143,11 @@ Created by the user.</p>
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.volumes">
 <span class="sig-name descname"><span class="pre">volumes</span></span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.volumes" title="Permalink to this definition"></a></dt>
 <dd><p>Volumes per OD pair.
-Usually created by method step_distribution or user input.
-Main columns :</p>
-<blockquote>
-<div><p>origin, destination, volume per demand segment</p>
-</div></blockquote>
+Usually created by method step_distribution or user input.</p>
+<dl class="simple">
+<dt>Main columns :</dt><dd><p>origin, destination, volume per demand segment</p>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>dataframe</p>
@@ -167,16 +171,17 @@ Main columns :</p>
 <span class="sig-name descname"><span class="pre">links</span></span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.links" title="Permalink to this definition"></a></dt>
 <dd><p>Links of the public transport system and pt routes caracteristics.
 Each line of the geodataframe correspond to a section of a PT route between two nodes=stops (‘a’ and ‘b’).
-Usually created by shapefile importer or GTFS importer.
-Main columns :</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>‘a’, ‘b’ : initial and final nodes of the link. Can be clusterized nodes</p></li>
+Usually created by shapefile importer or GTFS importer.</p>
+<dl class="simple">
+<dt>Main columns :</dt><dd><ul class="simple">
+<li><p>initial and final nodes of the link : ‘a’, ‘b’</p></li>
 <li><p>caracteristics of the line : ‘trip_id’, ‘route_id’, ‘service_id’, ‘trip_headsign’, ‘trip_short_name’,’direction_id’, ‘block_id’,’agency_id’, ‘route_short_name’,’route_long_name’,’route_type’</p></li>
-<li><p>caracteristics of the section :’arrival_time’, ‘drop_off_type’, ‘time’, ‘headway’, ‘pattern_id’,’link_sequence’, ‘departure_time’, ‘pickup_type’,’geometry’,’length’, ‘duration’, ‘cost’</p></li>
-<li><p>caracteristics of the road section which supports the section (created by method preparation_cast_network) : ‘road_a’, ‘road_b’, ‘road_node_list’,’road_link_list’, ‘road_length’,</p></li>
+<li><p>caracteristics of the section :’arrival_time’, ‘drop_off_type’, ‘time’, ‘headway’, ‘pattern_id’,’link_sequence’, ‘departure_time’, ‘pickup_type’, ‘geometry’, ‘length’, ‘duration’, ‘cost’</p></li>
+<li><p>caracteristics of the roads sections which supports the link section (created by method preparation_cast_network) : ‘road_a’, ‘road_b’, ‘road_node_list’,’road_link_list’, ‘road_length’</p></li>
+<li><p>results of the step_assignment : ‘volume’, ‘boardings’, ‘alightings’</p></li>
 </ul>
-</div></blockquote>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>geodataframe</p>
@@ -188,8 +193,11 @@ Main columns :</p>
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.nodes">
 <span class="sig-name descname"><span class="pre">nodes</span></span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.nodes" title="Permalink to this definition"></a></dt>
 <dd><p>Public transport stations.
-Usually created by shapefile importer or GTFS importer.
-Main columns :</p>
+Usually created by shapefile importer or GTFS importer.</p>
+<dl class="simple">
+<dt>Main columns :</dt><dd><p>geometry, name</p>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>geodataframe</p>
@@ -200,8 +208,17 @@ Main columns :</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.road_links">
 <span class="sig-name descname"><span class="pre">road_links</span></span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.road_links" title="Permalink to this definition"></a></dt>
-<dd><p>Links (edges) of the road network.
+<dd><p>Links (edges) of the road network - between two road_nodes.
 Usually created by shapefile importer or OSMNX.</p>
+<dl class="simple">
+<dt>Main columns :</dt><dd><ul class="simple">
+<li><p>initial and final road_nodes of the link : ‘a’, ‘b’,</p></li>
+<li><p>caracteristics of the section : ‘length’, ‘geometry’, ‘time’, ‘walk_time’, ‘capacity’</p></li>
+<li><p>description of the jam function : ‘vdf’, ‘alpha’, ‘beta’, ‘limit’, ‘penalty’</p></li>
+<li><p>results of the step_road_pathfinder : ‘flow’, ‘jam_time’</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>geodataframe</p>
@@ -214,6 +231,10 @@ Usually created by shapefile importer or OSMNX.</p>
 <span class="sig-name descname"><span class="pre">road_nodes</span></span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.road_nodes" title="Permalink to this definition"></a></dt>
 <dd><p>Nodes of the road network.
 Usually created by shapefile importer or OSMNX.</p>
+<dl class="simple">
+<dt>Main columns :</dt><dd><p>geometry</p>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>geodataframe</p>
@@ -224,8 +245,16 @@ Usually created by shapefile importer or OSMNX.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.zone_to_road">
 <span class="sig-name descname"><span class="pre">zone_to_road</span></span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.zone_to_road" title="Permalink to this definition"></a></dt>
-<dd><p>Connectors from zones to road_nodes.
+<dd><p>Connectors, aka non-transit leg (ntleg), from zones to road_nodes.
 Usually created by method preparation_ntlegs.</p>
+<dl class="simple">
+<dt>Main columns :</dt><dd><ul class="simple">
+<li><p>initial and final zone/road_nodes of the ntleg :’a’, ‘b’</p></li>
+<li><p>description of the ntleg : ‘rank’, ‘distance’, ‘geometry’, ‘direction’</p></li>
+<li><p>description og the speed and time :’speed_factor’, ‘short_leg_speed’, ‘long_leg_speed’, ‘speed’, ‘time’, ‘walk_time’</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>geodataframe</p>
@@ -236,8 +265,16 @@ Usually created by method preparation_ntlegs.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.zone_to_transit">
 <span class="sig-name descname"><span class="pre">zone_to_transit</span></span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.zone_to_transit" title="Permalink to this definition"></a></dt>
-<dd><p>Connectors from zones to nodes (pt stations).
-Usually created by method preparation_ntlegs</p>
+<dd><p>Connectors, aka non-transit leg (ntleg), from zones to nodes (PT stations).
+Usually created by method preparation_ntlegs.</p>
+<dl class="simple">
+<dt>Main columns :</dt><dd><ul class="simple">
+<li><p>initial and final zone/nodes(stop) of the ntleg :’a’, ‘b’</p></li>
+<li><p>description of the ntleg : ‘rank’, ‘distance’, ‘geometry’, ‘direction’</p></li>
+<li><p>description og the speed and time :’speed_factor’, ‘short_leg_speed’, ‘long_leg_speed’, ‘speed’, ‘time’, ‘walk_time’</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>geodataframe</p>
@@ -248,8 +285,16 @@ Usually created by method preparation_ntlegs</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.road_to_transit">
 <span class="sig-name descname"><span class="pre">road_to_transit</span></span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.road_to_transit" title="Permalink to this definition"></a></dt>
-<dd><p>Connectors from road_nodes to nodes (pt stations).
-Usually created by method preparation_ntlegs</p>
+<dd><p>Connectors, aka non-transit leg (ntleg), from road_nodes to nodes (pt stations).
+Usually created by method preparation_ntlegs.</p>
+<dl class="simple">
+<dt>Main columns :</dt><dd><ul class="simple">
+<li><p>initial and final node/road_nodes of the ntleg :’a’, ‘b’</p></li>
+<li><p>description of the ntleg : ‘rank’, ‘distance’, ‘geometry’, ‘direction’</p></li>
+<li><p>description og the speed and time :’speed_factor’, ‘short_leg_speed’, ‘long_leg_speed’, ‘speed’, ‘time’, ‘walk_time’</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>geodataframe</p>
@@ -261,7 +306,11 @@ Usually created by method preparation_ntlegs</p>
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.footpaths">
 <span class="sig-name descname"><span class="pre">footpaths</span></span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.footpaths" title="Permalink to this definition"></a></dt>
 <dd><p>Pedestrian links between stations to allow connections.
-Usually created by method preparation_footpaths</p>
+Usually created by method preparation_footpaths.</p>
+<dl class="simple">
+<dt>Main columns :</dt><dd><p>‘a’, ‘b’, ‘geometry’, ‘time’</p>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>geodataframe</p>
@@ -272,8 +321,18 @@ Usually created by method preparation_footpaths</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.pt_los">
 <span class="sig-name descname"><span class="pre">pt_los</span></span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.pt_los" title="Permalink to this definition"></a></dt>
-<dd><p>Level of service of the pt network - for each OD pair, possible paths and their caracteristics.
-Usually created by method step_pt_pathfinder</p>
+<dd><p>Level of service of the pt network - for each OD pair, possible paths and their caracteristics. Each line of the df being a path.
+Usually created by method step_pt_pathfinder.</p>
+<dl class="simple">
+<dt>Main columns :</dt><dd><ul class="simple">
+<li><p>OD pair : ‘origin’, ‘destination’</p></li>
+<li><p>description of the path : ‘gtime’, ‘path’, ‘pathfinder_session’, ‘reversed’, ‘all_walk’, ‘ntransfers’, ‘time_link_path’, ‘length_link_path’</p></li>
+<li><p>links taken by the path : ‘link_path’, ‘footpaths’, ‘ntlegs’,  ‘boarding_links’, ‘alighting_links’</p></li>
+<li><p>nodes where transfer is made : ‘boardings’, ‘alightings’, ‘transfers’, ‘node_path’</p></li>
+<li><p>results of the step_logit : utilities (per demand segment), probabilities (per demand segment)</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>dataframe</p>
@@ -285,7 +344,14 @@ Usually created by method step_pt_pathfinder</p>
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.car_los">
 <span class="sig-name descname"><span class="pre">car_los</span></span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.car_los" title="Permalink to this definition"></a></dt>
 <dd><p>Level of service of the car network - for each OD pair results of pathfinder with/without capacity restriction.
-Usually created by method step_road_pathfinder</p>
+Usually created by method step_road_pathfinder.</p>
+<dl class="simple">
+<dt>Main columns :</dt><dd><ul class="simple">
+<li><p>OD pair : ‘origin’, ‘destination’</p></li>
+<li><p>description of the path : ‘time’, ‘path’, ‘gtime’</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>dataframe</p>
@@ -296,7 +362,7 @@ Usually created by method step_road_pathfinder</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.los">
 <span class="sig-name descname"><span class="pre">los</span></span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.los" title="Permalink to this definition"></a></dt>
-<dd><p>Merge of the two previous tables to perform logit</p>
+<dd><p>Concatenation of the two tables pt_los and car_los to perform logit</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>dataframe</p>
