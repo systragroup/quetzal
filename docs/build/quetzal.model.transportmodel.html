@@ -152,39 +152,39 @@ Requires computed path probabilities in pt_los for each segment.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="quetzal.model.transportmodel.TransportModel.step_concatenate_los">
-<span class="sig-name descname"><span class="pre">step_concatenate_los</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#TransportModel.step_concatenate_los"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.TransportModel.step_concatenate_los" title="Permalink to this definition"></a></dt>
-<dd><ul class="simple">
-<li><p>requires: pt_los, car_los</p></li>
-<li><p>builds: los</p></li>
-</ul>
-</dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.transportmodel.TransportModel.step_distribution">
 <span class="sig-name descname"><span class="pre">step_distribution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">segmented</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deterrence_matrix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">od_volume_from_zones_kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#TransportModel.step_distribution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.TransportModel.step_distribution" title="Permalink to this definition"></a></dt>
-<dd><ul class="simple">
-<li><p>requires: zones</p></li>
-<li><p>builds: volumes</p></li>
-</ul>
+<dd><p>Function performing distribution of flows with doubly constrained algorithm,
+based on an impedance/deterrence matrix inversely proportional to the accessibility between two zones.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>deterrence_matrix</strong> – an OD unstaked dataframe representing the disincentive to
-travel as distance/time/cost increases.</p></li>
+<li><p><strong>segmented</strong> (<em>bool</em><em>, </em><em>optional</em>) – if True: all parameters must be given in dict {segment: param}, by default False</p></li>
+<li><p><strong>deterrence_matrix</strong> (<em>unstacked dataframe</em><em>, </em><em>optional</em>) – an OD unstaked dataframe representing the disincentive to
+travel as distance/time/cost increases, by default None</p></li>
 <li><p><strong>od_volume_from_zones_kwargs</strong> – <p>if the friction matrix is not
 provided, it will be automatically computed using a gravity distribution which
-uses the following parameters:
-* param power: (int) the gravity exponent
-* param intrazonal: (bool) set the intrazonal distance to 0 if False,</p>
+uses the following parameters:</p>
 <blockquote>
-<div><p>compute a characteristic distance otherwise.</p>
+<div><ul>
+<li><p>param power: (int) the gravity exponent</p></li>
+<li><dl class="simple">
+<dt>param intrazonal: (bool) if False :set the intrazonal distance to 0,</dt><dd><p>else compute a characteristic distance.</p>
+</dd>
+</dl>
+</li>
+</ul>
 </div></blockquote>
 </p></li>
+<li><p><strong>Requires</strong> – </p></li>
+<li><p><strong>----------</strong> – </p></li>
+<li><p><strong>zones</strong> (<em>stepmodel</em>) – </p></li>
+<li><p><strong>Builds</strong> – </p></li>
+<li><p><strong>----------</strong> – </p></li>
+<li><p><strong>volumes</strong> (<em>stepmodel</em>) – </p></li>
 </ul>
 </dd>
 </dl>
-<p>if segmented=True: all parameters must be given in dict {segment: param}</p>
 </dd></dl>
 
 <dl class="py method">
@@ -216,15 +216,6 @@ uses the following parameters:
 <span class="p">)</span>
 </pre></div>
 </div>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="quetzal.model.transportmodel.TransportModel.step_pathfinder">
-<span class="sig-name descname"><span class="pre">step_pathfinder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">walk_on_road</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">complete</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#TransportModel.step_pathfinder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.TransportModel.step_pathfinder" title="Permalink to this definition"></a></dt>
-<dd><ul class="simple">
-<li><p>requires: links, footpaths, zone_to_transit, zone_to_road</p></li>
-<li><p>builds: pt_los</p></li>
-</ul>
 </dd></dl>
 
 <dl class="py method">
@@ -268,37 +259,88 @@ uses the following parameters:
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.transportmodel.TransportModel.step_pt_pathfinder">
 <span class="sig-name descname"><span class="pre">step_pt_pathfinder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">broken_routes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">broken_modes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">route_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'route_id'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'route_type'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boarding_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">speedup</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">walk_on_road</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_pathfinder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path_analysis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#TransportModel.step_pt_pathfinder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.TransportModel.step_pt_pathfinder" title="Permalink to this definition"></a></dt>
-<dd><ul class="simple">
-<li><p>requires: zones, links, footpaths, zone_to_road, zone_to_transit</p></li>
-<li><p>builds: pt_los</p></li>
+<dd><dl>
+<dt>Performs public transport pathfinder, with :</dt><dd><ul class="simple">
+<li><p>all or nothing Diskjstra algorithm if broken_routes=False AND broken_modes=False</p></li>
+<li><p>Prunning algorithm if broken_routes=True OR/AND broken_modes=True</p></li>
 </ul>
+<p>For optimal strategy pathfinder, use step_pt_pathfinder of the class OptimalModel</p>
+<p>For connection scan pathfinder algorithm (with time tables), use step_pt_pathfinder of the class ConnectionScanModel</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>broken_routes</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default True</em>) – If True, will perform the route breaker of the pathfinder prunning algorithm
+with the different routes found in the route_column</p></li>
+<li><p><strong>broken_modes</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default True</em>) – If True, will perform the mode breaker of the pathfinder prunning algorithm
+with the different modes found in the mode_column</p></li>
+<li><p><strong>route_column</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default 'route_id'</em>) – columns of the self.links containing the routes identifier (prunning algorithm)</p></li>
+<li><p><strong>mode_column</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default 'route_type'</em>) – columns of the self.links containing the modes identifier (prunning algorithm)</p></li>
+<li><p><strong>boarding_time</strong> (<em>float</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – aditional boarding time</p></li>
+<li><p><strong>alighting_time</strong> (<em>float</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – aditional alighting time</p></li>
+<li><p><strong>speedup</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – Speed up the computation time, by</p></li>
+<li><p><strong>walk_on_road</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – If True, will consider using the road network and zone_to_road for pedestrian paths.
+Warning : it will only compare those paths using the raod network with the paths using pedestrian links (footpaths, zone_to_transit)
+Force the use of road network for pedestrian paths by NOT defining footpaths and zone_to_transit</p></li>
+<li><p><strong>keep_pathfinder</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – If True, keeps all computation steps of the pathfinder
+Use to performed advanced route and mode breaker (without the need to create submodel for route_breaker, for example)</p></li>
+<li><p><strong>force</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – If True, will NOT perform integrity_test_collision on the ‘nodes’, ‘links’, ‘zones’,’road_nodes’, ‘road_links’.</p></li>
+<li><p><strong>path_analysis</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default True</em>) – Performs paths analysis, adds columns ‘all_walk’ and ‘ntransfers’ to the output pt_los</p></li>
+</ul>
+</dd>
+</dl>
+<blockquote>
+<div><ul class="simple">
+<li><p>stepmodel zones</p></li>
+<li><p>stepmodel links</p></li>
+<li><p>stepmodel footpaths</p></li>
+<li><p>stepmodel zone_to_road</p></li>
+<li><p>stepmodel zone_to_transit</p></li>
+</ul>
+</div></blockquote>
+<blockquote>
+<div><ul class="simple">
+<li><p>stepmodel pt_los</p></li>
+</ul>
+</div></blockquote>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.transportmodel.TransportModel.step_road_pathfinder">
 <span class="sig-name descname"><span class="pre">step_road_pathfinder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'bfw'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxiters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#TransportModel.step_road_pathfinder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.TransportModel.step_road_pathfinder" title="Permalink to this definition"></a></dt>
-<dd><ul class="simple">
-<li><p>requires: road_links, zone_to_road, volumes</p></li>
-<li><p>builds: car_los, road_links</p></li>
-</ul>
+<dd><p>Performs road assignment with or without capacity constraint, depending on the method used</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>bfw</strong> (<em>method =</em>) – </p></li>
-<li><p><strong>fw</strong> – </p></li>
-<li><p><strong>msa</strong> – </p></li>
-<li><p><strong>aon</strong> – </p></li>
-<li><p><strong>10</strong> (<em>maxiters =</em>) – </p></li>
-<li><p><strong>0.01</strong> (<em>tolerance =</em>) – </p></li>
-<li><p><strong>'volume_car'</strong> (<em>volume_column =</em>) – </p></li>
-<li><p><strong>1e9</strong> (<em>ntleg_penalty =</em>) – </p></li>
-<li><p><strong>'time'</strong> (<em>access_time =</em>) – </p></li>
-<li><p><strong>None</strong> (<em>od_set =</em>) – </p></li>
-<li><p><strong>1</strong> (<em>num_cores =</em>) – </p></li>
-<li><p><strong>False</strong> (<em>log =</em>) – </p></li>
-<li><p><strong>{'default_bpr'</strong> (<em>vdf =</em>) – </p></li>
-<li><p><strong>ex</strong> (<em>beta = None. give constant value for BFW betas.</em>) – </p></li>
+<li><p><strong>method</strong> (<em>[</em><em>'bfw'</em><em>|</em><em>'fw'</em><em>|</em><em>'msa'</em><em>|</em><em>'aon'</em><em>]</em><em>, </em><em>optional</em>) – <p>Which method to use for pathfinder. Options are:</p>
+<p>’bfw’   –(default)</p>
+<p>’fw’    –</p>
+<p>‘msa’   –</p>
+<p>‘aon’   – all or nothing : best path pathfinder</p>
+</p></li>
+<li><p><strong>maxiters</strong> (<em>integer</em><em>, </em><em>optional</em><em>, </em><em>default 10</em>) – Maxiters=1 will perform ‘best path’ pathfinder</p></li>
+<li><p><strong>tolerance</strong> (<em>float</em><em>, </em><em>optional</em><em>, </em><em>default 0.01</em>) – stop condition for RelGap, in percent</p></li>
+<li><p><strong>volume_column</strong> (<em>string</em><em>, </em><em>optional</em><em>, </em><em>default 'volume_car'</em>) – column of self.volumes to use for volume</p></li>
+<li><p><strong>ntleg_penalty</strong> (<em>float</em><em>, </em><em>optional</em><em>, </em><em>default 1e9</em>) – ntleg penality for access time</p></li>
+<li><p><strong>access_time</strong> (<em>string</em><em>, </em><em>optional</em><em>, </em><em>default 'time'</em>) – column for time in zone_to_road for access time</p></li>
+<li><p><strong>od_set</strong> (<em>dict</em><em>, </em><em>optional</em>) – set of od to use - may be used to reduce computation time (default None)
+for example, the od_set is the set of od for which there is a volume in self.volumes</p></li>
+<li><p><strong>num_cores</strong> (<em>integer</em><em>, </em><em>optional</em><em>, </em><em>default 1</em>) – for parallelization</p></li>
+<li><p><strong>log</strong> – log data on each iteration (default False)</p></li>
+<li><p><strong>vdf</strong> (<em>dict</em><em>, </em><em>optional</em>) – dict of function for the jam time : {‘default_bpr’: default_bpr,’limited_bpr’:limited_bpr, ‘free_flow’: free_flow}</p></li>
+<li><p><strong>beta</strong> (<em>list</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – give constant value for BFW betas. ex: [0.7,0.2,0.1].</p></li>
+<li><p><strong>Requires</strong> – </p></li>
+<li><p><strong>----------</strong> – </p></li>
+<li><p><strong>road_links</strong> (<em>stepmodel</em>) – </p></li>
+<li><p><strong>zone_to_road</strong> (<em>stepmodel</em>) – </p></li>
+<li><p><strong>volumes</strong> (<em>stepmodel</em>) – </p></li>
 </ul>
+</dd>
+</dl>
+<p>stepmodel car_los : create tables of car levels of services</p>
+<dl class="simple">
+<dt>stepmodel road_links<span class="classifier">add columns flow (volume on the road links) and jam_time (time of the link with congestion)</span></dt><dd><p>for each OD pair results of pathfinder with/without capacity restriction</p>
 </dd>
 </dl>
 </dd></dl>

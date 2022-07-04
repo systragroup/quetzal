@@ -105,19 +105,32 @@
         <span class="n">deterrence_matrix</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="o">**</span><span class="n">od_volume_from_zones_kwargs</span>
     <span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        * requires: zones</span>
-<span class="sd">        * builds: volumes</span>
+        <span class="sd">&quot;&quot;&quot;Function performing distribution of flows with doubly constrained algorithm,</span>
+<span class="sd">        based on an impedance/deterrence matrix inversely proportional to the accessibility between two zones.</span>
 
-<span class="sd">        :param deterrence_matrix: an OD unstaked dataframe representing the disincentive to</span>
-<span class="sd">            travel as distance/time/cost increases.</span>
-<span class="sd">        :param od_volume_from_zones_kwargs: if the friction matrix is not</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        segmented : bool, optional</span>
+<span class="sd">            if True: all parameters must be given in dict {segment: param}, by default False</span>
+<span class="sd">        deterrence_matrix : unstacked dataframe, optional</span>
+<span class="sd">            an OD unstaked dataframe representing the disincentive to</span>
+<span class="sd">            travel as distance/time/cost increases, by default None</span>
+<span class="sd">        od_volume_from_zones_kwargs : </span>
+<span class="sd">            if the friction matrix is not</span>
 <span class="sd">            provided, it will be automatically computed using a gravity distribution which</span>
 <span class="sd">            uses the following parameters:</span>
-<span class="sd">            * param power: (int) the gravity exponent</span>
-<span class="sd">            * param intrazonal: (bool) set the intrazonal distance to 0 if False,</span>
-<span class="sd">                compute a characteristic distance otherwise.</span>
-<span class="sd">        if segmented=True: all parameters must be given in dict {segment: param}</span>
+<span class="sd">                - param power: (int) the gravity exponent</span>
+<span class="sd">                - param intrazonal: (bool) if False :set the intrazonal distance to 0,</span>
+<span class="sd">                    else compute a characteristic distance.</span>
+<span class="sd">         </span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------      </span>
+<span class="sd">        stepmodel zones</span>
+
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
+<span class="sd">        stepmodel volumes  </span>
+<span class="sd">        </span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">segmented</span><span class="p">:</span>
 
@@ -165,69 +178,71 @@
                 <span class="o">**</span><span class="n">od_volume_from_zones_kwargs</span>
             <span class="p">)</span></div>
 
-<div class="viewcode-block" id="TransportModel.step_pathfinder"><a class="viewcode-back" href="../../../quetzal.model.transportmodel.html#quetzal.model.transportmodel.TransportModel.step_pathfinder">[docs]</a>    <span class="nd">@track_args</span>
-    <span class="k">def</span> <span class="nf">step_pathfinder</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">walk_on_road</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">complete</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="o">**</span><span class="n">kwargs</span>
-            <span class="p">):</span>
-
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        * requires: links, footpaths, zone_to_transit, zone_to_road</span>
-<span class="sd">        * builds: pt_los</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">links</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">graph_links</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">walk_on_road</span> <span class="o">=</span> <span class="n">walk_on_road</span>
-
-        <span class="k">if</span> <span class="n">walk_on_road</span><span class="p">:</span>
-            <span class="n">footpaths</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">road_links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-            <span class="n">footpaths</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">footpaths</span><span class="p">[</span><span class="s1">&#39;walk_time&#39;</span><span class="p">]</span>
-            <span class="n">ntlegs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">zone_to_road</span>
-            <span class="n">nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">road_nodes</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">footpaths</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">footpaths</span>
-            <span class="n">ntlegs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">zone_to_transit</span>
-            <span class="n">nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span>
-
-        <span class="c1"># TODO even with walk on road, transit nodes may not belong to road_nodes</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">pt_los</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">path_and_duration_from_links_and_ntlegs</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">,</span>
-            <span class="n">ntlegs</span><span class="o">=</span><span class="n">ntlegs</span><span class="p">,</span>
-            <span class="n">pole_set</span><span class="o">=</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">zones</span><span class="o">.</span><span class="n">index</span><span class="p">),</span>
-            <span class="n">footpaths</span><span class="o">=</span><span class="n">footpaths</span><span class="p">,</span>
-            <span class="o">**</span><span class="n">kwargs</span>
-        <span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">complete</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">pt_los</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">path_analysis_od_matrix</span><span class="p">(</span>
-                <span class="n">od_matrix</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pt_los</span><span class="p">,</span>
-                <span class="n">links</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">,</span>
-                <span class="n">nodes</span><span class="o">=</span><span class="n">nodes</span><span class="p">,</span>
-                <span class="n">centroids</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">centroids</span><span class="p">,</span>
-            <span class="p">)</span></div>
-
 <div class="viewcode-block" id="TransportModel.step_road_pathfinder"><a class="viewcode-back" href="../../../quetzal.model.transportmodel.html#quetzal.model.transportmodel.TransportModel.step_road_pathfinder">[docs]</a>    <span class="nd">@track_args</span>
     <span class="k">def</span> <span class="nf">step_road_pathfinder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;bfw&#39;</span><span class="p">,</span> <span class="n">maxiters</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        * requires: road_links, zone_to_road, volumes</span>
-<span class="sd">        * builds: car_los, road_links</span>
+       
+        <span class="sd">&quot;&quot;&quot;Performs road assignment with or without capacity constraint, depending on the method used</span>
 
-<span class="sd">        parameters</span>
+<span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        method = bfw, fw, msa, aon</span>
-<span class="sd">        maxiters = 10 : number of iteration.</span>
-<span class="sd">        tolerance = 0.01 : stop condition for RelGap. (in percent)</span>
-<span class="sd">        volume_column = &#39;volume_car&#39; : column of self.volumes to use for volume</span>
-<span class="sd">        ntleg_penalty = 1e9 : ntleg penality for acces_time</span>
-<span class="sd">        access_time = &#39;time&#39; : zone_to_road acces_time</span>
-<span class="sd">        od_set = None : set of od to use</span>
-<span class="sd">        num_cores = 1 : for parallelization. </span>
-<span class="sd">        log = False : log data on each iteration.</span>
-<span class="sd">        vdf = {&#39;default_bpr&#39;: default_bpr,&#39;limited_bpr&#39;:limited_bpr, &#39;free_flow&#39;: free_flow} : dict of function for the jam time.</span>
-<span class="sd">        beta = None. give constant value for BFW betas. ex: [0.7,0.2,0.1]</span>
+<span class="sd">        method : [&#39;bfw&#39;|&#39;fw&#39;|&#39;msa&#39;|&#39;aon&#39;], optional</span>
+<span class="sd">            Which method to use for pathfinder. Options are:</span>
+
+<span class="sd">            &#39;bfw&#39;   --(default) </span>
+
+<span class="sd">            &#39;fw&#39;    --</span>
+
+<span class="sd">            &#39;msa&#39;   -- </span>
+
+<span class="sd">            &#39;aon&#39;   -- all or nothing : best path pathfinder</span>
+<span class="sd">            </span>
+<span class="sd">        maxiters : integer, optional, default 10</span>
+<span class="sd">            Maxiters=1 will perform &#39;best path&#39; pathfinder</span>
+
+<span class="sd">        tolerance  : float, optional, default 0.01</span>
+<span class="sd">            stop condition for RelGap, in percent </span>
+
+<span class="sd">        volume_column : string, optional, default &#39;volume_car&#39;</span>
+<span class="sd">            column of self.volumes to use for volume </span>
+
+<span class="sd">        ntleg_penalty : float, optional, default 1e9</span>
+<span class="sd">            ntleg penality for access time </span>
+
+<span class="sd">        access_time : string, optional, default &#39;time&#39;</span>
+<span class="sd">            column for time in zone_to_road for access time </span>
+
+<span class="sd">        od_set : dict, optional</span>
+<span class="sd">            set of od to use - may be used to reduce computation time (default None)</span>
+<span class="sd">            for example, the od_set is the set of od for which there is a volume in self.volumes</span>
+
+<span class="sd">        num_cores : integer, optional, default 1</span>
+<span class="sd">            for parallelization</span>
+
+<span class="sd">        log : </span>
+<span class="sd">            log data on each iteration (default False)</span>
+
+<span class="sd">        vdf : dict, optional</span>
+<span class="sd">            dict of function for the jam time : {&#39;default_bpr&#39;: default_bpr,&#39;limited_bpr&#39;:limited_bpr, &#39;free_flow&#39;: free_flow} </span>
+
+<span class="sd">        beta : list, optional, default None</span>
+<span class="sd">            give constant value for BFW betas. ex: [0.7,0.2,0.1].</span>
+
+<span class="sd">        Requires</span>
+<span class="sd">        ----------      </span>
+<span class="sd">        stepmodel road_links</span>
+
+<span class="sd">        stepmodel zone_to_road</span>
+
+<span class="sd">        stepmodel volumes</span>
+
+
+<span class="sd">        Builds</span>
+<span class="sd">        -----------</span>
+<span class="sd">        stepmodel car_los : create tables of car levels of services</span>
+
+<span class="sd">        stepmodel road_links : add columns flow (volume on the road links) and jam_time (time of the link with congestion)</span>
+<span class="sd">            for each OD pair results of pathfinder with/without capacity restriction</span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
     
         <span class="n">roadpathfinder</span> <span class="o">=</span> <span class="n">RoadPathFinder</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
@@ -293,9 +308,71 @@
         <span class="n">path_analysis</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="o">**</span><span class="n">kwargs</span>
     <span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        * requires: zones, links, footpaths, zone_to_road, zone_to_transit</span>
-<span class="sd">        * builds: pt_los</span>
+        <span class="sd">&quot;&quot;&quot;Performs public transport pathfinder, with :</span>
+<span class="sd">            * all or nothing Diskjstra algorithm if broken_routes=False AND broken_modes=False</span>
+<span class="sd">            * Prunning algorithm if broken_routes=True OR/AND broken_modes=True</span>
+<span class="sd">            For optimal strategy pathfinder, use step_pt_pathfinder of the class OptimalModel</span>
+
+<span class="sd">            For connection scan pathfinder algorithm (with time tables), use step_pt_pathfinder of the class ConnectionScanModel</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        broken_routes : bool, optional, default True</span>
+<span class="sd">            If True, will perform the route breaker of the pathfinder prunning algorithm</span>
+<span class="sd">            with the different routes found in the route_column </span>
+
+<span class="sd">        broken_modes : bool, optional, default True</span>
+<span class="sd">            If True, will perform the mode breaker of the pathfinder prunning algorithm</span>
+<span class="sd">            with the different modes found in the mode_column</span>
+
+<span class="sd">        route_column : str, optional, default &#39;route_id&#39;</span>
+<span class="sd">            columns of the self.links containing the routes identifier (prunning algorithm)</span>
+
+<span class="sd">        mode_column : str, optional, default &#39;route_type&#39;</span>
+<span class="sd">            columns of the self.links containing the modes identifier (prunning algorithm)</span>
+
+<span class="sd">        boarding_time : float, optional, default None</span>
+<span class="sd">            aditional boarding time </span>
+
+<span class="sd">        alighting_time : float, optional, default None</span>
+<span class="sd">            aditional alighting time </span>
+
+<span class="sd">        speedup : bool, optional, default False</span>
+<span class="sd">            Speed up the computation time, by </span>
+
+<span class="sd">        walk_on_road : bool, optional, default False</span>
+<span class="sd">            If True, will consider using the road network and zone_to_road for pedestrian paths.</span>
+<span class="sd">            Warning : it will only compare those paths using the raod network with the paths using pedestrian links (footpaths, zone_to_transit) </span>
+<span class="sd">            Force the use of road network for pedestrian paths by NOT defining footpaths and zone_to_transit</span>
+
+<span class="sd">        keep_pathfinder : bool, optional, default False</span>
+<span class="sd">            If True, keeps all computation steps of the pathfinder</span>
+<span class="sd">            Use to performed advanced route and mode breaker (without the need to create submodel for route_breaker, for example) </span>
+
+<span class="sd">        force : bool, optional, default False</span>
+<span class="sd">            If True, will NOT perform integrity_test_collision on the &#39;nodes&#39;, &#39;links&#39;, &#39;zones&#39;,&#39;road_nodes&#39;, &#39;road_links&#39;.</span>
+
+<span class="sd">        path_analysis : bool, optional, default True</span>
+<span class="sd">            Performs paths analysis, adds columns &#39;all_walk&#39; and &#39;ntransfers&#39; to the output pt_los</span>
+<span class="sd">        </span>
+<span class="sd">                </span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">            - stepmodel zones</span>
+
+<span class="sd">            - stepmodel links </span>
+
+<span class="sd">            - stepmodel footpaths</span>
+
+<span class="sd">            - stepmodel zone_to_road</span>
+
+<span class="sd">            - stepmodel zone_to_transit</span>
+<span class="sd">            </span>
+
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
+<span class="sd">            - stepmodel pt_los</span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">sets</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;nodes&#39;</span><span class="p">,</span> <span class="s1">&#39;links&#39;</span><span class="p">,</span> <span class="s1">&#39;zones&#39;</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">walk_on_road</span><span class="p">:</span>
@@ -333,14 +410,6 @@
                 <span class="n">nodes</span><span class="o">=</span><span class="n">analysis_nodes</span><span class="p">,</span>
                 <span class="n">centroids</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">centroids</span><span class="p">,</span>
             <span class="p">)</span></div>
-
-<div class="viewcode-block" id="TransportModel.step_concatenate_los"><a class="viewcode-back" href="../../../quetzal.model.transportmodel.html#quetzal.model.transportmodel.TransportModel.step_concatenate_los">[docs]</a>    <span class="nd">@track_args</span>
-    <span class="k">def</span> <span class="nf">step_concatenate_los</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        * requires: pt_los, car_los</span>
-<span class="sd">        * builds: los</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">pass</span></div>
 
 <div class="viewcode-block" id="TransportModel.step_modal_split"><a class="viewcode-back" href="../../../quetzal.model.transportmodel.html#quetzal.model.transportmodel.TransportModel.step_modal_split">[docs]</a>    <span class="nd">@track_args</span>
     <span class="k">def</span> <span class="nf">step_modal_split</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">build_od_stack</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">modal_split_kwargs</span><span class="p">):</span>

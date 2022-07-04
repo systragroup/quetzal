@@ -164,6 +164,17 @@ class StepModel(
     car_los	: dataframe
         Level of service of the car network - for each OD pair results of pathfinder with/without capacity restriction.
         Usually created by method step_road_pathfinder.
+
+    pr_los : dataframe
+        Level of service of the park and ride network - for each OD pair, possible paths and their caracteristics. Each line of the df being a path.
+        Usually created by method step_pr_pathfinder.
+        
+        Main columns :
+            * OD pair : 'origin', 'destination'
+            * description of the path : 'gtime', 'path', 'pathfinder_session', 'reversed', 'all_walk', 'ntransfers', 'time_link_path', 'length_link_path' 
+            * links taken by the path : 'link_path', 'footpaths', 'ntlegs',  'boarding_links', 'alighting_links'
+            * nodes where transfer is made : 'boardings', 'alightings', 'transfers', 'node_path'
+            * results of the step_logit : utilities (per demand segment), probabilities (per demand segment)
         
         Main columns :
             * OD pair : 'origin', 'destination'
