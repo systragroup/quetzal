@@ -117,19 +117,17 @@
 <span class="sd">            travel as distance/time/cost increases, by default None</span>
 <span class="sd">        od_volume_from_zones_kwargs : </span>
 <span class="sd">            if the friction matrix is not</span>
-<span class="sd">            provided, it will be automatically computed using a gravity distribution which</span>
-<span class="sd">            uses the following parameters:</span>
-<span class="sd">                - param power: (int) the gravity exponent</span>
-<span class="sd">                - param intrazonal: (bool) if False :set the intrazonal distance to 0,</span>
-<span class="sd">                    else compute a characteristic distance.</span>
+<span class="sd">            provided, it will be automatically computed using a gravity distribution with</span>
+<span class="sd">                - power: int, thee gravity exponent</span>
+<span class="sd">                - intrazonal: (bool) if False set the intrazonal distance to 0, else compute a characteristic distance</span>
 <span class="sd">         </span>
 <span class="sd">        Requires</span>
 <span class="sd">        ----------      </span>
-<span class="sd">        stepmodel zones</span>
+<span class="sd">        self.zones :</span>
 
 <span class="sd">        Builds</span>
 <span class="sd">        ----------</span>
-<span class="sd">        stepmodel volumes  </span>
+<span class="sd">        self.volumes :</span>
 <span class="sd">        </span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">segmented</span><span class="p">:</span>
@@ -194,10 +192,10 @@
 
 <span class="sd">            &#39;msa&#39;   -- </span>
 
-<span class="sd">            &#39;aon&#39;   -- all or nothing : best path pathfinder</span>
+<span class="sd">            &#39;aon&#39;   -- all or nothing : shortest path pathfinder</span>
 <span class="sd">            </span>
 <span class="sd">        maxiters : integer, optional, default 10</span>
-<span class="sd">            Maxiters=1 will perform &#39;best path&#39; pathfinder</span>
+<span class="sd">            Maxiters=1 will perform &#39;shortest path&#39; pathfinder</span>
 
 <span class="sd">        tolerance  : float, optional, default 0.01</span>
 <span class="sd">            stop condition for RelGap, in percent </span>
@@ -229,18 +227,20 @@
 
 <span class="sd">        Requires</span>
 <span class="sd">        ----------      </span>
-<span class="sd">        stepmodel road_links</span>
+<span class="sd">        self.road_links :</span>
 
-<span class="sd">        stepmodel zone_to_road</span>
+<span class="sd">        self.zone_to_road :</span>
 
-<span class="sd">        stepmodel volumes</span>
+<span class="sd">        self.volumes :</span>
 
 
 <span class="sd">        Builds</span>
 <span class="sd">        -----------</span>
-<span class="sd">        stepmodel car_los : create tables of car levels of services</span>
+<span class="sd">        self.car_los : </span>
+<span class="sd">            create tables of car levels of services</span>
 
-<span class="sd">        stepmodel road_links : add columns flow (volume on the road links) and jam_time (time of the link with congestion)</span>
+<span class="sd">        self.road_links : </span>
+<span class="sd">            add columns flow (volume on the road links) and jam_time (time of the link with congestion)</span>
 <span class="sd">            for each OD pair results of pathfinder with/without capacity restriction</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -272,6 +272,41 @@
         <span class="n">path_analysis</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="o">**</span><span class="n">kwargs</span>
     <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Park and Ride pathfinder algorithm : shortest path algorithm on the graph</span>
+<span class="sd">        built from links (public transport routes) and road_links considered as &quot;public transport access links&quot; (with car speed)</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        force : bool, optional, default False</span>
+<span class="sd">            If True, will NOT perform integrity_test_collision on the &#39;nodes&#39;, &#39;links&#39;, &#39;zones&#39;,&#39;road_nodes&#39;, &#39;road_links&#39;.</span>
+
+<span class="sd">        path_analysis : bool, optional, default True</span>
+<span class="sd">            Performs paths analysis, adds columns &#39;all_walk&#39; and &#39;ntransfers&#39; to the output pt_los</span>
+
+<span class="sd">        od_set : dict, optional, default None</span>
+<span class="sd">            set of od to use - may be used to reduce computation time (default None)</span>
+<span class="sd">            for example, the od_set is the set of od for which there is a volume in self.volumes</span>
+
+<span class="sd">        cutoff : default np.inf     </span>
+<span class="sd">            description</span>
+
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.zones :</span>
+<span class="sd">        self.links :</span>
+<span class="sd">        self.footpaths :</span>
+<span class="sd">        self.zone_to_road :</span>
+<span class="sd">        self.zone_to_transit :</span>
+<span class="sd">        self.transit_to_zone :</span>
+<span class="sd">        self.road_to_transit :</span>
+<span class="sd">        self.road_links :</span>
+
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.pr_los :</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>    
+
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">force</span><span class="p">:</span>
             <span class="n">sets</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;nodes&#39;</span><span class="p">,</span> <span class="s1">&#39;links&#39;</span><span class="p">,</span> <span class="s1">&#39;zones&#39;</span><span class="p">,</span> <span class="s1">&#39;road_nodes&#39;</span><span class="p">,</span> <span class="s1">&#39;road_links&#39;</span><span class="p">]</span>
@@ -309,8 +344,8 @@
         <span class="o">**</span><span class="n">kwargs</span>
     <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Performs public transport pathfinder, with :</span>
-<span class="sd">            * all or nothing Diskjstra algorithm if broken_routes=False AND broken_modes=False</span>
-<span class="sd">            * Prunning algorithm if broken_routes=True OR/AND broken_modes=True</span>
+<span class="sd">            - all or nothing Diskjstra algorithm if broken_routes=False AND broken_modes=False</span>
+<span class="sd">            - Prunning algorithm if broken_routes=True OR/AND broken_modes=True</span>
 <span class="sd">            For optimal strategy pathfinder, use step_pt_pathfinder of the class OptimalModel</span>
 
 <span class="sd">            For connection scan pathfinder algorithm (with time tables), use step_pt_pathfinder of the class ConnectionScanModel</span>
@@ -354,24 +389,20 @@
 
 <span class="sd">        path_analysis : bool, optional, default True</span>
 <span class="sd">            Performs paths analysis, adds columns &#39;all_walk&#39; and &#39;ntransfers&#39; to the output pt_los</span>
-<span class="sd">        </span>
-<span class="sd">                </span>
+
+
 <span class="sd">        Requires</span>
 <span class="sd">        ----------</span>
-<span class="sd">            - stepmodel zones</span>
-
-<span class="sd">            - stepmodel links </span>
-
-<span class="sd">            - stepmodel footpaths</span>
-
-<span class="sd">            - stepmodel zone_to_road</span>
-
-<span class="sd">            - stepmodel zone_to_transit</span>
+<span class="sd">        self.zones :</span>
+<span class="sd">        self.links :</span>
+<span class="sd">        self.footpaths :</span>
+<span class="sd">        self.zone_to_road :</span>
+<span class="sd">        self.zone_to_transit :</span>
 <span class="sd">            </span>
 
 <span class="sd">        Builds</span>
 <span class="sd">        ----------</span>
-<span class="sd">            - stepmodel pt_los</span>
+<span class="sd">        self.pt_los :</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">sets</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;nodes&#39;</span><span class="p">,</span> <span class="s1">&#39;links&#39;</span><span class="p">,</span> <span class="s1">&#39;zones&#39;</span><span class="p">]</span>
@@ -413,14 +444,52 @@
 
 <div class="viewcode-block" id="TransportModel.step_modal_split"><a class="viewcode-back" href="../../../quetzal.model.transportmodel.html#quetzal.model.transportmodel.TransportModel.step_modal_split">[docs]</a>    <span class="nd">@track_args</span>
     <span class="k">def</span> <span class="nf">step_modal_split</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">build_od_stack</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">modal_split_kwargs</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        * requires: volumes, los</span>
-<span class="sd">        * builds: od_stack, shared</span>
+        <span class="sd">&quot;&quot;&quot;Performs modal split. Use only for simple models with the modes Public Transport and Car,</span>
+<span class="sd">        with few details : only based on duration and modal penalties.</span>
+<span class="sd">        Based on modes demand and levels of services, it returns the volume by mode.</span>
+<span class="sd">        Does not include price. </span>
+<span class="sd">        For modal split, prefer the use of function step_logit</span>
+<span class="sd">        </span>
+<span class="sd">            * Utility(car) = alpha_car * &#39;duration_car&#39; + beta_car</span>
+<span class="sd">            * Utility(pt) = &#39;duration_pt&#39;</span>
 
-<span class="sd">        :param modal_split_kwargs: kwargs of engine.modal_split</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        build_od_stack : bool, optional</span>
+<span class="sd">            _description_, by default True</span>
+
+<span class="sd">        time_scale : float</span>
+<span class="sd">            time scale of the logistic regression that compares utilities. Defines selectiveness.</span>
+<span class="sd">            Defined as 1/(utility value of time, in seconds)</span>
+
+<span class="sd">        alpha_car : float</span>
+<span class="sd">            multiplicative penalty on &#39;duration_car&#39; for the calculation of &#39;utility_car&#39;</span>
+
+<span class="sd">        beta_car : float</span>
+<span class="sd">            additive penalty on &#39;duration_car&#39; for the calculation of &#39;utility_car&#39;</span>
+<span class="sd">        </span>
+
+<span class="sd">        Requires</span>
+<span class="sd">        ---------</span>
+<span class="sd">            * self.volumes :</span>
+<span class="sd">                all mode origin-&gt;destination demand matrix</span>
+<span class="sd">            * self.los :</span>
+<span class="sd">                levels of service. An od stack matrix with &#39;duration_pt&#39; and &#39;duration_car&#39;</span>
+
+<span class="sd">        Builds</span>
+<span class="sd">        ---------</span>
+<span class="sd">        self.od_stack :</span>
+<span class="sd">        self.shared :</span>
 
 <span class="sd">        example:</span>
 <span class="sd">        ::</span>
+<span class="sd">            los = pd.merge(</span>
+<span class="sd">                car_los,</span>
+<span class="sd">                pt_los,</span>
+<span class="sd">                on=[&#39;origin&#39;, &#39;destination&#39;],</span>
+<span class="sd">                suffixes=[&#39;_car&#39;, &#39;_pt&#39;]</span>
+<span class="sd">            )</span>
+<span class="sd">            </span>
 <span class="sd">            sm.step_modal_split(</span>
 <span class="sd">                time_scale=1/1800,</span>
 <span class="sd">                alpha_car=2,</span>
@@ -439,6 +508,29 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">shared</span> <span class="o">=</span> <span class="n">shared</span></div>
 
 <div class="viewcode-block" id="TransportModel.compute_los_volume"><a class="viewcode-back" href="../../../quetzal.model.transportmodel.html#quetzal.model.transportmodel.TransportModel.compute_los_volume">[docs]</a>    <span class="k">def</span> <span class="nf">compute_los_volume</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time_expanded</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">keep_segments</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Compute volumes in the level of services table from volumes and probabilities</span>
+<span class="sd">        computed in the step_logit</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        time_expanded : bool, optional, default False</span>
+<span class="sd">            Use True for models using timetables and ConnectionScan models </span>
+<span class="sd">        keep_segments : bool, optional, default True</span>
+<span class="sd">            True to use model segments - compute volumes per path per segment</span>
+
+<span class="sd">        Requires</span>
+<span class="sd">        ---------</span>
+<span class="sd">        self.los :</span>
+<span class="sd">            concatenation of levels of services of the different modes (usually pt_los and car_los)</span>
+<span class="sd">        self.volumes :</span>
+
+<span class="sd">        Builds</span>
+<span class="sd">        ---------</span>
+<span class="sd">        self.los :</span>
+<span class="sd">            add volume column </span>
+
+
+<span class="sd">        &quot;&quot;&quot;</span>        
         <span class="n">los</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">los</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">time_expanded</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">te_los</span>
 
         <span class="n">segments</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">segments</span>
@@ -478,6 +570,53 @@
         <span class="n">time_expanded</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">compute_los_volume</span><span class="o">=</span><span class="kc">True</span>
     <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Performs assignment : compute the volumes on the links of the public transport network,</span>
+<span class="sd">        and the boardings and alightings on the nodes of the PT network</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        road : bool, optional, default False</span>
+<span class="sd">            Assign car volume.</span>
+<span class="sd">            If road_link_list exists (columns of self.links computed with preparation_cast_network function)</span>
+<span class="sd">            Add public transport volume on road_links.</span>
+<span class="sd">            Requires </span>
+<span class="sd">        boardings : bool, optional, default False</span>
+<span class="sd">            If True, compute boardings to add to the nodes dataframe</span>
+<span class="sd">        boarding_links : bool, optional, default False</span>
+<span class="sd">            If True, compute boardings to add to the links dataframe</span>
+<span class="sd">        alightings : bool, optional, default False</span>
+<span class="sd">            If True, compute alightings to add to the nodes dataframe</span>
+<span class="sd">        alighting_links : bool, optional, default False</span>
+<span class="sd">            If True, compute alightings to add to the links dataframe</span>
+<span class="sd">        transfers : bool, optional, default False</span>
+<span class="sd">            If True, compute number of transfers to add to the nodes dataframe</span>
+<span class="sd">        segmented : bool, optional, default False</span>
+<span class="sd">            If True, use model segments - compute volumes on the links per segment</span>
+<span class="sd">        time_expanded : bool, optional, default False</span>
+<span class="sd">            Use True for models using timetables and ConnectionScan models </span>
+<span class="sd">        compute_los_volume : bool, optional, default True</span>
+<span class="sd">            True to add column volumes in los dataframe</span>
+
+<span class="sd">        Requires</span>
+<span class="sd">        ---------</span>
+<span class="sd">        self.los :</span>
+<span class="sd">            concatenation of levels of services of the different modes (usually pt_los and car_los)</span>
+<span class="sd">        self.volumes :</span>
+
+<span class="sd">        Builds</span>
+<span class="sd">        ---------</span>
+<span class="sd">        self.los :</span>
+<span class="sd">            add volume column if compute_los_volume=True</span>
+<span class="sd">        self.links :</span>
+<span class="sd">            add volumes on public transport links, can add boardings, alightings,</span>
+<span class="sd">            can be per segment, depending on parameters</span>
+<span class="sd">        self.nodes : </span>
+<span class="sd">            Depending on parameters, add boardings, alightings, transfers</span>
+<span class="sd">        self.road_links : </span>
+<span class="sd">            add public transport volumes on road_links if road=True</span>
+<span class="sd">        &quot;&quot;&quot;</span>    
+
+   
         <span class="k">if</span> <span class="n">compute_los_volume</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">compute_los_volume</span><span class="p">(</span><span class="n">time_expanded</span><span class="o">=</span><span class="n">time_expanded</span><span class="p">)</span>
         <span class="n">los</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">los</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
@@ -538,6 +677,49 @@
         <span class="n">transfers</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">aggregated_los</span><span class="o">=</span><span class="kc">None</span>
     <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Performs assignment per segment : compute the volumes on the links of the public transport network,</span>
+<span class="sd">        and the boardings and alightings on the nodes of the PT network, </span>
+<span class="sd">        keeping the memory of segments in the volumes</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        road : bool, optional, default False</span>
+<span class="sd">            Add public transport volume on road_links.</span>
+<span class="sd">            Requires road_link_list - columns of self.links computed with preparation_cast_network function.</span>
+
+<span class="sd">        boardings : bool, optional, default False</span>
+<span class="sd">            If True, compute boardings to add to the nodes dataframe</span>
+<span class="sd">        </span>
+<span class="sd">        alightings : bool, optional, default False</span>
+<span class="sd">            If True, compute alightings to add to the nodes dataframe</span>
+<span class="sd">        </span>
+<span class="sd">        transfers : bool, optional, default False</span>
+<span class="sd">            If True, compute number of transfers to add to the nodes dataframe</span>
+<span class="sd">        </span>
+<span class="sd">        aggregated_los : string, optional, default None</span>
+<span class="sd">            Name of attributes containing model aggregated los</span>
+
+
+<span class="sd">        Requires</span>
+<span class="sd">        ---------</span>
+<span class="sd">        self.los :</span>
+<span class="sd">            concatenation of levels of services of the different modes (usually pt_los and car_los)</span>
+<span class="sd">        self.volumes :</span>
+
+
+<span class="sd">        Builds</span>
+<span class="sd">        ---------</span>
+<span class="sd">        self.los :</span>
+<span class="sd">            add volume column if compute_los_volume=True</span>
+<span class="sd">        self.links :</span>
+<span class="sd">            add volumes on public transport links per segment,</span>
+<span class="sd">            can add boardings, alightings,depending on parameters</span>
+<span class="sd">        self.nodes : </span>
+<span class="sd">            Depending on parameters, add boardings, alightings, transfers</span>
+<span class="sd">        self.road_links : </span>
+<span class="sd">            add public transport volumes on road_links if road=True</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>    
         <span class="n">los</span> <span class="o">=</span> <span class="n">aggregated_los</span> <span class="k">if</span> <span class="n">aggregated_los</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">los</span>
         <span class="k">for</span> <span class="n">segment</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">segments</span><span class="p">:</span>
             <span class="n">column</span> <span class="o">=</span> <span class="s1">&#39;link_path&#39;</span>
@@ -580,14 +762,39 @@
         <span class="n">split_by</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="o">**</span><span class="n">kwargs</span>
     <span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Assignment step</span>
-<span class="sd">            * requires: links, nodes, pt_los, road_links, volumes, path_probabilities</span>
-<span class="sd">            * builds: loaded_links, loaded_nodes, add load to road_links</span>
+        <span class="sd">&quot;&quot;&quot;Performs assignment of the indicated volume column: compute the volumes on the links of the public transport network,</span>
+<span class="sd">        and the boardings and alightings on the nodes of the PT network.</span>
+<span class="sd">        This function is older and slower, will soon be deprecated, if possible priviledge the use of function step_assigment.</span>
+<span class="sd">        Compared to step_assignment : </span>
+<span class="sd">            - uses pt_los (and not los)</span>
+<span class="sd">            - Can specify the volume column</span>
+<span class="sd">            - Can strack path categories</span>
 
-<span class="sd">        :param volume_column: volume column of self.volumes to assign. If none, all columns will be assigned</span>
-<span class="sd">        :param on_road_links: if True, performs pt assignment on road_links as well</span>
-<span class="sd">        :param split_by: path categories to be tracked in the assignment. Must be a column of self.pt_los</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        volume_column : string, optional, default None</span>
+<span class="sd">           volume column of self.volumes to assign. If none, all columns will be assigned</span>
+<span class="sd">        on_road_links : bool, optional, default False</span>
+<span class="sd">            if True, performs pt assignment on road_links as well</span>
+<span class="sd">        split_by : string, optional, default None</span>
+<span class="sd">            path categories to be tracked in the assignment. Must be a column of self.pt_los</span>
+
+<span class="sd">        Requires</span>
+<span class="sd">        -------</span>
+<span class="sd">        self.links</span>
+<span class="sd">        self.nodes</span>
+<span class="sd">        self.pt_los :</span>
+<span class="sd">            requires computed path probabilities in pt_los for each segment,</span>
+<span class="sd">            they can be computed with funcions analysis_mode_utility + step_logit</span>
+<span class="sd">        self.road_links</span>
+<span class="sd">        self.volumes</span>
+
+<span class="sd">        Builds</span>
+<span class="sd">        -------</span>
+<span class="sd">        self.loaded_links</span>
+<span class="sd">        self.loaded_nodes</span>
+<span class="sd">        self.road_links :</span>
+<span class="sd">            add public transport load column </span>
 
 <span class="sd">        example:</span>
 <span class="sd">        ::</span>
@@ -678,9 +885,31 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">road_links</span><span class="p">[</span><span class="s1">&#39;load&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">road_links</span><span class="p">[</span><span class="n">volume_column</span><span class="p">]</span></div>
 
 <div class="viewcode-block" id="TransportModel.segmented_pt_assignment"><a class="viewcode-back" href="../../../quetzal.model.transportmodel.html#quetzal.model.transportmodel.TransportModel.segmented_pt_assignment">[docs]</a>    <span class="k">def</span> <span class="nf">segmented_pt_assignment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">split_by</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">on_road_links</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Performs pt assignment for all demand segments.</span>
-<span class="sd">        Requires computed path probabilities in pt_los for each segment.</span>
+        <span class="sd">&quot;&quot;&quot;Performs pt assignment for all demand segments. Function used in step_pt_assignment function,</span>
+<span class="sd">        refer to this function for other args.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        on_road_links : bool, optional, default False</span>
+<span class="sd">            if True, performs pt assignment on road_links as well</span>
+<span class="sd">        split_by : string, optional, default None</span>
+<span class="sd">            path categories to be tracked in the assignment. Must be a column of self.pt_los</span>
+<span class="sd">        </span>
+<span class="sd">        Requires</span>
+<span class="sd">        -------</span>
+<span class="sd">        self.links</span>
+<span class="sd">        self.nodes</span>
+<span class="sd">        self.pt_los :</span>
+<span class="sd">            requires computed path probabilities in pt_los for each segment</span>
+<span class="sd">        self.road_links</span>
+<span class="sd">        self.volumes</span>
+
+<span class="sd">        Builds</span>
+<span class="sd">        -------</span>
+<span class="sd">        self.loaded_links</span>
+<span class="sd">        self.loaded_nodes</span>
+<span class="sd">        self.road_links :</span>
+<span class="sd">            add public transport load column </span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">segments</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">segments</span>
 
@@ -734,10 +963,32 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">road_links</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">segments</span><span class="p">],</span> <span class="mi">1</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="TransportModel.step_car_assignment"><a class="viewcode-back" href="../../../quetzal.model.transportmodel.html#quetzal.model.transportmodel.TransportModel.step_car_assignment">[docs]</a>    <span class="k">def</span> <span class="nf">step_car_assignment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">volume_column</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Assignment step</span>
-<span class="sd">            * requires: road_links, car_los, road_links, volumes, path_probabilities</span>
-<span class="sd">            * builds: loaded_road_links</span>
+        <span class="sd">&quot;&quot;&quot;Performs car assignment of the indicated volume column: compute the volumes on the road_links of the private transport network.</span>
+<span class="sd">        This function is older and slower, will soon be deprecated, priviledge the use of function step_assigment and step_road_pathfinder.</span>
+<span class="sd">        Compared to step_assignment : </span>
+<span class="sd">            - uses car_los (and not los)</span>
+<span class="sd">            - Can specify the volume column</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        volume_column : string, optional, default None</span>
+<span class="sd">           volume column of self.volumes to assign. If none, all columns will be assigned</span>
+
+<span class="sd">        </span>
+<span class="sd">        Requires</span>
+<span class="sd">        -------</span>
+<span class="sd">        self.road_links</span>
+<span class="sd">        self.road_nodes</span>
+<span class="sd">        self.car_los :</span>
+<span class="sd">            requires computed path probabilities in car_los for each segment,</span>
+<span class="sd">            they can be computed with funcions analysis_mode_utility + step_logit</span>
+<span class="sd">        self.volumes</span>
+
+<span class="sd">        Builds</span>
+<span class="sd">        -------</span>
+<span class="sd">        self.loaded_road_links</span>
+<span class="sd">        self.loaded_road_nodes</span>
+<span class="sd">        </span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">volume_column</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">segmented_car_assignment</span><span class="p">()</span>
@@ -748,6 +999,23 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">road_links</span><span class="p">[(</span><span class="n">volume_column</span><span class="p">,</span> <span class="s1">&#39;car&#39;</span><span class="p">)]</span> <span class="o">=</span> <span class="n">assigned</span></div>
 
 <div class="viewcode-block" id="TransportModel.segmented_car_assignment"><a class="viewcode-back" href="../../../quetzal.model.transportmodel.html#quetzal.model.transportmodel.TransportModel.segmented_car_assignment">[docs]</a>    <span class="k">def</span> <span class="nf">segmented_car_assignment</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Performs car assignment for all demand segments. Function used in step_car_assignment function,</span>
+<span class="sd">        refer to this function for other args and parameters.</span>
+<span class="sd">        </span>
+<span class="sd">        Requires</span>
+<span class="sd">        -------</span>
+<span class="sd">        self.road_links</span>
+<span class="sd">        self.road_nodes</span>
+<span class="sd">        self.car_los :</span>
+<span class="sd">            requires computed path probabilities in car_los for each segment</span>
+<span class="sd">        self.volumes</span>
+
+<span class="sd">        Builds</span>
+<span class="sd">        -------</span>
+<span class="sd">        self.loaded_road_links</span>
+<span class="sd">        self.loaded_road_nodes</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
         <span class="n">segments</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">segments</span>
         <span class="n">iterator</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">segments</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">segment</span> <span class="ow">in</span> <span class="n">iterator</span><span class="p">:</span>
@@ -768,9 +1036,43 @@
     <span class="c1"># TODO move all utility features to another object / file</span>
 
 <div class="viewcode-block" id="TransportModel.analysis_mode_utility"><a class="viewcode-back" href="../../../quetzal.model.transportmodel.html#quetzal.model.transportmodel.TransportModel.analysis_mode_utility">[docs]</a>    <span class="k">def</span> <span class="nf">analysis_mode_utility</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="n">segment</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">segments</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">time_expanded</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        * requires: mode_utility, los, utility_values</span>
-<span class="sd">        * builds: los</span>
+        <span class="sd">&quot;&quot;&quot;Compute utilities per mode per segment based on logit parameters.</span>
+<span class="sd">        Before applying this function :</span>
+<span class="sd">            - the function preparation_logit allozs to create the </span>
+<span class="sd">                stepmodel attributes utility_values, logit_scales, mode_utility and mode_nests </span>
+<span class="sd">                required in the analysis_mode_utility function</span>
+<span class="sd">            - the functions analysis_pt_route_type and analysis_car_route_type may also be needed</span>
+<span class="sd">                to builds &#39;route_type&#39; in pt_los (resp in car_los) based on &#39;route_types&#39;</span>
+<span class="sd">            - concatenate pt_los and car_los</span>
+<span class="sd">        The function analysis_mode_utility computes the utility based on the chosen variables of the utility </span>
+<span class="sd">        functions. The coefficients of the variable in the utility fonctions must be found in the utility_values model attribute </span>
+<span class="sd">        and in the columns of the model los (default : price, time, ntransfers). They can be defined by segment.</span>
+<span class="sd">        The modal constant can also be defined per segment and must be found in the table mode_utility.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        how : str, optional</span>
+<span class="sd">            _description_, by default &#39;min&#39;</span>
+<span class="sd">        segment : _type_, optional</span>
+<span class="sd">            _description_, by default None</span>
+<span class="sd">        segments : _type_, optional</span>
+<span class="sd">            _description_, by default None</span>
+<span class="sd">        time_expanded : bool, optional</span>
+<span class="sd">            _description_, by default False</span>
+<span class="sd">        </span>
+
+<span class="sd">        Requires</span>
+<span class="sd">        -------</span>
+<span class="sd">        self.mode_utility</span>
+<span class="sd">        self.los</span>
+<span class="sd">        self.utility_values :</span>
+<span class="sd">        </span>
+
+<span class="sd">        Builds</span>
+<span class="sd">        -------</span>
+<span class="sd">        self.los :</span>
+<span class="sd">            add columns (segment, &#39;utility&#39;) - value of the utility per segment </span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">segment</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">segment</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">segments</span><span class="p">):</span>
@@ -803,7 +1105,17 @@
         <span class="n">logit_los</span><span class="p">[(</span><span class="n">segment</span><span class="p">,</span> <span class="s1">&#39;utility&#39;</span><span class="p">)]</span> <span class="o">=</span> <span class="n">logit_los</span><span class="p">[(</span><span class="n">segment</span><span class="p">,</span> <span class="s1">&#39;utility&#39;</span><span class="p">)]</span></div>
 
 <div class="viewcode-block" id="TransportModel.analysis_utility"><a class="viewcode-back" href="../../../quetzal.model.transportmodel.html#quetzal.model.transportmodel.TransportModel.analysis_utility">[docs]</a>    <span class="k">def</span> <span class="nf">analysis_utility</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">segment</span><span class="o">=</span><span class="s1">&#39;root&#39;</span><span class="p">,</span> <span class="n">time_expanded</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;min&#39;</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;_summary_</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        segment : str, optional</span>
+<span class="sd">            _description_, by default &#39;root&#39;</span>
+<span class="sd">        time_expanded : bool, optional</span>
+<span class="sd">            _description_, by default False</span>
+<span class="sd">        how : str, optional</span>
+<span class="sd">            _description_, by default &#39;min&#39;</span>
+<span class="sd">        </span>
 <span class="sd">        * requires: mode_utility, los, utility_values</span>
 <span class="sd">        * builds: los</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -840,7 +1152,23 @@
         <span class="n">workers</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
         <span class="n">keep_od_tables</span><span class="o">=</span><span class="kc">True</span>
     <span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;_summary_</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        time_expanded : bool, optional</span>
+<span class="sd">            _description_, by default False</span>
+<span class="sd">        decimals : _type_, optional</span>
+<span class="sd">            _description_, by default None</span>
+<span class="sd">        n_paths_max : _type_, optional</span>
+<span class="sd">            _description_, by default None</span>
+<span class="sd">        nchunks : int, optional</span>
+<span class="sd">            _description_, by default 10</span>
+<span class="sd">        workers : int, optional</span>
+<span class="sd">            _description_, by default 1</span>
+<span class="sd">        keep_od_tables : bool, optional</span>
+<span class="sd">            _description_, by default True</span>
+<span class="sd">        </span>
 <span class="sd">        * requires: mode_nests, logit_scales, los</span>
 <span class="sd">        * builds: los, od_utilities, od_probabilities, path_utilities, path_probabilities</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -928,6 +1256,22 @@
 
 
 <div class="viewcode-block" id="get_combined_mode_utility"><a class="viewcode-back" href="../../../quetzal.model.transportmodel.html#quetzal.model.transportmodel.get_combined_mode_utility">[docs]</a><span class="k">def</span> <span class="nf">get_combined_mode_utility</span><span class="p">(</span><span class="n">route_types</span><span class="p">,</span> <span class="n">mode_utility</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;min&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;_summary_</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    route_types : _type_</span>
+<span class="sd">        _description_</span>
+<span class="sd">    mode_utility : _type_</span>
+<span class="sd">        _description_</span>
+<span class="sd">    how : str, optional</span>
+<span class="sd">        _description_, by default &#39;min&#39;</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    _type_</span>
+<span class="sd">        _description_</span>
+<span class="sd">    &quot;&quot;&quot;</span>    
     <span class="n">utilities</span> <span class="o">=</span> <span class="p">[</span><span class="n">mode_utility</span><span class="p">[</span><span class="n">mode</span><span class="p">]</span> <span class="k">for</span> <span class="n">mode</span> <span class="ow">in</span> <span class="n">route_types</span><span class="p">]</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">utilities</span><span class="p">):</span>
         <span class="k">return</span> <span class="mi">0</span>

@@ -49,19 +49,17 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             travel as distance/time/cost increases, by default None
         od_volume_from_zones_kwargs : 
             if the friction matrix is not
-            provided, it will be automatically computed using a gravity distribution which
-            uses the following parameters:
-                - param power: (int) the gravity exponent
-                - param intrazonal: (bool) if False :set the intrazonal distance to 0,
-                    else compute a characteristic distance.
+            provided, it will be automatically computed using a gravity distribution with
+                - power: int, thee gravity exponent
+                - intrazonal: (bool) if False set the intrazonal distance to 0, else compute a characteristic distance
          
         Requires
         ----------      
-        stepmodel zones
+        self.zones :
 
         Builds
         ----------
-        stepmodel volumes  
+        self.volumes :
         
         """
         if segmented:
@@ -161,18 +159,20 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         Requires
         ----------      
-        stepmodel road_links
+        self.road_links :
 
-        stepmodel zone_to_road
+        self.zone_to_road :
 
-        stepmodel volumes
+        self.volumes :
 
 
         Builds
         -----------
-        stepmodel car_los : create tables of car levels of services
+        self.car_los : 
+            create tables of car levels of services
 
-        stepmodel road_links : add columns flow (volume on the road links) and jam_time (time of the link with congestion)
+        self.road_links : 
+            add columns flow (volume on the road links) and jam_time (time of the link with congestion)
             for each OD pair results of pathfinder with/without capacity restriction
 
         """
@@ -224,18 +224,19 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         Requires
         ----------
-        stepmodel zones
-        stepmodel links 
-        stepmodel footpaths
-        stepmodel zone_to_road
-        stepmodel zone_to_transit
-        stepmodel transit_to_zone
-        stepmodel road_to_transit
-        stepmodel road_links
+        self.zones :
+        self.links :
+        self.footpaths :
+        self.zone_to_road :
+        self.zone_to_transit :
+        self.transit_to_zone :
+        self.road_to_transit :
+        self.road_links :
 
         Builds
         ----------
-        stepmodel pr_los
+        self.pr_los :
+
         """    
 
 
@@ -324,16 +325,16 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         Requires
         ----------
-        stepmodel zones
-        stepmodel links 
-        stepmodel footpaths
-        stepmodel zone_to_road
-        stepmodel zone_to_transit
+        self.zones :
+        self.links :
+        self.footpaths :
+        self.zone_to_road :
+        self.zone_to_transit :
             
 
         Builds
         ----------
-        stepmodel pt_los
+        self.pt_los :
 
         """
         sets = ['nodes', 'links', 'zones']
@@ -402,13 +403,15 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         Requires
         ---------
-            * stepmodel volumes : all mode origin->destination demand matrix
-            * stepmodel los : levels of service. An od stack matrix with 'duration_pt' and 'duration_car'
+            * self.volumes :
+                all mode origin->destination demand matrix
+            * self.los :
+                levels of service. An od stack matrix with 'duration_pt' and 'duration_car'
 
         Builds
         ---------
-        stepmodel od_stack
-        stepmodel shared
+        self.od_stack :
+        self.shared :
 
         example:
         ::
@@ -442,19 +445,21 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         Parameters
         ----------
-        time_expanded : bool, optional
-            _description_, by default False
-        keep_segments : bool, optional
-            _description_, by default True
+        time_expanded : bool, optional, default False
+            Use True for models using timetables and ConnectionScan models 
+        keep_segments : bool, optional, default True
+            True to use model segments - compute volumes per path per segment
 
         Requires
         ---------
-        stepmodel los
-        stepmodel volumes
+        self.los :
+            concatenation of levels of services of the different modes (usually pt_los and car_los)
+        self.volumes :
 
         Builds
         ---------
-        volume column in self.los
+        self.los :
+            add volume column 
 
 
         """        
@@ -497,28 +502,50 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         time_expanded=False,
         compute_los_volume=True
     ):
-        """_summary_
+        """Performs assignment : compute the volumes on the links of the public transport network,
+        and the boardings and alightings on the nodes of the PT network
 
         Parameters
         ----------
-        road : bool, optional
-            _description_, by default False
-        boardings : bool, optional
-            _description_, by default False
-        boarding_links : bool, optional
-            _description_, by default False
-        alightings : bool, optional
-            _description_, by default False
-        alighting_links : bool, optional
-            _description_, by default False
-        transfers : bool, optional
-            _description_, by default False
-        segmented : bool, optional
-            _description_, by default False
-        time_expanded : bool, optional
-            _description_, by default False
-        compute_los_volume : bool, optional
-            _description_, by default True
+        road : bool, optional, default False
+            Assign car volume.
+            If road_link_list exists (columns of self.links computed with preparation_cast_network function)
+            Add public transport volume on road_links.
+            Requires 
+        boardings : bool, optional, default False
+            If True, compute boardings to add to the nodes dataframe
+        boarding_links : bool, optional, default False
+            If True, compute boardings to add to the links dataframe
+        alightings : bool, optional, default False
+            If True, compute alightings to add to the nodes dataframe
+        alighting_links : bool, optional, default False
+            If True, compute alightings to add to the links dataframe
+        transfers : bool, optional, default False
+            If True, compute number of transfers to add to the nodes dataframe
+        segmented : bool, optional, default False
+            If True, use model segments - compute volumes on the links per segment
+        time_expanded : bool, optional, default False
+            Use True for models using timetables and ConnectionScan models 
+        compute_los_volume : bool, optional, default True
+            True to add column volumes in los dataframe
+
+        Requires
+        ---------
+        self.los :
+            concatenation of levels of services of the different modes (usually pt_los and car_los)
+        self.volumes :
+
+        Builds
+        ---------
+        self.los :
+            add volume column if compute_los_volume=True
+        self.links :
+            add volumes on public transport links, can add boardings, alightings,
+            can be per segment, depending on parameters
+        self.nodes : 
+            Depending on parameters, add boardings, alightings, transfers
+        self.road_links : 
+            add public transport volumes on road_links if road=True
         """    
 
    
@@ -582,20 +609,48 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         transfers=False,
         aggregated_los=None
     ):
-        """_summary_
+        """Performs assignment per segment : compute the volumes on the links of the public transport network,
+        and the boardings and alightings on the nodes of the PT network, 
+        keeping the memory of segments in the volumes
 
         Parameters
         ----------
-        road : bool, optional
-            _description_, by default False
-        boardings : bool, optional
-            _description_, by default False
-        alightings : bool, optional
-            _description_, by default False
-        transfers : bool, optional
-            _description_, by default False
-        aggregated_los : _type_, optional
-            _description_, by default None
+        road : bool, optional, default False
+            Add public transport volume on road_links.
+            Requires road_link_list - columns of self.links computed with preparation_cast_network function.
+
+        boardings : bool, optional, default False
+            If True, compute boardings to add to the nodes dataframe
+        
+        alightings : bool, optional, default False
+            If True, compute alightings to add to the nodes dataframe
+        
+        transfers : bool, optional, default False
+            If True, compute number of transfers to add to the nodes dataframe
+        
+        aggregated_los : string, optional, default None
+            Name of attributes containing model aggregated los
+
+
+        Requires
+        ---------
+        self.los :
+            concatenation of levels of services of the different modes (usually pt_los and car_los)
+        self.volumes :
+
+
+        Builds
+        ---------
+        self.los :
+            add volume column if compute_los_volume=True
+        self.links :
+            add volumes on public transport links per segment,
+            can add boardings, alightings,depending on parameters
+        self.nodes : 
+            Depending on parameters, add boardings, alightings, transfers
+        self.road_links : 
+            add public transport volumes on road_links if road=True
+        
         """    
         los = aggregated_los if aggregated_los is not None else self.los
         for segment in self.segments:
@@ -639,7 +694,13 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         split_by=None,
         **kwargs
     ):
-        """Assignment step
+        """Performs assignment of the indicated volume column: compute the volumes on the links of the public transport network,
+        and the boardings and alightings on the nodes of the PT network.
+        This function is older and slower, will soon be deprecated, if possible priviledge the use of function step_assigment.
+        Compared to step_assignment : 
+            - uses pt_los (and not los)
+            - Can specify the volume column
+            - Can strack path categories
 
         Parameters
         ----------
@@ -652,17 +713,20 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         Requires
         -------
-        links
-        nodes
-        pt_los
-        road_links
-        volumes
+        self.links
+        self.nodes
+        self.pt_los :
+            requires computed path probabilities in pt_los for each segment,
+            they can be computed with funcions analysis_mode_utility + step_logit
+        self.road_links
+        self.volumes
 
         Builds
         -------
-        loaded_links
-        loaded_nodes
-        add load to road_links
+        self.loaded_links
+        self.loaded_nodes
+        self.road_links :
+            add public transport load column 
 
         example:
         ::
@@ -753,16 +817,31 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             self.road_links['load'] = self.road_links[volume_column]
 
     def segmented_pt_assignment(self, split_by=None, on_road_links=False, *args, **kwargs):
-        """Performs pt assignment for all demand segments.
-        Requires computed path probabilities in pt_los for each segment.
-
+        """Performs pt assignment for all demand segments. Function used in step_pt_assignment function,
+        refer to this function for other args.
+        
         Parameters
         ----------
-        split_by : _type_, optional
-            _description_, by default None
-        on_road_links : bool, optional
-            _description_, by default False
+        on_road_links : bool, optional, default False
+            if True, performs pt assignment on road_links as well
+        split_by : string, optional, default None
+            path categories to be tracked in the assignment. Must be a column of self.pt_los
         
+        Requires
+        -------
+        self.links
+        self.nodes
+        self.pt_los :
+            requires computed path probabilities in pt_los for each segment
+        self.road_links
+        self.volumes
+
+        Builds
+        -------
+        self.loaded_links
+        self.loaded_nodes
+        self.road_links :
+            add public transport load column 
         """
         segments = self.segments
 
@@ -816,16 +895,32 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             self.road_links.drop([s for s in segments], 1, inplace=True)
 
     def step_car_assignment(self, volume_column=None):
-        """Assignment step
+        """Performs car assignment of the indicated volume column: compute the volumes on the road_links of the private transport network.
+        This function is older and slower, will soon be deprecated, priviledge the use of function step_assigment and step_road_pathfinder.
+        Compared to step_assignment : 
+            - uses car_los (and not los)
+            - Can specify the volume column
 
         Parameters
         ----------
-        volume_column : _type_, optional
-            _description_, by default None
+        volume_column : string, optional, default None
+           volume column of self.volumes to assign. If none, all columns will be assigned
 
         
-            * requires: road_links, car_los, road_links, volumes, path_probabilities
-            * builds: loaded_road_links
+        Requires
+        -------
+        self.road_links
+        self.road_nodes
+        self.car_los :
+            requires computed path probabilities in car_los for each segment,
+            they can be computed with funcions analysis_mode_utility + step_logit
+        self.volumes
+
+        Builds
+        -------
+        self.loaded_road_links
+        self.loaded_road_nodes
+        
         """
         if volume_column is None:
             self.segmented_car_assignment()
@@ -836,6 +931,23 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             self.road_links[(volume_column, 'car')] = assigned
 
     def segmented_car_assignment(self):
+        """Performs car assignment for all demand segments. Function used in step_car_assignment function,
+        refer to this function for other args and parameters.
+        
+        Requires
+        -------
+        self.road_links
+        self.road_nodes
+        self.car_los :
+            requires computed path probabilities in car_los for each segment
+        self.volumes
+
+        Builds
+        -------
+        self.loaded_road_links
+        self.loaded_road_nodes
+        """
+
         segments = self.segments
         iterator = tqdm(segments)
         for segment in iterator:
@@ -856,9 +968,55 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
     # TODO move all utility features to another object / file
 
     def analysis_mode_utility(self, how='min', segment=None, segments=None, time_expanded=False):
-        """
-        * requires: mode_utility, los, utility_values
-        * builds: los
+        """Compute utilities per mode per segment based on logit parameters.
+        Before applying this function :
+            - the function preparation_logit allows to create the 
+            stepmodel attributes utility_values, logit_scales, mode_utility and mode_nests 
+            required in the analysis_mode_utility function
+            - the functions analysis_pt_route_type and analysis_car_route_type may also be needed
+            to builds 'route_type' in pt_los (resp in car_los) based on 'route_types'
+            - concatenate pt_los and car_los
+        The function analysis_mode_utility computes the utility based on the chosen variables of the utility 
+        functions. The coefficients of the variable in the utility fonctions must be found in the utility_values model attribute 
+        and in the columns of the model los (default : price, time, ntransfers). They can be defined by segment.
+        The modal constant can also be defined per segment and must be found in the table mode_utility.
+
+        Parameters
+        ----------
+        how : ['main'|'min'|'max'|'mean'|'sum'], optional, default 'min'
+            What type of agregation for mode constant. Options are:
+
+            'main'   --(default)  the utility (constant) of the 'route_type' is used
+
+            'min'    -- minimum of the utilities (constant) of the modes in route_types
+
+            'max'   -- maximum of the utilities (constant) of the modes in route_types
+
+            'mean'   -- mean of the utilities (constant) of the modes in route_types
+
+            'sum'   -- sum of the utilities (constant) of the modes in route_types
+
+        segment : string, optional, default None
+            Unique segment for which to compute utility. If None, will perform for all segments of self.segments
+        segments : list, optional, default None
+            List of segments of the model for which to compute utility
+        time_expanded : bool, optional, default False
+            Use True for models using timetables and ConnectionScan models 
+        
+
+        Requires
+        -------
+        self.mode_utility
+        self.los
+        self.utility_values 
+        self.segments
+        
+
+        Builds
+        -------
+        self.los :
+            add columns (segment, 'utility') - value of the utility per segment 
+
         """
         if segment is None:
             for segment in tqdm(self.segments):
@@ -891,9 +1049,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         logit_los[(segment, 'utility')] = logit_los[(segment, 'utility')]
 
     def analysis_utility(self, segment='root', time_expanded=False, how='min'):
-        """
-        * requires: mode_utility, los, utility_values
-        * builds: los
+        """DEPRECATED USE analysis_mode_utility
         """
         if segment is None:
             for segment in self.segments:
@@ -914,6 +1070,9 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         los[(segment, 'utility')] = los[(segment, 'utility')].astype(float)
 
     def initialize_logit(self):
+        """Not necessary
+        creates tables od_probabilities and od_utilities
+        """        
         zones = list(self.zones.index)
         od = pd.DataFrame(index=pd.MultiIndex.from_product([zones, zones]))
         self.od_probabilities = od.copy()
@@ -928,9 +1087,42 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         workers=1,
         keep_od_tables=True
     ):
-        """
-        * requires: mode_nests, logit_scales, los
-        * builds: los, od_utilities, od_probabilities, path_utilities, path_probabilities
+        """Performs the nested logit : compute the probabilities per segment of the paths in self.los 
+        after having computed the utilities with function analysis_mode_utility.
+        prob(mode k)= exp(utility mode k)/sum(utilities, all modes)
+        Parametrize the nested logit with model attribute mode_nests and logit_scales 
+        created with function preparation_logit
+
+        Parameters
+        ----------
+        time_expanded : bool, optional, default False
+            Use True for models using timetables and ConnectionScan models
+        decimals : float, optional, default None
+            minimum probability (avoid very small volumes)
+        n_paths_max : int, optional, default None
+            Maximum number of paths to keep per OD (avoid very small volumes)
+        nchunks : int, optional, default 10
+            Parameter to speed up computation time (division of calculation)
+        workers : int, optional, default 1
+            Parameter to speed up computation time (division of calculation)
+        keep_od_tables : bool, optional, default True
+            _description_, by default True
+        
+        Requires
+        ----------
+        self.mode_nests
+        self.logit_scales
+        self.los
+
+        Builds
+        ----------
+        self.los :
+            Add columns (segment, 'probability') of probabilities per segment
+        self.od_utilities
+        self.od_probabilities
+        self.path_utilities
+        self.path_probabilities
+
         """
         # concatenate paths
         od_cols = ['origin', 'destination']
@@ -1016,6 +1208,28 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
 
 def get_combined_mode_utility(route_types, mode_utility, how='min'):
+    """Agregate modal constants
+
+    Parameters
+    ----------
+    route_types : list
+        List of the route_types in the path 
+    mode_utility : dataframe
+        Modal constants
+    how : ['main'|'min'|'max'|'mean'|'sum'], optional, default 'min'
+            What type of agregation for mode constant. Options are:
+
+            'main'   --(default)  the utility (constant) of the 'route_type' is used
+
+            'min'    -- minimum of the utilities (constant) of the modes in route_types
+
+            'max'   -- maximum of the utilities (constant) of the modes in route_types
+
+            'mean'   -- mean of the utilities (constant) of the modes in route_types
+
+            'sum'   -- sum of the utilities (constant) of the modes in route_types
+
+    """    
     utilities = [mode_utility[mode] for mode in route_types]
     if not len(utilities):
         return 0

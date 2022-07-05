@@ -97,7 +97,7 @@
 <div class="viewcode-block" id="PreparationModel"><a class="viewcode-back" href="../../../quetzal.model.preparationmodel.html#quetzal.model.preparationmodel.PreparationModel">[docs]</a><span class="k">class</span> <span class="nc">PreparationModel</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Model</span><span class="p">,</span> <span class="n">cubemodel</span><span class="o">.</span><span class="n">cubeModel</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-
+        
 <div class="viewcode-block" id="PreparationModel.preparation_footpaths"><a class="viewcode-back" href="../../../quetzal.model.preparationmodel.html#quetzal.model.preparationmodel.PreparationModel.preparation_footpaths">[docs]</a>    <span class="nd">@track_args</span>
     <span class="k">def</span> <span class="nf">preparation_footpaths</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -107,6 +107,7 @@
         <span class="n">n_clusters</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="o">**</span><span class="n">kwargs</span>
     <span class="p">):</span>
+        
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">            * requires: nodes</span>
 <span class="sd">            * builds: footpaths</span>

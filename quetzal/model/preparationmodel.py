@@ -29,7 +29,7 @@ log = model.log
 class PreparationModel(model.Model, cubemodel.cubeModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
+        
     @track_args
     def preparation_footpaths(
         self,
@@ -39,6 +39,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         n_clusters=None,
         **kwargs
     ):
+        
         """
             * requires: nodes
             * builds: footpaths

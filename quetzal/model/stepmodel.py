@@ -219,7 +219,7 @@ class StepModel(
 
 # deprecation method will be replaced by other data flow
 StepModel.step_modal_split = deprecated_method(StepModel.step_modal_split)
-StepModel.step_pathfinder = deprecated_method(StepModel.step_pathfinder)
+StepModel.step_pathfinder = deprecated_method(StepModel.step_pt_pathfinder)
 
 # moved to analysismodel
 StepModel.checkpoints = deprecated_method(StepModel.analysis_checkpoints)
