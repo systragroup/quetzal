@@ -92,43 +92,51 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.transportmodel.TransportModel.analysis_mode_utility">
 <span class="sig-name descname"><span class="pre">analysis_mode_utility</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">how</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'min'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">segment</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">segments</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_expanded</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#TransportModel.analysis_mode_utility"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.TransportModel.analysis_mode_utility" title="Permalink to this definition"></a></dt>
-<dd><p>Compute utilities per mode per segment based on logit parameters.
-Before applying this function :</p>
-<blockquote>
-<div><ul class="simple">
-<li><dl class="simple">
-<dt>the function preparation_logit allozs to create the</dt><dd><p>stepmodel attributes utility_values, logit_scales, mode_utility and mode_nests
+<dd><p>Compute utilities per mode per segment based on logit parameters.</p>
+<dl>
+<dt>Before applying this function :</dt><dd><dl class="simple">
+<dt>– the function preparation_logit allows to create the</dt><dd><p>stepmodel attributes utility_values, logit_scales, mode_utility and mode_nests
 required in the analysis_mode_utility function</p>
 </dd>
-</dl>
-</li>
-<li><dl class="simple">
-<dt>the functions analysis_pt_route_type and analysis_car_route_type may also be needed</dt><dd><p>to builds ‘route_type’ in pt_los (resp in car_los) based on ‘route_types’</p>
+<dt>– the functions analysis_pt_route_type and analysis_car_route_type may also be needed</dt><dd><p>to builds ‘route_type’ in pt_los (resp in car_los) based on ‘route_types’</p>
 </dd>
 </dl>
-</li>
-<li><p>concatenate pt_los and car_los</p></li>
-</ul>
-</div></blockquote>
+<p>– concatenate pt_los and car_los</p>
+</dd>
+</dl>
 <p>The function analysis_mode_utility computes the utility based on the chosen variables of the utility
 functions. The coefficients of the variable in the utility fonctions must be found in the utility_values model attribute
 and in the columns of the model los (default : price, time, ntransfers). They can be defined by segment.
 The modal constant can also be defined per segment and must be found in the table mode_utility.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>how</strong> (<em>str</em><em>, </em><em>optional</em>) – _description_, by default ‘min’</p></li>
-<li><p><strong>segment</strong> (<em>_type_</em><em>, </em><em>optional</em>) – _description_, by default None</p></li>
-<li><p><strong>segments</strong> (<em>_type_</em><em>, </em><em>optional</em>) – _description_, by default None</p></li>
-<li><p><strong>time_expanded</strong> (<em>bool</em><em>, </em><em>optional</em>) – _description_, by default False</p></li>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.mode_utility</p></li>
+<li><p>self.los</p></li>
+<li><p>self.utility_values</p></li>
+<li><p>self.segments</p></li>
 </ul>
 </dd>
 </dl>
-<p>self.mode_utility
-self.los
-self.utility_values :</p>
-<dl class="simple">
-<dt>self.los :</dt><dd><p>add columns (segment, ‘utility’) - value of the utility per segment</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>how</strong> (<em>[</em><em>'main'</em><em>|</em><em>'min'</em><em>|</em><em>'max'</em><em>|</em><em>'mean'</em><em>|</em><em>'sum'</em><em>]</em><em>, </em><em>optional</em><em>, </em><em>default 'min'</em>) – <p>What type of agregation for mode constant. Options are:</p>
+<p>’main’   –(default)  the utility (constant) of the ‘route_type’ is used</p>
+<p>’min’    – minimum of the utilities (constant) of the modes in route_types</p>
+<p>’max’   – maximum of the utilities (constant) of the modes in route_types</p>
+<p>’mean’   – mean of the utilities (constant) of the modes in route_types</p>
+<p>’sum’   – sum of the utilities (constant) of the modes in route_types</p>
+</p></li>
+<li><p><strong>segment</strong> (<em>string</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – Unique segment for which to compute utility. If None, will perform for all segments of self.segments</p></li>
+<li><p><strong>segments</strong> (<em>list</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – List of segments of the model for which to compute utility</p></li>
+<li><p><strong>time_expanded</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – Use True for models using timetables and ConnectionScan models</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>add columns (segment, ‘utility’) - value of the utility per segment</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>self.los</p>
 </dd>
 </dl>
 </dd></dl>
@@ -136,38 +144,33 @@ self.utility_values :</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.transportmodel.TransportModel.analysis_utility">
 <span class="sig-name descname"><span class="pre">analysis_utility</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">segment</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'root'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_expanded</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">how</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'min'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#TransportModel.analysis_utility"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.TransportModel.analysis_utility" title="Permalink to this definition"></a></dt>
-<dd><p>_summary_</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>segment</strong> (<em>str</em><em>, </em><em>optional</em>) – _description_, by default ‘root’</p></li>
-<li><p><strong>time_expanded</strong> (<em>bool</em><em>, </em><em>optional</em>) – _description_, by default False</p></li>
-<li><p><strong>how</strong> (<em>str</em><em>, </em><em>optional</em>) – _description_, by default ‘min’</p></li>
-<li><p><strong>requires</strong> (<em>*</em>) – </p></li>
-<li><p><strong>builds</strong> (<em>*</em>) – </p></li>
-</ul>
-</dd>
-</dl>
+<dd><p>DEPRECATED USE analysis_mode_utility</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.transportmodel.TransportModel.compute_los_volume">
 <span class="sig-name descname"><span class="pre">compute_los_volume</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_expanded</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_segments</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#TransportModel.compute_los_volume"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.TransportModel.compute_los_volume" title="Permalink to this definition"></a></dt>
 <dd><p>Compute volumes in the level of services table from volumes and probabilities
-computed in the step_logit</p>
+computed in the step_logit.</p>
+<dl class="simple">
+<dt>Requires</dt><dd><ul class="simple">
+<li><p>self.los : concatenation of levels of services of the different modes (usually pt_los and car_los)</p></li>
+<li><p>self.volumes</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>time_expanded</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – Use True for models using timetables and ConnectionScan models</p></li>
 <li><p><strong>keep_segments</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default True</em>) – True to use model segments - compute volumes per path per segment</p></li>
-<li><p><strong>Requires</strong> – </p></li>
-<li><p><strong>---------</strong> – </p></li>
-<li><p><strong>self.los</strong> – concatenation of levels of services of the different modes (usually pt_los and car_los)</p></li>
-<li><p><strong>self.volumes</strong> – </p></li>
-<li><p><strong>Builds</strong> – </p></li>
-<li><p><strong>---------</strong> – </p></li>
-<li><p><strong>self.los</strong> – add volume column</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>add volume column</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>self.los</p>
 </dd>
 </dl>
 </dd></dl>
@@ -175,14 +178,23 @@ computed in the step_logit</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.transportmodel.TransportModel.initialize_logit">
 <span class="sig-name descname"><span class="pre">initialize_logit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#TransportModel.initialize_logit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.TransportModel.initialize_logit" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Not necessary
+creates tables od_probabilities and od_utilities</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.transportmodel.TransportModel.segmented_assigment">
 <span class="sig-name descname"><span class="pre">segmented_assigment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">road</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boardings</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alightings</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transfers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregated_los</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#TransportModel.segmented_assigment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.TransportModel.segmented_assigment" title="Permalink to this definition"></a></dt>
 <dd><p>Performs assignment per segment : compute the volumes on the links of the public transport network,
 and the boardings and alightings on the nodes of the PT network,
-keeping the memory of segments in the volumes</p>
+keeping the memory of segments in the volumes.</p>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.los : concatenation of levels of services of the different modes (usually pt_los and car_los)</p></li>
+<li><p>self.volumes</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -194,21 +206,15 @@ Requires road_link_list - columns of self.links computed with preparation_cast_n
 <li><p><strong>aggregated_los</strong> (<em>string</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – Name of attributes containing model aggregated los</p></li>
 </ul>
 </dd>
-</dl>
-<dl class="simple">
-<dt>self.los :</dt><dd><p>concatenation of levels of services of the different modes (usually pt_los and car_los)</p>
-</dd>
-</dl>
-<p>self.volumes :</p>
-<dl class="simple">
-<dt>self.los :</dt><dd><p>add volume column if compute_los_volume=True</p>
-</dd>
-<dt>self.links :</dt><dd><p>add volumes on public transport links per segment,
-can add boardings, alightings,depending on parameters</p>
-</dd>
-<dt>self.nodes :</dt><dd><p>Depending on parameters, add boardings, alightings, transfers</p>
-</dd>
-<dt>self.road_links :</dt><dd><p>add public transport volumes on road_links if road=True</p>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>self.los</em> – add volume column if compute_los_volume=True</p></li>
+<li><p><em>self.links</em> – add volumes on public transport links per segment,
+can add boardings, alightings,depending on parameters</p></li>
+<li><p><em>self.nodes</em> – Depending on parameters, add boardings, alightings, transfers</p></li>
+<li><p><em>self.road_links</em> – add public transport volumes on road_links if road=True</p></li>
+</ul>
+</p>
 </dd>
 </dl>
 </dd></dl>
@@ -218,15 +224,24 @@ can add boardings, alightings,depending on parameters</p>
 <span class="sig-name descname"><span class="pre">segmented_car_assignment</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#TransportModel.segmented_car_assignment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.TransportModel.segmented_car_assignment" title="Permalink to this definition"></a></dt>
 <dd><p>Performs car assignment for all demand segments. Function used in step_car_assignment function,
 refer to this function for other args and parameters.</p>
-<p>self.road_links
-self.road_nodes
-self.car_los :</p>
-<blockquote>
-<div><p>requires computed path probabilities in car_los for each segment</p>
-</div></blockquote>
-<p>self.volumes</p>
-<p>self.loaded_road_links
-self.loaded_road_nodes</p>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.road_links</p></li>
+<li><p>self.road_nodes</p></li>
+<li><p>self.car_los : requires computed path probabilities in car_los for each segment</p></li>
+<li><p>self.volumes</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><em>self.loaded_road_links</em></p></li>
+<li><p><em>self.loaded_road_nodes</em></p></li>
+</ul>
+</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -234,24 +249,30 @@ self.loaded_road_nodes</p>
 <span class="sig-name descname"><span class="pre">segmented_pt_assignment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">split_by</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">on_road_links</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#TransportModel.segmented_pt_assignment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.TransportModel.segmented_pt_assignment" title="Permalink to this definition"></a></dt>
 <dd><p>Performs pt assignment for all demand segments. Function used in step_pt_assignment function,
 refer to this function for other args.</p>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.links</p></li>
+<li><p>self.nodes</p></li>
+<li><p>self.pt_los : requires computed path probabilities in pt_los for each segment</p></li>
+<li><p>self.road_links</p></li>
+<li><p>self.volumes</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>on_road_links</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – if True, performs pt assignment on road_links as well</p></li>
 <li><p><strong>split_by</strong> (<em>string</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – path categories to be tracked in the assignment. Must be a column of self.pt_los</p></li>
-<li><p><strong>Requires</strong> – </p></li>
-<li><p><strong>-------</strong> – </p></li>
-<li><p><strong>self.links</strong> – </p></li>
-<li><p><strong>self.nodes</strong> – </p></li>
-<li><p><strong>self.pt_los</strong> – requires computed path probabilities in pt_los for each segment</p></li>
-<li><p><strong>self.road_links</strong> – </p></li>
-<li><p><strong>self.volumes</strong> – </p></li>
-<li><p><strong>Builds</strong> – </p></li>
-<li><p><strong>-------</strong> – </p></li>
-<li><p><strong>self.loaded_links</strong> – </p></li>
-<li><p><strong>self.loaded_nodes</strong> – </p></li>
-<li><p><strong>self.road_links</strong> – add public transport load column</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>self.loaded_links</em></p></li>
+<li><p><em>self.loaded_nodes</em></p></li>
+<li><p><em>self.road_links</em> – add public transport load column</p></li>
+</ul>
+</p>
 </dd>
 </dl>
 </dd></dl>
@@ -260,7 +281,14 @@ refer to this function for other args.</p>
 <dt class="sig sig-object py" id="quetzal.model.transportmodel.TransportModel.step_assignment">
 <span class="sig-name descname"><span class="pre">step_assignment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">road</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boardings</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boarding_links</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alightings</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alighting_links</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transfers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">segmented</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_expanded</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_los_volume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#TransportModel.step_assignment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.TransportModel.step_assignment" title="Permalink to this definition"></a></dt>
 <dd><p>Performs assignment : compute the volumes on the links of the public transport network,
-and the boardings and alightings on the nodes of the PT network</p>
+and the boardings and alightings on the nodes of the PT network.</p>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.los : concatenation of levels of services of the different modes (usually pt_los and car_los)</p></li>
+<li><p>self.volumes</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -276,18 +304,17 @@ Requires</p></li>
 <li><p><strong>segmented</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – If True, use model segments - compute volumes on the links per segment</p></li>
 <li><p><strong>time_expanded</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – Use True for models using timetables and ConnectionScan models</p></li>
 <li><p><strong>compute_los_volume</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default True</em>) – True to add column volumes in los dataframe</p></li>
-<li><p><strong>Requires</strong> – </p></li>
-<li><p><strong>---------</strong> – </p></li>
-<li><p><strong>self.los</strong> – concatenation of levels of services of the different modes (usually pt_los and car_los)</p></li>
-<li><p><strong>self.volumes</strong> – </p></li>
-<li><p><strong>Builds</strong> – </p></li>
-<li><p><strong>---------</strong> – </p></li>
-<li><p><strong>self.los</strong> – add volume column if compute_los_volume=True</p></li>
-<li><p><strong>self.links</strong> – add volumes on public transport links, can add boardings, alightings,
-can be per segment, depending on parameters</p></li>
-<li><p><strong>self.nodes</strong> – Depending on parameters, add boardings, alightings, transfers</p></li>
-<li><p><strong>self.road_links</strong> – add public transport volumes on road_links if road=True</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>self.los</em> – add volume column if compute_los_volume=True</p></li>
+<li><p><em>self.links</em> – add volumes on public transport links, can add boardings, alightings,
+can be per segment, depending on parameters</p></li>
+<li><p><em>self.nodes</em> – Depending on parameters, add boardings, alightings, transfers</p></li>
+<li><p><em>self.road_links</em> – add public transport volumes on road_links if road=True</p></li>
+</ul>
+</p>
 </dd>
 </dl>
 </dd></dl>
@@ -304,21 +331,28 @@ Compared to step_assignment :</p>
 <li><p>Can specify the volume column</p></li>
 </ul>
 </div></blockquote>
+<dl>
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.road_links</p></li>
+<li><p>self.road_nodes</p></li>
+<li><p>self.car_los : requires computed path probabilities in car_los for each segment,</p></li>
+</ul>
+<p>they can be computed with funcions analysis_mode_utility + step_logit
+* self.volumes</p>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>volume_column</strong> (<em>string</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – volume column of self.volumes to assign. If none, all columns will be assigned</p>
 </dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>self.loaded_road_links</em></p></li>
+<li><p><em>self.loaded_road_nodes</em></p></li>
+</ul>
+</p>
+</dd>
 </dl>
-<p>self.road_links
-self.road_nodes
-self.car_los :</p>
-<blockquote>
-<div><p>requires computed path probabilities in car_los for each segment,
-they can be computed with funcions analysis_mode_utility + step_logit</p>
-</div></blockquote>
-<p>self.volumes</p>
-<p>self.loaded_road_links
-self.loaded_road_nodes</p>
 </dd></dl>
 
 <dl class="py method">
@@ -326,6 +360,12 @@ self.loaded_road_nodes</p>
 <span class="sig-name descname"><span class="pre">step_distribution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">segmented</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deterrence_matrix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">od_volume_from_zones_kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#TransportModel.step_distribution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.TransportModel.step_distribution" title="Permalink to this definition"></a></dt>
 <dd><p>Function performing distribution of flows with doubly constrained algorithm,
 based on an impedance/deterrence matrix inversely proportional to the accessibility between two zones.</p>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.zones</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -341,13 +381,10 @@ provided, it will be automatically computed using a gravity distribution with</p
 </ul>
 </div></blockquote>
 </p></li>
-<li><p><strong>Requires</strong> – </p></li>
-<li><p><strong>----------</strong> – </p></li>
-<li><p><strong>self.zones</strong> – </p></li>
-<li><p><strong>Builds</strong> – </p></li>
-<li><p><strong>----------</strong> – </p></li>
-<li><p><strong>self.volumes</strong> – </p></li>
 </ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>self.volumes</p>
 </dd>
 </dl>
 </dd></dl>
@@ -355,19 +392,39 @@ provided, it will be automatically computed using a gravity distribution with</p
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.transportmodel.TransportModel.step_logit">
 <span class="sig-name descname"><span class="pre">step_logit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_expanded</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decimals</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_paths_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nchunks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">workers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_od_tables</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#TransportModel.step_logit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.TransportModel.step_logit" title="Permalink to this definition"></a></dt>
-<dd><p>_summary_</p>
+<dd><p>Performs the nested logit : compute the probabilities per segment of the paths in self.los
+after having computed the utilities with function analysis_mode_utility.
+prob(mode k)= exp(utility mode k)/sum(utilities, all modes).
+Parametrize the nested logit with model attribute mode_nests and logit_scales
+created with function preparation_logit.</p>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.mode_nests</p></li>
+<li><p>self.logit_scales</p></li>
+<li><p>self.los</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>time_expanded</strong> (<em>bool</em><em>, </em><em>optional</em>) – _description_, by default False</p></li>
-<li><p><strong>decimals</strong> (<em>_type_</em><em>, </em><em>optional</em>) – _description_, by default None</p></li>
-<li><p><strong>n_paths_max</strong> (<em>_type_</em><em>, </em><em>optional</em>) – _description_, by default None</p></li>
-<li><p><strong>nchunks</strong> (<em>int</em><em>, </em><em>optional</em>) – _description_, by default 10</p></li>
-<li><p><strong>workers</strong> (<em>int</em><em>, </em><em>optional</em>) – _description_, by default 1</p></li>
-<li><p><strong>keep_od_tables</strong> (<em>bool</em><em>, </em><em>optional</em>) – _description_, by default True</p></li>
-<li><p><strong>requires</strong> (<em>*</em>) – </p></li>
-<li><p><strong>builds</strong> (<em>*</em>) – </p></li>
+<li><p><strong>time_expanded</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – Use True for models using timetables and ConnectionScan models</p></li>
+<li><p><strong>decimals</strong> (<em>float</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – minimum probability (avoid very small volumes)</p></li>
+<li><p><strong>n_paths_max</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – Maximum number of paths to keep per OD (avoid very small volumes)</p></li>
+<li><p><strong>nchunks</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default 10</em>) – Parameter to speed up computation time (division of calculation)</p></li>
+<li><p><strong>workers</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default 1</em>) – Parameter to speed up computation time (division of calculation)</p></li>
+<li><p><strong>keep_od_tables</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default True</em>) – _description_, by default True</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>self.los</em> – Add columns (segment, ‘probability’) of probabilities per segment</p></li>
+<li><p><em>self.od_utilities</em></p></li>
+<li><p><em>self.od_probabilities</em></p></li>
+<li><p><em>self.path_utilities</em></p></li>
+<li><p><em>self.path_probabilities</em></p></li>
+</ul>
+</p>
 </dd>
 </dl>
 </dd></dl>
@@ -386,6 +443,13 @@ For modal split, prefer the use of function step_logit</p>
 <li><p>Utility(pt) = ‘duration_pt’</p></li>
 </ul>
 </div></blockquote>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.volumes : all mode origin-&gt;destination demand matrix</p></li>
+<li><p>self.los : levels of service. An od stack matrix with ‘duration_pt’ and ‘duration_car’</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -396,45 +460,53 @@ Defined as 1/(utility value of time, in seconds)</p></li>
 <li><p><strong>beta_car</strong> (<em>float</em>) – additive penalty on ‘duration_car’ for the calculation of ‘utility_car’</p></li>
 </ul>
 </dd>
-</dl>
-<blockquote>
-<div><ul class="simple">
-<li><dl class="simple">
-<dt>self.volumes :</dt><dd><p>all mode origin-&gt;destination demand matrix</p>
-</dd>
-</dl>
-</li>
-<li><dl class="simple">
-<dt>self.los :</dt><dd><p>levels of service. An od stack matrix with ‘duration_pt’ and ‘duration_car’</p>
-</dd>
-</dl>
-</li>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>self.od_stack</em></p></li>
+<li><p><em>self.shared</em></p></li>
 </ul>
-</div></blockquote>
-<p>self.od_stack :
-self.shared :</p>
-<p>example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">los</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
-    <span class="n">car_los</span><span class="p">,</span>
-    <span class="n">pt_los</span><span class="p">,</span>
-    <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">],</span>
-    <span class="n">suffixes</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;_car&#39;</span><span class="p">,</span> <span class="s1">&#39;_pt&#39;</span><span class="p">]</span>
-<span class="p">)</span>
-
-<span class="n">sm</span><span class="o">.</span><span class="n">step_modal_split</span><span class="p">(</span>
-    <span class="n">time_scale</span><span class="o">=</span><span class="mi">1</span><span class="o">/</span><span class="mi">1800</span><span class="p">,</span>
-    <span class="n">alpha_car</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-    <span class="n">beta_car</span><span class="o">=</span><span class="mi">600</span>
-<span class="p">)</span>
-</pre></div>
-</div>
+</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<dl>
+<dt>::</dt><dd><dl class="simple">
+<dt>los = pd.merge(</dt><dd><p>car_los,
+pt_los,
+on=[‘origin’, ‘destination’],
+suffixes=[‘_car’, ‘_pt’]</p>
+</dd>
+</dl>
+<p>)</p>
+<dl class="simple">
+<dt>sm.step_modal_split(</dt><dd><p>time_scale=1/1800,
+alpha_car=2,
+beta_car=600</p>
+</dd>
+</dl>
+<p>)</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.transportmodel.TransportModel.step_pr_pathfinder">
 <span class="sig-name descname"><span class="pre">step_pr_pathfinder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">force</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path_analysis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#TransportModel.step_pr_pathfinder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.TransportModel.step_pr_pathfinder" title="Permalink to this definition"></a></dt>
 <dd><p>Park and Ride pathfinder algorithm : shortest path algorithm on the graph
-built from links (public transport routes) and road_links considered as “public transport access links” (with car speed)</p>
+built from links (public transport routes) and road_links considered as “public transport access links” (with car speed).</p>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.zones</p></li>
+<li><p>self.links</p></li>
+<li><p>self.footpaths</p></li>
+<li><p>self.zone_to_road</p></li>
+<li><p>self.zone_to_transit</p></li>
+<li><p>self.transit_to_zone</p></li>
+<li><p>self.road_to_transit</p></li>
+<li><p>self.road_links</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -443,20 +515,10 @@ built from links (public transport routes) and road_links considered as “publi
 <li><p><strong>od_set</strong> (<em>dict</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – set of od to use - may be used to reduce computation time (default None)
 for example, the od_set is the set of od for which there is a volume in self.volumes</p></li>
 <li><p><strong>cutoff</strong> (<em>default np.inf</em>) – description</p></li>
-<li><p><strong>Requires</strong> – </p></li>
-<li><p><strong>----------</strong> – </p></li>
-<li><p><strong>self.zones</strong> – </p></li>
-<li><p><strong>self.links</strong> – </p></li>
-<li><p><strong>self.footpaths</strong> – </p></li>
-<li><p><strong>self.zone_to_road</strong> – </p></li>
-<li><p><strong>self.zone_to_transit</strong> – </p></li>
-<li><p><strong>self.transit_to_zone</strong> – </p></li>
-<li><p><strong>self.road_to_transit</strong> – </p></li>
-<li><p><strong>self.road_links</strong> – </p></li>
-<li><p><strong>Builds</strong> – </p></li>
-<li><p><strong>----------</strong> – </p></li>
-<li><p><strong>self.pr_los</strong> – </p></li>
 </ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>self.pr_los</p>
 </dd>
 </dl>
 </dd></dl>
@@ -475,27 +537,33 @@ Compared to step_assignment :</p>
 <li><p>Can strack path categories</p></li>
 </ul>
 </div></blockquote>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.links</p></li>
+<li><p>self.nodes</p></li>
+<li><p>self.pt_los : requires computed path probabilities in pt_los for each segment,
+they can be computed with funcions analysis_mode_utility + step_logit</p></li>
+<li><p>self.road_links</p></li>
+<li><p>self.volumes</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>volume_column</strong> (<em>string</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – volume column of self.volumes to assign. If none, all columns will be assigned</p></li>
 <li><p><strong>on_road_links</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – if True, performs pt assignment on road_links as well</p></li>
 <li><p><strong>split_by</strong> (<em>string</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – path categories to be tracked in the assignment. Must be a column of self.pt_los</p></li>
-<li><p><strong>Requires</strong> – </p></li>
-<li><p><strong>-------</strong> – </p></li>
-<li><p><strong>self.links</strong> – </p></li>
-<li><p><strong>self.nodes</strong> – </p></li>
-<li><p><strong>self.pt_los</strong> – requires computed path probabilities in pt_los for each segment,
-they can be computed with funcions analysis_mode_utility + step_logit</p></li>
-<li><p><strong>self.road_links</strong> – </p></li>
-<li><p><strong>self.volumes</strong> – </p></li>
-<li><p><strong>Builds</strong> – </p></li>
-<li><p><strong>-------</strong> – </p></li>
-<li><p><strong>self.loaded_links</strong> – </p></li>
-<li><p><strong>self.loaded_nodes</strong> – </p></li>
-<li><p><strong>self.road_links</strong> – add public transport load column</p></li>
-<li><p><strong>example</strong> – </p></li>
-<li><p><strong>::</strong> – <dl>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul>
+<li><p><em>self.loaded_links</em></p></li>
+<li><p><em>self.loaded_nodes</em></p></li>
+<li><p><em>self.road_links</em> – add public transport load column</p></li>
+<li><p><em>example</em></p></li>
+<li><p><em>::</em> –</p>
+<dl>
 <dt>sm.step_assignment(</dt><dd><blockquote>
 <div><p>volume_column=None,
 on_road_links=False,
@@ -508,8 +576,9 @@ transfers=True</p>
 </dd>
 </dl>
 <p>)</p>
-</p></li>
+</li>
 </ul>
+</p>
 </dd>
 </dl>
 </dd></dl>
@@ -517,13 +586,24 @@ transfers=True</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.transportmodel.TransportModel.step_pt_pathfinder">
 <span class="sig-name descname"><span class="pre">step_pt_pathfinder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">broken_routes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">broken_modes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">route_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'route_id'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'route_type'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boarding_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">speedup</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">walk_on_road</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_pathfinder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path_analysis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#TransportModel.step_pt_pathfinder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.TransportModel.step_pt_pathfinder" title="Permalink to this definition"></a></dt>
-<dd><dl>
-<dt>Performs public transport pathfinder, with :</dt><dd><ul class="simple">
+<dd><p>Performs public transport pathfinder.</p>
+<dl class="simple">
+<dt>With :</dt><dd><ul class="simple">
 <li><p>all or nothing Diskjstra algorithm if broken_routes=False AND broken_modes=False</p></li>
 <li><p>Prunning algorithm if broken_routes=True OR/AND broken_modes=True</p></li>
 </ul>
+</dd>
+</dl>
 <p>For optimal strategy pathfinder, use step_pt_pathfinder of the class OptimalModel</p>
-<p>For connection scan pathfinder algorithm (with time tables), use step_pt_pathfinder of the class ConnectionScanModel</p>
+<p>For connection scan pathfinder algorithm (with time tables), use step_pt_pathfinder of the class ConnectionScanModel.</p>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.zones</p></li>
+<li><p>self.links</p></li>
+<li><p>self.footpaths</p></li>
+<li><p>self.zone_to_road</p></li>
+<li><p>self.zone_to_transit</p></li>
+</ul>
 </dd>
 </dl>
 <dl class="field-list simple">
@@ -547,19 +627,24 @@ Use to performed advanced route and mode breaker (without the need to create sub
 <li><p><strong>path_analysis</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default True</em>) – Performs paths analysis, adds columns ‘all_walk’ and ‘ntransfers’ to the output pt_los</p></li>
 </ul>
 </dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>self.pt_los</p>
+</dd>
 </dl>
-<p>self.zones :
-self.links :
-self.footpaths :
-self.zone_to_road :
-self.zone_to_transit :</p>
-<p>self.pt_los :</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.transportmodel.TransportModel.step_road_pathfinder">
 <span class="sig-name descname"><span class="pre">step_road_pathfinder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'bfw'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxiters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#TransportModel.step_road_pathfinder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.TransportModel.step_road_pathfinder" title="Permalink to this definition"></a></dt>
 <dd><p>Performs road assignment with or without capacity constraint, depending on the method used</p>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.road_links</p></li>
+<li><p>self.zone_to_road</p></li>
+<li><p>self.volumes</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -580,19 +665,15 @@ for example, the od_set is the set of od for which there is a volume in self.vol
 <li><p><strong>log</strong> – log data on each iteration (default False)</p></li>
 <li><p><strong>vdf</strong> (<em>dict</em><em>, </em><em>optional</em>) – dict of function for the jam time : {‘default_bpr’: default_bpr,’limited_bpr’:limited_bpr, ‘free_flow’: free_flow}</p></li>
 <li><p><strong>beta</strong> (<em>list</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – give constant value for BFW betas. ex: [0.7,0.2,0.1].</p></li>
-<li><p><strong>Requires</strong> – </p></li>
-<li><p><strong>----------</strong> – </p></li>
-<li><p><strong>self.road_links</strong> – </p></li>
-<li><p><strong>self.zone_to_road</strong> – </p></li>
-<li><p><strong>self.volumes</strong> – </p></li>
 </ul>
 </dd>
-</dl>
-<dl class="simple">
-<dt>self.car_los :</dt><dd><p>create tables of car levels of services</p>
-</dd>
-<dt>self.road_links :</dt><dd><p>add columns flow (volume on the road links) and jam_time (time of the link with congestion)
-for each OD pair results of pathfinder with/without capacity restriction</p>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>self.car_los</em> – create tables of car levels of services</p></li>
+<li><p><em>self.road_links</em> – add columns flow (volume on the road links) and jam_time (time of the link with congestion)
+for each OD pair results of pathfinder with/without capacity restriction</p></li>
+</ul>
+</p>
 </dd>
 </dl>
 </dd></dl>
@@ -602,14 +683,31 @@ for each OD pair results of pathfinder with/without capacity restriction</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="quetzal.model.transportmodel.get_combined_mode_utility">
 <span class="sig-prename descclassname"><span class="pre">quetzal.model.transportmodel.</span></span><span class="sig-name descname"><span class="pre">get_combined_mode_utility</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">route_types</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode_utility</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">how</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'min'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#get_combined_mode_utility"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.get_combined_mode_utility" title="Permalink to this definition"></a></dt>
-<dd><p>_summary_</p>
+<dd><p>Agregate modal constants</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>route_types</strong> (<em>_type_</em>) – _description_</p></li>
-<li><p><strong>mode_utility</strong> (<em>_type_</em>) – _description_</p></li>
-<li><p><strong>how</strong> (<em>str</em><em>, </em><em>optional</em>) – _description_, by default ‘min’</p></li>
+<li><p><strong>route_types</strong> (<em>list</em>) – List of the route_types in the path</p></li>
+<li><p><strong>mode_utility</strong> (<em>dataframe</em>) – Modal constants</p></li>
+<li><p><strong>how</strong> (<em>[</em><em>'main'</em><em>|</em><em>'min'</em><em>|</em><em>'max'</em><em>|</em><em>'mean'</em><em>|</em><em>'sum'</em><em>]</em><em>, </em><em>optional</em><em>, </em><em>default 'min'</em>) – <p>What type of agregation for mode constant. Options are:</p>
+<p>’main’   –(default)  the utility (constant) of the ‘route_type’ is used</p>
+<p>’min’    – minimum of the utilities (constant) of the modes in route_types</p>
+<p>’max’   – maximum of the utilities (constant) of the modes in route_types</p>
+<p>’mean’   – mean of the utilities (constant) of the modes in route_types</p>
+<p>’sum’   – sum of the utilities (constant) of the modes in route_types</p>
+</p></li>
 </ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="quetzal.model.transportmodel.read_hdf">
+<span class="sig-prename descclassname"><span class="pre">quetzal.model.transportmodel.</span></span><span class="sig-name descname"><span class="pre">read_hdf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#read_hdf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.read_hdf" title="Permalink to this definition"></a></dt>
+<dd><p>Read HDF format</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>filepath</strong> (<em>string</em>) – </p>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p>_description_</p>
@@ -621,14 +719,21 @@ for each OD pair results of pathfinder with/without capacity restriction</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="quetzal.model.transportmodel.read_hdf">
-<span class="sig-prename descclassname"><span class="pre">quetzal.model.transportmodel.</span></span><span class="sig-name descname"><span class="pre">read_hdf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#read_hdf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.read_hdf" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
 <dt class="sig sig-object py" id="quetzal.model.transportmodel.read_json">
 <span class="sig-prename descclassname"><span class="pre">quetzal.model.transportmodel.</span></span><span class="sig-name descname"><span class="pre">read_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">folder</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/transportmodel.html#read_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.transportmodel.read_json" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Read json format</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>folder</strong> (<em>string</em>) – </p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>_description_</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>_type_</p>
+</dd>
+</dl>
+</dd></dl>
 
 </section>
 

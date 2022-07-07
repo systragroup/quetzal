@@ -92,26 +92,47 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.preparationmodel.PreparationModel.preparation_cast_network">
 <span class="sig-name descname"><span class="pre">preparation_cast_network</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nearest_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'nodes'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'length'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">penalty_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">speed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">replace_nodes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dumb_cast</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">nc_kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_cast_network"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_cast_network" title="Permalink to this definition"></a></dt>
-<dd><dl class="simple">
-<dt>Finds a path for the transport lines in an actual road network</dt><dd><ul class="simple">
-<li><p>requires: nodes, links, road_nodes, road_links</p></li>
-<li><p>builds: links</p></li>
+<dd><p>Finds a path for the transport lines in the actual road network,
+to know on which roads a bus line is going, because the public transport links are defined
+between two stops, without road information.
+It will evaluate the best combination of nodes in the road network between the two stops.
+The evaluation is done with the distance.
+The results will be found as a list of road_links for each public transport link.
+If the transport network has modes on dedicated infrastructure (train, metro…), create two submodels
+and use a dumbcast on the dedicated infrastructure modes.</p>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.nodes</p></li>
+<li><p>self.links</p></li>
+<li><p>self.road_nodes</p></li>
+<li><p>self.road_links</p></li>
 </ul>
 </dd>
 </dl>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>nearest_method</strong> – if ‘links’, looks for the nearest link to a stop
-in road_links and links the stop to its end_node (b). If ‘node’ looks
-for the actual nearest node in road_nodes.</p></li>
-<li><p><strong>nodes_checkpoints</strong> – mandatory transit nodes</p></li>
-<li><p><strong>factor</strong> (<em>penalty</em>) – <p>…</p>
+<li><p><strong>nearest_method</strong> (<em>[</em><em>'nodes'</em><em>|</em><em>'links'</em><em>]</em><em>, </em><em>optional</em><em>, </em><em>default 'nodes'</em>) – <p>Options are:</p>
+<p>’nodes’   –(default) looks for the actual nearest node in road_nodes.
+‘links’   –looks for the nearest link to a stop in road_links and links the stop to its end_node (b)</p>
 </p></li>
+<li><p><strong>weight</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default 'length'</em>) – Column of road_links containing road_links length</p></li>
+<li><p><strong>penalty_factor</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default 1</em>) – Multiplicative penality of weight</p></li>
+<li><p><strong>speed</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default 3</em>) – Walk speed</p></li>
+<li><p><strong>replace_nodes</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – If True replaces nodes by road_nodes. If False, model will use road_to_transit ntlegs</p></li>
+<li><p><strong>dumb_cast</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – If True, the network is casted on himself (cast links on links and not on road_links).
+It will still return the closest road_node for the stops.</p></li>
+<li><p><strong>nodes_checkpoints</strong> – mandatory transit nodes</p></li>
 </ul>
 </dd>
-<dt class="field-even">Ng_kwargs</dt>
-<dd class="field-even"><p>…</p>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>TypeError</strong> – check that valors in column named after weight parameter is int or float</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>add columns road_a, road_b, road_node_list, road_link_list, road_length</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>self.links</p>
 </dd>
 </dl>
 </dd></dl>
@@ -120,10 +141,28 @@ for the actual nearest node in road_nodes.</p></li>
 <dt class="sig sig-object py" id="quetzal.model.preparationmodel.PreparationModel.preparation_clusterize_nodes">
 <span class="sig-name descname"><span class="pre">preparation_clusterize_nodes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_clusters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adaptive_clustering</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_clusterize_nodes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_clusterize_nodes" title="Permalink to this definition"></a></dt>
 <dd><dl class="simple">
-<dt>clusterize nodes</dt><dd><ul class="simple">
-<li><p>requires: nodes</p></li>
-<li><p>builds: links, nodes</p></li>
+<dt>Create nodes clusters to optimize computation time.</dt><dd><p>It will agregate nodes based on their relative distance to build “stop areas”</p>
+</dd>
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.nodes</p></li>
 </ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n_clusters</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – Number of nodes clusters</p></li>
+<li><p><strong>adaptive_clustering</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – If True, will define itself the number of clusters.
+If False n_clusters must be defined</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>self.links</em> – contain recomputed links with the clusterized nodes</p></li>
+<li><p><em>self.nodes</em> – contain the clusterized nodes</p></li>
+<li><p><em>self.disaggregated_nodes</em> – contain the former nodes</p></li>
+</ul>
+</p>
 </dd>
 </dl>
 </dd></dl>
@@ -131,11 +170,29 @@ for the actual nearest node in road_nodes.</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.preparationmodel.PreparationModel.preparation_clusterize_zones">
 <span class="sig-name descname"><span class="pre">preparation_clusterize_zones</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_zones</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cluster_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_od_stack</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_clusterize_zones"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_clusterize_zones" title="Permalink to this definition"></a></dt>
-<dd><dl class="simple">
-<dt>clusterize zones</dt><dd><ul class="simple">
-<li><p>requires: zones, volumes</p></li>
-<li><p>builds: zones, volumes, cluster_series</p></li>
+<dd><p>Clusterize zones to optimize computation time.</p>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.zones</p></li>
+<li><p>self.volumes</p></li>
 </ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>max_zones</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default 500</em>) – _description_, by</p></li>
+<li><p><strong>cluster_column</strong> (<em>string</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – cluster column in self.zones if clusters are already defined</p></li>
+<li><p><strong>is_od_stack</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – If True, requires table od_stack</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>self.zones</em></p></li>
+<li><p><em>self.volumes</em></p></li>
+<li><p><em>self.cluster_series</em></p></li>
+</ul>
+</p>
 </dd>
 </dl>
 </dd></dl>
@@ -143,96 +200,269 @@ for the actual nearest node in road_nodes.</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.preparationmodel.PreparationModel.preparation_drop_redundant_footpaths">
 <span class="sig-name descname"><span class="pre">preparation_drop_redundant_footpaths</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">access_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'time'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_drop_redundant_footpaths"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_drop_redundant_footpaths" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Reduce number of footpaths to optimize computation by performing
+a shortest path algorithm in the graph made of footpaths, road_links and road_to_transit.</p>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.road_links</p></li>
+<li><p>self.road_to_transit</p></li>
+<li><p>self.footpaths</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>access_time</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default 'time'</em>) – Time column in road_to_transit and footpaths</p></li>
+<li><p><strong>log</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – If true, returns the old and new numbers of footpaths</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>update footpaths dataframe</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>self.footpaths</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.preparationmodel.PreparationModel.preparation_drop_redundant_road_to_transit">
 <span class="sig-name descname"><span class="pre">preparation_drop_redundant_road_to_transit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">access_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'time'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_drop_redundant_road_to_transit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_drop_redundant_road_to_transit" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Reduce number of road_to_transit connectors to optimize computation by performing
+a shortest path algorithm in the graph made of road_links and road_to_transit.</p>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.road_links</p></li>
+<li><p>self.road_to_transit</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>access_time</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default 'time'</em>) – Time column in road_to_transit</p></li>
+<li><p><strong>log</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – If true, returns the old and new numbers of road_to_transit</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>update road_to_transit dataframe</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>self.road_to_transit</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.preparationmodel.PreparationModel.preparation_drop_redundant_zone_to_road">
 <span class="sig-name descname"><span class="pre">preparation_drop_redundant_zone_to_road</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">access_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'time'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_drop_redundant_zone_to_road"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_drop_redundant_zone_to_road" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Reduce number of zone_to_road connectors to optimize computation by performing
+a shortest path algorithm in the graph made of road_links and zone_to_road.</p>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.road_links</p></li>
+<li><p>self.zone_to_road</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>access_time</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default 'time'</em>) – Time column in zone_to_road</p></li>
+<li><p><strong>log</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – If true, returns the old and new numbers of zone_to_road</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>update zone_to_road dataframe</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>self.zone_to_road</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.preparationmodel.PreparationModel.preparation_drop_redundant_zone_to_transit">
 <span class="sig-name descname"><span class="pre">preparation_drop_redundant_zone_to_transit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_drop_redundant_zone_to_transit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_drop_redundant_zone_to_transit" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Keeps only relevant zone_to_transit connectors : verifies if the nodes linked to the zones
+exist in the self.links, and drops redundants</p>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.links</p></li>
+<li><p>self.zone_to_transit</p></li>
+<li><p>self.zones</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>update zone_to_transit dataframe</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>self.zone_to_transit</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.preparationmodel.PreparationModel.preparation_footpaths">
 <span class="sig-name descname"><span class="pre">preparation_footpaths</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">road</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">speed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_clusters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_footpaths"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_footpaths" title="Permalink to this definition"></a></dt>
-<dd><ul class="simple">
-<li><p>requires: nodes</p></li>
-<li><p>builds: footpaths</p></li>
+<dd><p>Create the footpaths : pedestrian links between stations (nodes),
+that will allow transfers between stations.</p>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.nodes</p></li>
 </ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>road</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – If True, compute walk_time on road_links based on parameter speed</p></li>
+<li><p><strong>speed</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default 3</em>) – Speed of walk on footpaths. Smaller than real walk speed
+because the footpaths do not follow roads</p></li>
+<li><p><strong>max_length</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – Maximal length of footpaths</p></li>
+<li><p><strong>n_clusters</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – Number of nodes clusters : create nodes clusters to optimize computation time.
+It will agregate nodes based on their relative distance to build “stop areas”</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>self.footpaths</em></p></li>
+<li><p><em>self.road_links</em> – add columns walk_time if road=True</p></li>
+</ul>
+</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.preparationmodel.PreparationModel.preparation_logit">
 <span class="sig-name descname"><span class="pre">preparation_logit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pt_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pt_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">segments</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">price</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transfers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_shift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">route_types</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_logit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_logit" title="Permalink to this definition"></a></dt>
-<dd><ul class="simple">
-<li><p>requires:</p></li>
-<li><p>builds: mode_utility, mode_nests, logit_scales, utility_values</p></li>
-</ul>
+<dd><p>Builds the necessary tables to perform analysis_mode_utility and step_logit.
+They contain the parameters of the nested logit.
+For the neste logit we should have 1 &gt;= mode &gt;= pt_mode &gt;= pt_path &gt; 0.
+If the three of them are equal to 1 the nested logit will be equivalent to a flat logit.</p>
+<p>Does not require specific attributes in self.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>mode</strong> – phi parameter used in the logit choice between modes</p></li>
-<li><p><strong>pt_mode</strong> – phi parameter used in the logit choice between pt modes</p></li>
-<li><p><strong>pt_mode</strong> – phi parameter used in the logit choice between pt paths</p></li>
-<li><p><strong>segments</strong> – the demand segments that will have to chose ex [‘car’, ‘nocar’]</p></li>
-<li><p><strong>time</strong> – number of utility units by seconds</p></li>
-<li><p><strong>price</strong> – number of utility units by currency unit</p></li>
-<li><p><strong>transfers</strong> – number of utility units by transfer</p></li>
+<li><p><strong>mode</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default 1</em>) – phi parameter used in the logit choice between modes</p></li>
+<li><p><strong>pt_mode</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default 1</em>) – phi parameter used in the logit choice between pt modes</p></li>
+<li><p><strong>pt_path</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default 1</em>) – phi parameter used in the logit choice between pt paths</p></li>
+<li><p><strong>segments</strong> (<em>list</em><em>, </em><em>optional</em><em>, </em><em>default</em><em> [</em><em>]</em>) – Demand segments we want to use in the logit</p></li>
+<li><p><strong>time</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default -1</em>) – number of utility units by seconds</p></li>
+<li><p><strong>price</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default -1</em>) – number of utility units by currency unit</p></li>
+<li><p><strong>transfers</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default -1</em>) – number of utility units by transfer</p></li>
+<li><p><strong>time_shift</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – Used with timetable (time expanded) models. Number of utility units by time_shift</p></li>
 </ul>
 </dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>self.mode_utility</em> – Modal constants, per mode and per segment</p></li>
+<li><p><em>self.mode_nests</em> – Structure of the nested logit per segment</p></li>
+<li><p><em>self.logit_scales</em> – Scales of the nested logit per segment (parameters phi)</p></li>
+<li><p><em>self.utility_values</em> – Utility values of time, price, transfers and time_shift per segment</p></li>
+</ul>
+</p>
+</dd>
 </dl>
-<p>we should have 1 &gt;= mode &gt;= pt_mode &gt;= pt_path &gt; 0
-if the three of them are equal to 1 the nested logit will be equivalent to a flat logit</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.preparationmodel.PreparationModel.preparation_map_matching">
 <span class="sig-name descname"><span class="pre">preparation_map_matching</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">routing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_neighbors_centroid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_neighbors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">by</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'trip_id'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sequence</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'link_sequence'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_map_matching"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_map_matching" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Mapmatch each trip_id in self.links to the road_network (self.road_links)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>routing</strong> (<em>bool</em><em>, </em><em>optional</em>) – _description_, by default True</p></li>
+<li><p><strong>n_neighbors_centroid</strong> (<em>int</em><em>, </em><em>optional</em>) – _description_, by default 100</p></li>
+<li><p><strong>n_neighbors</strong> (<em>int</em><em>, </em><em>optional</em>) – _description_, by default 10</p></li>
+<li><p><strong>distance_max</strong> (<em>int</em><em>, </em><em>optional</em>) – _description_, by default 5000</p></li>
+<li><p><strong>by</strong> (<em>str</em><em>, </em><em>optional</em>) – _description_, by default ‘trip_id’</p></li>
+<li><p><strong>sequence</strong> (<em>str</em><em>, </em><em>optional</em>) – _description_, by default ‘link_sequence’</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.preparationmodel.PreparationModel.preparation_map_tracks">
 <span class="sig-name descname"><span class="pre">preparation_map_tracks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agg={'speed':</span> <span class="pre">&lt;function</span> <span class="pre">PreparationModel.&lt;lambda&gt;&gt;}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer=50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smoothing_span=100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_map_tracks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_map_tracks" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="quetzal.model.preparationmodel.PreparationModel.preparation_ntlegs">
-<span class="sig-name descname"><span class="pre">preparation_ntlegs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">short_leg_speed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">long_leg_speed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_ntlegs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_ntleg_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_to_transit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_to_road</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_ntlegs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_ntlegs" title="Permalink to this definition"></a></dt>
-<dd><dl class="simple">
-<dt>Builds the centroids and the ntlegs</dt><dd><ul class="simple">
-<li><p>requires: zones, nodes</p></li>
-<li><p>builds: centroids, zone_to_transit, zone_to_road</p></li>
+<dd><p>Grand mystère</p>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.nodes</p></li>
 </ul>
 </dd>
 </dl>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>ntleg_speed</strong> – in km/h</p></li>
-<li><p><strong>n_ntlegs</strong> – int</p></li>
-<li><p><strong>max_ntleg_length</strong> – in m</p></li>
+<li><p><strong>agg</strong> (<em>dict</em><em>, </em><em>optional</em>) – _description_, by default {‘speed’: lambda s: s.mean() * 3.6}</p></li>
+<li><p><strong>buffer</strong> (<em>int</em><em>, </em><em>optional</em>) – _description_, by default 50</p></li>
+<li><p><strong>smoothing_span</strong> (<em>int</em><em>, </em><em>optional</em>) – _description_, by default 100</p></li>
 </ul>
 </dd>
 </dl>
-<p>example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sm</span><span class="o">.</span><span class="n">step_ntlegs</span><span class="p">(</span>
-    <span class="n">n_ntlegs</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
-    <span class="n">walk_speed</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-    <span class="n">short_leg_speed</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
-    <span class="n">long_leg_speed</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>
-    <span class="n">threshold</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
-    <span class="n">max_ntleg_length</span><span class="o">=</span><span class="mi">5000</span>
-<span class="p">)</span>
-</pre></div>
-</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="quetzal.model.preparationmodel.PreparationModel.preparation_ntlegs">
+<span class="sig-name descname"><span class="pre">preparation_ntlegs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">short_leg_speed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">long_leg_speed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_ntlegs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_ntleg_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_to_transit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_to_road</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_ntlegs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_ntlegs" title="Permalink to this definition"></a></dt>
+<dd><p>Builds the centroids and the non-transit links/legs (ntlegs), also known as connectors.
+Pameters short_leg_speed and long_leg_speed allow to model diferent types of access to the network (PT/private):
+for short connectors, the short_leg_speed is used - it represents a walk speed. For long connectors,
+which will occur for large zones at the edge of the study area, we may want to consider that the access
+to the network is made by car/taxi, and hence at a larger speed, the long_leg_speed. Function integrates a
+curve to smoothly go from short_leg_speed to long_leg_speed (can be understood as probability to access by foot or car).</p>
+<dl class="simple">
+<dt>Requires :</dt><dd><ul class="simple">
+<li><p>self.nodes</p></li>
+<li><p>self.zones</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>short_leg_speed</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default 2</em>) – Speed of the short legs, in km/h</p></li>
+<li><p><strong>long_leg_speed</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default 10</em>) – Speed of the short legs, in km/h</p></li>
+<li><p><strong>threshold</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default 1000</em>) – Threshold for the definition of the short and long legs</p></li>
+<li><p><strong>n_ntlegs</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default 5</em>) – Number of ntlegs to create per zone (and per type)</p></li>
+<li><p><strong>max_ntleg_length</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default 5000</em>) – maximal length of the ntlegs, in m</p></li>
+<li><p><strong>zone_to_transit</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default True</em>) – True to create links between zones and transit stops (nodes)</p></li>
+<li><p><strong>zone_to_road</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – True to create links between zones and road_nodes, and between road_nodes and nodes</p></li>
+<li><p><strong>prefix</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – If True, add prefixes to the index of the ntlegs
+<a href="#id1"><span class="problematic" id="id2">ztt_</span></a> (zone_to_transit), <a href="#id3"><span class="problematic" id="id4">ztr_</span></a> (zone_to_road), <a href="#id5"><span class="problematic" id="id6">rtt_</span></a> (road_to_transit)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>self.centroids</em></p></li>
+<li><p><em>self.zone_to_transit</em></p></li>
+<li><p><em>self.zone_to_road</em></p></li>
+<li><p><em>self.road_to_transit</em></p></li>
+</ul>
+</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<dl>
+<dt>::</dt><dd><dl class="simple">
+<dt>sm.step_ntlegs(</dt><dd><p>n_ntlegs=5,
+walk_speed=2,
+short_leg_speed=3,
+long_leg_speed=15,
+threshold=500,
+max_ntleg_length=5000</p>
+</dd>
+</dl>
+<p>)</p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
