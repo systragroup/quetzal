@@ -13,6 +13,7 @@ def linearsolver(
     pas_distance,
     maxiter,
     tolerance,
+    method='interior-point',
     **kwargs
 ):
     '''
@@ -43,7 +44,7 @@ def linearsolver(
         **kwargs
     )
     try:
-        lin = linprog(obj, A_ub=A_ub, b_ub=b_ub, bounds=bound_ub,
+        lin = linprog(obj, A_ub=A_ub, b_ub=b_ub, bounds=bound_ub, method=method,
                       options={'maxiter': maxiter, 'bland': True, 'tol': tolerance})
         x = lin.x[0:len(indicator)]
         pivot_stack_matrix = pd.merge(
