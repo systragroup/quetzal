@@ -30,6 +30,17 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    """This class contains fonctions that can be applied to models
+    for preparation of :
+            - connectors (zone to transit, to road)
+            - pedestrian footpaths
+
+        Raises
+        ------
+        TypeError
+            _description_
+        """    
+
     @track_args
     def preparation_footpaths(
         self,
@@ -39,9 +50,32 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         n_clusters=None,
         **kwargs
     ):
-        """
-            * requires: nodes
-            * builds: footpaths
+        """Create the footpaths : pedestrian links between stations (nodes), 
+        that will allow transfers between stations.
+
+        Requires :
+            * self.nodes
+
+        Parameters
+        ----------
+        road : bool, optional, default False
+            If True, compute walk_time on road_links based on parameter speed
+        speed : int, optional, default 3
+            Speed of walk on footpaths. Smaller than real walk speed 
+            because the footpaths do not follow roads
+        max_length : int, optional, default None
+            Maximal length of footpaths
+        n_clusters : int, optional, default None
+            Number of nodes clusters : create nodes clusters to optimize computation time.
+            It will agregate nodes based on their relative distance to build "stop areas"
+        
+
+        Returns
+        -------
+        self.footpaths
+        self.road_links :
+            add columns walk_time if road=True
+
         """
         try:
             self.footpaths = connectivity.build_footpaths(
@@ -81,16 +115,48 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         zone_to_road=False,
         prefix=False
     ):
-        """
-        Builds the centroids and the ntlegs
-            * requires: zones, nodes
-            * builds: centroids, zone_to_transit, zone_to_road
+        """Builds the centroids and the non-transit links/legs (ntlegs), also known as connectors.
+        Pameters short_leg_speed and long_leg_speed allow to model diferent types of access to the network (PT/private):
+        for short connectors, the short_leg_speed is used - it represents a walk speed. For long connectors,
+        which will occur for large zones at the edge of the study area, we may want to consider that the access
+        to the network is made by car/taxi, and hence at a larger speed, the long_leg_speed. Function integrates a 
+        curve to smoothly go from short_leg_speed to long_leg_speed (can be understood as probability to access by foot or car). 
 
-        :param ntleg_speed: in km/h
-        :param n_ntlegs: int
-        :param max_ntleg_length: in m
+        Requires :
+            * self.nodes
+            * self.zones
 
-        example:
+        Parameters
+        ----------
+        short_leg_speed : int, optional, default 2
+            Speed of the short legs, in km/h
+        long_leg_speed : int, optional, default 10
+            Speed of the short legs, in km/h
+        threshold : int, optional, default 1000
+            Threshold for the definition of the short and long legs
+        n_ntlegs : int, optional, default 5
+            Number of ntlegs to create per zone (and per type)
+        max_ntleg_length : int, optional, default 5000
+            maximal length of the ntlegs, in m
+        zone_to_transit : bool, optional, default True
+            True to create links between zones and transit stops (nodes)
+        zone_to_road : bool, optional, default False
+            True to create links between zones and road_nodes, and between road_nodes and nodes
+        prefix : bool, optional, default False
+            If True, add prefixes to the index of the ntlegs
+            ztt_ (zone_to_transit), ztr_ (zone_to_road), rtt_ (road_to_transit)
+        
+        
+        Returns
+        -------
+        self.centroids
+        self.zone_to_transit
+        self.zone_to_road
+        self.road_to_transit
+
+
+        Examples
+        --------
         ::
             sm.step_ntlegs(
                 n_ntlegs=5,
@@ -167,6 +233,19 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                                "a future update"), FutureWarning)
 
     def preparation_drop_redundant_zone_to_transit(self):
+        """Keeps only relevant zone_to_transit connectors : verifies if the nodes linked to the zones
+        exist in the self.links, and drops redundants 
+
+        Requires :
+            * self.links
+            * self.zone_to_transit
+            * self.zones
+
+        Returns
+        -------
+        self.zone_to_transit :
+            update zone_to_transit dataframe
+        """        
         self.zone_to_transit.sort_values('time', inplace=True)
         trips = self.links.groupby('a')['trip_id'].agg(set)
         df = self.zone_to_transit
@@ -207,6 +286,27 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         self.zone_to_transit = self.zone_to_transit.loc[list(set(keep))]
 
     def preparation_drop_redundant_footpaths(self, access_time='time', log=False):
+        """Reduce number of footpaths to optimize computation by performing 
+        a shortest path algorithm in the graph made of footpaths, road_links and road_to_transit.
+
+        Requires :
+            * self.road_links
+            * self.road_to_transit
+            * self.footpaths
+        
+        Parameters
+        ----------
+        access_time : str, optional, default 'time'
+            Time column in road_to_transit and footpaths
+        log : bool, optional, default False
+            If true, returns the old and new numbers of footpaths 
+
+        Returns
+        -------
+        self.footpaths :
+            update footpaths dataframe
+
+        """        
         a = len(self.footpaths)
         g = nx.DiGraph()
         g.add_weighted_edges_from(self.road_links[['a','b', 'walk_time']].values)
@@ -221,6 +321,26 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             print('reduced number of footpaths from', a, 'to', len(self.footpaths))
         
     def preparation_drop_redundant_zone_to_road(self, access_time='time', log=False):
+        """Reduce number of zone_to_road connectors to optimize computation by performing 
+        a shortest path algorithm in the graph made of road_links and zone_to_road.
+
+        Requires :
+            * self.road_links
+            * self.zone_to_road
+        
+        Parameters
+        ----------
+        access_time : str, optional, default 'time'
+            Time column in zone_to_road
+        log : bool, optional, default False
+            If true, returns the old and new numbers of zone_to_road 
+
+        Returns
+        -------
+        self.zone_to_road :
+            update zone_to_road dataframe
+
+        """   
         a = len(self.zone_to_road)
         g = nx.DiGraph()
         g.add_weighted_edges_from(self.road_links[['a','b', 'walk_time']].values)
@@ -235,6 +355,27 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             print('reduced number of zone_to_road from', a, 'to', len(self.zone_to_road))
         
     def preparation_drop_redundant_road_to_transit(self, access_time='time', log=False):
+        """Reduce number of road_to_transit connectors to optimize computation by performing 
+        a shortest path algorithm in the graph made of road_links and road_to_transit.
+
+        Requires :
+            * self.road_links
+            * self.road_to_transit
+                
+        Parameters
+        ----------
+        access_time : str, optional, default 'time'
+            Time column in road_to_transit
+        log : bool, optional, default False
+            If true, returns the old and new numbers of road_to_transit 
+
+        
+        Returns
+        -------
+        self.road_to_transit :
+            update road_to_transit dataframe
+
+        """  
         a = len(self.road_to_transit)
         g = nx.DiGraph()
         g.add_weighted_edges_from(self.road_links[['a','b', 'walk_time']].values)
@@ -259,16 +400,54 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         dumb_cast=False,
         **nc_kwargs
     ):
-        """
-        Finds a path for the transport lines in an actual road network
-            * requires: nodes, links, road_nodes, road_links
-            * builds: links
-        :param nearest_method: if 'links', looks for the nearest link to a stop
-          in road_links and links the stop to its end_node (b). If 'node' looks
-          for the actual nearest node in road_nodes.
-        :param nodes_checkpoints: mandatory transit nodes
-        :param penalty factor: ...
-        :ng_kwargs: ...
+        """Finds a path for the transport lines in the actual road network,
+        to know on which roads a bus line is going, because the public transport links are defined
+        between two stops, without road information.
+        It will evaluate the best combination of nodes in the road network between the two stops.
+        The evaluation is done with the distance.
+        The results will be found as a list of road_links for each public transport link.
+        If the transport network has modes on dedicated infrastructure (train, metro...), create two submodels
+        and use a dumbcast on the dedicated infrastructure modes.
+
+        Requires :
+            * self.nodes
+            * self.links
+            * self.road_nodes
+            * self.road_links
+
+        Parameters
+        ----------
+        nearest_method :  ['nodes'|'links'], optional, default 'nodes'
+            Options are:
+
+            'nodes'   --(default) looks for the actual nearest node in road_nodes.
+            'links'   --looks for the nearest link to a stop in road_links and links the stop to its end_node (b)
+ 
+        weight : str, optional, default 'length'
+            Column of road_links containing road_links length
+        penalty_factor : int, optional, default 1
+            Multiplicative penality of weight
+        speed : int, optional, default 3
+            Walk speed
+        replace_nodes : bool, optional, default False
+            If True replaces nodes by road_nodes. If False, model will use road_to_transit ntlegs
+        dumb_cast : bool, optional, default False
+            If True, the network is casted on himself (cast links on links and not on road_links).
+            It will still return the closest road_node for the stops.
+        nodes_checkpoints : 
+            mandatory transit nodes
+
+        Raises
+        ------
+        TypeError
+            check that valors in column named after weight parameter is int or float
+        
+        Returns
+        -------
+        self.links :
+            add columns road_a,	road_b,	road_node_list,	road_link_list, road_length
+        
+
         """
         if dumb_cast:
             nc = NetworkCaster(
@@ -338,7 +517,29 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                                  distance_max=5000,
                                  by='trip_id',
                                  sequence = 'link_sequence'):
-        #mapmatch each trip_id in self.links to the road_network (self.road_links)
+        
+        """Mapmatch each trip_id in self.links to the road_network (self.road_links)
+
+        Parameters
+        ----------
+        routing : bool, optional
+            _description_, by default True
+        n_neighbors_centroid : int, optional
+            _description_, by default 100
+        n_neighbors : int, optional
+            _description_, by default 10
+        distance_max : int, optional
+            _description_, by default 5000
+        by : str, optional
+            _description_, by default 'trip_id'
+        sequence : str, optional
+            _description_, by default 'link_sequence'
+
+        Returns
+        -------
+
+        """        
+        
         ncm = NetworkCaster_MapMaptching(self.nodes, self.road_links, self.links, by, sequence)
         matched_links, links_mat, unmatched_trip = ncm.Multi_Mapmatching(routing=routing,
                                                                          n_neighbors_centroid=n_neighbors_centroid,
@@ -367,23 +568,47 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         time=-1,
         price=-1,
         transfers=-1,
-        time_shift=None,  # for time expanded model
+        time_shift=None, 
         route_types=None
     ):
-        """
-        * requires:
-        * builds: mode_utility, mode_nests, logit_scales, utility_values
+        """Builds the necessary tables to perform analysis_mode_utility and step_logit.
+        They contain the parameters of the nested logit.
+        For the neste logit we should have 1 >= mode >= pt_mode >= pt_path > 0.
+        If the three of them are equal to 1 the nested logit will be equivalent to a flat logit.
 
-        :param mode: phi parameter used in the logit choice between modes
-        :param pt_mode: phi parameter used in the logit choice between pt modes
-        :param pt_mode: phi parameter used in the logit choice between pt paths
-        :param segments: the demand segments that will have to chose ex ['car', 'nocar']
-        :param time: number of utility units by seconds
-        :param price: number of utility units by currency unit
-        :param transfers: number of utility units by transfer
+        Does not require specific attributes in self.
 
-        we should have 1 >= mode >= pt_mode >= pt_path > 0
-        if the three of them are equal to 1 the nested logit will be equivalent to a flat logit
+        Parameters
+        ----------
+        mode : int, optional, default 1
+            phi parameter used in the logit choice between modes
+        pt_mode : int, optional, default 1
+            phi parameter used in the logit choice between pt modes
+        pt_path : int, optional, default 1
+            phi parameter used in the logit choice between pt paths
+        segments : list, optional, default []
+            Demand segments we want to use in the logit 
+        time : int, optional, default -1
+            number of utility units by seconds
+        price : int, optional, default -1
+            number of utility units by currency unit
+        transfers : int, optional, default -1
+            number of utility units by transfer
+        time_shift : int, optional, default None
+            Used with timetable (time expanded) models. Number of utility units by time_shift
+        
+        Returns
+        -------
+        self.mode_utility :
+            Modal constants, per mode and per segment
+        self.mode_nests :
+            Structure of the nested logit per segment
+        self.logit_scales :
+            Scales of the nested logit per segment (parameters phi)
+        self.utility_values
+            Utility values of time, price, transfers and time_shift per segment
+
+       
         """
         # TODO : move to preparation
         # utility values
@@ -437,11 +662,29 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         self, max_zones=500, cluster_column=None,
         is_od_stack=False, **kwargs
     ):
+        """Clusterize zones to optimize computation time.
+
+        Requires :
+            * self.zones
+            * self.volumes
+
+        Parameters
+        ----------
+        max_zones : int, optional, default 500
+            _description_, by 
+        cluster_column : string, optional, default None
+            cluster column in self.zones if clusters are already defined 
+        is_od_stack : bool, optional, default False
+            If True, requires table od_stack
+        
+        Returns
+        -------
+        self.zones
+        self.volumes
+        self.cluster_series
+
         """
-        clusterize zones
-            * requires: zones, volumes
-            * builds: zones, volumes, cluster_series
-        """
+
         zones = self.zones
         zones['geometry'] = zones['geometry'].apply(lambda g: g.buffer(1e-9))
         self.micro_zones = zones.copy()
@@ -467,10 +710,30 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
 
     @track_args
     def preparation_clusterize_nodes(self, n_clusters=None, adaptive_clustering=False, **kwargs):
-        """
-        clusterize nodes
-            * requires: nodes
-            * builds: links, nodes
+        """Create nodes clusters to optimize computation time.
+            It will agregate nodes based on their relative distance to build "stop areas"
+
+        Requires :
+            * self.nodes
+
+        Parameters
+        ----------
+        n_clusters : int, optional, default None
+            Number of nodes clusters
+        adaptive_clustering : bool, optional, default False
+            If True, will define itself the number of clusters.
+            If False n_clusters must be defined
+        
+        
+        Returns
+        -------
+        self.links :
+            contain recomputed links with the clusterized nodes
+        self.nodes :
+            contain the clusterized nodes
+        self.disaggregated_nodes :
+            contain the former nodes
+        
         """
         self.disaggregated_nodes = self.nodes.copy()
         if not adaptive_clustering:
@@ -502,6 +765,24 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         smoothing_span=100,
         *args, **kwargs
     ):
+        """Grand mystère
+
+        Requires :
+            * self.nodes
+
+        Parameters
+        ----------
+        agg : dict, optional
+            _description_, by default {'speed': lambda s: s.mean() * 3.6}
+        buffer : int, optional
+            _description_, by default 50
+        smoothing_span : int, optional
+            _description_, by default 100
+
+        Returns
+        -------
+
+        """    
         # agg = ['mean', 'min', 'max', 'std', list] for extensive description of speeds
         to_concat = []
         iterator = tqdm(self.track_points['trip_id'].unique())

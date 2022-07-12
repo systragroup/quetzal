@@ -18,3 +18,7 @@ osmnx
 gtfs_kit
 geojson
 redis
+sphinx_rtd_theme
+seaborn
+plotly
+SQLAlchemy
