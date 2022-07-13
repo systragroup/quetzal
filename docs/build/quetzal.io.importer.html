@@ -90,8 +90,28 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="quetzal.io.importer.from_lines">
 <span class="sig-prename descclassname"><span class="pre">quetzal.io.importer.</span></span><span class="sig-name descname"><span class="pre">from_lines</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lines</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_return</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_keep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/importer.html#from_lines"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.importer.from_lines" title="Permalink to this definition"></a></dt>
-<dd><p>lines index is used, links and nodes are returned
-if add_return = True, return lines are created</p>
+<dd><p>Import public transport lines to Quetzal format from geodataframe
+containing the pt lines (as one per row).
+Creates the dataframe links and nodes defined in the stepmodel class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>lines</strong> (<em>geodataframe</em>) – Name of DataFrame describing the alignements as LineSring in a <em>geometry</em> column.</p></li>
+<li><p><strong>node_index</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default 0</em>) – number on which to start indexing nodes</p></li>
+<li><p><strong>add_return</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default True</em>) – if True, return lines are created.
+Use False if the two directions of the line are in the geodataframe.</p></li>
+<li><p><strong>to_keep</strong> (<em>list</em><em>, </em><em>optional</em><em>, </em><em>default</em><em> [</em><em>]</em>) – columns of lines geodataframe to keep in links</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>links</em> – Links of the public transport system and pt routes caracteristics.
+Each line of the geodataframe correspond to a section of a PT route between two nodes</p></li>
+<li><p><em>nodes</em> – Public transport stations.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">

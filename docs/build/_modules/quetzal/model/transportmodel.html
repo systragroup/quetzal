@@ -132,8 +132,9 @@
         <span class="sd">&quot;&quot;&quot;Function performing distribution of flows with doubly constrained algorithm,</span>
 <span class="sd">        based on an impedance/deterrence matrix inversely proportional to the accessibility between two zones.</span>
 <span class="sd">        </span>
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.zones</span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.zones</span>
 
 
 <span class="sd">        Parameters</span>
@@ -149,8 +150,8 @@
 <span class="sd">                - power: int, thee gravity exponent</span>
 <span class="sd">                - intrazonal: (bool) if False set the intrazonal distance to 0, else compute a characteristic distance</span>
 <span class="sd">         </span>
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.volumes :</span>
 <span class="sd">        </span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -205,10 +206,11 @@
        
         <span class="sd">&quot;&quot;&quot;Performs road assignment with or without capacity constraint, depending on the method used</span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.road_links</span>
-<span class="sd">            * self.zone_to_road</span>
-<span class="sd">            * self.volumes </span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.road_links</span>
+<span class="sd">        self.zone_to_road</span>
+<span class="sd">        self.volumes </span>
 
 <span class="sd">        </span>
 <span class="sd">        Parameters</span>
@@ -239,8 +241,8 @@
 <span class="sd">        access_time : string, optional, default &#39;time&#39;</span>
 <span class="sd">            column for time in zone_to_road for access time </span>
 
-<span class="sd">        od_set : dict, optional</span>
-<span class="sd">            set of od to use - may be used to reduce computation time (default None)</span>
+<span class="sd">        od_set : dict, optional, default None</span>
+<span class="sd">            set of od to use - may be used to reduce computation time</span>
 <span class="sd">            for example, the od_set is the set of od for which there is a volume in self.volumes</span>
 
 <span class="sd">        num_cores : integer, optional, default 1</span>
@@ -256,8 +258,8 @@
 <span class="sd">            give constant value for BFW betas. ex: [0.7,0.2,0.1].</span>
 
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.car_los :</span>
 <span class="sd">            create tables of car levels of services</span>
 
@@ -297,15 +299,16 @@
         <span class="sd">&quot;&quot;&quot;Park and Ride pathfinder algorithm : shortest path algorithm on the graph</span>
 <span class="sd">        built from links (public transport routes) and road_links considered as &quot;public transport access links&quot; (with car speed).</span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.zones </span>
-<span class="sd">            * self.links </span>
-<span class="sd">            * self.footpaths </span>
-<span class="sd">            * self.zone_to_road </span>
-<span class="sd">            * self.zone_to_transit </span>
-<span class="sd">            * self.transit_to_zone </span>
-<span class="sd">            * self.road_to_transit </span>
-<span class="sd">            * self.road_links </span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.zones </span>
+<span class="sd">        self.links </span>
+<span class="sd">        self.footpaths </span>
+<span class="sd">        self.zone_to_road </span>
+<span class="sd">        self.zone_to_transit </span>
+<span class="sd">        self.transit_to_zone </span>
+<span class="sd">        self.road_to_transit </span>
+<span class="sd">        self.road_links </span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -322,8 +325,8 @@
 <span class="sd">        cutoff : default np.inf     </span>
 <span class="sd">            description</span>
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.pr_los </span>
 
 <span class="sd">        &quot;&quot;&quot;</span>    
@@ -373,12 +376,13 @@
 
 <span class="sd">        For connection scan pathfinder algorithm (with time tables), use step_pt_pathfinder of the class ConnectionScanModel.</span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.zones</span>
-<span class="sd">            * self.links</span>
-<span class="sd">            * self.footpaths</span>
-<span class="sd">            * self.zone_to_road</span>
-<span class="sd">            * self.zone_to_transit</span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.zones</span>
+<span class="sd">        self.links</span>
+<span class="sd">        self.footpaths</span>
+<span class="sd">        self.zone_to_road</span>
+<span class="sd">        self.zone_to_transit</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -421,8 +425,8 @@
 <span class="sd">            Performs paths analysis, adds columns &#39;all_walk&#39; and &#39;ntransfers&#39; to the output pt_los</span>
 
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.pt_los :</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -474,9 +478,12 @@
 <span class="sd">            * Utility(car) = alpha_car * &#39;duration_car&#39; + beta_car</span>
 <span class="sd">            * Utility(pt) = &#39;duration_pt&#39;</span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.volumes : all mode origin-&gt;destination demand matrix</span>
-<span class="sd">            * self.los : levels of service. An od stack matrix with &#39;duration_pt&#39; and &#39;duration_car&#39;</span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.volumes : </span>
+<span class="sd">            all mode origin-&gt;destination demand matrix</span>
+<span class="sd">        self.los :</span>
+<span class="sd">            levels of service. An od stack matrix with &#39;duration_pt&#39; and &#39;duration_car&#39;</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -494,8 +501,8 @@
 <span class="sd">            additive penalty on &#39;duration_car&#39; for the calculation of &#39;utility_car&#39;</span>
 <span class="sd">        </span>
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.od_stack :</span>
 <span class="sd">        self.shared :</span>
 
@@ -531,8 +538,10 @@
 <span class="sd">        computed in the step_logit.</span>
 
 <span class="sd">        Requires</span>
-<span class="sd">            * self.los : concatenation of levels of services of the different modes (usually pt_los and car_los)</span>
-<span class="sd">            * self.volumes </span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.los :</span>
+<span class="sd">            concatenation of levels of services of the different modes (usually pt_los and car_los)</span>
+<span class="sd">        self.volumes </span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -542,8 +551,8 @@
 <span class="sd">            True to use model segments - compute volumes per path per segment</span>
 
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.los :</span>
 <span class="sd">            add volume column </span>
 
@@ -590,9 +599,11 @@
         <span class="sd">&quot;&quot;&quot;Performs assignment : compute the volumes on the links of the public transport network,</span>
 <span class="sd">        and the boardings and alightings on the nodes of the PT network.</span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.los : concatenation of levels of services of the different modes (usually pt_los and car_los)</span>
-<span class="sd">            * self.volumes </span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.los :</span>
+<span class="sd">            concatenation of levels of services of the different modes (usually pt_los and car_los)</span>
+<span class="sd">        self.volumes </span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -618,8 +629,8 @@
 <span class="sd">        compute_los_volume : bool, optional, default True</span>
 <span class="sd">            True to add column volumes in los dataframe</span>
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.los :</span>
 <span class="sd">            add volume column if compute_los_volume=True</span>
 <span class="sd">        self.links :</span>
@@ -696,9 +707,11 @@
 <span class="sd">        and the boardings and alightings on the nodes of the PT network, </span>
 <span class="sd">        keeping the memory of segments in the volumes.</span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.los : concatenation of levels of services of the different modes (usually pt_los and car_los)</span>
-<span class="sd">            * self.volumes </span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.los :</span>
+<span class="sd">            concatenation of levels of services of the different modes (usually pt_los and car_los)</span>
+<span class="sd">        self.volumes </span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -719,8 +732,8 @@
 <span class="sd">            Name of attributes containing model aggregated los</span>
 
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.los :</span>
 <span class="sd">            add volume column if compute_los_volume=True</span>
 <span class="sd">        self.links :</span>
@@ -782,13 +795,15 @@
 <span class="sd">            - Can specify the volume column</span>
 <span class="sd">            - Can strack path categories</span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.links</span>
-<span class="sd">            * self.nodes</span>
-<span class="sd">            * self.pt_los : requires computed path probabilities in pt_los for each segment,</span>
-<span class="sd">              they can be computed with funcions analysis_mode_utility + step_logit</span>
-<span class="sd">            * self.road_links</span>
-<span class="sd">            * self.volumes</span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.links</span>
+<span class="sd">        self.nodes</span>
+<span class="sd">        self.pt_los :</span>
+<span class="sd">            requires computed path probabilities in pt_los for each segment,</span>
+<span class="sd">            they can be computed with funcions analysis_mode_utility + step_logit</span>
+<span class="sd">        self.road_links</span>
+<span class="sd">        self.volumes</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -799,8 +814,8 @@
 <span class="sd">        split_by : string, optional, default None</span>
 <span class="sd">            path categories to be tracked in the assignment. Must be a column of self.pt_los</span>
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.loaded_links</span>
 <span class="sd">        self.loaded_nodes</span>
 <span class="sd">        self.road_links :</span>
@@ -898,13 +913,15 @@
         <span class="sd">&quot;&quot;&quot;Performs pt assignment for all demand segments. Function used in step_pt_assignment function,</span>
 <span class="sd">        refer to this function for other args.</span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.links</span>
-<span class="sd">            * self.nodes</span>
-<span class="sd">            * self.pt_los : requires computed path probabilities in pt_los for each segment</span>
-<span class="sd">            * self.road_links</span>
-<span class="sd">            * self.volumes</span>
-<span class="sd">        </span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.links</span>
+<span class="sd">        self.nodes</span>
+<span class="sd">        self.pt_los : </span>
+<span class="sd">            requires computed path probabilities in pt_los for each segment</span>
+<span class="sd">        self.road_links</span>
+<span class="sd">        self.volumes</span>
+<span class="sd">    </span>
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        on_road_links : bool, optional, default False</span>
@@ -912,8 +929,8 @@
 <span class="sd">        split_by : string, optional, default None</span>
 <span class="sd">            path categories to be tracked in the assignment. Must be a column of self.pt_los</span>
 <span class="sd">        </span>
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.loaded_links</span>
 <span class="sd">        self.loaded_nodes</span>
 <span class="sd">        self.road_links :</span>
@@ -977,20 +994,22 @@
 <span class="sd">            - uses car_los (and not los)</span>
 <span class="sd">            - Can specify the volume column</span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.road_links</span>
-<span class="sd">            * self.road_nodes</span>
-<span class="sd">            * self.car_los : requires computed path probabilities in car_los for each segment,</span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.road_links</span>
+<span class="sd">        self.road_nodes</span>
+<span class="sd">        self.car_los : </span>
+<span class="sd">            requires computed path probabilities in car_los for each segment,</span>
 <span class="sd">            they can be computed with funcions analysis_mode_utility + step_logit</span>
-<span class="sd">            * self.volumes</span>
+<span class="sd">        self.volumes</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        volume_column : string, optional, default None</span>
 <span class="sd">           volume column of self.volumes to assign. If none, all columns will be assigned</span>
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.loaded_road_links</span>
 <span class="sd">        self.loaded_road_nodes</span>
 <span class="sd">        </span>
@@ -1007,14 +1026,16 @@
         <span class="sd">&quot;&quot;&quot;Performs car assignment for all demand segments. Function used in step_car_assignment function,</span>
 <span class="sd">        refer to this function for other args and parameters.</span>
 <span class="sd">        </span>
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.road_links</span>
-<span class="sd">            * self.road_nodes</span>
-<span class="sd">            * self.car_los : requires computed path probabilities in car_los for each segment</span>
-<span class="sd">            * self.volumes</span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.road_links</span>
+<span class="sd">        self.road_nodes</span>
+<span class="sd">        self.car_los :</span>
+<span class="sd">            requires computed path probabilities in car_los for each segment</span>
+<span class="sd">        self.volumes</span>
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.loaded_road_links</span>
 <span class="sd">        self.loaded_road_nodes</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -1054,11 +1075,12 @@
 <span class="sd">        and in the columns of the model los (default : price, time, ntransfers). They can be defined by segment.</span>
 <span class="sd">        The modal constant can also be defined per segment and must be found in the table mode_utility.</span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.mode_utility</span>
-<span class="sd">            * self.los</span>
-<span class="sd">            * self.utility_values </span>
-<span class="sd">            * self.segments</span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.mode_utility</span>
+<span class="sd">        self.los</span>
+<span class="sd">        self.utility_values </span>
+<span class="sd">        self.segments</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -1083,8 +1105,8 @@
 <span class="sd">            Use True for models using timetables and ConnectionScan models </span>
 <span class="sd">        </span>
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.los :</span>
 <span class="sd">            add columns (segment, &#39;utility&#39;) - value of the utility per segment </span>
 
@@ -1164,10 +1186,11 @@
 <span class="sd">        Parametrize the nested logit with model attribute mode_nests and logit_scales </span>
 <span class="sd">        created with function preparation_logit.</span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.mode_nests</span>
-<span class="sd">            * self.logit_scales</span>
-<span class="sd">            * self.los</span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.mode_nests</span>
+<span class="sd">        self.logit_scales</span>
+<span class="sd">        self.los</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -1184,8 +1207,8 @@
 <span class="sd">        keep_od_tables : bool, optional, default True</span>
 <span class="sd">            _description_, by default True</span>
 <span class="sd">        </span>
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.los </span>
 <span class="sd">            Add columns (segment, &#39;probability&#39;) of probabilities per segment</span>
 <span class="sd">        self.od_utilities</span>

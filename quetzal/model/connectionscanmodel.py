@@ -152,6 +152,29 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         workers=1,
         reindex=True
     ):
+        
+        """Performs public transport pathfinder for connection scan models.
+
+        Parameters
+        ----------
+        min_transfer_time : int, optional, default 0
+            Minimal transfer time - if the transfer time is below this value, the path is not considered
+        time_interval : list of 2, optional, default None
+            hours to consider [0, 24 * 3600 - 1] 
+        cutoff : _type_, optional, default np.inf
+            _description_, by 
+        build_connections : bool, optional, default True
+            _description_, by 
+        targets : _type_, optional, default None
+            _description_, by
+        od_set : dict, optional, default None
+            set of od to use - may be used to reduce computation time
+            for example, the od_set is the set of od for which there is a volume in self.volumes
+        workers : int, optional, default 1
+            _description_, by
+        reindex : bool, optional, default True
+            _description_, by
+        """    
         time_interval = time_interval if time_interval is not None else self.time_interval
 
         if build_connections:
@@ -183,6 +206,24 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         alighting_links=True, alightings=True,
         keep_connection_path=False
     ):
+        """
+
+        Parameters
+        ----------
+        workers : int, optional
+            _description_, by default 1
+        alighting_links : bool, optional
+            _description_, by default True
+        alightings : bool, optional
+            _description_, by default True
+        keep_connection_path : bool, optional
+            _description_, by default False
+
+        Builds
+        ----------
+        selfpt_los :
+            add columns link_path, boarding_links, ntransfers, boardings, alighting_links, alightings
+        """    
         pseudo_connections = self.pseudo_connections
         clean = pseudo_connections[['csa_index', 'trip_id']].dropna()
         clean.sort_values(by='csa_index', inplace=True)

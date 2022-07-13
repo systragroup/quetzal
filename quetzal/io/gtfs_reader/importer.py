@@ -30,6 +30,16 @@ def linestring_geometry(dataframe, point_dict, from_point, to_point):
 
 class GtfsImporter(Feed):
 
+    """The file importer of quetzal contains a main class: GtfsImporter.
+    
+    It gives access to different method to handle GTFS data:
+
+        - description (GtfsImporter.describe())
+        - maps
+        - filtering on specific area, dates, trips, stops (GtfsImporter.restrict())
+        - stops / trips aggregation
+        - frequency conversion
+    """
     def __init__(self, epsg=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.epsg = epsg

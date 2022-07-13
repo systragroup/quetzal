@@ -93,9 +93,31 @@ def links_and_nodes(linestring, node_index=0):
 
 
 def from_lines(lines, node_index=0, add_return=True, to_keep=[]):
-    """
-    lines index is used, links and nodes are returned
-    if add_return = True, return lines are created
+    """Import public transport lines to Quetzal format from geodataframe
+    containing the pt lines (as one per row).
+    Creates the dataframe links and nodes defined in the stepmodel class.
+
+    Parameters
+    ----------
+    lines : geodataframe
+        Name of DataFrame describing the alignements as LineSring in a *geometry* column.
+    node_index : int, optional, default 0
+        number on which to start indexing nodes
+    add_return : bool, optional, default True
+        if True, return lines are created.
+        Use False if the two directions of the line are in the geodataframe.
+    to_keep : list, optional, default []
+        columns of lines geodataframe to keep in links 
+
+    Returns
+    -------
+    links
+        Links of the public transport system and pt routes caracteristics.
+        Each line of the geodataframe correspond to a section of a PT route between two nodes
+
+    nodes
+        Public transport stations.
+    
     """
 
     lines = lines.copy()

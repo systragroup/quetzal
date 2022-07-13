@@ -161,9 +161,31 @@
 
 
 <div class="viewcode-block" id="from_lines"><a class="viewcode-back" href="../../../quetzal.io.importer.html#quetzal.io.importer.from_lines">[docs]</a><span class="k">def</span> <span class="nf">from_lines</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">node_index</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">add_return</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">to_keep</span><span class="o">=</span><span class="p">[]):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    lines index is used, links and nodes are returned</span>
-<span class="sd">    if add_return = True, return lines are created</span>
+    <span class="sd">&quot;&quot;&quot;Import public transport lines to Quetzal format from geodataframe</span>
+<span class="sd">    containing the pt lines (as one per row).</span>
+<span class="sd">    Creates the dataframe links and nodes defined in the stepmodel class.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    lines : geodataframe</span>
+<span class="sd">        Name of DataFrame describing the alignements as LineSring in a *geometry* column.</span>
+<span class="sd">    node_index : int, optional, default 0</span>
+<span class="sd">        number on which to start indexing nodes</span>
+<span class="sd">    add_return : bool, optional, default True</span>
+<span class="sd">        if True, return lines are created.</span>
+<span class="sd">        Use False if the two directions of the line are in the geodataframe.</span>
+<span class="sd">    to_keep : list, optional, default []</span>
+<span class="sd">        columns of lines geodataframe to keep in links </span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    links</span>
+<span class="sd">        Links of the public transport system and pt routes caracteristics.</span>
+<span class="sd">        Each line of the geodataframe correspond to a section of a PT route between two nodes</span>
+
+<span class="sd">    nodes</span>
+<span class="sd">        Public transport stations.</span>
+<span class="sd">    </span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">lines</span> <span class="o">=</span> <span class="n">lines</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>

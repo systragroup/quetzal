@@ -206,6 +206,21 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_disaggregate</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="AnalysisModel.analysis_pt_route_type"><a class="viewcode-back" href="../../../quetzal.model.analysismodel.html#quetzal.model.analysismodel.AnalysisModel.analysis_pt_route_type">[docs]</a>    <span class="k">def</span> <span class="nf">analysis_pt_route_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hierarchy</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Builds &#39;route_type&#39; in pt_los based on &#39;route_types&#39; and hierarchy.</span>
+<span class="sd">        Each path in pt_los has an attribute route_types which regroups all the modes used in the path.</span>
+<span class="sd">        This functions builds the &#39;route_type&#39; which is the principal mode of the path based on the hierarchy of modes.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        hierarchy : list</span>
+<span class="sd">            Hierarchy of the modes found in the route_types. Ex : [&#39;car&#39;,&#39;rail&#39;, &#39;subway&#39;, &#39;tram&#39;, &#39;bus&#39;, &#39;walk&#39;]</span>
+<span class="sd">            means that when a path uses rail, tram and walk, the route_type will be defined as &#39;rail&#39; which has the higher hierarchy.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        self.pt_los</span>
+<span class="sd">            add columns route_type</span>
+<span class="sd">        &quot;&quot;&quot;</span>        
         <span class="n">route_type_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">[</span><span class="s1">&#39;route_type&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
 
         <span class="k">def</span> <span class="nf">higher_route_type</span><span class="p">(</span><span class="n">route_types</span><span class="p">):</span>
@@ -298,6 +313,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">lighten_los</span><span class="p">(</span><span class="n">keep_summary_columns</span><span class="o">=</span><span class="n">keep_summary_columns</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="AnalysisModel.analysis_car_route_type"><a class="viewcode-back" href="../../../quetzal.model.analysismodel.html#quetzal.model.analysismodel.AnalysisModel.analysis_car_route_type">[docs]</a>    <span class="k">def</span> <span class="nf">analysis_car_route_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Add columns : route_type = &#39;car&#39; and route_types in car_los</span>
+<span class="sd">        to allow concatenation with pt_los and use of logit functions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>        
         <span class="bp">self</span><span class="o">.</span><span class="n">car_los</span><span class="p">[</span><span class="s1">&#39;route_types&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">([</span><span class="s1">&#39;car&#39;</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">car_los</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">car_los</span><span class="p">[</span><span class="s1">&#39;route_type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;car&#39;</span></div>
 

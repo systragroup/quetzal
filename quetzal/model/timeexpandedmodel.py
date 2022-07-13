@@ -49,9 +49,22 @@ class TimeExpandedModel(stepmodel.StepModel):
             self.time_interval = [0, 24 * 3600 - 1]
 
     def preparation_clusterize_stops(self, distance_threshold=1000, walking_speed=3):
-        """
-        Create node clusters with an agglomerative clustering approach and a distance threshold.
+        """Create node clusters with an agglomerative clustering approach and a distance threshold.
         For each cluster, compute the average transfer length and corresponding walking duration.
+
+        Parameters
+        ----------
+        distance_threshold : int, optional, default 1000
+            Distance limit between two clusterized stops 
+        walking_speed : int, optional, default 3
+            
+
+        Builds
+        ----------
+        _type_
+            _description_
+        
+        
         """
         # TODO faster transfer length
         # Create clusters
@@ -96,6 +109,16 @@ class TimeExpandedModel(stepmodel.StepModel):
         self.nodes['transfer_duration'] = self.nodes['transfer_length'] / (walking_speed / 3.6)
 
     def preparation_dense_footpaths(self, max_length=1000, walking_speed=3):
+        """_summary_
+
+        Parameters
+        ----------
+        max_length : int, optional, default 1000
+            Maximum footpath length
+        walking_speed : int, optional, default 3
+            
+        """      
+
         self.footpaths = te_utils.build_dense_footpaths(
             self.nodes, max_length=max_length, walking_speed=walking_speed
         )
@@ -129,6 +152,17 @@ class TimeExpandedModel(stepmodel.StepModel):
         self.graph_nodes = graph_nodes
 
     def step_pt_pathfinder(self, boarding_time, min_transfer_time=0, ntlegs_penalty=1e9):
+        """_summary_
+
+        Parameters
+        ----------
+        boarding_time : _type_
+            _description_
+        min_transfer_time : int, optional
+            _description_, by default 0
+        ntlegs_penalty : _type_, optional
+            _description_, by default 1e9
+        """        
         # WARNING: all walk paths are not computed (one must take a trip to reach an alighting node)
         # TODO: solve this issue (adding an all walk pathfinder?)
 

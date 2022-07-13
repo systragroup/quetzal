@@ -35,10 +35,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             - connectors (zone to transit, to road)
             - pedestrian footpaths
 
-        Raises
-        ------
-        TypeError
-            _description_
+        
         """    
 
     @track_args
@@ -53,8 +50,9 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         """Create the footpaths : pedestrian links between stations (nodes), 
         that will allow transfers between stations.
 
-        Requires :
-            * self.nodes
+        Requires
+        ----------
+        self.nodes
 
         Parameters
         ----------
@@ -70,8 +68,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             It will agregate nodes based on their relative distance to build "stop areas"
         
 
-        Returns
-        -------
+        Builds
+        ----------
         self.footpaths
         self.road_links :
             add columns walk_time if road=True
@@ -122,9 +120,10 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         to the network is made by car/taxi, and hence at a larger speed, the long_leg_speed. Function integrates a 
         curve to smoothly go from short_leg_speed to long_leg_speed (can be understood as probability to access by foot or car). 
 
-        Requires :
-            * self.nodes
-            * self.zones
+        Requires
+        ----------
+        self.nodes
+        self.zones
 
         Parameters
         ----------
@@ -147,8 +146,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             ztt_ (zone_to_transit), ztr_ (zone_to_road), rtt_ (road_to_transit)
         
         
-        Returns
-        -------
+        Builds
+        ----------
         self.centroids
         self.zone_to_transit
         self.zone_to_road
@@ -236,13 +235,14 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         """Keeps only relevant zone_to_transit connectors : verifies if the nodes linked to the zones
         exist in the self.links, and drops redundants 
 
-        Requires :
-            * self.links
-            * self.zone_to_transit
-            * self.zones
+        Requires
+        ----------
+        self.links
+        self.zone_to_transit
+        self.zones
 
-        Returns
-        -------
+        Builds
+        ----------
         self.zone_to_transit :
             update zone_to_transit dataframe
         """        
@@ -289,10 +289,11 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         """Reduce number of footpaths to optimize computation by performing 
         a shortest path algorithm in the graph made of footpaths, road_links and road_to_transit.
 
-        Requires :
-            * self.road_links
-            * self.road_to_transit
-            * self.footpaths
+        Requires
+        ----------
+        self.road_links
+        self.road_to_transit
+        self.footpaths
         
         Parameters
         ----------
@@ -301,8 +302,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         log : bool, optional, default False
             If true, returns the old and new numbers of footpaths 
 
-        Returns
-        -------
+        Builds
+        ----------
         self.footpaths :
             update footpaths dataframe
 
@@ -324,9 +325,10 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         """Reduce number of zone_to_road connectors to optimize computation by performing 
         a shortest path algorithm in the graph made of road_links and zone_to_road.
 
-        Requires :
-            * self.road_links
-            * self.zone_to_road
+        Requires
+        ----------
+        self.road_links
+        self.zone_to_road
         
         Parameters
         ----------
@@ -335,8 +337,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         log : bool, optional, default False
             If true, returns the old and new numbers of zone_to_road 
 
-        Returns
-        -------
+        Builds
+        ----------
         self.zone_to_road :
             update zone_to_road dataframe
 
@@ -358,9 +360,10 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         """Reduce number of road_to_transit connectors to optimize computation by performing 
         a shortest path algorithm in the graph made of road_links and road_to_transit.
 
-        Requires :
-            * self.road_links
-            * self.road_to_transit
+        Requires
+        ----------
+        self.road_links
+        self.road_to_transit
                 
         Parameters
         ----------
@@ -370,8 +373,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             If true, returns the old and new numbers of road_to_transit 
 
         
-        Returns
-        -------
+        Builds
+        ----------
         self.road_to_transit :
             update road_to_transit dataframe
 
@@ -409,11 +412,12 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         If the transport network has modes on dedicated infrastructure (train, metro...), create two submodels
         and use a dumbcast on the dedicated infrastructure modes.
 
-        Requires :
-            * self.nodes
-            * self.links
-            * self.road_nodes
-            * self.road_links
+        Requires
+        ----------
+        self.nodes
+        self.links
+        self.road_nodes
+        self.road_links
 
         Parameters
         ----------
@@ -437,13 +441,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         nodes_checkpoints : 
             mandatory transit nodes
 
-        Raises
-        ------
-        TypeError
-            check that valors in column named after weight parameter is int or float
-        
-        Returns
-        -------
+        Builds
+        ----------
         self.links :
             add columns road_a,	road_b,	road_node_list,	road_link_list, road_length
         
@@ -535,8 +534,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         sequence : str, optional
             _description_, by default 'link_sequence'
 
-        Returns
-        -------
+        Builds
+        ----------
 
         """        
         
@@ -597,8 +596,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         time_shift : int, optional, default None
             Used with timetable (time expanded) models. Number of utility units by time_shift
         
-        Returns
-        -------
+        Builds
+        ----------
         self.mode_utility :
             Modal constants, per mode and per segment
         self.mode_nests :
@@ -664,9 +663,10 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
     ):
         """Clusterize zones to optimize computation time.
 
-        Requires :
-            * self.zones
-            * self.volumes
+        Requires
+        ----------
+        self.zones
+        self.volumes
 
         Parameters
         ----------
@@ -677,8 +677,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         is_od_stack : bool, optional, default False
             If True, requires table od_stack
         
-        Returns
-        -------
+        Builds
+        ----------
         self.zones
         self.volumes
         self.cluster_series
@@ -713,8 +713,9 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         """Create nodes clusters to optimize computation time.
             It will agregate nodes based on their relative distance to build "stop areas"
 
-        Requires :
-            * self.nodes
+        Requires
+        ----------
+        self.nodes
 
         Parameters
         ----------
@@ -725,8 +726,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             If False n_clusters must be defined
         
         
-        Returns
-        -------
+        Builds
+        ----------
         self.links :
             contain recomputed links with the clusterized nodes
         self.nodes :
@@ -767,8 +768,9 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
     ):
         """Grand mystère
 
-        Requires :
-            * self.nodes
+        Requires
+        ----------
+        self.nodes
 
         Parameters
         ----------
@@ -779,8 +781,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         smoothing_span : int, optional
             _description_, by default 100
 
-        Returns
-        -------
+        Builds
+        ----------
 
         """    
         # agg = ['mean', 'min', 'max', 'std', list] for extensive description of speeds

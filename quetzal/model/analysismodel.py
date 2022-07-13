@@ -138,6 +138,21 @@ class AnalysisModel(summarymodel.SummaryModel):
             self._disaggregate()
 
     def analysis_pt_route_type(self, hierarchy):
+        """Builds 'route_type' in pt_los based on 'route_types' and hierarchy.
+        Each path in pt_los has an attribute route_types which regroups all the modes used in the path.
+        This functions builds the 'route_type' which is the principal mode of the path based on the hierarchy of modes.
+
+        Parameters
+        ----------
+        hierarchy : list
+            Hierarchy of the modes found in the route_types. Ex : ['car','rail', 'subway', 'tram', 'bus', 'walk']
+            means that when a path uses rail, tram and walk, the route_type will be defined as 'rail' which has the higher hierarchy.
+
+        Returns
+        -------
+        self.pt_los
+            add columns route_type
+        """        
         route_type_dict = self.links['route_type'].to_dict()
 
         def higher_route_type(route_types):
@@ -230,6 +245,9 @@ class AnalysisModel(summarymodel.SummaryModel):
         self.lighten_los(keep_summary_columns=keep_summary_columns)
 
     def analysis_car_route_type(self):
+        """Add columns : route_type = 'car' and route_types in car_los
+        to allow concatenation with pt_los and use of logit functions.
+        """        
         self.car_los['route_types'] = [tuple(['car']) for i in self.car_los.index]
         self.car_los['route_type'] = 'car'
 

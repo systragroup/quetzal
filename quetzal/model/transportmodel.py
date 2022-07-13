@@ -64,8 +64,9 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         """Function performing distribution of flows with doubly constrained algorithm,
         based on an impedance/deterrence matrix inversely proportional to the accessibility between two zones.
         
-        Requires :
-            * self.zones
+        Requires
+        ----------
+        self.zones
 
 
         Parameters
@@ -81,8 +82,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 - power: int, thee gravity exponent
                 - intrazonal: (bool) if False set the intrazonal distance to 0, else compute a characteristic distance
          
-        Returns
-        -------
+        Builds
+        ----------
         self.volumes :
         
         """
@@ -137,10 +138,11 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
        
         """Performs road assignment with or without capacity constraint, depending on the method used
 
-        Requires :
-            * self.road_links
-            * self.zone_to_road
-            * self.volumes 
+        Requires
+        ----------
+        self.road_links
+        self.zone_to_road
+        self.volumes 
 
         
         Parameters
@@ -171,8 +173,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         access_time : string, optional, default 'time'
             column for time in zone_to_road for access time 
 
-        od_set : dict, optional
-            set of od to use - may be used to reduce computation time (default None)
+        od_set : dict, optional, default None
+            set of od to use - may be used to reduce computation time
             for example, the od_set is the set of od for which there is a volume in self.volumes
 
         num_cores : integer, optional, default 1
@@ -188,8 +190,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             give constant value for BFW betas. ex: [0.7,0.2,0.1].
 
 
-        Returns
-        -------
+        Builds
+        ----------
         self.car_los :
             create tables of car levels of services
 
@@ -229,15 +231,16 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         """Park and Ride pathfinder algorithm : shortest path algorithm on the graph
         built from links (public transport routes) and road_links considered as "public transport access links" (with car speed).
 
-        Requires :
-            * self.zones 
-            * self.links 
-            * self.footpaths 
-            * self.zone_to_road 
-            * self.zone_to_transit 
-            * self.transit_to_zone 
-            * self.road_to_transit 
-            * self.road_links 
+        Requires
+        ----------
+        self.zones 
+        self.links 
+        self.footpaths 
+        self.zone_to_road 
+        self.zone_to_transit 
+        self.transit_to_zone 
+        self.road_to_transit 
+        self.road_links 
 
         Parameters
         ----------
@@ -254,8 +257,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         cutoff : default np.inf     
             description
 
-        Returns
-        -------
+        Builds
+        ----------
         self.pr_los 
 
         """    
@@ -305,12 +308,13 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         For connection scan pathfinder algorithm (with time tables), use step_pt_pathfinder of the class ConnectionScanModel.
 
-        Requires :
-            * self.zones
-            * self.links
-            * self.footpaths
-            * self.zone_to_road
-            * self.zone_to_transit
+        Requires
+        ----------
+        self.zones
+        self.links
+        self.footpaths
+        self.zone_to_road
+        self.zone_to_transit
 
         Parameters
         ----------
@@ -353,8 +357,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             Performs paths analysis, adds columns 'all_walk' and 'ntransfers' to the output pt_los
 
 
-        Returns
-        -------
+        Builds
+        ----------
         self.pt_los :
 
         """
@@ -406,9 +410,12 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             * Utility(car) = alpha_car * 'duration_car' + beta_car
             * Utility(pt) = 'duration_pt'
 
-        Requires :
-            * self.volumes : all mode origin->destination demand matrix
-            * self.los : levels of service. An od stack matrix with 'duration_pt' and 'duration_car'
+        Requires
+        ----------
+        self.volumes : 
+            all mode origin->destination demand matrix
+        self.los :
+            levels of service. An od stack matrix with 'duration_pt' and 'duration_car'
 
         Parameters
         ----------
@@ -426,8 +433,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             additive penalty on 'duration_car' for the calculation of 'utility_car'
         
 
-        Returns
-        -------
+        Builds
+        ----------
         self.od_stack :
         self.shared :
 
@@ -463,8 +470,10 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         computed in the step_logit.
 
         Requires
-            * self.los : concatenation of levels of services of the different modes (usually pt_los and car_los)
-            * self.volumes 
+        ----------
+        self.los :
+            concatenation of levels of services of the different modes (usually pt_los and car_los)
+        self.volumes 
 
         Parameters
         ----------
@@ -474,8 +483,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             True to use model segments - compute volumes per path per segment
 
 
-        Returns
-        -------
+        Builds
+        ----------
         self.los :
             add volume column 
 
@@ -522,9 +531,11 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         """Performs assignment : compute the volumes on the links of the public transport network,
         and the boardings and alightings on the nodes of the PT network.
 
-        Requires :
-            * self.los : concatenation of levels of services of the different modes (usually pt_los and car_los)
-            * self.volumes 
+        Requires
+        ----------
+        self.los :
+            concatenation of levels of services of the different modes (usually pt_los and car_los)
+        self.volumes 
 
         Parameters
         ----------
@@ -550,8 +561,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         compute_los_volume : bool, optional, default True
             True to add column volumes in los dataframe
 
-        Returns
-        -------
+        Builds
+        ----------
         self.los :
             add volume column if compute_los_volume=True
         self.links :
@@ -628,9 +639,11 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         and the boardings and alightings on the nodes of the PT network, 
         keeping the memory of segments in the volumes.
 
-        Requires :
-            * self.los : concatenation of levels of services of the different modes (usually pt_los and car_los)
-            * self.volumes 
+        Requires
+        ----------
+        self.los :
+            concatenation of levels of services of the different modes (usually pt_los and car_los)
+        self.volumes 
 
         Parameters
         ----------
@@ -651,8 +664,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             Name of attributes containing model aggregated los
 
 
-        Returns
-        -------
+        Builds
+        ----------
         self.los :
             add volume column if compute_los_volume=True
         self.links :
@@ -714,13 +727,15 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             - Can specify the volume column
             - Can strack path categories
 
-        Requires :
-            * self.links
-            * self.nodes
-            * self.pt_los : requires computed path probabilities in pt_los for each segment,
-              they can be computed with funcions analysis_mode_utility + step_logit
-            * self.road_links
-            * self.volumes
+        Requires
+        ----------
+        self.links
+        self.nodes
+        self.pt_los :
+            requires computed path probabilities in pt_los for each segment,
+            they can be computed with funcions analysis_mode_utility + step_logit
+        self.road_links
+        self.volumes
 
         Parameters
         ----------
@@ -731,8 +746,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         split_by : string, optional, default None
             path categories to be tracked in the assignment. Must be a column of self.pt_los
 
-        Returns
-        -------
+        Builds
+        ----------
         self.loaded_links
         self.loaded_nodes
         self.road_links :
@@ -830,13 +845,15 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         """Performs pt assignment for all demand segments. Function used in step_pt_assignment function,
         refer to this function for other args.
 
-        Requires :
-            * self.links
-            * self.nodes
-            * self.pt_los : requires computed path probabilities in pt_los for each segment
-            * self.road_links
-            * self.volumes
-        
+        Requires
+        ----------
+        self.links
+        self.nodes
+        self.pt_los : 
+            requires computed path probabilities in pt_los for each segment
+        self.road_links
+        self.volumes
+    
         Parameters
         ----------
         on_road_links : bool, optional, default False
@@ -844,8 +861,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         split_by : string, optional, default None
             path categories to be tracked in the assignment. Must be a column of self.pt_los
         
-        Returns
-        -------
+        Builds
+        ----------
         self.loaded_links
         self.loaded_nodes
         self.road_links :
@@ -909,20 +926,22 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             - uses car_los (and not los)
             - Can specify the volume column
 
-        Requires :
-            * self.road_links
-            * self.road_nodes
-            * self.car_los : requires computed path probabilities in car_los for each segment,
+        Requires
+        ----------
+        self.road_links
+        self.road_nodes
+        self.car_los : 
+            requires computed path probabilities in car_los for each segment,
             they can be computed with funcions analysis_mode_utility + step_logit
-            * self.volumes
+        self.volumes
 
         Parameters
         ----------
         volume_column : string, optional, default None
            volume column of self.volumes to assign. If none, all columns will be assigned
 
-        Returns
-        -------
+        Builds
+        ----------
         self.loaded_road_links
         self.loaded_road_nodes
         
@@ -939,14 +958,16 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         """Performs car assignment for all demand segments. Function used in step_car_assignment function,
         refer to this function for other args and parameters.
         
-        Requires :
-            * self.road_links
-            * self.road_nodes
-            * self.car_los : requires computed path probabilities in car_los for each segment
-            * self.volumes
+        Requires
+        ----------
+        self.road_links
+        self.road_nodes
+        self.car_los :
+            requires computed path probabilities in car_los for each segment
+        self.volumes
 
-        Returns
-        -------
+        Builds
+        ----------
         self.loaded_road_links
         self.loaded_road_nodes
         """
@@ -986,11 +1007,12 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         and in the columns of the model los (default : price, time, ntransfers). They can be defined by segment.
         The modal constant can also be defined per segment and must be found in the table mode_utility.
 
-        Requires :
-            * self.mode_utility
-            * self.los
-            * self.utility_values 
-            * self.segments
+        Requires
+        ----------
+        self.mode_utility
+        self.los
+        self.utility_values 
+        self.segments
 
         Parameters
         ----------
@@ -1015,8 +1037,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             Use True for models using timetables and ConnectionScan models 
         
 
-        Returns
-        -------
+        Builds
+        ----------
         self.los :
             add columns (segment, 'utility') - value of the utility per segment 
 
@@ -1096,10 +1118,11 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         Parametrize the nested logit with model attribute mode_nests and logit_scales 
         created with function preparation_logit.
 
-        Requires :
-            * self.mode_nests
-            * self.logit_scales
-            * self.los
+        Requires
+        ----------
+        self.mode_nests
+        self.logit_scales
+        self.los
 
         Parameters
         ----------
@@ -1116,8 +1139,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         keep_od_tables : bool, optional, default True
             _description_, by default True
         
-        Returns
-        -------
+        Builds
+        ----------
         self.los 
             Add columns (segment, 'probability') of probabilities per segment
         self.od_utilities
