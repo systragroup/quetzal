@@ -103,10 +103,7 @@
 <span class="sd">            - connectors (zone to transit, to road)</span>
 <span class="sd">            - pedestrian footpaths</span>
 
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        TypeError</span>
-<span class="sd">            _description_</span>
+<span class="sd">        </span>
 <span class="sd">        &quot;&quot;&quot;</span>    
 
 <div class="viewcode-block" id="PreparationModel.preparation_footpaths"><a class="viewcode-back" href="../../../quetzal.model.preparationmodel.html#quetzal.model.preparationmodel.PreparationModel.preparation_footpaths">[docs]</a>    <span class="nd">@track_args</span>
@@ -121,8 +118,9 @@
         <span class="sd">&quot;&quot;&quot;Create the footpaths : pedestrian links between stations (nodes), </span>
 <span class="sd">        that will allow transfers between stations.</span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.nodes</span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.nodes</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -138,8 +136,8 @@
 <span class="sd">            It will agregate nodes based on their relative distance to build &quot;stop areas&quot;</span>
 <span class="sd">        </span>
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.footpaths</span>
 <span class="sd">        self.road_links :</span>
 <span class="sd">            add columns walk_time if road=True</span>
@@ -190,9 +188,10 @@
 <span class="sd">        to the network is made by car/taxi, and hence at a larger speed, the long_leg_speed. Function integrates a </span>
 <span class="sd">        curve to smoothly go from short_leg_speed to long_leg_speed (can be understood as probability to access by foot or car). </span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.nodes</span>
-<span class="sd">            * self.zones</span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.nodes</span>
+<span class="sd">        self.zones</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -215,8 +214,8 @@
 <span class="sd">            ztt_ (zone_to_transit), ztr_ (zone_to_road), rtt_ (road_to_transit)</span>
 <span class="sd">        </span>
 <span class="sd">        </span>
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.centroids</span>
 <span class="sd">        self.zone_to_transit</span>
 <span class="sd">        self.zone_to_road</span>
@@ -304,13 +303,14 @@
         <span class="sd">&quot;&quot;&quot;Keeps only relevant zone_to_transit connectors : verifies if the nodes linked to the zones</span>
 <span class="sd">        exist in the self.links, and drops redundants </span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.links</span>
-<span class="sd">            * self.zone_to_transit</span>
-<span class="sd">            * self.zones</span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.links</span>
+<span class="sd">        self.zone_to_transit</span>
+<span class="sd">        self.zones</span>
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.zone_to_transit :</span>
 <span class="sd">            update zone_to_transit dataframe</span>
 <span class="sd">        &quot;&quot;&quot;</span>        
@@ -357,10 +357,11 @@
         <span class="sd">&quot;&quot;&quot;Reduce number of footpaths to optimize computation by performing </span>
 <span class="sd">        a shortest path algorithm in the graph made of footpaths, road_links and road_to_transit.</span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.road_links</span>
-<span class="sd">            * self.road_to_transit</span>
-<span class="sd">            * self.footpaths</span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.road_links</span>
+<span class="sd">        self.road_to_transit</span>
+<span class="sd">        self.footpaths</span>
 <span class="sd">        </span>
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -369,8 +370,8 @@
 <span class="sd">        log : bool, optional, default False</span>
 <span class="sd">            If true, returns the old and new numbers of footpaths </span>
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.footpaths :</span>
 <span class="sd">            update footpaths dataframe</span>
 
@@ -392,9 +393,10 @@
         <span class="sd">&quot;&quot;&quot;Reduce number of zone_to_road connectors to optimize computation by performing </span>
 <span class="sd">        a shortest path algorithm in the graph made of road_links and zone_to_road.</span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.road_links</span>
-<span class="sd">            * self.zone_to_road</span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.road_links</span>
+<span class="sd">        self.zone_to_road</span>
 <span class="sd">        </span>
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -403,8 +405,8 @@
 <span class="sd">        log : bool, optional, default False</span>
 <span class="sd">            If true, returns the old and new numbers of zone_to_road </span>
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.zone_to_road :</span>
 <span class="sd">            update zone_to_road dataframe</span>
 
@@ -426,9 +428,10 @@
         <span class="sd">&quot;&quot;&quot;Reduce number of road_to_transit connectors to optimize computation by performing </span>
 <span class="sd">        a shortest path algorithm in the graph made of road_links and road_to_transit.</span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.road_links</span>
-<span class="sd">            * self.road_to_transit</span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.road_links</span>
+<span class="sd">        self.road_to_transit</span>
 <span class="sd">                </span>
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -438,8 +441,8 @@
 <span class="sd">            If true, returns the old and new numbers of road_to_transit </span>
 
 <span class="sd">        </span>
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.road_to_transit :</span>
 <span class="sd">            update road_to_transit dataframe</span>
 
@@ -477,11 +480,12 @@
 <span class="sd">        If the transport network has modes on dedicated infrastructure (train, metro...), create two submodels</span>
 <span class="sd">        and use a dumbcast on the dedicated infrastructure modes.</span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.nodes</span>
-<span class="sd">            * self.links</span>
-<span class="sd">            * self.road_nodes</span>
-<span class="sd">            * self.road_links</span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.nodes</span>
+<span class="sd">        self.links</span>
+<span class="sd">        self.road_nodes</span>
+<span class="sd">        self.road_links</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -505,13 +509,8 @@
 <span class="sd">        nodes_checkpoints : </span>
 <span class="sd">            mandatory transit nodes</span>
 
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        TypeError</span>
-<span class="sd">            check that valors in column named after weight parameter is int or float</span>
-<span class="sd">        </span>
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.links :</span>
 <span class="sd">            add columns road_a,	road_b,	road_node_list,	road_link_list, road_length</span>
 <span class="sd">        </span>
@@ -603,8 +602,8 @@
 <span class="sd">        sequence : str, optional</span>
 <span class="sd">            _description_, by default &#39;link_sequence&#39;</span>
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>        
         
@@ -665,8 +664,8 @@
 <span class="sd">        time_shift : int, optional, default None</span>
 <span class="sd">            Used with timetable (time expanded) models. Number of utility units by time_shift</span>
 <span class="sd">        </span>
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.mode_utility :</span>
 <span class="sd">            Modal constants, per mode and per segment</span>
 <span class="sd">        self.mode_nests :</span>
@@ -732,9 +731,10 @@
     <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Clusterize zones to optimize computation time.</span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.zones</span>
-<span class="sd">            * self.volumes</span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.zones</span>
+<span class="sd">        self.volumes</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -745,8 +745,8 @@
 <span class="sd">        is_od_stack : bool, optional, default False</span>
 <span class="sd">            If True, requires table od_stack</span>
 <span class="sd">        </span>
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.zones</span>
 <span class="sd">        self.volumes</span>
 <span class="sd">        self.cluster_series</span>
@@ -781,8 +781,9 @@
         <span class="sd">&quot;&quot;&quot;Create nodes clusters to optimize computation time.</span>
 <span class="sd">            It will agregate nodes based on their relative distance to build &quot;stop areas&quot;</span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.nodes</span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.nodes</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -793,8 +794,8 @@
 <span class="sd">            If False n_clusters must be defined</span>
 <span class="sd">        </span>
 <span class="sd">        </span>
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 <span class="sd">        self.links :</span>
 <span class="sd">            contain recomputed links with the clusterized nodes</span>
 <span class="sd">        self.nodes :</span>
@@ -835,8 +836,9 @@
     <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Grand mystère</span>
 
-<span class="sd">        Requires :</span>
-<span class="sd">            * self.nodes</span>
+<span class="sd">        Requires</span>
+<span class="sd">        ----------</span>
+<span class="sd">        self.nodes</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -847,8 +849,8 @@
 <span class="sd">        smoothing_span : int, optional</span>
 <span class="sd">            _description_, by default 100</span>
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
+<span class="sd">        Builds</span>
+<span class="sd">        ----------</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>    
         <span class="c1"># agg = [&#39;mean&#39;, &#39;min&#39;, &#39;max&#39;, &#39;std&#39;, list] for extensive description of speeds</span>

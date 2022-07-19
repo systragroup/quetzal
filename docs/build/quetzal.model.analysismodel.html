@@ -102,7 +102,9 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.analysismodel.AnalysisModel.analysis_car_route_type">
 <span class="sig-name descname"><span class="pre">analysis_car_route_type</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/analysismodel.html#AnalysisModel.analysis_car_route_type"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.analysismodel.AnalysisModel.analysis_car_route_type" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Add columns : route_type = ‘car’ and route_types in car_los
+to allow concatenation with pt_los and use of logit functions.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.analysismodel.AnalysisModel.analysis_car_time">
@@ -206,7 +208,22 @@ linearsolver_utils.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.analysismodel.AnalysisModel.analysis_pt_route_type">
 <span class="sig-name descname"><span class="pre">analysis_pt_route_type</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hierarchy</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/analysismodel.html#AnalysisModel.analysis_pt_route_type"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.analysismodel.AnalysisModel.analysis_pt_route_type" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Builds ‘route_type’ in pt_los based on ‘route_types’ and hierarchy.
+Each path in pt_los has an attribute route_types which regroups all the modes used in the path.
+This functions builds the ‘route_type’ which is the principal mode of the path based on the hierarchy of modes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>hierarchy</strong> (<em>list</em>) – Hierarchy of the modes found in the route_types. Ex : [‘car’,’rail’, ‘subway’, ‘tram’, ‘bus’, ‘walk’]
+means that when a path uses rail, tram and walk, the route_type will be defined as ‘rail’ which has the higher hierarchy.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>add columns route_type</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>self.pt_los</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.analysismodel.AnalysisModel.analysis_pt_time">

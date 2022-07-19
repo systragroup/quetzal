@@ -434,3 +434,5 @@ epub_exclude_files = ['search.html']
 # If false, no index is generated.
 #
 # epub_use_index = True
+
+napoleon_custom_sections = [('Requires', 'params_style'),('Builds', 'params_style'),('Main columns', 'params_style')]

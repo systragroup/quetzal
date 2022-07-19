@@ -56,16 +56,30 @@ class StepModel(
     zones : geodataframe
         Zoning system of the model.
         
-        Main columns :
-            area, population, geometry
     
+    Main columns
+    ----------
+    area
+    population
+    geometry
+    
+    
+    Attributes
+    ----------
     centroids : geodataframe
         Centroids of the zoning system of the model.
         Usually created by method preparation_ntlegs.
+
         
-        Main columns :
-            area, population, geometry
+    Main columns
+    ----------
+    area
+    population
+    geometry
     
+    
+    Attributes
+    ----------
     segments : list
         Demand segments of the model.
         Created by the user.
@@ -74,9 +88,16 @@ class StepModel(
     	Volumes per OD pair.
         Usually created by method step_distribution or user input.
         
-        Main columns : 
-            origin, destination, volume per demand segment
     
+    Main columns
+    ----------
+    origin
+    destination
+    volume per demand segment
+    
+    
+    Attributes
+    ----------
     epsg : string
     	Projection
     
@@ -84,102 +105,218 @@ class StepModel(
         Links of the public transport system and pt routes caracteristics.
         Each line of the geodataframe correspond to a section of a PT route between two nodes=stops ('a' and 'b').
         Usually created by shapefile importer or GTFS importer.
-        
-        Main columns : 
-            * initial and final nodes of the link : 'a', 'b' 
-            * caracteristics of the line : 'trip_id', 'route_id', 'service_id', 'trip_headsign', 'trip_short_name','direction_id', 'block_id','agency_id', 'route_short_name','route_long_name','route_type'
-            * caracteristics of the section :'arrival_time', 'drop_off_type', 'time', 'headway', 'pattern_id','link_sequence', 'departure_time', 'pickup_type', 'geometry', 'length', 'duration', 'cost'
-            * caracteristics of the roads sections which supports the link section (created by method preparation_cast_network) : 'road_a', 'road_b', 'road_node_list','road_link_list', 'road_length'
-            * results of the step_assignment : 'volume', 'boardings', 'alightings'
 
+
+    Main columns
+    ----------
+    'a' :
+        initial  nodes of the link 
+    'b' :
+        final nodes of the link
+    'trip_id' :
+    'route_id' :
+    'service_id' :
+    'direction_id' :
+    'agency_id' :
+    'route_short_name' :
+    'route_long_name' :
+    'route_type' :
+        mode of the line
+    'arrival_time' :
+    'time' :
+    'headway' :
+    'link_sequence' :
+    'departure_time' :
+    'geometry' :
+    'length' :
+    'duration' :
+    'cost' :
+    'road_a' :
+        caracteristics of the roads sections which supports the link section (created by method preparation_cast_network)
+    'road_b':
+        caracteristics of the roads sections which supports the link section (created by method preparation_cast_network)
+    'road_node_list':
+        caracteristics of the roads sections which supports the link section (created by method preparation_cast_network)
+    'road_link_list':
+        caracteristics of the roads sections which supports the link section (created by method preparation_cast_network)
+    'road_length':
+        caracteristics of the roads sections which supports the link section (created by method preparation_cast_network)
+    'volume' :
+        results of the step_assignment
+    'boardings' :
+        results of the step_assignment
+    'alightings' :
+        results of the step_assignment
+
+         
+    Attributes
+    ----------
     nodes: geodataframe
         Public transport stations.
         Usually created by shapefile importer or GTFS importer.
         
-        Main columns : 
-            geometry, name
     
+    Main columns
+    ----------
+    geometry
+    name
+    
+    
+    Attributes
+    ----------
     road_links: geodataframe
         Links (edges) of the road network - between two road_nodes.
         Usually created by shapefile importer or OSMNX.
         
-        Main columns :
-            * initial and final road_nodes of the link : 'a', 'b', 
-            * caracteristics of the section : 'length', 'geometry', 'time', 'walk_time', 'capacity'
-            * description of the jam function : 'vdf', 'alpha', 'beta', 'limit', 'penalty'
-            * results of the step_road_pathfinder : 'flow', 'jam_time'
+    
+    Main columns
+    ----------
+    'a' :
+        initial road_nodes of the road link
+    'b' :
+        final road_nodes of the road link
+    'length' :
+        caracteristics of the section
+    'geometry':
+        caracteristics of the section
+    'time':
+        caracteristics of the section
+    'walk_time':
+        caracteristics of the section
+    'capacity':
+        caracteristics of the section
+    'vdf' :
+        description of the jam function
+    'alpha':
+        description of the jam function
+    'beta':
+        description of the jam function
+    'limit':
+        description of the jam function
+    'penalty':
+        description of the jam function
+    'flow' :
+        results of the step_road_pathfinder
+    'jam_time' :
+        results of the step_road_pathfinder
 
+    
+    Attributes
+    ----------
     road_nodes: geodataframe
         Nodes of the road network.
         Usually created by shapefile importer or OSMNX.
         
-        Main columns : 
-            geometry
     
+    Main columns
+    ----------
+    geometry
+    
+    
+    Attributes
+    ----------
     zone_to_road : geodataframe
         Connectors, aka non-transit leg (ntleg), from zones to road_nodes.
         Usually created by method preparation_ntlegs.
         
-        Main columns : 
-            * initial and final zone/road_nodes of the ntleg :'a', 'b'
-            * description of the ntleg : 'rank', 'distance', 'geometry', 'direction'
-            * description og the speed and time :'speed_factor', 'short_leg_speed', 'long_leg_speed', 'speed', 'time', 'walk_time'
     
+    Main columns
+    ----------
+    initial and final zone/road_nodes of the ntleg :'a', 'b'
+    description of the ntleg : 'rank', 'distance', 'geometry', 'direction'
+    description og the speed and time :'speed_factor', 'short_leg_speed', 'long_leg_speed', 'speed', 'time', 'walk_time'
+    
+    
+    Attributes
+    ----------
     zone_to_transit : geodataframe
         Connectors, aka non-transit leg (ntleg), from zones to nodes (PT stations).
         Usually created by method preparation_ntlegs.
         
-        Main columns : 
-            * initial and final zone/nodes(stop) of the ntleg :'a', 'b'
-            * description of the ntleg : 'rank', 'distance', 'geometry', 'direction'
-            * description og the speed and time :'speed_factor', 'short_leg_speed', 'long_leg_speed', 'speed', 'time', 'walk_time'
     
+    Main columns
+    ----------
+    initial and final zone/nodes(stop) of the ntleg :'a', 'b'
+    description of the ntleg : 'rank', 'distance', 'geometry', 'direction'
+    description og the speed and time :'speed_factor', 'short_leg_speed', 'long_leg_speed', 'speed', 'time', 'walk_time'
+    
+    
+    Attributes
+    ----------
     road_to_transit : geodataframe
         Connectors, aka non-transit leg (ntleg), from road_nodes to nodes (pt stations).
         Usually created by method preparation_ntlegs.
         
-        Main columns : 
-            * initial and final node/road_nodes of the ntleg :'a', 'b'
-            * description of the ntleg : 'rank', 'distance', 'geometry', 'direction'
-            * description og the speed and time :'speed_factor', 'short_leg_speed', 'long_leg_speed', 'speed', 'time', 'walk_time'
     
+    Main columns
+    ----------
+    initial and final node/road_nodes of the ntleg :'a', 'b'
+    description of the ntleg : 'rank', 'distance', 'geometry', 'direction'
+    description og the speed and time :'speed_factor', 'short_leg_speed', 'long_leg_speed', 'speed', 'time', 'walk_time'
+    
+    
+    Attributes
+    ----------
     footpaths : geodataframe
         Pedestrian links between stations to allow connections.
         Usually created by method preparation_footpaths.
         
-        Main columns : 
-            'a', 'b', 'geometry', 'time'
     
+    Main columns
+    ----------
+    'a'
+    'b'
+    'geometry'
+    'time'
+    
+    
+    Attributes
+    ----------
     pt_los : dataframe
         Level of service of the pt network - for each OD pair, possible paths and their caracteristics. Each line of the df being a path.
         Usually created by method step_pt_pathfinder.
         
-        Main columns :
-            * OD pair : 'origin', 'destination'
-            * description of the path : 'gtime', 'path', 'pathfinder_session', 'reversed', 'all_walk', 'ntransfers', 'time_link_path', 'length_link_path' 
-            * links taken by the path : 'link_path', 'footpaths', 'ntlegs',  'boarding_links', 'alighting_links'
-            * nodes where transfer is made : 'boardings', 'alightings', 'transfers', 'node_path'
-            * results of the step_logit : utilities (per demand segment), probabilities (per demand segment)
     
+    Main columns
+    ----------
+    OD pair : 'origin', 'destination'
+    description of the path : 'gtime', 'path', 'pathfinder_session', 'reversed', 'all_walk', 'ntransfers', 'time_link_path', 'length_link_path' 
+    links taken by the path : 'link_path', 'footpaths', 'ntlegs',  'boarding_links', 'alighting_links'
+    nodes where transfer is made : 'boardings', 'alightings', 'transfers', 'node_path'
+    results of the step_logit : utilities (per demand segment), probabilities (per demand segment)
+    
+    
+    Attributes
+    ----------
     car_los	: dataframe
         Level of service of the car network - for each OD pair results of pathfinder with/without capacity restriction.
         Usually created by method step_road_pathfinder.
 
+    
+    Main columns
+    ----------
+    OD pair : 'origin', 'destination'
+    description of the path : 'time', 'path', 'gtime'
+
+    
+    Attributes
+    ----------
     pr_los : dataframe
         Level of service of the park and ride network - for each OD pair, possible paths and their caracteristics. Each line of the df being a path.
         Usually created by method step_pr_pathfinder.
         
-        Main columns :
-            * OD pair : 'origin', 'destination'
-            * description of the path : 'gtime', 'path', 'pathfinder_session', 'reversed', 'all_walk', 'ntransfers', 'time_link_path', 'length_link_path' 
-            * links taken by the path : 'link_path', 'footpaths', 'ntlegs',  'boarding_links', 'alighting_links'
-            * nodes where transfer is made : 'boardings', 'alightings', 'transfers', 'node_path'
-            * results of the step_logit : utilities (per demand segment), probabilities (per demand segment)
-        
-        Main columns :
-            * OD pair : 'origin', 'destination'
-            * description of the path : 'time', 'path', 'gtime'
     
+    Main columns
+    ----------
+    OD pair : 'origin', 'destination'
+    description of the path : 'gtime', 'path', 'pathfinder_session', 'reversed', 'all_walk', 'ntransfers', 'time_link_path', 'length_link_path' 
+    links taken by the path : 'link_path', 'footpaths', 'ntlegs',  'boarding_links', 'alighting_links'
+    nodes where transfer is made : 'boardings', 'alightings', 'transfers', 'node_path'
+    results of the step_logit : utilities (per demand segment), probabilities (per demand segment)
+        
+   
+    Attributes
+    ----------
     los : dataframe
         Concatenation of the two tables pt_los and car_los to perform logit
     
