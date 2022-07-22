@@ -45,7 +45,7 @@ network-naïve timetable and an extraneous road network.
 
 .. toctree::
    Documentation of the preparation functions <quetzal.model.preparationmodel>
-   Documentation of the GFTS import functions <quetzal.io.gtfs_reader.gtfs_importer>
+   Documentation of the GFTS import functions <quetzal.io.gtfs_reader.importer>
    Documentation of the integrity functions <quetzal.model.integritymodel>
 
 To save computer time, it is often worth reducing the size of the input data. Quetzal makes extensive use of geomatics algorithms to build: 

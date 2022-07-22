@@ -39,7 +39,7 @@
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.preparationmodel.html">Documentation of the preparation functions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.io.gtfs_reader.gtfs_importer.html">Documentation of the GFTS import functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.io.gtfs_reader.importer.html">Documentation of the GFTS import functions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.integritymodel.html">Documentation of the integrity functions</a></li>
 </ul>
 <ul>
@@ -739,6 +739,10 @@
         <span class="n">is_od_stack</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
     <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Clusterize zones to optimize computation time.</span>
+<span class="sd">        The initial zoning is a collection of polygons, the aggregation procedure</span>
+<span class="sd">        focuses the coordinates of their centroids. They are clustered with a K-means</span>
+<span class="sd">        method where K is the number of desired aggregated zones.</span>
+<span class="sd">        After computation of the centroid clusters, polygons are merged to form the aggregated zoning.</span>
 
 <span class="sd">        Requires</span>
 <span class="sd">        ----------</span>
@@ -788,7 +792,8 @@
 <div class="viewcode-block" id="PreparationModel.preparation_clusterize_nodes"><a class="viewcode-back" href="../../../quetzal.model.preparationmodel.html#quetzal.model.preparationmodel.PreparationModel.preparation_clusterize_nodes">[docs]</a>    <span class="nd">@track_args</span>
     <span class="k">def</span> <span class="nf">preparation_clusterize_nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_clusters</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">adaptive_clustering</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Create nodes clusters to optimize computation time.</span>
-<span class="sd">            It will agregate nodes based on their relative distance to build &quot;stop areas&quot;</span>
+<span class="sd">            It will agregate nodes based on their relative distance to build &quot;stop areas&quot;.</span>
+<span class="sd">            In the transit links, the original stop is replaced by its cluster.</span>
 
 <span class="sd">        Requires</span>
 <span class="sd">        ----------</span>

@@ -662,6 +662,10 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         is_od_stack=False, **kwargs
     ):
         """Clusterize zones to optimize computation time.
+        The initial zoning is a collection of polygons, the aggregation procedure
+        focuses the coordinates of their centroids. They are clustered with a K-means
+        method where K is the number of desired aggregated zones.
+        After computation of the centroid clusters, polygons are merged to form the aggregated zoning.
 
         Requires
         ----------
@@ -711,7 +715,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
     @track_args
     def preparation_clusterize_nodes(self, n_clusters=None, adaptive_clustering=False, **kwargs):
         """Create nodes clusters to optimize computation time.
-            It will agregate nodes based on their relative distance to build "stop areas"
+            It will agregate nodes based on their relative distance to build "stop areas".
+            In the transit links, the original stop is replaced by its cluster.
 
         Requires
         ----------

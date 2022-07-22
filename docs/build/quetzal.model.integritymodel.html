@@ -19,7 +19,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="quetzal.model.transportmodel module" href="quetzal.model.transportmodel.html" />
-    <link rel="prev" title="quetzal.io.gtfs_reader.gtfs_importer module" href="quetzal.io.gtfs_reader.gtfs_importer.html" /> 
+    <link rel="prev" title="quetzal.io.gtfs_reader.importer module" href="quetzal.io.gtfs_reader.importer.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -42,7 +42,7 @@
 </ul>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="quetzal.model.preparationmodel.html">Documentation of the preparation functions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quetzal.io.gtfs_reader.gtfs_importer.html">Documentation of the GFTS import functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.io.gtfs_reader.importer.html">Documentation of the GFTS import functions</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Documentation of the integrity functions</a></li>
 </ul>
 <ul>
@@ -86,33 +86,80 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_circular_lines">
 <span class="sig-name descname"><span class="pre">integrity_fix_circular_lines</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_circular_lines"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_circular_lines" title="Permalink to this definition"></a></dt>
-<dd><ul class="simple">
-<li><p>requires: links</p></li>
-<li><p>builds: links</p></li>
-</ul>
+<dd><p>The model does not work with circular lines, this function delete them.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><p><strong>self.links</strong></p>
+</dd>
+<dt class="field-even">Builds</dt>
+<dd class="field-even"><p><strong>self.links</strong> – links without circular lines</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_collision">
 <span class="sig-name descname"><span class="pre">integrity_fix_collision</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefixes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'links':</span> <span class="pre">'link_',</span> <span class="pre">'nodes':</span> <span class="pre">'node_',</span> <span class="pre">'zones':</span> <span class="pre">'zone_'}</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_collision"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_collision" title="Permalink to this definition"></a></dt>
-<dd><ul class="simple">
-<li><p>requires: links, nodes, zones</p></li>
-<li><p>builds: links, nodes, zones</p></li>
+<dd><p>Fix index collision by adding prefixes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self.nodes</strong></p></li>
+<li><p><strong>self.links</strong></p></li>
+<li><p><strong>self.zones</strong></p></li>
 </ul>
+</dd>
+<dt class="field-even">Parameters</dt>
+<dd class="field-even"><p><strong>prefixes</strong> (<em>dict</em><em>, </em><em>optional</em>) – _description_, by default {‘nodes’: ‘<a href="#id1"><span class="problematic" id="id2">node_</span></a>’, ‘links’: ‘<a href="#id3"><span class="problematic" id="id4">link_</span></a>’, ‘zones’: ‘<a href="#id5"><span class="problematic" id="id6">zone_</span></a>’}</p>
+</dd>
+<dt class="field-odd">Builds</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self.nodes</strong> – add prefix <a href="#id7"><span class="problematic" id="id8">node_</span></a> to index</p></li>
+<li><p><strong>self.links</strong> – add prefix <a href="#id9"><span class="problematic" id="id10">link_</span></a> to index</p></li>
+<li><p><strong>self.zones</strong> – add prefix <a href="#id11"><span class="problematic" id="id12">zone_</span></a> to index</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_nodeset_consistency">
 <span class="sig-name descname"><span class="pre">integrity_fix_nodeset_consistency</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_nodeset_consistency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_nodeset_consistency" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>If some nodes are referenced in links but not in nodes,
+delete the nodes (or links).
+Makes the same thing for road_links and road_nodes if they exist</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self.links</strong></p></li>
+<li><p><strong>self.nodes</strong></p></li>
+</ul>
+</dd>
+<dt class="field-even">Builds</dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>self.links</strong> – corrected geodataframe</p></li>
+<li><p><strong>self.nodes</strong> – corrected geodataframe</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_road_network">
 <span class="sig-name descname"><span class="pre">integrity_fix_road_network</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recursive_depth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_road_network"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_road_network" title="Permalink to this definition"></a></dt>
-<dd><dl class="simple">
-<dt>clean road_network</dt><dd><ul class="simple">
-<li><p>requires: road_links, road_nodes</p></li>
-<li><p>builds: road_links, road_nodes</p></li>
+<dd><p>Wrapper of corrections of the road network. Fix isolated roads,
+dead ends, and nodeset consistency.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self.road_links</strong></p></li>
+<li><p><strong>self.road_nodes</strong></p></li>
+</ul>
+</dd>
+<dt class="field-even">Builds</dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>self.road_links</strong> – corrected geodataframe</p></li>
+<li><p><strong>self.road_nodes</strong> – corrected geodataframe</p></li>
 </ul>
 </dd>
 </dl>
@@ -121,31 +168,62 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_road_nodeset_consistency">
 <span class="sig-name descname"><span class="pre">integrity_fix_road_nodeset_consistency</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_road_nodeset_consistency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_road_nodeset_consistency" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>If some nodes are referenced in road_links but not in road_nodes,
+delete the road_nodes (or road_links).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self.road_links</strong></p></li>
+<li><p><strong>self.road_nodes</strong></p></li>
+</ul>
+</dd>
+<dt class="field-even">Builds</dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>self.road_links</strong> – corrected geodataframe</p></li>
+<li><p><strong>self.road_nodes</strong> – corrected geodataframe</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_sequences">
 <span class="sig-name descname"><span class="pre">integrity_fix_sequences</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_sequences"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_sequences" title="Permalink to this definition"></a></dt>
-<dd><ul class="simple">
-<li><p>requires: links</p></li>
-<li><p>builds: links</p></li>
-</ul>
+<dd><p>Fix the sequences of links.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><p><strong>self.links</strong></p>
+</dd>
+<dt class="field-even">Builds</dt>
+<dd class="field-even"><p><strong>self.links</strong> – corected links</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_test_all">
 <span class="sig-name descname"><span class="pre">integrity_test_all</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">errors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'raise'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_all"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_all" title="Permalink to this definition"></a></dt>
-<dd><p>errors=’ignore’ can be passed</p>
+<dd><p>Performs all the tests of the class IntegrityModel.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>errors</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default 'raise'</em>) – If ‘ignore’, will not raise exception</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default True</em>) – If False, will not print results</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_test_circular_lines">
 <span class="sig-name descname"><span class="pre">integrity_test_circular_lines</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_circular_lines"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_circular_lines" title="Permalink to this definition"></a></dt>
-<dd><dl class="simple">
-<dt>The model does not work with circular lines</dt><dd><ul class="simple">
-<li><p>requires: links</p></li>
-<li><p>builds: circular_lines</p></li>
-</ul>
+<dd><p>The model does not work with circular lines, this function is looking for them.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><p><strong>self.links</strong></p>
+</dd>
+<dt class="field-even">Builds</dt>
+<dd class="field-even"><p><strong>circular_lines</strong> – list of circular lines to be modified by user</p>
 </dd>
 </dl>
 </dd></dl>
@@ -153,60 +231,102 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_test_collision">
 <span class="sig-name descname"><span class="pre">integrity_test_collision</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('links',</span> <span class="pre">'nodes',</span> <span class="pre">'zones',</span> <span class="pre">'road_links',</span> <span class="pre">'road_nodes')</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_collision"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_collision" title="Permalink to this definition"></a></dt>
-<dd><ul class="simple">
-<li><p>requires: links, nodes, zones</p></li>
+<dd><p>Test if indexes of ‘links’, ‘nodes’, ‘zones’, ‘road_links’, ‘road_nodes’ contain
+same numbers, which may create errors. Return list of attributes that may create errors.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self.nodes</strong></p></li>
+<li><p><strong>self.links</strong></p></li>
+<li><p><strong>self.zones</strong></p></li>
 </ul>
+</dd>
+<dt class="field-even">Parameters</dt>
+<dd class="field-even"><p><strong>sets</strong> (<em>tuple</em><em>, </em><em>optional</em><em>, </em><em>default</em><em> (</em><em>'links'</em><em>, </em><em>'nodes'</em><em>, </em><em>'zones'</em><em>, </em><em>'road_links'</em><em>, </em><em>'road_nodes'</em><em>)</em>) – set of attributes of the stepmodel to consider in the test</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_test_dead_ends">
 <span class="sig-name descname"><span class="pre">integrity_test_dead_ends</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_dead_ends"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_dead_ends" title="Permalink to this definition"></a></dt>
-<dd><p>look for dead-ends in the road network
+<dd><p>Look for dead-ends in the road network.
 only the dead-ends with a dead-rank lower than the cutoff
-will be identified</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>requires: road_links</p></li>
-</ul>
-</div></blockquote>
+will be identified.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><p><strong>self.road_links</strong></p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_test_isolated_roads">
 <span class="sig-name descname"><span class="pre">integrity_test_isolated_roads</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_isolated_roads"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_isolated_roads" title="Permalink to this definition"></a></dt>
-<dd><ul class="simple">
-<li><p>requires: road_links</p></li>
-</ul>
+<dd><p>test if some roads are not connected to the graph.
+Returns the number of roads not connected.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><p><strong>self.road_links</strong></p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_test_nodeset_consistency">
 <span class="sig-name descname"><span class="pre">integrity_test_nodeset_consistency</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_nodeset_consistency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_nodeset_consistency" title="Permalink to this definition"></a></dt>
-<dd><ul class="simple">
-<li><p>requires: nodes, links</p></li>
+<dd><p>Test if some nodes are referenced in links but not in nodes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self.links</strong></p></li>
+<li><p><strong>self.nodes</strong></p></li>
 </ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_test_road_network">
 <span class="sig-name descname"><span class="pre">integrity_test_road_network</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_road_network"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_road_network" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Wrapper of tests of the road network. Test isolated roads,
+dead ends, and nodeset consistency.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self.road_links</strong></p></li>
+<li><p><strong>self.road_nodes</strong></p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_test_road_nodeset_consistency">
 <span class="sig-name descname"><span class="pre">integrity_test_road_nodeset_consistency</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_road_nodeset_consistency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_road_nodeset_consistency" title="Permalink to this definition"></a></dt>
-<dd><ul class="simple">
-<li><p>requires: nodes, links</p></li>
+<dd><p>Test if some nodes are referenced in road_links but not in road_nodes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self.road_links</strong></p></li>
+<li><p><strong>self.road_nodes</strong></p></li>
 </ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_test_sequences">
 <span class="sig-name descname"><span class="pre">integrity_test_sequences</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_sequences"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_sequences" title="Permalink to this definition"></a></dt>
-<dd><ul class="simple">
-<li><p>requires: links</p></li>
-<li><p>builds: broken_sequences</p></li>
-</ul>
+<dd><p>Test if the sequence of links is consistent.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><p><strong>self.links</strong></p>
+</dd>
+<dt class="field-even">Builds</dt>
+<dd class="field-even"><p><strong>self.broken_sequences</strong> – list of lines in which there is a problem in the link_sequence</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -257,7 +377,7 @@ will be identified</p>
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="quetzal.io.gtfs_reader.gtfs_importer.html" class="btn btn-neutral float-left" title="quetzal.io.gtfs_reader.gtfs_importer module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="quetzal.io.gtfs_reader.importer.html" class="btn btn-neutral float-left" title="quetzal.io.gtfs_reader.importer module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="quetzal.model.transportmodel.html" class="btn btn-neutral float-right" title="quetzal.model.transportmodel module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 

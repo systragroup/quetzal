@@ -30,7 +30,9 @@ def linestring_geometry(dataframe, point_dict, from_point, to_point):
 
 class GtfsImporter(Feed):
 
-    """The file importer of quetzal contains a main class: GtfsImporter.
+    """This class allows to import GTFS and transform it into a Quetzal format, 
+    that is to say a geodataframe of nodes (transit stops) and a geodataframe of links containing
+    all the information about the public transport lines.
     
     It gives access to different method to handle GTFS data:
 
@@ -39,6 +41,41 @@ class GtfsImporter(Feed):
         - filtering on specific area, dates, trips, stops (GtfsImporter.restrict())
         - stops / trips aggregation
         - frequency conversion
+
+    Example
+    --------
+
+    full_feed  = BaseGtfsImporter(gtfs_path)
+
+    You can either use the wrapper : 
+
+    full_feed.build()
+
+    Or process manually by applying the following functions.
+
+    Can restrict to dates and hour with :
+
+        * feed_r = full_feed.restrict(dates=['20200204']) # the dates must be within the feed start and end dates
+        * feed_t = feed_r.restrict(time_range=['08:00:00', '09:00:00'])
+
+    If converting timetable to frequency is needed :
+    
+        * feed.group_services()
+        * feed.build_stop_clusters(distance_threshold=300)
+        * feed.build_patterns(on='cluster_id')
+        * feed_frequencies = feed.convert_to_frequencies(time_range=time_range)
+
+    Last but not least :
+
+        * feed_frequencies.build_links_and_nodes()
+        * feed_frequencies.build_geometries(use_utm=False)
+
+    And to save :
+
+        * sm = stepmodel.StepModel()
+        * sm.links = feed_frequencies.links
+        * sm.nodes = feed_frequencies.nodes
+
     """
     def __init__(self, epsg=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -55,11 +92,57 @@ class GtfsImporter(Feed):
         return feed
 
     def build_stop_clusters(self, **kwargs):
+        """Those stop clusters are used to regroup pattern of similar services.
+        The aim is to simplify the number of stops and services in a public transport route.
+        Works on the feed defined with BaseGtfsImporter(gtfs_path).
+
+        Parameters
+        ----------
+        distance_threshold : int, optional, default 150
+            Distance threshold for node to group
+        col : str, optional, default 'cluster_id'
+            Name of the column that will be created
+        use_parent_station : bool, optional, default False
+            Use parent station if defined
+        
+        Builds
+        ----------
+            feed.stop : 
+                add cluster column
+
+        """        
         self.stops = patterns.build_stop_clusters(self.stops, **kwargs)
 
     def build(self, date, time_range, cluster_distance_threshold=None):
+        """Wrapper that allows to apply all required functions to build
+        links and nodes from GTFS, including converting timetable to frequency.
+        If keeping timetable is needed, use function build_links_and_nodes with parameter
+        time_expanded = True.
+
+        Parameters
+        ----------
+        date : string
+            date of the gtfs feed to import. Example : '20200204'
+        time_range : list
+            Use if you want to restrict to a specific period of the day.
+            Example : ['08:00:00', '09:00:00']
+        cluster_distance_threshold : int, optional, default None
+            Use to simplify the number of stops and services in a public transport route.
+            Distance threshold for node to group.
+
+
+        Builds
+        ----------
+        self.links
+            Links of the public transport system and pt routes caracteristics, quetzal format
+        self.nodes
+            Public transport stations.
+        """      
+
         print('Restricting to date…')
         feed = self.restrict(dates=[date])
+        print('Restricting to time')
+        feed = self.restrict(time_range=time_range)
         print('Grouping services…')
         feed.group_services()
         print('Cleaning…')
@@ -79,6 +162,27 @@ class GtfsImporter(Feed):
         return feed
 
     def build_links_and_nodes(self, time_expanded=False, log=True, **kwargs):
+        """Transform the transit feed into a Quetzal format, 
+        that is to say a geodataframe of nodes (transit stops) and a geodataframe of links containing
+        all the information about the public transport lines.
+
+        Parameters
+        ----------
+        time_expanded : bool, optional, default False
+            Use true if you want to build a time expanded model, 
+            using timetables for pathfinders
+        log : bool, optional, default True
+            print epsg
+        use_utm : bool, optional, default True
+            Compute projection from stops coordinates
+
+        Builds
+        ----------
+        self.links
+            Links of the public transport system and pt routes caracteristics, quetzal format
+        self.nodes
+            Public transport stations.
+        """        
         self.to_seconds()
         self.build_links(time_expanded=time_expanded, **kwargs)
         self.build_geometries(log=log)

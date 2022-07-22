@@ -67,8 +67,20 @@ class IntegrityModel:
         self,
         sets=('links', 'nodes', 'zones', 'road_links', 'road_nodes')
     ):
-        """
-            * requires: links, nodes, zones
+        """Test if indexes of 'links', 'nodes', 'zones', 'road_links', 'road_nodes' contain
+        same numbers, which may create errors. Return list of attributes that may create errors.
+
+        Requires
+        ----------
+        self.nodes
+        self.links
+        self.zones
+        
+        Parameters
+        ----------
+        sets : tuple, optional, default ('links', 'nodes', 'zones', 'road_links', 'road_nodes')
+            set of attributes of the stepmodel to consider in the test
+
         """
         tuples = [(key, list(self.__getattribute__(key).index)) for key in sets]
 
@@ -100,9 +112,27 @@ class IntegrityModel:
         self,
         prefixes={'nodes': 'node_', 'links': 'link_', 'zones': 'zone_'}
     ):
-        """
-            * requires: links, nodes, zones
-            * builds: links, nodes, zones
+        """Fix index collision by adding prefixes.
+
+        Requires
+        ----------
+        self.nodes
+        self.links
+        self.zones
+
+        Parameters
+        ----------
+        prefixes : dict, optional
+            _description_, by default {'nodes': 'node_', 'links': 'link_', 'zones': 'zone_'}
+        
+        Builds
+        ----------
+        self.nodes :
+            add prefix node_ to index
+        self.links :
+            add prefix link_ to index
+        self.zones :
+            add prefix zone_ to index
         """
         try:
             self.integrity_test_collision()
@@ -136,9 +166,16 @@ class IntegrityModel:
                     print('can not add prefixes on table: ', key)
 
     def integrity_test_sequences(self):
-        """
-            * requires: links
-            * builds: broken_sequences
+        """Test if the sequence of links is consistent.
+        
+        Requires
+        ----------
+        self.links
+
+        Builds
+        ----------
+        self.broken_sequences :
+            list of lines in which there is a problem in the link_sequence
         """
         links = self.links.copy().sort_values('link_sequence')
         broken_sequences = []
@@ -161,9 +198,17 @@ class IntegrityModel:
         assert (count_series == max_series).all(), message
 
     def integrity_fix_sequences(self):
-        """
-            * requires: links
-            * builds: links
+        
+        """Fix the sequences of links.
+        
+        Requires
+        ----------
+        self.links
+
+        Builds
+        ----------
+        self.links :
+            corected links
         """
         try:
             self.integrity_test_sequences()
@@ -181,9 +226,16 @@ class IntegrityModel:
 
     def integrity_test_circular_lines(self):
         """
-        The model does not work with circular lines
-            * requires: links
-            * builds: circular_lines
+        The model does not work with circular lines, this function is looking for them.
+
+        Requires
+        ----------
+        self.links
+
+        Builds
+        ----------
+        circular_lines :
+            list of circular lines to be modified by user
         """
         links = self.links.copy().sort_values('link_sequence')
         circular_lines = []
@@ -206,8 +258,16 @@ class IntegrityModel:
 
     def integrity_fix_circular_lines(self):
         """
-            * requires: links
-            * builds: links
+        The model does not work with circular lines, this function delete them.
+
+        Requires
+        ----------
+        self.links
+
+        Builds
+        ----------
+        self.links :
+            links without circular lines
         """
         try:
             self.integrity_test_circular_lines()
@@ -217,8 +277,13 @@ class IntegrityModel:
             print('dropped circular lines: ' + str(self.circular_lines))
 
     def integrity_test_isolated_roads(self):
-        """
-            * requires: road_links
+        """ test if some roads are not connected to the graph.
+        Returns the number of roads not connected.
+
+        Requires
+        ----------
+        self.road_links
+
         """
         g = nx.Graph()
         g.add_edges_from(self.road_links[['a', 'b']].values)
@@ -227,11 +292,14 @@ class IntegrityModel:
         assert nx.number_connected_components(g) == 1, msg
 
     def integrity_test_dead_ends(self, cutoff=5):
-        """
-        look for dead-ends in the road network
+        """ Look for dead-ends in the road network.
         only the dead-ends with a dead-rank lower than the cutoff
-        will be identified
-            * requires: road_links
+        will be identified.
+        
+        Requires
+        ----------
+        self.road_links
+
         """
         road_graph = nx.DiGraph()
         road_graph.add_edges_from(self.road_links[['a', 'b']].values)
@@ -254,8 +322,13 @@ class IntegrityModel:
         assert len(dead_ends) == 0, message
 
     def integrity_test_nodeset_consistency(self):
-        """
-            * requires: nodes, links
+        """ Test if some nodes are referenced in links but not in nodes.
+
+        Requires
+        ----------
+        self.links
+        self.nodes
+            
         """
 
         try:
@@ -303,8 +376,13 @@ class IntegrityModel:
             print('no road_links or road_nodes')
 
     def integrity_test_road_nodeset_consistency(self):
-        """
-            * requires: nodes, links
+        """ Test if some nodes are referenced in road_links but not in road_nodes.
+
+        Requires
+        ----------
+        self.road_links
+        self.road_nodes
+            
         """
         missing_road_nodes = self.road_link_nodeset() - self.road_nodeset()
 
@@ -315,6 +393,22 @@ class IntegrityModel:
         assert len(missing_road_nodes) == 0, msg
 
     def integrity_fix_nodeset_consistency(self):
+        """ If some nodes are referenced in links but not in nodes, 
+        delete the nodes (or links).
+        Makes the same thing for road_links and road_nodes if they exist
+
+        Requires
+        ----------
+        self.links
+        self.nodes
+            
+        Builds
+        ----------
+        self.links :
+            corrected geodataframe
+        self.nodes :
+            corrected geodataframe
+        """
         self.links = self.links.loc[self.links['a'].isin(self.nodeset())]
         self.links = self.links.loc[self.links['b'].isin(self.nodeset())]
         self.nodes = self.nodes.loc[self.link_nodeset()]
@@ -324,6 +418,21 @@ class IntegrityModel:
             pass
 
     def integrity_fix_road_nodeset_consistency(self):
+        """ If some nodes are referenced in road_links but not in road_nodes, 
+        delete the road_nodes (or road_links).
+
+        Requires
+        ----------
+        self.road_links
+        self.road_nodes
+            
+        Builds
+        ----------
+        self.road_links :
+            corrected geodataframe
+        self.road_nodes :
+            corrected geodataframe
+        """
         self.road_links = self.road_links.loc[
             self.road_links['a'].isin(self.road_nodeset())
         ]
@@ -333,15 +442,34 @@ class IntegrityModel:
         self.road_nodes = self.road_nodes.loc[self.road_link_nodeset()]
 
     def integrity_test_road_network(self, cutoff=10):
+        """ Wrapper of tests of the road network. Test isolated roads, 
+        dead ends, and nodeset consistency.
+
+        Requires
+        ----------
+        self.road_links
+        self.road_nodes
+            
+        """
         self.integrity_test_isolated_roads()
         self.integrity_test_dead_ends(cutoff=cutoff)
         self.integrity_test_road_nodeset_consistency()
 
     def integrity_fix_road_network(self, cutoff=10, recursive_depth=1):
-        """
-        clean road_network
-            * requires: road_links, road_nodes
-            * builds: road_links, road_nodes
+        """ Wrapper of corrections of the road network. Fix isolated roads, 
+        dead ends, and nodeset consistency.
+
+        Requires
+        ----------
+        self.road_links
+        self.road_nodes
+            
+        Builds
+        ----------
+        self.road_links :
+            corrected geodataframe
+        self.road_nodes :
+            corrected geodataframe
         """
         if recursive_depth < 1:
             print('Reached max recursive_depth')
@@ -359,9 +487,17 @@ class IntegrityModel:
             )
 
     def integrity_test_all(self, errors='raise', verbose=True):
-        """
-        errors='ignore' can be passed
-        """
+        """Performs all the tests of the class IntegrityModel.
+
+        Parameters
+        ----------
+        errors : str, optional, default 'raise'
+            If 'ignore', will not raise exception
+        verbose : bool, optional, default True
+            If False, will not print results
+
+        
+        """        
         integrity_test_methods = [
             m for m in list(dir(self))
             if ('integrity_test_' in m) and ('integrity_test_all' not in m)

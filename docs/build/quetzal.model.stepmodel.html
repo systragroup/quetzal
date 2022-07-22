@@ -42,7 +42,7 @@
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="quetzal.model.preparationmodel.html">Documentation of the preparation functions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quetzal.io.gtfs_reader.gtfs_importer.html">Documentation of the GFTS import functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.io.gtfs_reader.importer.html">Documentation of the GFTS import functions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quetzal.model.integritymodel.html">Documentation of the integrity functions</a></li>
 </ul>
 <ul>
@@ -527,65 +527,113 @@ Usually created by method step_logit.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.add_type_prefixes">
 <span class="sig-name descname"><span class="pre">add_type_prefixes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefixes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'links':</span> <span class="pre">'link_',</span> <span class="pre">'nodes':</span> <span class="pre">'node_',</span> <span class="pre">'zones':</span> <span class="pre">'zone_'}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.add_type_prefixes" title="Permalink to this definition"></a></dt>
-<dd><p>deprecated!
-* requires: links, nodes, zones
-* builds: links, nodes, zones</p>
+<dd><p>deprecated! Fix index collision by adding prefixes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self.nodes</strong></p></li>
+<li><p><strong>self.links</strong></p></li>
+<li><p><strong>self.zones</strong></p></li>
+</ul>
+</dd>
+<dt class="field-even">Parameters</dt>
+<dd class="field-even"><p><strong>prefixes</strong> (<em>dict</em><em>, </em><em>optional</em>) – _description_, by default {‘nodes’: ‘<a href="#id1"><span class="problematic" id="id2">node_</span></a>’, ‘links’: ‘<a href="#id3"><span class="problematic" id="id4">link_</span></a>’, ‘zones’: ‘<a href="#id5"><span class="problematic" id="id6">zone_</span></a>’}</p>
+</dd>
+<dt class="field-odd">Builds</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self.nodes</strong> – add prefix <a href="#id7"><span class="problematic" id="id8">node_</span></a> to index</p></li>
+<li><p><strong>self.links</strong> – add prefix <a href="#id9"><span class="problematic" id="id10">link_</span></a> to index</p></li>
+<li><p><strong>self.zones</strong> – add prefix <a href="#id11"><span class="problematic" id="id12">zone_</span></a> to index</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.assert_convex_road_digraph">
 <span class="sig-name descname"><span class="pre">assert_convex_road_digraph</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.assert_convex_road_digraph" title="Permalink to this definition"></a></dt>
-<dd><p>deprecated!
-* requires: road_links</p>
+<dd><p>deprecated!  test if some roads are not connected to the graph.
+Returns the number of roads not connected.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><p><strong>self.road_links</strong></p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.assert_lines_integrity">
 <span class="sig-name descname"><span class="pre">assert_lines_integrity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.assert_lines_integrity" title="Permalink to this definition"></a></dt>
-<dd><p>deprecated!
-* requires: links
-* builds: broken_sequences</p>
+<dd><p>deprecated! Test if the sequence of links is consistent.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><p><strong>self.links</strong></p>
+</dd>
+<dt class="field-even">Builds</dt>
+<dd class="field-even"><p><strong>self.broken_sequences</strong> – list of lines in which there is a problem in the link_sequence</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.assert_no_circular_lines">
 <span class="sig-name descname"><span class="pre">assert_no_circular_lines</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.assert_no_circular_lines" title="Permalink to this definition"></a></dt>
 <dd><p>deprecated!
-The model does not work with circular lines</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>requires: links</p></li>
-<li><p>builds: circular_lines</p></li>
-</ul>
-</div></blockquote>
+The model does not work with circular lines, this function is looking for them.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><p><strong>self.links</strong></p>
+</dd>
+<dt class="field-even">Builds</dt>
+<dd class="field-even"><p><strong>circular_lines</strong> – list of circular lines to be modified by user</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.assert_no_collision">
 <span class="sig-name descname"><span class="pre">assert_no_collision</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('links',</span> <span class="pre">'nodes',</span> <span class="pre">'zones',</span> <span class="pre">'road_links',</span> <span class="pre">'road_nodes')</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.assert_no_collision" title="Permalink to this definition"></a></dt>
-<dd><p>deprecated!
-* requires: links, nodes, zones</p>
+<dd><p>deprecated! Test if indexes of ‘links’, ‘nodes’, ‘zones’, ‘road_links’, ‘road_nodes’ contain
+same numbers, which may create errors. Return list of attributes that may create errors.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self.nodes</strong></p></li>
+<li><p><strong>self.links</strong></p></li>
+<li><p><strong>self.zones</strong></p></li>
+</ul>
+</dd>
+<dt class="field-even">Parameters</dt>
+<dd class="field-even"><p><strong>sets</strong> (<em>tuple</em><em>, </em><em>optional</em><em>, </em><em>default</em><em> (</em><em>'links'</em><em>, </em><em>'nodes'</em><em>, </em><em>'zones'</em><em>, </em><em>'road_links'</em><em>, </em><em>'road_nodes'</em><em>)</em>) – set of attributes of the stepmodel to consider in the test</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.assert_no_dead_ends">
 <span class="sig-name descname"><span class="pre">assert_no_dead_ends</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.assert_no_dead_ends" title="Permalink to this definition"></a></dt>
-<dd><p>deprecated!
-look for dead-ends in the road network
+<dd><p>deprecated!  Look for dead-ends in the road network.
 only the dead-ends with a dead-rank lower than the cutoff
-will be identified</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>requires: road_links</p></li>
-</ul>
-</div></blockquote>
+will be identified.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><p><strong>self.road_links</strong></p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.assert_nodeset_consistency">
 <span class="sig-name descname"><span class="pre">assert_nodeset_consistency</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.assert_nodeset_consistency" title="Permalink to this definition"></a></dt>
-<dd><p>deprecated!
-* requires: nodes, links</p>
+<dd><p>deprecated!  Test if some nodes are referenced in links but not in nodes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self.links</strong></p></li>
+<li><p><strong>self.nodes</strong></p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -619,38 +667,76 @@ tree analysis (arborescences)
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.clean_road_network">
 <span class="sig-name descname"><span class="pre">clean_road_network</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recursive_depth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.clean_road_network" title="Permalink to this definition"></a></dt>
-<dd><p>deprecated!
-clean road_network</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>requires: road_links, road_nodes</p></li>
-<li><p>builds: road_links, road_nodes</p></li>
+<dd><p>deprecated!  Wrapper of corrections of the road network. Fix isolated roads,
+dead ends, and nodeset consistency.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self.road_links</strong></p></li>
+<li><p><strong>self.road_nodes</strong></p></li>
 </ul>
-</div></blockquote>
+</dd>
+<dt class="field-even">Builds</dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>self.road_links</strong> – corrected geodataframe</p></li>
+<li><p><strong>self.road_nodes</strong> – corrected geodataframe</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.get_lines_integrity">
 <span class="sig-name descname"><span class="pre">get_lines_integrity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.get_lines_integrity" title="Permalink to this definition"></a></dt>
-<dd><p>deprecated!
-* requires: links
-* builds: links</p>
+<dd><p>deprecated! Fix the sequences of links.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><p><strong>self.links</strong></p>
+</dd>
+<dt class="field-even">Builds</dt>
+<dd class="field-even"><p><strong>self.links</strong> – corected links</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.get_no_circular_lines">
 <span class="sig-name descname"><span class="pre">get_no_circular_lines</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.get_no_circular_lines" title="Permalink to this definition"></a></dt>
 <dd><p>deprecated!
-* requires: links
-* builds: links</p>
+The model does not work with circular lines, this function delete them.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><p><strong>self.links</strong></p>
+</dd>
+<dt class="field-even">Builds</dt>
+<dd class="field-even"><p><strong>self.links</strong> – links without circular lines</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.get_no_collision">
 <span class="sig-name descname"><span class="pre">get_no_collision</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefixes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'links':</span> <span class="pre">'link_',</span> <span class="pre">'nodes':</span> <span class="pre">'node_',</span> <span class="pre">'zones':</span> <span class="pre">'zone_'}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.get_no_collision" title="Permalink to this definition"></a></dt>
-<dd><p>deprecated!
-* requires: links, nodes, zones
-* builds: links, nodes, zones</p>
+<dd><p>deprecated! Fix index collision by adding prefixes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Requires</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self.nodes</strong></p></li>
+<li><p><strong>self.links</strong></p></li>
+<li><p><strong>self.zones</strong></p></li>
+</ul>
+</dd>
+<dt class="field-even">Parameters</dt>
+<dd class="field-even"><p><strong>prefixes</strong> (<em>dict</em><em>, </em><em>optional</em>) – _description_, by default {‘nodes’: ‘<a href="#id13"><span class="problematic" id="id14">node_</span></a>’, ‘links’: ‘<a href="#id15"><span class="problematic" id="id16">link_</span></a>’, ‘zones’: ‘<a href="#id17"><span class="problematic" id="id18">zone_</span></a>’}</p>
+</dd>
+<dt class="field-odd">Builds</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>self.nodes</strong> – add prefix <a href="#id19"><span class="problematic" id="id20">node_</span></a> to index</p></li>
+<li><p><strong>self.links</strong> – add prefix <a href="#id21"><span class="problematic" id="id22">link_</span></a> to index</p></li>
+<li><p><strong>self.zones</strong> – add prefix <a href="#id23"><span class="problematic" id="id24">zone_</span></a> to index</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -688,7 +774,11 @@ linearsolver_utils.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.renumber">
 <span class="sig-name descname"><span class="pre">renumber</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_zones</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cluster_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_od_stack</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.renumber" title="Permalink to this definition"></a></dt>
-<dd><p>deprecated! Clusterize zones to optimize computation time.</p>
+<dd><p>deprecated! Clusterize zones to optimize computation time.
+The initial zoning is a collection of polygons, the aggregation procedure
+focuses the coordinates of their centroids. They are clustered with a K-means
+method where K is the number of desired aggregated zones.
+After computation of the centroid clusters, polygons are merged to form the aggregated zoning.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Requires</dt>
 <dd class="field-odd"><ul class="simple">
@@ -717,7 +807,8 @@ linearsolver_utils.</p>
 <dt class="sig sig-object py" id="quetzal.model.stepmodel.StepModel.renumber_nodes">
 <span class="sig-name descname"><span class="pre">renumber_nodes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_clusters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adaptive_clustering</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#quetzal.model.stepmodel.StepModel.renumber_nodes" title="Permalink to this definition"></a></dt>
 <dd><dl class="simple">
-<dt>deprecated! Create nodes clusters to optimize computation time.</dt><dd><p>It will agregate nodes based on their relative distance to build “stop areas”</p>
+<dt>deprecated! Create nodes clusters to optimize computation time.</dt><dd><p>It will agregate nodes based on their relative distance to build “stop areas”.
+In the transit links, the original stop is replaced by its cluster.</p>
 </dd>
 </dl>
 <dl class="field-list simple">
@@ -921,7 +1012,7 @@ curve to smoothly go from short_leg_speed to long_leg_speed (can be understood a
 <li><p><strong>zone_to_transit</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default True</em>) – True to create links between zones and transit stops (nodes)</p></li>
 <li><p><strong>zone_to_road</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – True to create links between zones and road_nodes, and between road_nodes and nodes</p></li>
 <li><p><strong>prefix</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default False</em>) – If True, add prefixes to the index of the ntlegs
-<a href="#id1"><span class="problematic" id="id2">ztt_</span></a> (zone_to_transit), <a href="#id3"><span class="problematic" id="id4">ztr_</span></a> (zone_to_road), <a href="#id5"><span class="problematic" id="id6">rtt_</span></a> (road_to_transit)</p></li>
+<a href="#id25"><span class="problematic" id="id26">ztt_</span></a> (zone_to_transit), <a href="#id27"><span class="problematic" id="id28">ztr_</span></a> (zone_to_road), <a href="#id29"><span class="problematic" id="id30">rtt_</span></a> (road_to_transit)</p></li>
 </ul>
 </dd>
 <dt class="field-odd">Builds</dt>

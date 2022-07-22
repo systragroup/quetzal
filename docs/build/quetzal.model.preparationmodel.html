@@ -18,7 +18,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="quetzal.io.gtfs_reader.gtfs_importer module" href="quetzal.io.gtfs_reader.gtfs_importer.html" />
+    <link rel="next" title="quetzal.io.gtfs_reader.importer module" href="quetzal.io.gtfs_reader.importer.html" />
     <link rel="prev" title="quetzal.model.stepmodel module" href="quetzal.model.stepmodel.html" /> 
 </head>
 
@@ -42,7 +42,7 @@
 </ul>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Documentation of the preparation functions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quetzal.io.gtfs_reader.gtfs_importer.html">Documentation of the GFTS import functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.io.gtfs_reader.importer.html">Documentation of the GFTS import functions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quetzal.model.integritymodel.html">Documentation of the integrity functions</a></li>
 </ul>
 <ul>
@@ -128,7 +128,8 @@ It will still return the closest road_node for the stops.</p></li>
 <dt class="sig sig-object py" id="quetzal.model.preparationmodel.PreparationModel.preparation_clusterize_nodes">
 <span class="sig-name descname"><span class="pre">preparation_clusterize_nodes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_clusters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adaptive_clustering</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_clusterize_nodes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_clusterize_nodes" title="Permalink to this definition"></a></dt>
 <dd><dl class="simple">
-<dt>Create nodes clusters to optimize computation time.</dt><dd><p>It will agregate nodes based on their relative distance to build “stop areas”</p>
+<dt>Create nodes clusters to optimize computation time.</dt><dd><p>It will agregate nodes based on their relative distance to build “stop areas”.
+In the transit links, the original stop is replaced by its cluster.</p>
 </dd>
 </dl>
 <dl class="field-list simple">
@@ -155,7 +156,11 @@ If False n_clusters must be defined</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="quetzal.model.preparationmodel.PreparationModel.preparation_clusterize_zones">
 <span class="sig-name descname"><span class="pre">preparation_clusterize_zones</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_zones</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cluster_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_od_stack</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/preparationmodel.html#PreparationModel.preparation_clusterize_zones"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.preparationmodel.PreparationModel.preparation_clusterize_zones" title="Permalink to this definition"></a></dt>
-<dd><p>Clusterize zones to optimize computation time.</p>
+<dd><p>Clusterize zones to optimize computation time.
+The initial zoning is a collection of polygons, the aggregation procedure
+focuses the coordinates of their centroids. They are clustered with a K-means
+method where K is the number of desired aggregated zones.
+After computation of the centroid clusters, polygons are merged to form the aggregated zoning.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Requires</dt>
 <dd class="field-odd"><ul class="simple">
@@ -441,7 +446,7 @@ max_ntleg_length=5000</p>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="quetzal.model.stepmodel.html" class="btn btn-neutral float-left" title="quetzal.model.stepmodel module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="quetzal.io.gtfs_reader.gtfs_importer.html" class="btn btn-neutral float-right" title="quetzal.io.gtfs_reader.gtfs_importer module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="quetzal.io.gtfs_reader.importer.html" class="btn btn-neutral float-right" title="quetzal.io.gtfs_reader.importer module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
