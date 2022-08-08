@@ -395,7 +395,7 @@ def add_north_and_scalebar(ax, fontsize=14):
 
 
 def bandwidth(
-    gdf, value_column, max_value=None, power=1, legend=True, offset_direction='right',
+    gdf, value_column, max_value=None, power=1, legend=True, offset_direction='right', offset_ratio=0.5,
     label_column=None, max_linewidth_meters=100, variable_width=True, line_offset=True, cmap='Spectral',
     arrows=False, geographical_bounds=None, label_kwargs={'size': 12}, 
     arrow_kwargs={'head_width': -150}, 
@@ -431,7 +431,7 @@ def bandwidth(
     # Offset
     if line_offset:
         df['geometry'] = df.apply(
-            lambda x: x['geometry'].parallel_offset(x['geographical_width'] * 0.5, offset_direction), 1
+            lambda x: x['geometry'].parallel_offset(x['geographical_width'] * offset_ratio, offset_direction), 1
         )
         df = df[df.geometry.type == 'LineString']
         df = df[df.length > 0]  # offset can create empty LineString
