@@ -61,7 +61,7 @@ mercantile==1.2.1
 mistune==0.8.4
 munch==2.5.0
 nbclient==0.5.3
-nbconvert==6.0.7
+nbconvert==6.3.0
 nbformat==5.1.3
 nest-asyncio==1.5.1
 networkx==2.5
