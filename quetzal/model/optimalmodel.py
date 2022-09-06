@@ -212,21 +212,26 @@ class OptimalModel(preparationmodel.PreparationModel):
             self.road_links['load'] = self.road_links[volume_column]
 
     def analysis_strategy_time(self, boarding_time=0, alighting_time=0, inf=1e9, walk_on_road=True):
-        assert walk_on_road == True # TODO implement for ACF
         zero = 1 / inf
         # add a column for each type of time to the os edges
         edges = self.optimal_strategy_edges
-        edges['rtt_time'] = self.road_to_transit['time'] if hasattr(self, 'road_to_transit') else 0
-        edges['ztr_time'] = self.zone_to_road['time']  if hasattr(self, 'zone_to_road') else 0
-        edges['ztt_time'] = self.zone_to_transit['time']  if hasattr(self, 'zone_to_transit') else 0
-        edges['in_vehicle_time'] = self.links['time']
-        edges.loc[['boarding_' in i for i in edges.index], 'boarding_time'] = boarding_time
-        edges.loc[['alighting_' in i for i in edges.index], 'alighting_time'] = alighting_time
+        walk_links = set(['road_to_transit', 'zone_to_road', 'zone_to_transit', 'footpaths']).intersection(dir(self))
+        for attr in walk_links:
+            edges[attr + r'_time'] = self.__getattribute__(attr)['time']
+            
+        edges.fillna(0, inplace=True)
+        edges['walk_time'] = edges[[c + '_time' for c in walk_links]].T.sum()
+
         if walk_on_road:
             edges['road_time'] = self.road_links['walk_time']
             edges.fillna(0, inplace=True)
-            edges['walk_time'] = edges['road_time'] + edges['rtt_time'] + edges['ztr_time'] + edges['ztt_time']
+            edges['walk_time'] += edges['road_time']
 
+        edges['in_vehicle_time'] = self.links['time']
+        edges.loc[['boarding_' in i for i in edges.index], 'boarding_time'] = boarding_time
+        edges.loc[['alighting_' in i for i in edges.index], 'alighting_time'] = alighting_time
+
+        edges.fillna(0, inplace=True)
         self.optimal_strategy_edges = edges
         
         # sum over the edges of a strategy the varios types of times    
