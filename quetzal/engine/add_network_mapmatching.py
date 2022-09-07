@@ -23,7 +23,9 @@ class NetworkCaster_MapMaptching:
             self.links = self.links.drop(columns=self.links.index.name)
         self.links = self.links.reset_index()
         self.links_index_dict = self.links['index'].to_dict()
+        self.links_geom_dict = self.links.set_index('index')['geometry']
         self.links = self.links.drop(columns=['index'])
+        
 
         # Format links to a "gps track". keep node a,b of first links and node b of evey other ones.
         self.gps_tracks = links[['a', 'b', by, sequence, 'route_id']]
@@ -72,7 +74,7 @@ class NetworkCaster_MapMaptching:
         dict_link = self.links.set_index(['a', 'b'], drop=False)['index'].to_dict()
         dict_link = self.links.set_index(['a', 'b'], drop=False)['index'].to_dict()
         length_dict = self.links['length'].to_dict()
-        geom_dict = dict(self.links['geometry'])
+        geom_dict = self.links_geom_dict
         x = self.links[['x_geometry', 'y_geometry']].values
         # Fit Nearest neighbors model
         nbrs = NearestNeighbors(n_neighbors=n_neighbors_centroid, algorithm='ball_tree').fit(x)
