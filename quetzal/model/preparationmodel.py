@@ -9,6 +9,8 @@ from syspy.skims import skims
 from tqdm import tqdm
 import networkx as nx
 import warnings
+from shapely.geometry import MultiLineString
+
 
 
 def read_hdf(filepath):
@@ -515,7 +517,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                                  n_neighbors=10,
                                  distance_max=5000,
                                  by='trip_id',
-                                 sequence = 'link_sequence'):
+                                 sequence = 'link_sequence',
+                                 overwrite_geom = True):
         
         """Mapmatch each trip_id in self.links to the road_network (self.road_links)
 
@@ -533,7 +536,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             _description_, by default 'trip_id'
         sequence : str, optional
             _description_, by default 'link_sequence'
-
+        overwrite_geom : bool, optional
+            _description_, by default True
         Builds
         ----------
 
@@ -548,7 +552,6 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
 
         matched_links['road_id_a'] = matched_links['road_id_a'].apply(lambda x: ncm.links_index_dict.get(x))
         matched_links['road_id_b'] = matched_links['road_id_b'].apply(lambda x: ncm.links_index_dict.get(x))
-
         road_a_dict = matched_links['road_id_a'].to_dict()
         road_b_dict = matched_links['road_id_b'].to_dict()
         length_dict = matched_links['length'].to_dict()
@@ -556,6 +559,10 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         self.links['road_b'] = self.links.index.map(road_b_dict.get)
         self.links['length'] = self.links.index.map(length_dict.get)
         self.links = self.links.merge(links_mat[['road_node_list', 'road_link_list']], left_index=True, right_index=True, how='left')
+        if overwrite_geom:
+            def get_geom(ls,geom_dict):
+                return MultiLineString([*map(geom_dict.get,ls)])
+            self.links['geometry'] = self.links['road_link_list'].apply(lambda x: get_geom(x, ncm.links_geom_dict))
 
     @track_args
     def preparation_logit(
