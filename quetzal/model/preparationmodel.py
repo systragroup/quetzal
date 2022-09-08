@@ -9,7 +9,7 @@ from syspy.skims import skims
 from tqdm import tqdm
 import networkx as nx
 import warnings
-from shapely.geometry import MultiLineString
+from shapely.geometry import LineString, Point
 
 
 
@@ -561,7 +561,25 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         self.links = self.links.merge(links_mat[['road_node_list', 'road_link_list']], left_index=True, right_index=True, how='left')
         if overwrite_geom:
             def get_geom(ls,geom_dict):
-                return MultiLineString([*map(geom_dict.get,ls)])
+                # transform road_links index to linetring
+                ls = [*map(geom_dict.get,ls)]
+                new_line=[]
+                #for each linestring
+                for link in ls:
+                    ## init on first iteration
+                    if len(new_line)==0:
+                        #get list of point instead of linetring
+                        new_line = [Point(x, y) for x, y in zip(link.coords.xy[0], link.coords.xy[1])]
+                    else:
+                        #get list of point instead of linetring
+                        link = [Point(x, y) for x, y in zip(link.coords.xy[0], link.coords.xy[1])]
+                        # the link geom is reverse (B-A instead of A-B), reverse it
+                        if link[0]!=new_line[-1]:
+                            link.reverse()
+                        # append other points to the linetring
+                        new_line.extend(link[1:]) 
+                #return a linetring of all road points. 
+                return LineString(new_line)
             self.links['geometry'] = self.links['road_link_list'].apply(lambda x: get_geom(x, ncm.links_geom_dict))
 
     @track_args

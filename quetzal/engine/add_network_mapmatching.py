@@ -23,7 +23,7 @@ class NetworkCaster_MapMaptching:
             self.links = self.links.drop(columns=self.links.index.name)
         self.links = self.links.reset_index()
         self.links_index_dict = self.links['index'].to_dict()
-        self.links_geom_dict = self.links.set_index('index')['geometry']
+        self.links_geom_dict = self.links.set_index('index')['geometry'] # this dict for later. link_x:linestring
         self.links = self.links.drop(columns=['index'])
         
 
@@ -74,7 +74,7 @@ class NetworkCaster_MapMaptching:
         dict_link = self.links.set_index(['a', 'b'], drop=False)['index'].to_dict()
         dict_link = self.links.set_index(['a', 'b'], drop=False)['index'].to_dict()
         length_dict = self.links['length'].to_dict()
-        geom_dict = self.links_geom_dict
+        geom_dict = self.links['geometry'].to_dict() # we need this dict with index 0,1,2,3,4,5...
         x = self.links[['x_geometry', 'y_geometry']].values
         # Fit Nearest neighbors model
         nbrs = NearestNeighbors(n_neighbors=n_neighbors_centroid, algorithm='ball_tree').fit(x)
