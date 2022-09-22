@@ -3,7 +3,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 from quetzal.analysis import analysis
-from quetzal.engine import engine, linearsolver_utils, nested_logit
+from quetzal.engine import engine, linearsolver_utils, nested_logit, elevation
 from quetzal.io import export
 from quetzal.model import model, summarymodel, transportmodel
 from syspy.spatial import geometries, spatial
@@ -763,3 +763,46 @@ class AnalysisModel(summarymodel.SummaryModel):
 
         self.production = prod
         self.attraction = attr
+
+
+    node_gdfs = ['nodes', 'road_nodes']
+    link_gdfs = ['road_links', 'zone_to_transit', 'zone_to_road', 'road_to_transit', 'footpaths', 'links']
+
+    def analysis_elevation(self, filepath, node_gdfs=node_gdfs, link_gdfs=link_gdfs, method='linear'):
+        """
+        Add elevation columns in node-type gdfs and elevation + grade columns in link-type gdfs
+        Requires elevation raster in epsg 4326 on the given perimeter.
+        Wordwide elevation data at 30m resolution from SRTM (https://www2.jpl.nasa.gov/srtm/) can be downloaded here: 
+            https://dwtkns.com/srtm30m/
+        It works well with Firefox (currently not working witch Chrome), and requires a nasa Earthdata login.
+        """
+        # if a list of filepaths is passed, compose them all as a virtual raster
+        # use the sha1 hash of the filepaths list as the vrt filename
+        filepath = elevation.merge_rasters_virtually(filepath)
+
+        # if len(raster_paths[0])==1:
+        #     raise ValueError('raster_paths must be a list of paths')
+        node_elevation = {}
+        for attribute in node_gdfs:
+            # to lat-lon
+            nodes = self.__getattribute__(attribute)
+            temp = gpd.GeoDataFrame(nodes).set_crs(self.epsg).copy()
+            temp = temp.to_crs(epsg=4326)
+            
+            # format and query
+            temp[['x', 'y']] = [(g.xy[0][0],  g.xy[1][0]) for g in temp.geometry.values]
+            z = dict(elevation.query_raster(temp[['x', 'y']], filepath, band=1, method=method))
+
+            # add attribute
+            nodes['elevation'] = pd.Series(z)
+            node_elevation.update(z)
+
+        # compute link elevation
+        for attribute in link_gdfs:
+            try:
+                links = self.__getattribute__(attribute)
+            except AttributeError:
+                pass
+            links['elevation'] = links['b'].map(node_elevation) - links['a'].map(node_elevation)
+            
+            links['grade'] = links['elevation'] / links.geometry.apply(lambda x: x.length)
