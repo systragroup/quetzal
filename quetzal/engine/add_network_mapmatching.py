@@ -17,6 +17,14 @@ class NetworkCaster_MapMaptching:
         self.links = gpd.GeoDataFrame(road_links)
         self.nodes = gpd.GeoDataFrame(nodes)
 
+        assert self.links.crs != None, 'nodes and road_links crs must be set (crs in meter, NOT 3857)'
+        assert self.links.crs != 3857, 'CRS error. crs 3857 is not supported. use a local projection in meters.'
+        assert self.links.crs == nodes.crs, 'nodes and road_links should avec the same crs, in meter'
+        assert self.links.crs !=4326, 'CRS error, crs 4326 is not supported, use a crs in meter (NOT 3857)'
+
+ 
+       
+
         # Reindex road links to integer
         if self.links.index.name in self.links.columns:
             #if index already in column, the reset index will bug. remove it first
@@ -191,6 +199,7 @@ class NetworkCaster_MapMaptching:
         gps_dict = gps_track['geometry'].to_dict()
         # GPS point distance to next point.
         gps_dist_dict = gps_track['geometry'].distance(gps_track.shift(-1)).to_dict()
+
 
         # ======================================================
         # Nearest roads and data preparation

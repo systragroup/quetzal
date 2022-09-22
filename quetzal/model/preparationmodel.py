@@ -550,6 +550,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                                                                          distance_max=distance_max,
                                                                          by=by)
 
+        
         matched_links['road_id_a'] = matched_links['road_id_a'].apply(lambda x: ncm.links_index_dict.get(x))
         matched_links['road_id_b'] = matched_links['road_id_b'].apply(lambda x: ncm.links_index_dict.get(x))
         road_a_dict = matched_links['road_id_a'].to_dict()
