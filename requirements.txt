@@ -79,7 +79,7 @@ pickleshare==0.7.5
 pillow==8.2.0
 prometheus-client==0.11.0
 prompt-toolkit==3.0.18
-protobuf==3.20.1
+protobuf==3.20.2
 ptyprocess==0.7.0; os_name != 'nt'
 pycountry==19.8.18
 pycparser==2.20

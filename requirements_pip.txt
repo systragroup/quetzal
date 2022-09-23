@@ -7,7 +7,7 @@ scipy
 sklearn
 matplotlib
 numba
-protobuf==3.20
+protobuf==3.20.2
 ray
 simpledbf
 xlrd
