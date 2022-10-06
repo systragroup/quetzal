@@ -1,3 +1,4 @@
+import geopandas as gpd
 import pandas as pd
 import shapely
 from syspy.spatial import spatial
@@ -119,3 +120,68 @@ def from_lines(lines, node_index=0, add_return=True):
     links = pd.concat(to_concat_links)
     nodes = pd.concat(to_concat_nodes)
     return links.reset_index(drop=True), nodes
+
+
+def cut(line, distance):
+    # Cuts a line in two at a distance from its starting point
+    if distance <= 0.0:
+        return [shapely.geometry.LineString(), shapely.geometry.LineString(line)]
+    elif distance >= line.length:
+        return [shapely.geometry.LineString(line), shapely.geometry.LineString()]
+    coords = list(line.coords)
+    for i, p in enumerate(coords):
+        pd = line.project(shapely.geometry.Point(p))
+        if pd == distance:
+            return [
+                shapely.geometry.LineString(coords[:i+1]),
+                shapely.geometry.LineString(coords[i:])]
+        if pd > distance:
+            cp = line.interpolate(distance)
+            return [
+                shapely.geometry.LineString(coords[:i] + [(cp.x, cp.y)]),
+                shapely.geometry.LineString([(cp.x, cp.y)] + coords[i:])]
+
+def cut_inbetween(geom, d_a, d_b):
+    geom1 = cut(geom, d_a)[1]
+    return cut(geom1, d_b - d_a)[0]
+
+
+def from_line_and_nodes(lines, nodes):
+    all_links = pd.DataFrame()
+    all_nodes = nodes.copy()
+    for trip_id in lines['trip_id'].unique():
+        line = lines.loc[lines['trip_id']==trip_id]
+        geom = line['geometry'].values[0]
+
+        # filter stops
+        if trip_id in nodes.columns:
+            nodes_loc = nodes[trip_id]==1
+        else:
+            buffer = line.buffer(100).geometry.values[0]
+            nodes_loc = nodes.within(buffer)
+        stops = nodes.loc[nodes_loc][['id', 'geometry']]
+
+        # sort stops
+        stops['seq'] = stops.apply(lambda x: line.project(x['geometry']), 1)
+        stops = stops.sort_values('seq').reset_index(drop=True)
+        stops['link_sequence'] = stops.index
+
+        # build links
+        links_a = stops[['id', 'seq', 'link_sequence']].iloc[:-1].rename(columns={'id': 'a'})
+        links_b = stops[['id', 'seq', 'link_sequence']].iloc[1:].rename(columns={'id': 'b'})
+        links_b['link_sequence'] -= 1
+        links = links_a.merge(links_b, on='link_sequence')
+        links['geometry'] = links.apply(
+            lambda x: cut_inbetween(geom, x['seq_x'], x['seq_y']), 1
+        )
+        links['length'] = links['geometry'].apply(lambda x: x.length)
+        
+        links['trip_id'] = trip_id
+        links.drop(['seq_x', 'seq_y'], 1, inplace=True)
+
+        all_links = pd.concat([all_links, links])
+        all_nodes.drop(trip_id, 1, errors='ignore', inplace=True)
+
+    all_links = all_links.reset_index(drop=True)
+
+    return gpd.GeoDataFrame(all_links).set_crs(lines.crs), gpd.GeoDataFrame(all_nodes).set_crs(lines.crs)
