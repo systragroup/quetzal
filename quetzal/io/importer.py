@@ -164,7 +164,7 @@ def from_line_and_nodes(lines, nodes):
         # sort stops
         stops['seq'] = stops.apply(lambda x: line.project(x['geometry']), 1)
         stops = stops.sort_values('seq').reset_index(drop=True)
-        stops['link_sequence'] = stops.index
+        stops['link_sequence'] = stops.index + 1
 
         # build links
         links_a = stops[['id', 'seq', 'link_sequence']].iloc[:-1].rename(columns={'id': 'a'})
