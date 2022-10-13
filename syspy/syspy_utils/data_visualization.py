@@ -479,7 +479,7 @@ def bandwidth(
         df_label['label_offset'] *= -1
     df_label.apply(
         lambda x: plot.annotate(
-            s=x[label_column],
+            x[label_column],
             xy=x.geometry.centroid.coords[0],
             xytext=x['label_offset'],
             textcoords='offset pixels',
@@ -491,8 +491,9 @@ def bandwidth(
         axis=1
     )
 
-    plt.xticks([])
-    plt.yticks([])
+    plot.set_xticks([])
+    plot.set_yticks([])
+
     return plot
 
 
