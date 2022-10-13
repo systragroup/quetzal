@@ -366,7 +366,8 @@ class OptimalModel(preparationmodel.PreparationModel):
 
         all_paths = get_strategy_paths(strategy_edges, strategy_sets, destination_origins)
         self.optimal_strategy_paths = pd.DataFrame(all_paths, columns=['origin', 'destination', 'link_path', 'path', 'probability'])
-
+        # removing paths that are non relevant (p<1e-6)
+        self.optimal_strategy_paths = self.optimal_strategy_paths.loc[self.optimal_strategy_paths['probability']>1e-6]
 
 def get_strategy_paths(strategy_edges, strategy_sets, destination_origins):
     all_paths = []
@@ -392,7 +393,7 @@ def get_strategy_paths(strategy_edges, strategy_sets, destination_origins):
         for origin in origins:
             paths = nx.all_simple_paths(g, source=origin, target=destination)
             for p in paths:
-                p_edges = list(zip(p[:-1], p[1:]))
+                p_edges = tuple(zip(p[:-1], p[1:]))
                 probabilities = np.prod(
                     [edges_prob.get(ij) for ij in p_edges]
                 )
