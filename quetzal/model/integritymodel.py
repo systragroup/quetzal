@@ -400,6 +400,12 @@ class IntegrityModel:
                 recursive_depth=recursive_depth - 1
             )
 
+    def integrity_test_duplicate_volumes(self):
+        assert(self.volumes.set_index(['origin', 'destination']).index.is_unique), 'Volumes contain duplicate values'
+
+    def integrity_fix_duplicate_volumes(self):
+        self.volumes = self.volumes.groupby(['origin', 'destination'], as_index=False).sum()
+
     def integrity_test_all(self, errors='raise', verbose=True):
         """
         errors='ignore' can be passed
