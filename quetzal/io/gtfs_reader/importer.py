@@ -4,6 +4,7 @@ import gtfs_kit as gk
 import pandas as pd
 from shapely.geometry import LineString
 from syspy.transitfeed import feed_links
+from shapely import geometry
 
 from . import patterns
 from .feed_gtfsk import Feed
@@ -48,6 +49,27 @@ class GtfsImporter(Feed):
     from .frequencies import compute_pattern_headways, convert_to_frequencies
     from .patterns import build_patterns
     from .services import group_services
+
+    def spatial_restrict(self, polygon, how='inner'):
+        f = self.copy()
+        stops = f.stops.copy()
+        stops['geometry'] = stops.apply(
+            lambda r: geometry.Point([r['stop_lon'], r['stop_lat']]),
+            axis=1
+        )
+        stops['included'] = stops['geometry'].apply(lambda g: polygon.contains(g))
+        f.stops = f.stops.loc[stops['included'] == True]
+
+        # relations
+        f.stop_times = f.stop_times.loc[f.stop_times['stop_id'].isin(f.stops['stop_id'])]
+        f.transfers = f.transfers.loc[f.transfers['from_stop_id'].isin(f.stops['stop_id'])]
+        f.transfers = f.transfers.loc[f.transfers['to_stop_id'].isin(f.stops['stop_id'])]
+        relevant_trips = (f.stop_times['trip_id'])
+        f = f.restrict(trip_ids=relevant_trips)
+        if how == 'inner':
+            return f
+        else:
+            return feed.restrict(trip_ids=relevant_trips)
 
     def clean(self):
         feed = super().clean()
