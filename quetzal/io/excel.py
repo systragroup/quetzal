@@ -1,5 +1,6 @@
 import json
 import os
+import glob
 
 import pandas as pd
 from tqdm import tqdm
@@ -100,3 +101,23 @@ def get_filepath(filepath, ancestry=['base'], log=True):
     if log:
         print("specified file or input path does not exist")
     return None
+
+def recursive_get_filepaths(path, ancestry=['base'], return_dicts=False, log=True):
+    file_filepath = {}
+    file_scen = {}
+
+    for scen in ancestry[::-1]:
+        filepaths = glob.glob(path.format(s=scen))
+        if log: 
+            print(f"{len(filepaths)} specified file found in {scen}")
+        for filepath in filepaths:
+            file = os.path.basename(filepath)
+            if log & (file in file_filepath.keys()):
+                print(f"replacing {file} from {file_scen[file]} by {scen}")
+            file_filepath[file] = filepath
+            file_scen[file] = scen
+
+    if return_dicts:
+        return file_filepath, file_scen
+    else:
+        return list(file_filepath.values())
