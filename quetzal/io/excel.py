@@ -111,7 +111,7 @@ def recursive_get_filepaths(path, ancestry=['base'], return_dicts=False, log=Tru
         if log: 
             print(f"{len(filepaths)} specified file found in {scen}")
         for filepath in filepaths:
-            file = os.path.basename(filepath)
+            file = os.path.basename(filepath).split('.')[0]
             if log & (file in file_filepath.keys()):
                 print(f"replacing {file} from {file_scen[file]} by {scen}")
             file_filepath[file] = filepath
