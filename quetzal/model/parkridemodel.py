@@ -26,6 +26,10 @@ class ParkRideModel(preparationmodel.PreparationModel):
         ztr = ztr[['a', 'b', 'time']].values.tolist()
         rtt = self.road_to_transit[['a', 'b', 'time']].values.tolist()
         footpaths = self.road_links[['a', 'b', 'walk_time']].values.tolist()
+        try:
+            footpaths += self.footpaths[['a', 'b', 'time']].values.tolist()
+        except AttributeError:
+            pass
         return edges + ztr + footpaths + rtt
 
     def get_node_transit_zone(
