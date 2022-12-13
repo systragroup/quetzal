@@ -294,10 +294,18 @@ def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode=
             'transportMode': mode,
             "regionDefinition": region
         }
-        x = requests.post(url, json=body)
-        resp = json.loads(x.text)
-        if x.status_code != 200:
-            raise Exception(resp)
+        try:
+            x = requests.post(url, json=body)
+            resp = json.loads(x.text)
+            if x.status_code != 200:
+                raise Exception(resp)
+        except:
+            time.sleep(5)
+            x = requests.post(url, json=body)
+            resp = json.loads(x.text)
+            if x.status_code != 200:
+                raise Exception(resp)
+
         error_index = None
         if resp['matrix'].get('errorCodes') != None:
             if set(resp['matrix']['errorCodes']) != set([0, 3]):
