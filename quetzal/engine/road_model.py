@@ -1,5 +1,4 @@
 import pandas as pd
-import matplotlib.pyplot as plt
 from numba import jit
 import numba as nb
 import numpy as np
@@ -63,6 +62,8 @@ class RoadModel:
                                  weight_col=self.ff_time_col)
 
         od_time = od_time.stack().reset_index().rename(columns={'level_0': 'origin', 'level_1': 'destination', 0: self.ff_time_col})
+        # remove Origin  ==  destination
+        od_time = od_time[od_time['origin'] != od_time['destination']]
         
         inf_od = od_time[~np.isfinite(od_time[self.ff_time_col])]
         assert len(inf_od) == 0, 'fail: there is infinitely long path, fix your links or your zones \n {val}'.format(val=inf_od[['origin', 'destination']])        
@@ -214,10 +215,8 @@ class RoadModel:
             df.loc[df['new_speed'] > max_speed, 'new_time'] = 3.6 * df.loc[df['new_speed'] > max_speed, 'length'] / max_speed
 
             if log_error:
-                new_time_dict = df.set_index(['sparse_a', 'sparse_b'])['new_time'].to_dict()
-                times = _get_od_time(odt, new_time_dict, time_sparse_keys, predecessors)
-                od_time['new_time'] = od_time.set_index(['o', 'd']).index.map(times.get)
-                errors.append((i, (round(np.mean(abs(od_time[self.api_time_col] - od_time['new_time']) / 60), 2))))
+                od_time['routing_time'] = _get_od_time(od_time[['o', 'd']].values, time_matrix)
+                errors.append((i, (round(np.mean(abs(od_time[self.api_time_col] - od_time['routing_time']) / 60), 2))))
                 print(i, errors[-1][1])
         if num_cores > 1:
             ray.shutdown()
@@ -230,13 +229,17 @@ class RoadModel:
                                                       return_predecessors=True,
                                                       num_core=num_cores,
                                                       keep_running=True)
-             
+        od_time['routing_time'] = _get_od_time(od_time[['o', 'd']].values, time_matrix)
+        errors.append((i + 1, (round(np.mean(abs(od_time[self.api_time_col] - od_time['routing_time']) / 60), 2))))
+        print(i + 1, errors[-1][1])
+       
         print(round(100 * len(df[df[self.ff_time_col] != df['new_time']]) / len(df), 1), '% of links used')
         
         self.road_links = pd.concat([self.road_links, df[['new_time']]], axis=1).rename(columns={'new_time': self.api_time_col})
         self.road_links.loc[self.road_links[self.ff_time_col] == self.road_links[self.api_time_col], self.api_time_col] = np.nan
         self.road_links['speed_ff'] = self.road_links['length'] / self.road_links[self.ff_time_col] * 3.6
         self.road_links['speed'] = self.road_links['length'] / self.road_links[self.api_time_col] * 3.6
+        self.od_time['routing_time'] = od_time['routing_time']
         
         return errors
 
@@ -286,35 +289,68 @@ def _assign_time(odt, predecessors, time_matrix, time_sparse_keys, reversed_inde
     return ab_times
 
 
-
-@jit(nopython=True, locals={'predecessors': nb.int32[:, ::1]}, parallel=True)  # parallel=True
-def _fast_get_time(odt, predecessors, times, new_time_dict):
-    # this function use parallelization (or not).nb.set_num_threads(num_cores)
-    # volumes is a numba dict with all the key initialized
-    for i in nb.prange(len(odt)):  # nb.prange(len(odv)):
-        origin = odt[i, 0]
-        destination = odt[i, 1]
-        path = get_path(predecessors, origin, destination)
-        path = list(zip(path[:-1], path[1:]))
-        val = 0
-        for key in path:
-            val += new_time_dict[key]
-        times[(origin, destination)] = val
-
+def _get_od_time(od, time_matrix):
+    times = []
+    for origin, destination in od:
+        times.append(time_matrix[origin, destination])
     return times
 
-def _get_od_time(odt, new_time_dict, volumes_sparse_keys, predecessors):
-    numba_new_time_dict = nb.typed.Dict.empty(
-        key_type=nb.types.UniTuple(nb.types.int64, 2),
-        value_type=nb.types.float64)
 
-    numba_times = nb.typed.Dict.empty(
-        key_type=nb.types.UniTuple(nb.types.int64, 2),
-        value_type=nb.types.float64)
+# vizualisation
+def plot_correlation(x,y,alpha=0.1,xlabel='actual time (mins)',ylabel='time interpolation (mins)',title='comparaison temps OD (jaune = 5% des points)'):
+    import matplotlib
+    import matplotlib.pyplot as plt
+    from sklearn import linear_model
+    from sklearn.metrics import  r2_score
+    
+    errors = abs(x - y)
 
-    for key in volumes_sparse_keys:
-        numba_new_time_dict[key] = new_time_dict[key]
-    for i, j, _ in odt:
-        numba_times[(i, j)] = 0
-    times = _fast_get_time(odt, predecessors, numba_times, numba_new_time_dict)
-    return dict(times)
+    # Print out the mean absolute error (mae)
+    print('Mean Absolute Error:', round(np.mean(errors), 2), 'mins.')
+
+    x = x.values
+    y = y.values
+    regr = linear_model.LinearRegression(fit_intercept=False)#
+
+    regr.fit(x[:, np.newaxis], y)
+    y_pred = regr.predict(x[:, np.newaxis])
+    r2 = r2_score(y, x)
+    slope = regr.coef_[0]
+    intercept=0
+
+    fig, ax = plt.subplots(figsize=(10,10))
+
+    plt.scatter(x,y,
+                s=10,
+                c=errors,
+                norm=matplotlib.colors.Normalize(vmin=0, vmax=errors.quantile(0.95), clip=True),
+                alpha=alpha)
+
+
+    maxvalue = max(max(x),max(y))
+    plt.plot([0,maxvalue],[0,maxvalue],'--r',alpha=0.5)
+    mean = np.mean(x - y)
+    median =np.median(x - y)
+    sigma = np.std(x-y)
+
+    textstr = '\n'.join((
+        r'$\mathrm{slope}=%.2f$' % (slope, ),
+        r'$\mathrm{intercept}=%.2f$' % (intercept, ),
+        r'$\mathrm{R^2}=%.2f$' % (r2, ),
+         r'$\mathrm{mean}=%.2f$mins' % (mean, ),
+        r'$\mathrm{median}=%.2f$mins' % (median, ),
+        r'$\sigma=%.2f$mins' % (sigma, )))
+    # these are matplotlib.patch.Patch properties
+    props = dict(boxstyle='round', facecolor='white', alpha=1)
+    # place a text box in upper left in axes coords
+    ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=12,
+            verticalalignment='top', bbox=props)
+    plt.plot(x,x*slope+intercept,'r',alpha=0.5)
+    #plt.plot(x_worst,x_worst*slope_worst+intercept,'r',alpha=0.3)
+
+    plt.grid(True,'major',linestyle='-',axis='both')
+    ax.set_axisbelow(True)
+    plt.xlim([0,max(x)])
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)

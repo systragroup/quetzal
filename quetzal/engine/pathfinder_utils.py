@@ -85,7 +85,7 @@ def simple_routing(origin, destination, links, weight_col='time', dijkstra_limit
     dist_matrix = dist_matrix[destination_sparse]
     dist_matrix = dist_matrix.rename(columns=index_node)
     if return_predecessors:
-        return dist_matrix, predecessors
+        return dist_matrix, predecessors, node_index
     else:
         return dist_matrix
 
