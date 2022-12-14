@@ -51,6 +51,43 @@ def parallel_dijkstra(csgraph,indices=None,return_predecessors=True, num_core=1,
         return dist_matrix
 
 
+def simple_routing(origin, destination, links, weight_col='time', dijkstra_limit=np.inf, return_predecessors=False):
+    # simple routing scipy wrapper for GTFS routing
+    #
+    mat, node_index = sparse_matrix(links[['a', 'b', weight_col]].values)
+    index_node = {v: k for k, v in node_index.items()}
+    # liste des origines pour le dijkstra
+    origin_sparse = [node_index[x] for x in origin]
+    
+    # dijktra on the road network from node = incices to every other nodes.
+    # from b to a.
+    if return_predecessors:
+        dist_matrix, predecessors = dijkstra(
+            csgraph=mat,
+            directed=True,
+            indices=origin_sparse,
+            return_predecessors=True,
+            limit=dijkstra_limit
+        )
+    else:
+        dist_matrix = dijkstra(
+            csgraph=mat,
+            directed=True,
+            indices=origin_sparse,
+            return_predecessors=False,
+            limit=dijkstra_limit
+        )
+
+    dist_matrix = pd.DataFrame(dist_matrix)
+    dist_matrix.index = origin
+    # filtrer. on garde seulement les destination d'intéret
+    destination_sparse = [node_index[x] for x in destination]
+    dist_matrix = dist_matrix[destination_sparse]
+    dist_matrix = dist_matrix.rename(columns=index_node)
+    if return_predecessors:
+        return dist_matrix, predecessors
+    else:
+        return dist_matrix
 
 
 @jit(nopython=True,locals={'predecessors':nb.int32[:,::1],'i':nb.int32,'j':nb.int32})
