@@ -1,5 +1,6 @@
 import json
 import os
+import glob
 
 import pandas as pd
 from tqdm import tqdm
@@ -22,7 +23,6 @@ def read_var(file='parameters.xlsx', scenario='base', period=None, return_ancest
         parameter_frame.drop_duplicates(subset=['category','parameter'], inplace=True)
         parameter_frame.sort_index(inplace=True)
     parameter_frame.drop(['description', 'desc', 'unit', 'type', 'period'], axis=1, errors='ignore', inplace=True)
-    parameter_frame.drop_duplicates(['category', 'parameter'], inplace=True)
     parameter_frame.set_index(['category', 'parameter'], inplace=True)
     if return_ancestry:
         ancestry = get_ancestry(parameter_frame, scenario=scenario)
@@ -101,3 +101,23 @@ def get_filepath(filepath, ancestry=['base'], log=True):
     if log:
         print("specified file or input path does not exist")
     return None
+
+def recursive_get_filepaths(path, ancestry=['base'], return_dicts=False, log=True):
+    file_filepath = {}
+    file_scen = {}
+
+    for scen in ancestry[::-1]:
+        filepaths = glob.glob(path.format(s=scen))
+        if log: 
+            print(f"{len(filepaths)} specified file found in {scen}")
+        for filepath in filepaths:
+            file = os.path.basename(filepath).split('.')[0]
+            if log & (file in file_filepath.keys()):
+                print(f"replacing {file} from {file_scen[file]} by {scen}")
+            file_filepath[file] = filepath
+            file_scen[file] = scen
+
+    if return_dicts:
+        return file_filepath, file_scen
+    else:
+        return list(file_filepath.values())
