@@ -3,6 +3,8 @@ from numba import jit
 import numba as nb
 import numpy as np
 from tqdm import tqdm
+from time import sleep
+
 from sklearn.model_selection import train_test_split
 import ray
 
@@ -15,6 +17,38 @@ from syspy.clients.api_proxy import get_distance_matrix
 
 class RoadModel:
     def __init__(self, road_links, road_nodes, zones, ff_time_col='time_ff'):
+        """RoadModel class is used to calibrate a road network with the actual time from each OD.
+    1) self.zones_nearest_node() find the nearest road_nodes to each zones
+    2) self.create_od_mat() create a OD mat with each zones and get each routing time on road_links['time_ff']
+    3.1) self.get_training_set() : get a random sample in the OD matrix to get actual value from an API
+    3.2) self.call_api_on_training_set() : call the API for each training OD and save it.
+    4) self.apply_api_matrix() : apply the now known OD time to the OD mat and flag the others one as interpolated.
+    5) self.train_knn_model() : train a KNN model on the known OD. [o_lon,o_lat,d_lon,d_lat] => time
+    6) self.predict_zones() : predict the travel time for every unknowned OD
+    7) self.apply_od_time_on_road_links :  ajust speed on road_links to fit the each OD time when we route.
+
+
+    Requires
+    ----------
+    road_links : geoDataFrame
+    road_nodes : geoDataFrame
+    zones : geoDataFrame
+    
+    Parameters
+    ----------
+
+    ff_time_col : str, optional, default 'time_ff'
+        column to use in road_links as a basic time per links (in seconds)
+    
+    Builds
+    ----------
+    self.ff_time_col
+    self.road_links 
+    self.road_nodes
+    self.zones 
+    self.units
+        """
+
         self.ff_time_col = ff_time_col
         self.road_links = road_links
         self.road_nodes = road_nodes
@@ -107,8 +141,8 @@ class RoadModel:
         for row in tqdm(train_od.iterrows()):
             origin_nodes = row[0]
             destination_nodes = row[1]['destination']
-            origins = self.centroid[self.centroid['node_index'] == origin_nodes]
-            destinations = self.centroid[self.centroid['node_index'].isin(destination_nodes)]
+            origins = self.zones_centroid[self.zones_centroid['node_index'] == origin_nodes]
+            destinations = self.zones_centroid[self.zones_centroid['node_index'].isin(destination_nodes)]
             try:
                 res = get_distance_matrix(origins=origins,
                                           destinations=destinations,
@@ -117,7 +151,7 @@ class RoadModel:
                                           api=api,
                                           time=time)
             except:
-                time.sleep(5)
+                sleep(5)
                 res = get_distance_matrix(origins=origins,
                                           destinations=destinations,
                                           apiKey=apiKey,
@@ -126,7 +160,7 @@ class RoadModel:
                                           time=time)
 
             mat = pd.concat([mat, res])
-            time.sleep(0.2)
+            sleep(0.2)
         print('saving mat')
         mat.to_csv('Here_OD.csv')
         return mat
