@@ -4,6 +4,7 @@ import numba as nb
 import numpy as np
 from tqdm import tqdm
 from time import sleep
+import copy
 
 from sklearn.model_selection import train_test_split
 import ray
@@ -14,6 +15,7 @@ from syspy.spatial.spatial import nearest
 from quetzal.engine.pathfinder_utils import get_path, parallel_dijkstra, simple_routing, build_index, sparse_matrix
 from quetzal.engine.msa_utils import get_zone_index
 from syspy.clients.api_proxy import get_distance_matrix
+
 
 class RoadModel:
     def __init__(self, road_links, road_nodes, zones, ff_time_col='time_ff'):
@@ -70,6 +72,9 @@ class RoadModel:
         for col in ['a', 'b', 'length', ff_time_col]:
             if col not in rcol:
                 raise Exception('columns {col} not found in road_links with columns {road_col}'.format(col=col, road_col=rcol))
+
+    def copy(self):
+        return copy.deepcopy(self)
                 
     def zones_nearest_node(self):
         # getting zones centroids
@@ -278,8 +283,6 @@ class RoadModel:
         return errors
 
 
-
-
 @jit(nopython=True, locals={'predecessors': nb.int32[:, ::1], 'time_matrix': nb.float64[:, ::1]}, parallel=True)
 def _fast_assign_time(odt, predecessors, time_matrix, times, counter):
     # this function use parallelization (or not).nb.set_num_threads(num_cores)
@@ -297,7 +300,6 @@ def _fast_assign_time(odt, predecessors, time_matrix, times, counter):
             times[key] = (times[key] * count + new_t) / (count + 1)
             counter[key] = count + 1
     return times
-
 
 
 def _assign_time(odt, predecessors, time_matrix, time_sparse_keys, reversed_index):
@@ -331,11 +333,11 @@ def _get_od_time(od, time_matrix):
 
 
 # vizualisation
-def plot_correlation(x,y,alpha=0.1,xlabel='actual time (mins)',ylabel='time interpolation (mins)',title='comparaison temps OD (jaune = 5% des points)'):
+def plot_correlation(x, y, alpha=0.1, xlabel='actual time (mins)', ylabel='time interpolation (mins)', title='comparaison temps OD (jaune = 5% des points)'):
     import matplotlib
     import matplotlib.pyplot as plt
     from sklearn import linear_model
-    from sklearn.metrics import  r2_score
+    from sklearn.metrics import r2_score
     
     errors = abs(x - y)
 
@@ -344,34 +346,33 @@ def plot_correlation(x,y,alpha=0.1,xlabel='actual time (mins)',ylabel='time inte
 
     x = x.values
     y = y.values
-    regr = linear_model.LinearRegression(fit_intercept=False)#
+    regr = linear_model.LinearRegression(fit_intercept=False)
 
     regr.fit(x[:, np.newaxis], y)
-    y_pred = regr.predict(x[:, np.newaxis])
+    # y_pred = regr.predict(x[:, np.newaxis])
     r2 = r2_score(y, x)
     slope = regr.coef_[0]
-    intercept=0
+    intercept = 0
 
-    fig, ax = plt.subplots(figsize=(10,10))
+    fig, ax = plt.subplots(figsize=(10, 10))
 
-    plt.scatter(x,y,
+    plt.scatter(x, y,
                 s=10,
                 c=errors,
                 norm=matplotlib.colors.Normalize(vmin=0, vmax=errors.quantile(0.95), clip=True),
                 alpha=alpha)
 
-
-    maxvalue = max(max(x),max(y))
-    plt.plot([0,maxvalue],[0,maxvalue],'--r',alpha=0.5)
+    maxvalue = max(max(x), max(y))
+    plt.plot([0, maxvalue], [0, maxvalue], '--r', alpha=0.5)
     mean = np.mean(x - y)
-    median =np.median(x - y)
-    sigma = np.std(x-y)
+    median = np.median(x - y)
+    sigma = np.std(x - y)
 
     textstr = '\n'.join((
         r'$\mathrm{slope}=%.2f$' % (slope, ),
         r'$\mathrm{intercept}=%.2f$' % (intercept, ),
         r'$\mathrm{R^2}=%.2f$' % (r2, ),
-         r'$\mathrm{mean}=%.2f$mins' % (mean, ),
+        r'$\mathrm{mean}=%.2f$mins' % (mean, ),
         r'$\mathrm{median}=%.2f$mins' % (median, ),
         r'$\sigma=%.2f$mins' % (sigma, )))
     # these are matplotlib.patch.Patch properties
@@ -379,12 +380,12 @@ def plot_correlation(x,y,alpha=0.1,xlabel='actual time (mins)',ylabel='time inte
     # place a text box in upper left in axes coords
     ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=12,
             verticalalignment='top', bbox=props)
-    plt.plot(x,x*slope+intercept,'r',alpha=0.5)
-    #plt.plot(x_worst,x_worst*slope_worst+intercept,'r',alpha=0.3)
+    plt.plot(x, x * slope + intercept, 'r', alpha=0.5)
+    # plt.plot(x_worst,x_worst*slope_worst+intercept,'r',alpha=0.3)
 
-    plt.grid(True,'major',linestyle='-',axis='both')
+    plt.grid(True, 'major', linestyle='-', axis='both')
     ax.set_axisbelow(True)
-    plt.xlim([0,max(x)])
+    plt.xlim([0, max(x)])
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
