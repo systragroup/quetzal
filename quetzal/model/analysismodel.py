@@ -409,7 +409,7 @@ class AnalysisModel(summarymodel.SummaryModel):
             lambda l: sum([d[t] for t in l]))
         d = self.links['length'].to_dict()
         self.pt_los['in_vehicle_length'] = self.pt_los['link_path'].apply(
-            lambda l: sum([d[t] for t in l]))
+            lambda l: np.nansum([*map(d.get, l)]))
         self.pt_los['length'] = self.pt_los[
             ['access_length', 'footpath_length', 'in_vehicle_length']
         ].T.sum()
@@ -432,7 +432,7 @@ class AnalysisModel(summarymodel.SummaryModel):
 
         d = self.road_links['length'].to_dict()
         self.car_los['in_vehicle_length'] = self.car_los['link_path'].apply(
-            lambda l: sum([d[t] for t in l]))
+            lambda l: np.nansum([*map(d.get, l)]))
 
         self.car_los['length'] = self.car_los[
             ['access_length', 'in_vehicle_length']

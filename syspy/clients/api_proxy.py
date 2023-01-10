@@ -4,6 +4,8 @@ import time
 import numpy as np
 import pandas as pd
 import requests
+from shapely.geometry import Point, LineString
+
 
 
 def google_maps_encoder(
@@ -222,3 +224,180 @@ class Proxy:
 
         df['current'] = False
         self.local = df.set_index(list(self.parameters + ('current',)))['json']
+
+def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode='car', time=None, buffer=0.1):
+    '''
+    wrapper that return the time matrix (in seconds) for each OD
+    with the Here matrix api or the google matrix api.
+
+    parameters
+    ----------
+    origins (GeoDataframe) = geopandas dataframe with index and geometry (epsg:4326)
+    
+    destinations (None | GeoDataframe) = geopandas dataframe with index and geometry (epsg:4326)
+    
+    api (str) ='here', 'google'
+    
+    apiKey (str) : api key
+    
+    mode (str) = here : "car" "truck" "pedestrian" "bicycle" "taxi" "scooter" "bus" "privateBus".
+    google : driving", "walking", "transit""bicycling"
+
+    time (None|str) = here : Time of departure at all origins, in ISO 8601 format: the time zone offset is required.
+    datetime.datetime.now().astimezone().isoformat() for example ('2022-11-16T11:19:21.944095-05:00')
+    google : datetime.datetime() object. just in the future
+
+    buffer (float) = here : 0.1 rad stating value, buffer will be increase (+0.1rad) while all origins & destinations are
+    not included in the polygon around them. if it fail, you can provide a big buffer! (ex:1)
+
+    returns
+    ----------
+    pd.dataframe index: origin, columns: destination. values: time in seconds
+    '''
+    if origins.crs != 'EPSG:4326':
+        origins = origins.to_crs(4326)
+    df = origins.copy()
+    origins_index = df.index.values
+    # format geometry to here api format
+    origins = list(df['geometry'].apply(lambda p: {"lat": p.y, "lng": p.x}).values)
+    # if destination, format them, else: use destination == origin
+    if type(destinations) != type(None):
+        if destinations.crs != 'EPSG:4326':
+            destinations = destinations.to_crs(4326)
+        df2 = destinations.copy()
+        destinations_index = df2.index.values
+        destinations = list(df2['geometry'].apply(lambda p: {"lat": p.y, "lng": p.x}).values)
+        df = pd.concat([df, df2])
+    else:
+        destinations = origins
+        destinations_index = origins_index
+    if api == 'here':
+        # get centroid for the here region
+        centroid = LineString(df['geometry'].values).centroid
+        # center = {"lat":centroid.y,"lng":centroid.x}
+        # create a polygon around the points. find a buffer for the centroid that include every od
+
+        while not centroid.buffer(buffer).contains(LineString(df['geometry'].values)):
+            buffer += 0.1
+        polygon = [{"lat": y,"lng": x} for x, y in list(zip(*centroid.buffer(buffer).exterior.coords.xy))[:-1]]
+
+        region = {
+            "type": "polygon",
+            "outer": polygon,
+            }
+        # departureTime : Time of departure at all origins, in ISO 8601 (RFC 3339) 
+        url = 'https://matrix.router.hereapi.com/v8/matrix?apiKey=' + apiKey + '&async=false'
+        body = {
+            "origins": origins,
+            "destinations": destinations,
+            "departureTime": time,
+            'transportMode': mode,
+            "regionDefinition": region
+        }
+        try:
+            x = requests.post(url, json=body)
+            resp = json.loads(x.text)
+            if x.status_code != 200:
+                raise Exception(resp)
+        except:
+            time.sleep(5)
+            x = requests.post(url, json=body)
+            resp = json.loads(x.text)
+            if x.status_code != 200:
+                raise Exception(resp)
+
+        error_index = None
+        if resp['matrix'].get('errorCodes') != None:
+            if set(resp['matrix']['errorCodes']) != set([0, 3]):
+                errors = np.array([err for err in resp['matrix']['errorCodes']]).reshape(len(origins), len(destinations))
+                print('errors', errors)
+                error_index = np.where((errors != 0) & (errors != 3))
+        # format response to a dataframa OD with time in secs.
+        mat = np.array([time for time in resp['matrix']['travelTimes']]).reshape(len(origins), len(destinations))
+        if error_index != None:
+            mat[error_index] = -9999
+            print('times', mat)
+            
+    elif api == 'google':
+        print('The google api wrapper seems to have some issues. The departure time doesnt seems to work for example.')
+        import googlemaps
+        gmaps = googlemaps.Client(key=apiKey)
+         
+        mode = {'car': 'driving', 'pedestrian': 'walking', 'bicycle': 'bicycling'}.get(mode, mode)
+        res = gmaps.distance_matrix(origins=origins,
+                                    destinations=destinations,
+                                    departure_time=time,
+                                    mode=mode,
+                                    traffic_model="best_guess")
+        if res['status'] != 'OK':
+            raise Exception(res)
+        mat = []
+        for i, origin in enumerate(res['rows']):
+            for j, destination in enumerate(origin['elements']):
+                mat.append((destination['duration']['value']))
+        mat = np.array(mat).reshape(len(origins), len(destinations))
+    else:
+        raise Exception('api should be here or google.')
+    
+    od = pd.DataFrame(mat, index=origins_index, columns=destinations_index)
+    od.index.name = 'origin'
+    od.columns.name = 'destination'
+    
+    return od
+
+def get_batches(df,max_od=15):
+    '''
+    gives index to divide dataframe into dataframes of length 15 max
+    ex: [[0,15],[15,30],[30,35]] for a df of length 30.
+    '''
+    div = divmod(len(df),max_od)
+    batches = [[max_od*i,max_od*(i+1)] for i in range(div[0])]
+    if div[1]>0:
+        if div[0]==0:
+            batches.append([0,div[1]])
+        else:
+            batches.append([batches[-1][-1],batches[-1][-1]+div[1]])
+    return batches
+
+
+def multi_get_distance_matrix(origins,destinations,api='here',**kwargs):
+    '''
+    batch api call with 15x15 OD batches (limit per call for here)
+    
+    parameters
+    ----------
+    origins (GeoDataframe) = geopandas dataframe with index and geometry (epsg:4326)
+    destination (GeoDataframe) = geopandas dataframe with index and geometry (epsg:4326)
+    api (str) : 'here' or 'google'
+    **kwargs: get_distance_matrix(origins, destinations, **kwargs)
+    
+    returns
+    ----------
+    pd.dataframe index: origin, columns: destination. values: time in seconds
+    '''
+    if api == 'here':
+        max_od = 15
+        assert len(origins)*len(destinations) <= 250_000, 'max 250 000 OD for free HERE api'
+
+    elif api == 'google':
+        max_od = 10
+        assert len(origins)*len(destinations) <= 40_000, 'max 40 000 OD for free HERE api'
+    else:
+        raise Exception('api should be here or google')
+    batches_origins = get_batches(origins, max_od)
+    batches_destinations = get_batches(destinations, max_od)
+    mat=pd.DataFrame()
+    for batch_o in batches_origins:
+        ori = origins.iloc[batch_o[0]:batch_o[1]]
+        temp_mat=pd.DataFrame()
+        for batch_o in batches_origins:
+            des = destinations.iloc[batch_o[0]:batch_o[1]]
+            try:
+                res = get_distance_matrix(origins=ori,destinations=des,api=api,**kwargs)
+            except:
+                sleep(1)
+                res = get_distance_matrix(origins=ori,destinations=des,api=api,**kwargs)
+            temp_mat = pd.concat([temp_mat,res],axis=1)
+            sleep(0.2)
+        mat = pd.concat([mat,temp_mat],axis=0)
+    return mat
