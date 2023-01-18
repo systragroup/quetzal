@@ -169,7 +169,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 max_ntleg_length=5000
             )
         """
-         if keep_centroids:
+        if keep_centroids:
 
             try:
                 self.centroids
