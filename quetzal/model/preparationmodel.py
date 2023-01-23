@@ -110,6 +110,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         long_leg_speed=10,
         threshold=1000,
         n_ntlegs=5,
+        keep_centroids=False,
         max_ntleg_length=5000,
         zone_to_transit=True,
         zone_to_road=False,
@@ -168,10 +169,19 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 max_ntleg_length=5000
             )
         """
-        self.centroids = self.zones.copy()
-        self.centroids['geometry'] = self.centroids['geometry'].apply(
-            lambda g: g.centroid)
+        if keep_centroids:
 
+            try:
+                self.centroids
+            except:
+
+                self.centroids = self.zones.copy()
+                self.centroids['geometry'] = self.centroids['geometry'].apply(
+                lambda g: g.centroid)
+        else:
+            self.centroids = self.zones.copy()
+            self.centroids['geometry'] = self.centroids['geometry'].apply(
+            lambda g: g.centroid)
         length = max_ntleg_length
 
         if zone_to_transit:

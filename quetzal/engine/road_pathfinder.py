@@ -51,7 +51,8 @@ class RoadPathFinder:
         aon = True if method=='aon' else False
         v = self.volumes  
         if od_set is not None:
-            v = v.set_index(['origin','destination']).loc[od_set].reset_index()
+            v = v.set_index(['origin','destination']).reindex(od_set).reset_index()
+
 
         self.zone_to_road_preparation(**kwargs)
 
