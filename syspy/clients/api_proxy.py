@@ -1,6 +1,6 @@
 import json
 import time
-
+from time import sleep
 import numpy as np
 import pandas as pd
 import requests
@@ -295,13 +295,13 @@ def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode=
             "regionDefinition": region
         }
         try:
-            x = requests.post(url, json=body)
+            x = requests.post(url, json=body,verify=False)
             resp = json.loads(x.text)
             if x.status_code != 200:
                 raise Exception(resp)
         except:
-            time.sleep(5)
-            x = requests.post(url, json=body)
+            sleep(5)
+            x = requests.post(url, json=body,verify=False)
             resp = json.loads(x.text)
             if x.status_code != 200:
                 raise Exception(resp)
@@ -360,7 +360,7 @@ def get_batches(df,max_od=15):
     return batches
 
 
-def multi_get_distance_matrix(origins,destinations,api='here',**kwargs):
+def multi_get_distance_matrix(origins,destinations,batch_size=(15,15),api='here',**kwargs):
     '''
     batch api call with 15x15 OD batches (limit per call for here)
     
@@ -368,6 +368,7 @@ def multi_get_distance_matrix(origins,destinations,api='here',**kwargs):
     ----------
     origins (GeoDataframe) = geopandas dataframe with index and geometry (epsg:4326)
     destination (GeoDataframe) = geopandas dataframe with index and geometry (epsg:4326)
+    batch_size (tuple) : (origin, destination) batch sizes. (100,1) if 100 ori and 1 des . choices: (15,15), (100,1)
     api (str) : 'here' or 'google'
     **kwargs: get_distance_matrix(origins, destinations, **kwargs)
     
@@ -376,26 +377,24 @@ def multi_get_distance_matrix(origins,destinations,api='here',**kwargs):
     pd.dataframe index: origin, columns: destination. values: time in seconds
     '''
     if api == 'here':
-        max_od = 15
         assert len(origins)*len(destinations) <= 250_000, 'max 250 000 OD for free HERE api'
 
     elif api == 'google':
-        max_od = 10
         assert len(origins)*len(destinations) <= 40_000, 'max 40 000 OD for free HERE api'
     else:
         raise Exception('api should be here or google')
-    batches_origins = get_batches(origins, max_od)
-    batches_destinations = get_batches(destinations, max_od)
+    batches_origins = get_batches(origins, batch_size[0])
+    batches_destinations = get_batches(destinations, batch_size[1])
     mat=pd.DataFrame()
     for batch_o in batches_origins:
         ori = origins.iloc[batch_o[0]:batch_o[1]]
         temp_mat=pd.DataFrame()
-        for batch_o in batches_origins:
-            des = destinations.iloc[batch_o[0]:batch_o[1]]
+        for batch_d in batches_destinations:
+            des = destinations.iloc[batch_d[0]:batch_d[1]]
             try:
                 res = get_distance_matrix(origins=ori,destinations=des,api=api,**kwargs)
             except:
-                sleep(1)
+                sleep(3)
                 res = get_distance_matrix(origins=ori,destinations=des,api=api,**kwargs)
             temp_mat = pd.concat([temp_mat,res],axis=1)
             sleep(0.2)
