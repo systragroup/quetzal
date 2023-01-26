@@ -225,7 +225,7 @@ class Proxy:
         df['current'] = False
         self.local = df.set_index(list(self.parameters + ('current',)))['json']
 
-def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode='car', time=None, buffer=0.1):
+def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode='car',region='polygon', time=None, buffer=0.1):
     '''
     wrapper that return the time matrix (in seconds) for each OD
     with the Here matrix api or the google matrix api.
@@ -241,7 +241,9 @@ def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode=
     apiKey (str) : api key
     
     mode (str) = here : "car" "truck" "pedestrian" "bicycle" "taxi" "scooter" "bus" "privateBus".
-    google : driving", "walking", "transit""bicycling"
+    google : driving", "walking", "transit" "bicycling"
+
+    region (str) = here : polygon or world. world is use for long distance call (>400km diamaters)
 
     time (None|str) = here : Time of departure at all origins, in ISO 8601 format: the time zone offset is required.
     datetime.datetime.now().astimezone().isoformat() for example ('2022-11-16T11:19:21.944095-05:00')
@@ -280,11 +282,16 @@ def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode=
         while not centroid.buffer(buffer).contains(LineString(df['geometry'].values)):
             buffer += 0.1
         polygon = [{"lat": y,"lng": x} for x, y in list(zip(*centroid.buffer(buffer).exterior.coords.xy))[:-1]]
+        if region == 'polygon':
+            regionDefinition = {
+                                "type": "polygon",
+                                "outer": polygon,
+                                }
+        elif region == 'world':
+            regionDefinition =  { "type": "world" }
+        else:
+           raise Exception('{r} is not a valid region. use world or polygon.'.format(r=region))
 
-        region = {
-            "type": "polygon",
-            "outer": polygon,
-            }
         # departureTime : Time of departure at all origins, in ISO 8601 (RFC 3339) 
         url = 'https://matrix.router.hereapi.com/v8/matrix?apiKey=' + apiKey + '&async=false'
         body = {
@@ -292,7 +299,7 @@ def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode=
             "destinations": destinations,
             "departureTime": time,
             'transportMode': mode,
-            "regionDefinition": region
+            "regionDefinition": regionDefinition
         }
         try:
             x = requests.post(url, json=body,verify=False)
