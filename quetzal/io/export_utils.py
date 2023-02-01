@@ -530,7 +530,61 @@ def compute_line_od_vol(self, line, line_col='route_id', vol_col='volume'):
     vol = line_od[line_od['line'] == line][vol_col].unstack()
 
     return pd.DataFrame(vol, columns=stations, index=stations).fillna(0)
-    
+
+def arc_diagram_from_dataframe(df, graph_direction='both', **kwargs):
+    stations = df.index.to_list()
+    vol = df.values
+    if graph_direction == 'both':
+        fig, ax = plt.subplots(1,1)
+        fig.set_facecolor('white')
+
+        ax = single_direction_arc_diagram(ax, stations, vol, reverse=False, **kwargs)
+        print(ax.get_ylim()[1])
+        ax = single_direction_arc_diagram(ax, stations, vol, reverse=True, ymax=ax.get_ylim()[1], **kwargs)
+
+        ax.annotate(
+                    '', xy=(0.1, 0.9),
+                    xycoords='axes fraction',
+                    xytext=(0.01, 0.9),
+                    arrowprops={'arrowstyle':"->", 'color': 'k'}
+                )
+        ax.annotate(
+                    '', xy=(1-0.1, 0.1),
+                    xycoords='axes fraction',
+                    xytext=(1-0.01, 0.1),
+                    arrowprops={'arrowstyle':"->", 'color': 'k'}
+                )
+        plt.grid(axis = 'x', linestyle = '--', linewidth = 0.5)
+        return fig, ax
+
+    elif graph_direction == 'single' :
+        fig1, ax1 = plt.subplots(1,1)
+        fig1.set_facecolor('white')
+        single_direction_arc_diagram(ax1, stations, np.triu(vol), reverse=False)
+        plt.grid()
+        ax1.annotate(
+                    '', xy=(0.1, 0.9),
+                    xycoords='axes fraction',
+                    xytext=(0.01, 0.9),
+                    arrowprops={'arrowstyle':"->", 'color': 'k'}
+                ) 
+
+        fig2, ax2 = plt.subplots(1,1)
+        fig2.set_facecolor('white')
+        single_direction_arc_diagram(ax2, stations, np.tril(vol), reverse=True)
+        ax2.spines['bottom'].set_position(('data', 0))
+        ax2.xaxis.tick_top()
+        ax2.set_xticklabels(stations, rotation=45)
+        plt.tick_params(top = False)
+        plt.setp(ax2.xaxis.get_majorticklabels(), rotation=45, ha="left" )
+        plt.grid()
+        ax2.annotate(
+                    '', xy=(1-0.1, 0.1),
+                    xycoords='axes fraction',
+                    xytext=(1-0.01, 0.1),
+                    arrowprops={'arrowstyle':"->", 'color': 'k'}
+                )
+        return [fig1, fig2], [ax1, ax2]
 
 def single_direction_arc_diagram(ax, stations, vol, max_width = 5.0, min_width = 1.0, 
                                     ymax = 0.0, ymin = 0.0, reverse=False, cmap=None, 
