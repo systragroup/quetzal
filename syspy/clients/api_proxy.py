@@ -247,7 +247,8 @@ def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode=
 
     time (None|str) = here : Time of departure at all origins, in ISO 8601 format: the time zone offset is required.
     datetime.datetime.now().astimezone().isoformat() for example ('2022-11-16T11:19:21.944095-05:00')
-    google : datetime.datetime() object. just in the future
+    google : timestamp in sec. ex: datetime.datetime(2023,2,7,7,0).timestamp(),
+             no timezone (local timezone used. 7am in montreal is 7am in paris ). must be in the future.
 
     buffer (float) = here : 0.1 rad stating value, buffer will be increase (+0.1rad) while all origins & destinations are
     not included in the polygon around them. if it fail, you can provide a big buffer! (ex:1)
@@ -326,22 +327,32 @@ def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode=
             print('times', mat)
             
     elif api == 'google':
-        print('The google api wrapper seems to have some issues. The departure time doesnt seems to work for example.')
-        import googlemaps
-        gmaps = googlemaps.Client(key=apiKey)
-         
         mode = {'car': 'driving', 'pedestrian': 'walking', 'bicycle': 'bicycling'}.get(mode, mode)
-        res = gmaps.distance_matrix(origins=origins,
-                                    destinations=destinations,
-                                    departure_time=time,
-                                    mode=mode,
-                                    traffic_model="best_guess")
-        if res['status'] != 'OK':
-            raise Exception(res)
+        api_url = "https://maps.googleapis.com/maps/api/distancematrix/json?"
+        proto_url = api_url + "origins={0}&destinations={1}"
+        proto_url += "&mode={2}&language=en-EN&sensor=false&departure_time={3}&trafic_model=pessimistic&key={4}"
+        url = proto_url.format(
+            '|'.join([str(g['lat'])+ ','+str(g['lng']) for g in origins]),
+            '|'.join([str(g['lat'])+ ','+str(g['lng']) for g in destinations]),
+            mode,
+            int(time),
+            apiKey)
+        
+        try:
+            x = requests.get(url, verify=False)
+            resp = json.loads(x.text)
+            if x.status_code != 200:
+                raise Exception(resp)
+        except:
+            sleep(5)
+            x = requests.get(url, verify=False)
+            resp = json.loads(x.text)
+            if x.status_code != 200:
+                raise Exception(resp)
         mat = []
-        for i, origin in enumerate(res['rows']):
+        for i, origin in enumerate(resp['rows']):
             for j, destination in enumerate(origin['elements']):
-                mat.append((destination['duration']['value']))
+                mat.append((destination['duration_in_traffic']['value']))
         mat = np.array(mat).reshape(len(origins), len(destinations))
     else:
         raise Exception('api should be here or google.')
