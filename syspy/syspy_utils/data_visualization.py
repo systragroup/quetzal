@@ -470,7 +470,7 @@ def bandwidth(
             
         df.apply(plot_arrow, axis=1)
     else:
-        df.plot(value_column, linewidth=df['linewidth'], ax=plot, cax=cax, legend=legend, cmap=cmap)
+        df.plot(value_column, linewidth=df['linewidth'], ax=plot, cax=cax, legend=legend, cmap=cmap, vmax=max_value)
     
     # Plot label
     df_label = create_label_dataframe(df, label_column)
