@@ -343,7 +343,8 @@ class PublicPathFinder:
                     cutoff=cutoff,
                     ntlegs_penalty=ntlegs_penalty
                 )
-            except:
+            except Exception as e:
+                print(e)
                 if prune:
                     tqdm.write('Pathfinder failed with prune=True. Trying with prune=False')
                 footpaths = self.footpaths
