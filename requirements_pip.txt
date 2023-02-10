@@ -5,6 +5,7 @@ requests
 geopy
 scipy
 sklearn
+scikit-learn
 matplotlib
 numba
 protobuf==3.20
