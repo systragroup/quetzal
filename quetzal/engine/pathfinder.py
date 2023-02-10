@@ -490,7 +490,9 @@ class PublicPathFinder:
 
         if broken_modes:
             # self.build_graph(**kwargs)
+            print('build_mode_combinations')
             self.build_mode_combinations(mode_column=mode_column)
+            print('find_broken_mode_paths')
             self.find_broken_mode_paths(
                 od_set=od_set,
                 cutoff=cutoff,
