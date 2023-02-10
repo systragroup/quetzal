@@ -40,7 +40,7 @@ gtfs-kit
 idna==2.10
 imagesize==1.2.0
 ipykernel==5.5.5
-ipython==7.24.0; python_version >= '3.3'
+ipython==8.10.0; python_version >= '3.3'
 ipython-genutils==0.2.0
 ipywidgets==7.6.3
 jedi==0.18.0

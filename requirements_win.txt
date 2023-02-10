@@ -36,7 +36,7 @@ geopy==2.1.0
 gtfs-kit==5.0.2
 idna==2.10
 imagesize==1.2.0
-ipython==7.24.0; python_version >= '3.3'
+ipython==8.10.0; python_version >= '3.3'
 ipython-genutils==0.2.0
 ipywidgets==7.6.3
 jedi==0.18.0
