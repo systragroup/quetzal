@@ -325,7 +325,7 @@ class PublicPathFinder:
                     removed_nodes = removed_nodes.union(self.zones)
                     footpaths = footpaths.loc[(~footpaths['a'].isin(removed_nodes)) & (~footpaths['b'].isin(removed_nodes))]
                     ntlegs  = ntlegs.loc[(~ntlegs['a'].isin(removed_nodes)) & (~ntlegs['b'].isin(removed_nodes))]
-
+                print('starting ajacency_matrix')
                 matrix, node_index = adjacency_matrix(
                     links=links,
                     ntlegs=ntlegs,
@@ -334,7 +334,7 @@ class PublicPathFinder:
                     boarding_time=boarding_time,
                     **kwargs
                 )
-
+                print('starting los_from_graph')
                 los = los_from_graph(
                     csgraph=matrix,
                     node_index=node_index,
