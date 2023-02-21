@@ -45,7 +45,7 @@ def parallel_call_jobs(jobs, mode='w', leave=False, workers=1, sleep=1):
                 else:
                     command_list = ['python', file] +[arg]
                 my_env = os.environ
-                my_env["PYTHONPATH"] = ";".join(sys.path)[1:]
+                my_env["PYTHONPATH"] = os.pathsep.join(sys.path)[1:]
                 popens[i] = Popen(
                     command_list,
                     stdout=stdout,

@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from quetzal.analysis import analysis
 from quetzal.engine import engine, linearsolver_utils, nested_logit, fares
-from quetzal.io import export
+from quetzal.io.export import build_lines
 from quetzal.model import model, summarymodel, transportmodel
 from syspy.spatial import geometries, spatial
 from syspy.syspy_utils import neighbors
@@ -521,7 +521,7 @@ class AnalysisModel(summarymodel.SummaryModel):
         self.checkpoint_nodes = selected[1]
 
     def analysis_lines(self, line_columns='all', group_id='trip_id', *args, **kwargs):
-        self.lines = export.build_lines(
+        self.lines = build_lines(
             self.links,
             line_columns=line_columns,
             group_id=group_id,
