@@ -1,5 +1,4 @@
 import os.path
-import tkinter as Tkinter
 
 import xlrd
 from syspy.io.pandasdbf import dbf_qc as dbf
@@ -18,6 +17,7 @@ def convert_value(value, encoding=_encoding):
 
 class exceltodbf:
     def __init__(self, infile, outfile, encoding=_encoding):
+        import tkinter as Tkinter
         self.infile = infile
         self.wb = xlrd.open_workbook(infile)
         self.sheet_names = self.wb.sheet_names()
