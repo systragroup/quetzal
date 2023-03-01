@@ -78,10 +78,10 @@ class GtfsImporter(Feed):
         feed.build_links_and_nodes()
         return feed
 
-    def build_links_and_nodes(self, time_expanded=False, log=True, **kwargs):
+    def build_links_and_nodes(self, time_expanded=False, log=True, shape_dist_traveled=False, **kwargs):
         self.to_seconds()
-        self.build_links(time_expanded=time_expanded, **kwargs)
-        self.build_geometries(log=log)
+        self.build_links(time_expanded=time_expanded, shape_dist_traveled=shape_dist_traveled)
+        self.build_geometries(log=log, **kwargs)
 
     def to_seconds(self):
         # stop_times
