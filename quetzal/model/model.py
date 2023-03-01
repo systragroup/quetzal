@@ -162,6 +162,7 @@ class Model(IntegrityModel):
         hdf_database=None,
         zip_database=None,
         zippedpickles_folder=None,
+        s3_folder=None,
         omitted_attributes=(),
         only_attributes=None,
         *args,
@@ -200,6 +201,12 @@ class Model(IntegrityModel):
         elif zippedpickles_folder:
             self.read_zippedpickles(
                 zippedpickles_folder,
+                omitted_attributes=omitted_attributes,
+                only_attributes=only_attributes
+            )
+        elif s3_folder:
+            self.read_zippedpickles_s3(
+                s3_folder,
                 omitted_attributes=omitted_attributes,
                 only_attributes=only_attributes
             )
@@ -296,7 +303,7 @@ class Model(IntegrityModel):
             self.__delattr__(attr + '_' + key)
         self.__setattr__(attr, pd.concat(to_concat))
 
-    def to_zippedpickles(
+    def to_zippedpickles_local(
         self,
         folder,
         omitted_attributes=(),
@@ -334,6 +341,55 @@ class Model(IntegrityModel):
                         complevel=complevel
                     )
 
+    def to_zippedpickles_s3(
+        self,
+        folder,
+        omitted_attributes=(),
+        only_attributes=None,
+        max_workers=1,
+        complevel=-1,
+        remove_first=True
+    ):
+        import s3fs
+        fs = s3fs.S3FileSystem(anon=False)
+        fs.invalidate_cache()
+
+        if remove_first & fs.exists(folder):
+            fs.rm(folder, recursive=True)
+
+        if max_workers == 1:
+            iterator = tqdm(self.__dict__.items())
+            for key, value in iterator:
+                iterator.desc = key
+                if key in omitted_attributes:
+                    continue
+                if only_attributes is not None and key not in only_attributes:
+                    continue
+                hdf_io.to_zippedpickle_s3(
+                    fs, value, '%s/%s.zippedpickle' % (folder, key),
+                    complevel=complevel
+                )
+        else:
+            with ProcessPoolExecutor(max_workers=max_workers) as executor:
+                for key, value in self.__dict__.items():
+                    if key in omitted_attributes:
+                        continue
+                    if only_attributes is not None and key not in only_attributes:
+                        continue
+                    executor.submit(
+                        hdf_io.to_zippedpickle_s3,
+                        fs, value,
+                        r'%s/%s.zippedpickle' % (folder, key),
+                        complevel=complevel
+                    )
+
+    def to_zippedpickles(self, folder, *args, **kwargs):
+        if folder[:2] == 's3':
+            self.to_zippedpickles_s3(folder, *args, **kwargs)    
+        else:
+            self.to_zippedpickles_local(folder, *args, **kwargs)
+
+
     def read_zippedpickles(self, folder, omitted_attributes=(), only_attributes=None):
         files = os.listdir(folder)
         keys = [
@@ -350,6 +406,29 @@ class Model(IntegrityModel):
 
             iterator.desc = key
             with open('%s/%s.zippedpickle' % (folder, key), 'rb') as file:
+                buffer = file.read()
+                bigbuffer = zlib.decompress(buffer)
+                self.__setattr__(key, pickle.loads(bigbuffer))
+
+    def read_zippedpickles_s3(self, folder, omitted_attributes=(), only_attributes=None):
+        import s3fs
+        fs = s3fs.S3FileSystem(anon=False)
+        fs.invalidate_cache()
+        files = fs.find(folder)
+        keys = [
+            os.path.basename(file).split('.zippedpickle')[0]
+            for file in files
+            if '.zippedpickle' in file
+        ]
+        iterator = tqdm(keys)
+        for key in iterator:
+            if key in omitted_attributes:
+                continue
+            if only_attributes is not None and key not in only_attributes:
+                continue
+
+            iterator.desc = key
+            with fs.open('%s/%s.zippedpickle' % (folder, key), 'rb') as file:
                 buffer = file.read()
                 bigbuffer = zlib.decompress(buffer)
                 self.__setattr__(key, pickle.loads(bigbuffer))

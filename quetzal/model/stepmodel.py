@@ -37,7 +37,10 @@ def read_json(folder, **kwargs):
 
 
 def read_zippedpickles(folder, *args, **kwarg):
-    m = StepModel(zippedpickles_folder=folder, *args, **kwarg)
+    if folder[:2] == 's3':
+        m = StepModel(s3_folder=folder, *args, **kwarg)    
+    else:
+        m = StepModel(zippedpickles_folder=folder, *args, **kwarg)
     return m
 
 

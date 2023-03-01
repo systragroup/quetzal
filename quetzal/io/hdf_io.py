@@ -50,6 +50,14 @@ def to_zippedpickle(frame, filepath, pickle_protocol_level=4, complevel=-1):
             file.write(smallbuffer)
 
 
+def to_zippedpickle_s3(fs, frame, filepath, pickle_protocol_level=4, complevel=-1):
+    with pickle_protocol(pickle_protocol_level):
+        buffer = pickle.dumps(frame)
+        smallbuffer = zlib.compress(buffer, level=complevel)
+        with fs.open(filepath, 'wb') as file:
+            file.write(smallbuffer)
+
+
 def frame_to_zip(frame, filepath, level=4, complevel=None):
     with pickle_protocol(level):
         with pd.HDFStore(
