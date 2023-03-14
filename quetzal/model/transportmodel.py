@@ -134,7 +134,11 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             )
 
     @track_args
-    def step_road_pathfinder(self,method='bfw', maxiters=1, *args, **kwargs):
+    def step_road_pathfinder(self, 
+                             method='bfw', 
+                             maxiters = 1, 
+                             path_analysis=True,
+                             *args, **kwargs):
        
         """Performs road assignment with or without capacity constraint, depending on the method used
 
@@ -219,6 +223,9 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             print(method,' not supported. use msa, fw, bfw or aon')
 
         self.car_los['origin'] == self.car_los['destination']
+
+        if path_analysis:
+            self.analysis_car_los()
 
 
     @track_args
