@@ -14,7 +14,7 @@ from sklearn.neighbors import KNeighborsRegressor
 from syspy.spatial.spatial import nearest
 from quetzal.engine.pathfinder_utils import get_path, parallel_dijkstra, simple_routing, build_index, sparse_matrix
 from quetzal.engine.msa_utils import get_zone_index
-from syspy.clients.api_proxy import get_distance_matrix
+from syspy.clients.api_proxy import multi_get_distance_matrix
 
 
 class RoadModel:
@@ -94,7 +94,10 @@ class RoadModel:
             centroid = centroid.drop_duplicates('node_index')
         self.zones_centroid = centroid
         
-    def create_od_mat(self):
+    def create_od_mat(self, od_set=None):
+        '''
+        od_set=None. use all Origin and destination in self.zones_centroid. provide with r_node as o and d.
+        '''
         od_time = simple_routing(origin=self.zones_centroid['node_index'].values,
                                  destination=self.zones_centroid['node_index'].values,
                                  links=self.road_links,
@@ -103,17 +106,19 @@ class RoadModel:
         od_time = od_time.stack().reset_index().rename(columns={'level_0': 'origin', 'level_1': 'destination', 0: self.ff_time_col})
         # remove Origin  ==  destination
         od_time = od_time[od_time['origin'] != od_time['destination']]
+        if od_set: # need to be rnodes 
+            od_time = od_time.set_index(['origin', 'destination']).loc[list(od_set)].reset_index()
         
         inf_od = od_time[~np.isfinite(od_time[self.ff_time_col])]
         assert len(inf_od) == 0, 'fail: there is infinitely long path, fix your links or your zones \n {val}'.format(val=inf_od[['origin', 'destination']])        
-    
-        geom_dict = self.road_nodes['geometry'].to_dict()
-        od_time['o_geometry'] = od_time['origin'].apply(lambda x: geom_dict.get(x))
-        od_time['d_geometry'] = od_time['destination'].apply(lambda x: geom_dict.get(x))
-        od_time['o_lon'] = od_time['o_geometry'].apply(lambda p: p.x)
-        od_time['o_lat'] = od_time['o_geometry'].apply(lambda p: p.y)
-        od_time['d_lon'] = od_time['d_geometry'].apply(lambda p: p.x)
-        od_time['d_lat'] = od_time['d_geometry'].apply(lambda p: p.y)
+            
+        x_dict = self.road_nodes['geometry'].apply(lambda p: p.x).to_dict()
+        y_dict = self.road_nodes['geometry'].apply(lambda p: p.y).to_dict()
+        od_time['o_lon'] = od_time['origin'].apply(lambda x: x_dict.get(x))
+        od_time['o_lat'] = od_time['origin'].apply(lambda x: y_dict.get(x))
+        od_time['d_lon'] = od_time['destination'].apply(lambda x: x_dict.get(x))
+        od_time['d_lat'] = od_time['destination'].apply(lambda x: y_dict.get(x))
+
         od_time = od_time[['origin', 'destination', self.ff_time_col, 'o_lon', 'o_lat', 'd_lon', 'd_lat']]
         self.od_time = od_time
         
@@ -149,20 +154,23 @@ class RoadModel:
             origins = self.zones_centroid[self.zones_centroid['node_index'] == origin_nodes]
             destinations = self.zones_centroid[self.zones_centroid['node_index'].isin(destination_nodes)]
             try:
-                res = get_distance_matrix(origins=origins,
-                                          destinations=destinations,
-                                          apiKey=apiKey,
-                                          mode=mode,
-                                          api=api,
-                                          time=time)
+                res = multi_get_distance_matrix(origins=origins,
+                                                destinations=destinations,
+                                                batch_size=(1, 100),
+                                                apiKey=apiKey,
+                                                mode=mode,
+                                                api=api,
+                                                time=time)
+                sleep(1)
             except:
                 sleep(5)
-                res = get_distance_matrix(origins=origins,
-                                          destinations=destinations,
-                                          apiKey=apiKey,
-                                          api=api,
-                                          mode=mode,
-                                          time=time)
+                res = multi_get_distance_matrix(origins=origins,
+                                                destinations=destinations,
+                                                batch_size=(1, 100),
+                                                apiKey=apiKey,
+                                                api=api,
+                                                mode=mode,
+                                                time=time)
 
             mat = pd.concat([mat, res])
             sleep(0.2)
@@ -171,6 +179,12 @@ class RoadModel:
         return mat
 
     def apply_api_matrix(self, mat, api_time_col='time'):
+        '''
+        take a matrix of time row (zone origin) column (zone destination).
+        apply each time to self.od_time (api_time_col), get residual (free_flow-api_time)
+        and add a interpolated=True to every other row of self.od_time.
+        the zone are convert to nodes index (like self.od_time) with self.zone_node_dict
+        '''
         self.api_time_col = api_time_col
         if api_time_col in self.od_time.columns:
             print('"{col}" columns will be overwrite in self.od_time'.format(col=api_time_col))
