@@ -669,7 +669,10 @@ class AnalysisModel(summarymodel.SummaryModel):
         transfers = self.fare_attributes.set_index('fare_id')['transfers'].to_dict()
         price = self.fare_attributes.set_index('fare_id')['price'].to_dict()
         route_fares_dict = self.fare_rules.groupby('route_id')['fare_id'].agg(frozenset).to_dict()
-        fare_options = [fares.get_fare_options(arod_list, route_fares_dict) for arod_list in self.pt_los['arod_list']]
+        fare_options = [
+            fares.get_fare_options(arod_list, route_fares_dict) 
+            for arod_list in self.pt_los['arod_list']
+        ]
         unique_fare_options = set(fare_options)
         cheapest_breakdown_dict = dict()
         for fo in unique_fare_options: 
