@@ -113,6 +113,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         keep_centroids=False,
         max_ntleg_length=5000,
         zone_to_transit=True,
+        road_to_transit=True,
         zone_to_road=False,
         prefix=False
     ):
@@ -142,8 +143,10 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             maximal length of the ntlegs, in m
         zone_to_transit : bool, optional, default True
             True to create links between zones and transit stops (nodes)
+        road_to_transit : bool, optional, default True
+            True to create links between road_nodes and transit stops (nodes)
         zone_to_road : bool, optional, default False
-            True to create links between zones and road_nodes, and between road_nodes and nodes
+            True to create links between zones and road_nodes
         prefix : bool, optional, default False
             If True, add prefixes to the index of the ntlegs
             ztt_ (zone_to_transit), ztr_ (zone_to_road), rtt_ (road_to_transit)
@@ -224,7 +227,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 warnings.warn(("zone_to_road indexes does not have prefixes. This may cause collisions."
                                "Consider using the option prefix=True. Prefixes will be added by default in"  
                                "a future update"), FutureWarning)
-
+        if road_to_transit:
             ntlegs = engine.ntlegs_from_centroids_and_nodes(
                 self.nodes,
                 self.road_nodes,
