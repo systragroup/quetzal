@@ -138,6 +138,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                              method='bfw', 
                              maxiters = 1, 
                              path_analysis=True,
+                             time_column='time',
                              *args, **kwargs):
        
         """Performs road assignment with or without capacity constraint, depending on the method used
@@ -164,6 +165,9 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             
         maxiters : integer, optional, default 10
             Maxiters=1 will perform 'shortest path' pathfinder
+
+        time_column: string, optional, defaut time
+            name of the links free_flow time column in road_links
 
         tolerance  : float, optional, default 0.01
             stop condition for RelGap, in percent 
@@ -205,7 +209,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         """
     
-        roadpathfinder = RoadPathFinder(self)
+        roadpathfinder = RoadPathFinder(self, time_column=time_column)
         method = method.lower()
 
         if 'all_or_nothing' in kwargs:

@@ -8,10 +8,11 @@ import ray
 
 
 class RoadPathFinder:
-    def __init__(self, model):
+    def __init__(self, model,time_column='time'):
         #self.zones = model.zones.copy()
         self.road_links = model.road_links.copy()
         self.zone_to_road = model.zone_to_road.copy()
+        self.time_col=time_column
         try:
             self.volumes = model.volumes.copy()
         except AttributeError:
@@ -46,6 +47,7 @@ class RoadPathFinder:
         od_set = None. od_set
         beta = None. give constant value foir BFW betas. ex: [0.7,0.2,0.1]
         num_cores = 1 : for parallelization. 
+        **kwargs: ntleg_penalty=1e9, access_time='time'  for zone to roads.
         '''
         #preparation
         aon = True if method=='aon' else False
@@ -60,14 +62,14 @@ class RoadPathFinder:
         df = self.init_df(aon=aon)
 
         # CREATE EDGES FOR SPARSE MATRIX
-        edges = df['time'].reset_index().values # to build the index once and for all
+        edges = df[self.time_col].reset_index().values # to build the index once and for all
         index = build_index(edges)
         reversed_index = {v:k for k, v in index.items()}
         # index V with sparse indexes, zones in sparse indexes
         v,zones = get_zone_index(df,v,index)
 
         if aon==True:
-            df['jam_time'] = df['time']
+            df['jam_time'] = df[self.time_col]
             self.car_los = get_car_los(v,df,index,reversed_index,zones,self.ntleg_penalty,num_cores)
             return
 
@@ -93,10 +95,10 @@ class RoadPathFinder:
         df['auxiliary_flow'].fillna(0, inplace=True)
         df['flow'] += df['auxiliary_flow'] # do not do += in a cell where the variable is not created! bad
         if maxiters==0: # no iteration.
-            df['jam_time'] = df['time']
+            df['jam_time'] = df[self.time_col]
         else:
-            df['jam_time'] = jam_time(df,vdf,'flow')
-            df['jam_time'].fillna(df['time'], inplace=True)
+            df['jam_time'] = jam_time(df,vdf,'flow',time_col=self.time_col)
+            df['jam_time'].fillna(df[self.time_col], inplace=True)
             
         rel_gap = []
         if log:
@@ -117,7 +119,7 @@ class RoadPathFinder:
             if method == 'bfw': # if biconjugate: takes the 2 last direction : direction is flow-auxflow.
                 if i>=2:
                     if not beta:
-                        df['derivative'] = jam_time(df,vdf,'flow',der=True)
+                        df['derivative'] = jam_time(df,vdf,'flow',der=True,time_col=self.time_col)
                         b = find_beta(df,phi) #this is the previous phi (phi_-1)
                     else :
                         assert sum(beta)==1 , 'beta must sum to 1.'
@@ -131,7 +133,7 @@ class RoadPathFinder:
             if method == 'msa':
                 phi = 1 / (i + 2)
             else:
-                phi = find_phi(df,vdf,0,0.8,10)
+                phi = find_phi(df, vdf, 0, 0.8, 10,time_col=self.time_col)
             #
            
             #  modelling transport eq 11.11. SUM currentFlow x currentCost - SUM AONFlow x currentCost / SUM currentFlow x currentCost
@@ -146,8 +148,8 @@ class RoadPathFinder:
             df['flow'].fillna(0, inplace=True)
 
 
-            df['jam_time'] = jam_time(df,vdf,'flow')
-            df['jam_time'].fillna(df['time'], inplace=True)
+            df['jam_time'] = jam_time(df,vdf,'flow',time_col=self.time_col)
+            df['jam_time'].fillna(df[self.time_col], inplace=True)
             if rel_gap[-1] <= tolerance:
                 break
 
@@ -171,10 +173,10 @@ class RoadPathFinder:
         # prepare zone_to_road_links to the same format as road_links
         # and initialize it's parameters
         zone_to_road = self.zone_to_road.copy()
-        zone_to_road['time'] = zone_to_road[access_time]
+        zone_to_road[self.time_col] = zone_to_road[access_time]
         zone_to_road['length'] = np.nan
-        zone_to_road = zone_to_road[['a', 'b','length', 'direction', 'time']]
-        zone_to_road.loc[zone_to_road['direction'] == 'access', 'time'] += ntleg_penalty 
+        zone_to_road = zone_to_road[['a', 'b','length', 'direction', self.time_col]]
+        zone_to_road.loc[zone_to_road['direction'] == 'access', self.time_col] += ntleg_penalty 
         zone_to_road['capacity'] = np.nan
         zone_to_road['vdf'] = 'free_flow'
         zone_to_road['alpha'] = 0
@@ -212,12 +214,12 @@ class RoadPathFinder:
                 self.road_links['penalty'] = 0
                 print("penalty not found in road_links columns. Values set to 0")
             
-            columns = ['a', 'b','length', 'time', 'capacity', 'vdf', 'alpha', 'beta', 'limit','penalty']
+            columns = ['a', 'b','length', self.time_col, 'capacity', 'vdf', 'alpha', 'beta', 'limit','penalty']
             df = pd.concat([self.road_links[columns], self.zone_to_road[columns]]).set_index(['a', 'b'], drop=False)
             df['flow'] = 0
             df['auxiliary_flow'] = 0
         else:
-            columns = ['a', 'b', 'time']
+            columns = ['a', 'b', self.time_col]
             df = pd.concat([self.road_links[columns], self.zone_to_road[columns]]).set_index(['a', 'b'], drop=False)
         
         return df
