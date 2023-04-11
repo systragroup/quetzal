@@ -12,7 +12,9 @@ class RoadPathFinder:
         #self.zones = model.zones.copy()
         self.road_links = model.road_links.copy()
         self.zone_to_road = model.zone_to_road.copy()
-        self.time_col=time_column
+        self.time_col = time_column
+        assert not self.road_links.set_index(['a','b']).index.has_duplicates, 'there is duplicated road links (same a,b for a link)'
+        assert self.time_col in self.road_links.columns, f"time_column: {time_column} not found in road_links."
         try:
             self.volumes = model.volumes.copy()
         except AttributeError:

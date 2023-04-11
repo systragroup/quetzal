@@ -222,6 +222,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             self.car_los = roadpathfinder.car_los
             if method != 'aon': # do not overwrite road_links if its all-or-nothing
                 self.road_links = roadpathfinder.road_links
+                self.road_links['jam_speed'] = self.road_links['length']/self.road_links['jam_time']*3.6
                 self.relgap = roadpathfinder.relgap
         else:
             print(method,' not supported. use msa, fw, bfw or aon')
