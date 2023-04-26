@@ -5,6 +5,7 @@ import shutil
 import time
 import uuid
 from subprocess import Popen
+import string
 
 
 def add_freeze_support(file):
@@ -131,10 +132,12 @@ def parallel_call_notebook(
 
     mode = 'w' if errout_suffix else 'a+'
 
+    supported_characters = string.ascii_lowercase + string.ascii_uppercase + string.digits + '-_' 
     for i in range(len(arg_list)):
         arg = arg_list[i]
         suffix = ''.join(arg) if errout_suffix else ''
         suffix += '_' + file.split('/')[-1].split('.')[0]
+        suffix = ''.join([s for s in suffix if s in supported_characters])
         stdout_file = stdout_path.replace('.txt', '_' + suffix + '.txt')
         stderr_file = stderr_path.replace('.txt', '_' + suffix + '.txt')
         jobs.append([i, file, arg, stdout_file, stderr_file])
