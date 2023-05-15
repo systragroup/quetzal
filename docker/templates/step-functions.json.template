@@ -1,0 +1,57 @@
+{
+  "StartAt": "STEP 1",
+  "States": {
+    "STEP 1": { # TO EDIT
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "Payload": {
+          "notebook_path": "notebooks/transport/A10_STEP_1.ipynb", # TO EDIT
+          "event.$": "$",
+        },
+        "FunctionName": <LAMBDA-FUNCTION-ARN> # TO EDIT
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "STEP 2" # TO EDIT
+    },
+    "STEP 2": { # TO EDIT
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "Payload": {
+          "notebook_path": "notebooks/transport/A20_STEP_2.ipynb", # TO EDIT
+          "event.$": "$",
+        },
+        "FunctionName": <LAMBDA-FUNCTION-ARN> # TO EDIT
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "End": true
+    }
+  }
+}
