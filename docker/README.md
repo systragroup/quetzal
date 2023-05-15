@@ -28,54 +28,52 @@ Create a ECR repository with a name similar to the model name. There is no parti
 
 ## Configure model
 
-1. Copy files from this directory to the model directory
-2. Copy or move environnement variables files from template folder into root and fill `QUETZAL_MODEL_NAME` (should be the name of the model folder) and `AWS_ECR_REPO_NAME`. 
+1. Copy files from this template directory to the root of model directory and remove .template extensions
 
-    ```mv template/.env.template .env```
+2. Fill the environnement variable file `.env`. `QUETZAL_MODEL_NAME` (should be the same as the the model folder). 
 
 4. Create the requirements.txt for the model. We recommand using [pip chill](https://pypi.org/project/pip-chill/).
 
 5. Fill the `Dockerfile.dockerignore`. Inputs that are provided by quenedi and outputs are not necessary in the image (I.E. files that will be set in the `.quenedi.config.json` later). Note that Docker Build will be run from directory higher than the model. You should add the model folder path to your ignored path (Exemple: inputs -> quetzal_model/inputs) 
 
-3. Push the first image to the ECR Repository using the sfollowing command (from the script folder):
+3. Push the first image to the ECR Repository using the following command (from the quetzal docker script folder):
 
-    ```./push-image.sh inital```
+    ```./push-image.sh <model_folder> inital```
 
 ## Create Lambda Function (AWS Admin only)
 
-Create a Python 3.8 Lambda function from inital image and create an new role for this function and add permission to write on the S3 bucket. Configure function ressources + add variable d'environnement
+Create a Python 3.8 Lambda function from inital image and create an new role for this function and add permission to write on the S3 bucket. Configure function ressources + add `BUCKET_NAME` environnement variable
 
+## Config file
 
-Copy or move config file into root and fill the file with corresponding values 
-    
-`mv template/.quenedi.config.json.template .quenedi.config.json`
+Fill the config file `quenedi.config.json` with corresponding values. 
 
-## Create S3 Bucket
+## Create S3 Bucket (AWS Admin only)
 
 Create an S3 bucket and add CORS policy from another bucket (such as quetzal-paris)
 
-## Create Step Function
+## Step function
 
-Configure the step function using using the provided template `step-functions.json.template`. Copy role policies from quetzal-paris
+Modify the step fonction configuration file `step-functions.json` according to model steps.
 
-## Create Cognito Role
+## Create Step Function (AWS Admin only)
+
+Copy role policies from quetzal-paris
+
+## Create Cognito Role (AWS Admin only)
 
 Custom trust entity + policy copied from quetzal-paris
 
 ## End Configuration
-1. Copy or move config file from template folder into root and fill values.  
-
-    ```mv template/quenedi.config.json.template quenedi.config.json```
-
-2. Add config to S3 config using script
+1. Add config to S3 config using script
 
     ```python update-s3-config.py```
 
-3. Add model files for base scenario to s3
+2. Add model files for base scenario to s3
 
     ```python update-s3-model-files.py```
 
-4. Push first version of the model
+3. Push first version of the model
     
      ```./update-lambda.sh```
 
@@ -83,5 +81,4 @@ Custom trust entity + policy copied from quetzal-paris
 
 You need AWS permissions to update a model on ECR. You can ask for those permissions to the AWS Admin.
 
-## Up
 
