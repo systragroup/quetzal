@@ -46,7 +46,7 @@ class ParkRideModel(preparationmodel.PreparationModel):
 
         zn = 'a' if reverse else 'b'
 
-        zones = set(self.zones.index).intersection(self.zone_to_road[zn])
+        zones = list(set(self.zones.index).intersection(self.zone_to_road[zn]))
         sources, targets = (zones, pr_nodes) if reverse else (pr_nodes, zones)
 
         node_transit_zone = pathfinder_utils.paths_from_graph(
@@ -65,7 +65,7 @@ class ParkRideModel(preparationmodel.PreparationModel):
         pr_nodes=None,
         reverse=False,
         zrn_access_time='time',
-        road_time = 'time'
+        road_time='time'
     ):
         # zn = 'a' keeps zone->road zn='b' keeps road->zone
         zn, pn = ('b', 'a') if reverse else ('a', 'b')
@@ -90,8 +90,7 @@ class ParkRideModel(preparationmodel.PreparationModel):
 
     ):
         zn = 'b' if reverse else 'a'
-        zones = set(self.zones.index).intersection(self.zone_to_road[zn])
-
+        zones = list(set(self.zones.index).intersection(self.zone_to_road[zn]))
         zrt_edges = self.zone_road_node_edges(
             zrn_access_time=zrn_access_time,
             pr_nodes=pr_nodes, reverse=reverse,
@@ -237,8 +236,8 @@ class ParkRideModel(preparationmodel.PreparationModel):
     def lighten_pr_los(self, los_attributes=['pr_los'], keep_summary_columns=False):
 
         time_columns = [
-            'access_time',  'footpath_time',
-            'waiting_time', 'boarding_time',  'gtime'
+            'access_time', 'footpath_time',
+            'waiting_time', 'boarding_time', 'gtime'
         ]
         if not keep_summary_columns:
             time_columns += ['time', 'in_vehicle_time']
@@ -258,8 +257,6 @@ class ParkRideModel(preparationmodel.PreparationModel):
                 to_drop = [td for td in to_drop if td != 'path']
         for los in los_attributes:
             self.__getattribute__(los).drop(to_drop, axis=1, errors='ignore', inplace=True)
-
-
 
     def analysis_pr_los(
         self,
