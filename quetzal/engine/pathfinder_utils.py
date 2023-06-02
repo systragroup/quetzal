@@ -1,8 +1,5 @@
-import itertools
-import networkx as nx
 import numpy as np
 import pandas as pd
-from quetzal.engine import engine
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import dijkstra
 from tqdm import tqdm

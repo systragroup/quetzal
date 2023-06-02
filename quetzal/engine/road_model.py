@@ -10,12 +10,10 @@ from sklearn.model_selection import train_test_split
 import ray
 
 from sklearn.neighbors import KNeighborsRegressor
-
 from syspy.spatial.spatial import nearest
 from quetzal.engine.pathfinder_utils import get_path, parallel_dijkstra, simple_routing, build_index, sparse_matrix
 from quetzal.engine.msa_utils import get_zone_index
 from syspy.clients.api_proxy import multi_get_distance_matrix
-
 
 class RoadModel:
     def __init__(self, road_links, road_nodes, zones, ff_time_col='time_ff'):
@@ -75,6 +73,33 @@ class RoadModel:
 
     def copy(self):
         return copy.deepcopy(self)
+    
+    def split_quenedi_rlinks(self,oneway='0'):
+        links_r = self.road_links[self.road_links['oneway']==oneway].copy()
+        # apply _r features to the normal non r features
+        r_cols = [col for col in links_r.columns if col.endswith('_r')]
+        cols = [col[:-2] for col in r_cols]
+        for col,r_col in zip(cols,r_cols):
+            links_r[col] = links_r[r_col]
+        # reindex with _r
+        links_r.index = links_r.index.astype(str)+ '_r'
+        # reverse links (a=>b, b=>a)
+        links_r = links_r.rename(columns={'a':'b','b':'a'})
+        self.road_links = pd.concat([self.road_links,links_r])
+    
+    def merge_quenedi_rlinks(self):
+        #get reversed links
+        index_r = [idx for idx in self.road_links.index if idx.endswith('_r')]
+        links_r = self.road_links.loc[index_r].copy()
+        # create new reversed column with here speed and time
+        links_r[self.api_time_col+'_r'] = links_r[self.api_time_col]
+        links_r[self.api_speed_col+'_r'] = links_r[self.api_speed_col]
+        #reindex with initial non _r index to merge
+        links_r.index = links_r.index.map(lambda x:x[:-2])
+        links_r = links_r[[self.api_time_col+'_r',self.api_speed_col+'_r']]
+        # drop added _r links, merge new here columns to inital two way links.
+        self.road_links = self.road_links.drop(index_r, axis=0)
+        self.road_links =  pd.merge(self.road_links,links_r,left_index=True,right_index=True,how='left')
                 
     def zones_nearest_node(self):
         # getting zones centroids
@@ -122,19 +147,26 @@ class RoadModel:
         od_time = od_time[['origin', 'destination', self.ff_time_col, 'o_lon', 'o_lat', 'd_lon', 'd_lat']]
         self.od_time = od_time
         
-    def get_training_set(self, train_size=130, seed=42):
+    def get_training_set(self, train_size=10000, seed=42):
+        '''
+        train_size: number of OD to call (10 000  = 100 ori x 100 des)
+        '''
         X = self.od_time[['o_lon', 'o_lat', 'd_lon', 'd_lat']]
         y = self.od_time[[self.ff_time_col]]
+        size = 1 - (train_size) / len(self.zones_centroid)**2
+        if size > 0:
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = size, random_state=seed)
 
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1 - (train_size**2) / len(self.zones_centroid)**2, random_state=seed)
+            print(len(X_test), ' OD to interpolate')  
+            print(len(X_train), ' OD for training (API call)')
+            print(round(100 * len(X_train) / len(X_test), 1), '% training')
 
-        print(len(X_test), ' OD to interpolate')  
-        print(len(X_train), ' OD for training (API call)')
-        print(round(100 * len(X_train) / len(X_test), 1), '% training')
-
-        train_od = self.od_time.loc[X_train.index][['origin', 'destination']]
-        print('number of unique origin and destination in training set')
-        print(len(train_od['origin'].unique()), len(train_od['destination'].unique()))
+            train_od = self.od_time.loc[X_train.index][['origin', 'destination']]
+            print('number of unique origin and destination in training set')
+            print(len(train_od['origin'].unique()), len(train_od['destination'].unique()))
+        else:
+            train_od = self.od_time[['origin', 'destination']].copy()
+            print('100% of OD for training (API call)')
 
         print('max destination for an origin:', train_od.groupby('origin').agg(len).max()['destination'])
 
@@ -146,9 +178,10 @@ class RoadModel:
                                  apiKey='',
                                  api='here',
                                  mode='car',
-                                 time=None):
+                                 time=None,
+                                 verify=False):
         mat = pd.DataFrame()
-        for row in tqdm(train_od.iterrows()):
+        for row in tqdm(list(train_od.iterrows())):
             origin_nodes = row[0]
             destination_nodes = row[1]['destination']
             origins = self.zones_centroid[self.zones_centroid['node_index'] == origin_nodes]
@@ -160,7 +193,8 @@ class RoadModel:
                                                 apiKey=apiKey,
                                                 mode=mode,
                                                 api=api,
-                                                time=time)
+                                                time=time,
+                                                verify=verify)
                 sleep(1)
             except:
                 sleep(5)
@@ -170,7 +204,8 @@ class RoadModel:
                                                 apiKey=apiKey,
                                                 api=api,
                                                 mode=mode,
-                                                time=time)
+                                                time=time,
+                                                verify=verify)
 
             mat = pd.concat([mat, res])
             sleep(0.2)
@@ -201,7 +236,7 @@ class RoadModel:
         self.od_time[api_time_col] = self.od_time.set_index(['origin', 'destination']).index.map(train_time_dict.get)
 
         self.od_time['interpolated'] = True
-        self.od_time.loc[~np.isnan(self.od_time['time']), 'interpolated'] = False
+        self.od_time.loc[~np.isnan(self.od_time[api_time_col]), 'interpolated'] = False
         
         self.od_time['residual'] = self.od_time[api_time_col] - self.od_time[self.ff_time_col]
 
@@ -224,9 +259,19 @@ class RoadModel:
         self.od_time.loc[interp_df.index, 'residual'] = pred_res
         self.od_time[self.api_time_col] = self.od_time[self.ff_time_col] + self.od_time['residual']
 
-    def apply_od_time_on_road_links(self, num_it=10, num_cores=4, max_speed=100, log_error=True):
+    def apply_od_time_on_road_links(self, gap_limit=1, max_num_it=10, num_cores=4, max_speed=100,api_speed_col='here_speed', log_error=True):
+        '''
+        gap_limit: stop iterative process at this error value (minutes)
+        max_num_it: maximum number of iteration
+        num_cores: for parallel ijkstra
+        max_speed: limit on road speed, cannot go faster  (kmh)
 
-        df = self.road_links[['a', 'b', 'length', self.ff_time_col]]
+        return
+        -------
+        self.road_links with api_time_col and api_speed_col
+        '''
+        self.api_speed_col = api_speed_col
+        df = self.road_links[['a', 'b', 'length', self.ff_time_col]].copy()
 
         # Build Sparse Matrix indexes for routing down the line
         edges = df[['a', 'b', self.ff_time_col]].values  # to build the index once and for all
@@ -247,7 +292,7 @@ class RoadModel:
         # init New_time to freeflow time
         df['new_time'] = df[self.ff_time_col]
         errors = []
-        for i in range(num_it):
+        for i in range(max_num_it):
 
             edges = df[['a', 'b', 'new_time']].values
             sparse, _ = sparse_matrix(edges, index=index)
@@ -267,10 +312,13 @@ class RoadModel:
             df['new_speed'] = df['length'] / df['new_time'] * 3.6
             df.loc[df['new_speed'] > max_speed, 'new_time'] = 3.6 * df.loc[df['new_speed'] > max_speed, 'length'] / max_speed
 
+            od_time['routing_time'] = _get_od_time(od_time[['o', 'd']].values, time_matrix)
+            errors.append((i, (round(np.mean(abs(od_time[self.api_time_col] - od_time['routing_time']) / 60), 2))))
+
             if log_error:
-                od_time['routing_time'] = _get_od_time(od_time[['o', 'd']].values, time_matrix)
-                errors.append((i, (round(np.mean(abs(od_time[self.api_time_col] - od_time['routing_time']) / 60), 2))))
                 print(i, errors[-1][1])
+            if errors[-1][1]<=gap_limit:
+                break
         if num_cores > 1:
             ray.shutdown()
         # last time for consistency
@@ -289,9 +337,8 @@ class RoadModel:
         print(round(100 * len(df[df[self.ff_time_col] != df['new_time']]) / len(df), 1), '% of links used')
         
         self.road_links = pd.concat([self.road_links, df[['new_time']]], axis=1).rename(columns={'new_time': self.api_time_col})
-        self.road_links.loc[self.road_links[self.ff_time_col] == self.road_links[self.api_time_col], self.api_time_col] = np.nan
-        self.road_links['speed_ff'] = self.road_links['length'] / self.road_links[self.ff_time_col] * 3.6
-        self.road_links['speed'] = self.road_links['length'] / self.road_links[self.api_time_col] * 3.6
+        #self.road_links.loc[self.road_links[self.ff_time_col] == self.road_links[self.api_time_col], self.api_time_col] = np.nan
+        self.road_links[self.api_speed_col] = self.road_links['length'] / self.road_links[self.api_time_col] * 3.6
         self.od_time['routing_time'] = od_time['routing_time']
         
         return errors
