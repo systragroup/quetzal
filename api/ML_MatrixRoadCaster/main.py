@@ -15,11 +15,7 @@ from pydantic import BaseModel
 from typing import Union, Optional
 # docker build -f api/ML_MatrixRoadCaster/Dockerfile -t ml_matrixroadcaster:latest .
 
-
 # docker run -p 9000:8080 --env-file 'api/ML_MatrixRoadCaster/test.env' ml_matrixroadcaster 
-
-# curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{}'
-
 
 # curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"callID":"test"}'
 
@@ -28,7 +24,7 @@ from typing import Union, Optional
 class Model(BaseModel):
     callID: Optional[str] = 'test'
     num_zones: Optional[int] = 100
-    train_size: Optional[int] = 10
+    train_size: Optional[int] = 100
     date_time: Optional[str] = '2022-12-13T08:00:21+01:00'
     ff_time_col: Optional[str] = 'time'
     max_speed: Optional[float] = 100

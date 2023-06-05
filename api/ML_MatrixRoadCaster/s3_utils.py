@@ -23,7 +23,6 @@ class DataBase:
     def __init__(self):
         print('init db')
         self.BUCKET = os.environ['BUCKET_NAME']
-        #self.BUCKET = 'matrixroadcaster'
         self.s3_resource = boto3.resource('s3')
         self.s3 = boto3.client('s3')    
 

@@ -7,10 +7,13 @@
 ## Deploy
 
 see instruction on AWS ECR
-
+for step 2 however:
+```bash
+docker build -f api/ML_MatrixRoadCaster/Dockerfile -t ml_matrixroadcaster .
+```
 ## TEST
 
-1) create a test.env file
+1) create a test.env file at the root of this folder (with the DockerFile)
 ```bash
 AWS_ACCESS_KEY_ID=[your access key]
 AWS_SECRET_ACCESS_KEY=[your secret key]
