@@ -179,7 +179,8 @@ class RoadModel:
                                  api='here',
                                  mode='car',
                                  time=None,
-                                 verify=False):
+                                 verify=False,
+                                 saving=True):
         mat = pd.DataFrame()
         for row in tqdm(list(train_od.iterrows())):
             origin_nodes = row[0]
@@ -209,8 +210,9 @@ class RoadModel:
 
             mat = pd.concat([mat, res])
             sleep(0.2)
-        print('saving mat')
-        mat.to_csv('Here_OD.csv')
+        if saving:
+            print('saving mat')
+            mat.to_csv('Here_OD.csv')
         return mat
 
     def apply_api_matrix(self, mat, api_time_col='time'):

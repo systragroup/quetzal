@@ -94,7 +94,8 @@ def handler(event, context):
                                             api='here',
                                             mode='car',
                                             time=date_time,
-                                            verify=True)
+                                            verify=True,
+                                            saving=False)
         db.save_csv(uuid, 'here_OD.csv', mat)
 
     # apply OD mat
