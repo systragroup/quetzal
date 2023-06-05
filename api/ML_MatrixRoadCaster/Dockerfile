@@ -6,4 +6,5 @@ COPY api/ML_MatrixRoadCaster/ ./
 #COPY quetzal/engine/road_model.py ./road_model.py
 COPY quetzal ./quetzal
 COPY syspy ./syspy
+
 CMD ["main.handler"]

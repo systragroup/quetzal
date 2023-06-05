@@ -1,5 +1,7 @@
 import os
+import io
 import requests
+import json
 import numpy as np
 import pandas as pd
 import geopandas as gpd
@@ -7,14 +9,34 @@ import boto3
 from sklearn.cluster import KMeans
 from shapely.geometry import Point
 from quetzal.engine.road_model import *
-
+from s3_utils import DataBase
 from io import BytesIO
+from pydantic import BaseModel
+from typing import Union, Optional
 # docker build -f api/ML_MatrixRoadCaster/Dockerfile -t ml_matrixroadcaster:latest .
 
 
-# docker build -t ml_matrixroadcaster:latest .
-# docker run -p 9000:8080  ml_matrixroadcaster
+# docker run -p 9000:8080 --env-file 'api/ML_MatrixRoadCaster/test.env' ml_matrixroadcaster 
+
 # curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{}'
+
+
+# curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"callID":"test"}'
+
+
+
+class Model(BaseModel):
+    callID: Optional[str] = 'test'
+    num_zones: Optional[int] = 100
+    train_size: Optional[int] = 10
+    date_time: Optional[str] = '2022-12-13T08:00:21+01:00'
+    ff_time_col: Optional[str] = 'time'
+    max_speed: Optional[float] = 100
+    num_cores: Optional[int] = 1
+    hereApiKey: str = '' 
+   
+
+db = DataBase()
 
 def create_zones_from_nodes(nodes,num_zones=100):
     nodes['x'] = nodes['geometry'].apply(lambda p:p.x)
@@ -27,20 +49,24 @@ def create_zones_from_nodes(nodes,num_zones=100):
     return zones
 
 
+    
 def handler(event, context):
+    args = Model.parse_obj(event)
     print('start')
-    num_zones = 100
-    train_size = 10
-    date_time = '2022-12-13T08:00:21+01:00'
-    ff_time_col = 'time'
-    max_speed = 100
-    num_cores = 1
-    hereApiKey= 'QMopayRokz2AnlodBD6oYt-gPxUjZe4DN-XBhv4Wnx0' 
-
+    print(args)
+    uuid = args.callID
+    num_zones = args.num_zones
+    train_size = args.train_size
+    date_time = args.date_time
+    ff_time_col = args.ff_time_col
+    max_speed = args.max_speed
+    num_cores = args.num_cores
+    hereApiKey= args.hereApiKey
+    
     print('read files')
-    links = gpd.read_file('road_links.geojson')
+    links = db.read_geojson(uuid,'road_links.geojson')
     links.set_index('index',inplace=True)
-    nodes = gpd.read_file('road_nodes.geojson')
+    nodes = db.read_geojson(uuid,'road_nodes.geojson')
     nodes.set_index('index',inplace=True)
 
     print('create zones')
@@ -63,7 +89,7 @@ def handler(event, context):
 
     #read Here matrix
     try:
-        mat = pd.read_csv( 'here_OD.csv')
+        mat = db.read_csv(uuid,'here_OD.csv')
         mat = mat.set_index('origin')
         mat.columns.name='destination'
     except:
@@ -73,7 +99,7 @@ def handler(event, context):
                                             mode='car',
                                             time=date_time,
                                             verify=True)
-        mat.to_csv( 'here_OD.csv')
+        db.save_csv(uuid, 'here_OD.csv', mat)
 
     # apply OD mat
     self.apply_api_matrix(mat,api_time_col='here_time')
@@ -89,4 +115,8 @@ def handler(event, context):
     #plots
 
     self.merge_quenedi_rlinks()
-    print('done!')
+    print('Saving on S3'), 
+    db.save_geojson(uuid, 'road_links2.geojson', self.road_links)
+    db.save_geojson(uuid, 'road_nodes2.geojson', self.road_nodes)
+    print('done')
+    
