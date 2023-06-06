@@ -60,9 +60,11 @@ def handler(event, context):
     hereApiKey= args.hereApiKey
     
     print('read files')
-    links = db.read_geojson(uuid,'road_links.geojson')
+    #links = db.read_geojson(uuid,'road_links.geojson')
+
+    links = gpd.read_file(f's3://{db.BUCKET}/{uuid}/road_links.geojson', driver='GeoJSON')
     links.set_index('index',inplace=True)
-    nodes = db.read_geojson(uuid,'road_nodes.geojson')
+    nodes = gpd.read_file(f's3://{db.BUCKET}/{uuid}/road_nodes.geojson', driver='GeoJSON')
     nodes.set_index('index',inplace=True)
 
     print('create zones')
@@ -113,7 +115,7 @@ def handler(event, context):
 
     self.merge_quenedi_rlinks()
     print('Saving on S3'), 
-    db.save_geojson(uuid, 'road_links2.geojson', self.road_links)
-    db.save_geojson(uuid, 'road_nodes2.geojson', self.road_nodes)
+    self.road_links.to_file(f's3://{db.BUCKET}/{uuid}/road_links.geojson', driver='GeoJSON')
+    self.road_nodes.to_file(f's3://{db.BUCKET}/{uuid}/road_nodes.geojson', driver='GeoJSON')
     print('done')
     

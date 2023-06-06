@@ -75,6 +75,9 @@ class RoadModel:
         return copy.deepcopy(self)
     
     def split_quenedi_rlinks(self,oneway='0'):
+        if 'oneway' not in self.road_links.columns:
+            print('no column oneway. do not split')
+            return
         links_r = self.road_links[self.road_links['oneway']==oneway].copy()
         # apply _r features to the normal non r features
         r_cols = [col for col in links_r.columns if col.endswith('_r')]
@@ -88,6 +91,9 @@ class RoadModel:
         self.road_links = pd.concat([self.road_links,links_r])
     
     def merge_quenedi_rlinks(self):
+        if 'oneway' not in self.road_links.columns:
+            print('no column oneway. do not merge')
+            return
         #get reversed links
         index_r = [idx for idx in self.road_links.index if idx.endswith('_r')]
         links_r = self.road_links.loc[index_r].copy()
@@ -337,7 +343,10 @@ class RoadModel:
         print(i + 1, errors[-1][1])
        
         print(round(100 * len(df[df[self.ff_time_col] != df['new_time']]) / len(df), 1), '% of links used')
-        
+        # remove api_time_col before concat if its already there.
+        if self.api_time_col in self.road_links.columns:
+            self.road_links = self.road_links.drop(columns=self.api_time_col)
+
         self.road_links = pd.concat([self.road_links, df[['new_time']]], axis=1).rename(columns={'new_time': self.api_time_col})
         #self.road_links.loc[self.road_links[self.ff_time_col] == self.road_links[self.api_time_col], self.api_time_col] = np.nan
         self.road_links[self.api_speed_col] = self.road_links['length'] / self.road_links[self.api_time_col] * 3.6
