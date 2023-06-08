@@ -32,20 +32,6 @@ class DataBase:
         dict = json.load(result["Body"])
         return gpd.read_file(json.dumps(dict))
     
-    def save_geojson(self, uuid, name, payload):
-        '''
-            parameters
-            ----------
-            payload: geopdataframe file to s3
-            name: name of the file (with .geojson at the end)
-            returns
-            ----------
-        '''
-        json_data = json.loads(payload.to_json())
-        uploadByteStream = bytes(json.dumps(json_data, cls=NpEncoder).encode('UTF-8'))
-
-        filename =  uuid + '/' + name
-        self.s3_resource.Object(self.BUCKET,filename).put(Body=uploadByteStream)
 
     
     def read_csv(self, uuid, name):
@@ -67,3 +53,18 @@ class DataBase:
 
         filename =  uuid + '/' + name
         self.s3_resource.Object(self.BUCKET, filename).put(Body=csv_buffer.getvalue())
+
+    def save_image(self, uuid, name, img_buffer):
+        '''
+            parameters
+            ----------
+            payload: pandas df to send to s3 as csv.
+            name: name of the file (with .csv at the end)
+            returns
+            ----------
+        '''
+        img_buffer.seek(0)
+        bucket = self.s3_resource.Bucket(self.BUCKET)
+        filename =  uuid + '/' + name
+        bucket.put_object(Body=img_buffer, ContentType='image/png', Key=filename)
+

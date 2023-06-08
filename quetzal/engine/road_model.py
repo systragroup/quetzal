@@ -8,11 +8,11 @@ import copy
 
 from sklearn.model_selection import train_test_split
 import ray
-
 from sklearn.neighbors import KNeighborsRegressor
 from syspy.spatial.spatial import nearest
 from quetzal.engine.pathfinder_utils import get_path, parallel_dijkstra, simple_routing, build_index, sparse_matrix
 from quetzal.engine.msa_utils import get_zone_index
+
 from syspy.clients.api_proxy import multi_get_distance_matrix
 
 class RoadModel:
@@ -79,6 +79,9 @@ class RoadModel:
             print('no column oneway. do not split')
             return
         links_r = self.road_links[self.road_links['oneway']==oneway].copy()
+        if len(links_r) == 0:
+            print('all oneway, nothing to split')
+            return
         # apply _r features to the normal non r features
         r_cols = [col for col in links_r.columns if col.endswith('_r')]
         cols = [col[:-2] for col in r_cols]
@@ -96,6 +99,9 @@ class RoadModel:
             return
         #get reversed links
         index_r = [idx for idx in self.road_links.index if idx.endswith('_r')]
+        if len(index_r) == 0:
+            print('all oneway, nothing to merge')
+            return
         links_r = self.road_links.loc[index_r].copy()
         # create new reversed column with here speed and time
         links_r[self.api_time_col+'_r'] = links_r[self.api_time_col]
@@ -105,7 +111,13 @@ class RoadModel:
         links_r = links_r[[self.api_time_col+'_r',self.api_speed_col+'_r']]
         # drop added _r links, merge new here columns to inital two way links.
         self.road_links = self.road_links.drop(index_r, axis=0)
-        self.road_links =  pd.merge(self.road_links,links_r,left_index=True,right_index=True,how='left')
+        # drop column if they exist before merge. dont want duplicates
+        if self.api_time_col+'_r' in self.road_links.columns:
+            self.road_links = self.road_links.drop(columns=self.api_time_col+'_r')
+        if self.api_speed_col+'_r' in self.road_links.columns:
+            self.road_links = self.road_links.drop(columns=self.api_speed_col+'_r')
+        self.road_links =  pd.merge(self.road_links,links_r,left_index=True,right_index
+                                    =True,how='left')
                 
     def zones_nearest_node(self):
         # getting zones centroids
@@ -461,3 +473,138 @@ def plot_correlation(x, y, alpha=0.1, xlabel='actual time (mins)', ylabel='time 
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
+
+
+
+def plot_random_od(self,seed=42):
+    import geopandas as gpd
+    import random
+    from sklearn.neighbors import NearestNeighbors
+    from shapely.geometry import Point, LineString
+    import matplotlib.pyplot as plt
+    from quetzal.engine.pathfinder_utils import sparse_matrix, parallel_dijkstra, simple_routing, get_path
+
+
+    def to_linestring(df):
+        ls=[]
+        for row in df:
+            line = LineString([Point(row[0], row[1]), Point(row[2], row[3])])
+            ls.append(line)
+        return ls
+        
+    #split od_time to training and interpolated df with line (O to D) geometries
+    train_df = self.od_time[~self.od_time['interpolated']]
+    interp_df = self.od_time[self.od_time['interpolated']]
+
+    geom = to_linestring(train_df[['o_lon','o_lat','d_lon','d_lat']].values)
+    train_df = gpd.GeoDataFrame(train_df,geometry=geom,crs=4326)
+    geom = to_linestring(interp_df[['o_lon','o_lat','d_lon','d_lat']].values)
+    interp_df = gpd.GeoDataFrame(interp_df,geometry=geom,crs=4326)
+
+    # find an interp OD
+    random.seed(seed)
+    randint = random.randint(0,len(interp_df)-1)
+    test = interp_df.loc[[randint]]
+
+    # get OD node and zones.
+    o_node = test['origin'].values[0]
+    d_node = test['destination'].values[0]
+    node_zone_dict = {item:key for key,item in self.zone_node_dict.items()}
+    origin= node_zone_dict[o_node]
+    destination = node_zone_dict[d_node]
+
+    # find KNN that were used for training
+    nbrs = NearestNeighbors(n_neighbors=5, algorithm='ball_tree').fit(train_df[['o_lon','o_lat','d_lon','d_lat']].values)
+    indices =  nbrs.kneighbors(test[['o_lon','o_lat','d_lon','d_lat']],return_distance=False)
+    indices = pd.DataFrame(indices)
+    indices = pd.DataFrame(indices.stack(), columns=['index_nn']).reset_index().rename(
+        columns={'level_0': 'ix_one', 'level_1': 'rank'})
+
+    voisin = train_df.iloc[indices['index_nn'].values]
+    vtime = voisin[self.api_time_col].values/60
+    vtime = [round(time) for time in vtime]
+    itime = round(test[self.api_time_col].values[0]/60)
+
+    # first plot
+    fig, ax = plt.subplots(figsize=(10,10))
+    self.road_links.plot(ax=ax,alpha=0.2,zorder=1)
+    voisin.plot(ax=ax,alpha=1,zorder=5,color='orange')
+    test.plot(ax=ax,alpha=1,zorder=5,color='red')
+
+    self.road_nodes.loc[self.zones_centroid[self.zones_centroid['node_index'].isin(voisin['origin'].values)]['node_index'].values].plot(color='orange',marker='x',ax=ax,zorder=9)
+    self.road_nodes.loc[self.zones_centroid[self.zones_centroid['node_index'].isin(voisin['destination'].values)]['node_index'].values].plot(color='orange',marker='x',ax=ax,zorder=9)
+    self.road_nodes.loc[self.zones_centroid.loc[[origin,destination]]['node_index'].values].plot(color='r',ax=ax,zorder=8)
+    self.road_nodes.loc[self.zones_centroid.loc[[origin]]['node_index'].values].plot(color='k',ax=ax,zorder=9,marker='$ori$',markersize=300)
+    self.road_nodes.loc[self.zones_centroid.loc[[destination]]['node_index'].values].plot(color='k',ax=ax,zorder=9,marker='$des$',markersize=300)
+
+    xmax = voisin[['o_lon','d_lon']].max().max()+0.05
+    xmin = voisin[['o_lon','d_lon']].min().min()-0.05
+    ymax = voisin[['o_lat','d_lat']].max().max()+0.05
+    ymin = voisin[['o_lat','d_lat']].min().min()-0.05
+    plt.xlim([xmin,xmax])
+    plt.ylim([ymin,ymax])
+    ax.set_box_aspect(1)
+
+    plt.legend(['links','known OD','interp OD'])
+
+    textstr = '\n'.join((
+    r'$\mathrm{OD1 }=%.f\mathrm{mins}$' % (vtime[0], ),
+    r'$\mathrm{OD2 }=%.f\mathrm{mins}$' % (vtime[1], ),
+    r'$\mathrm{OD3 }=%.f\mathrm{mins}$' % (vtime[2], ),
+    r'$\mathrm{OD4 }=%.f\mathrm{mins}$' % (vtime[3], ),
+    r'$\mathrm{OD5 }=%.f\mathrm{mins}$' % (vtime[4], ),
+    r'$\mathrm{Pred }=%.f\mathrm{mins}$' % (itime, ),))
+    # these are matplotlib.patch.Patch properties
+    props = dict(boxstyle='square', facecolor='white', alpha=1)
+    # place a text box in upper left in axes coords
+    ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=12,
+            verticalalignment='top', bbox=props)
+    plt.title('OD Prediction {i} to {j}'.format(i=origin,j=destination))
+    #plt.savefig(figdir+'knn_example.png')
+    #centroid.plot(color='r',ax=ax)
+
+    self.split_quenedi_rlinks(oneway='0')
+
+    time_mat, predecessors, node_index = simple_routing([o_node],[d_node],self.road_links,weight_col=self.api_time_col,return_predecessors=True)
+    reversed_index = {v: k for k, v in node_index.items()}
+    path = get_path(predecessors, 0, node_index[d_node])
+    path = list(zip(path[:-1], path[1:]))
+
+
+    path = [(reversed_index[k[0]], reversed_index[k[1]]) for k in path]
+    links_dict = self.road_links.reset_index().set_index(['a','b'])['index'].to_dict()
+    path = [*map(links_dict.get,path)]
+
+    route = self.road_links.loc[path]
+    self.merge_quenedi_rlinks()
+
+    #plot2
+    fig2, ax2 = plt.subplots(figsize=(10,10))
+    self.road_links.plot(ax=ax2,alpha=0.2)
+    route.plot(ax=ax2,column=self.api_speed_col,legend=True,linewidth=4,cmap='jet_r',legend_kwds={'label':'Speed (km/h)'})
+    self.road_nodes.loc[[o_node]].plot(color='k',ax=ax2,zorder=8,marker='$ori$',markersize=300)
+    self.road_nodes.loc[[d_node]].plot(color='k',ax=ax2,zorder=8,marker='$des$',markersize=300)
+
+    hull = route.unary_union.convex_hull
+    xx, yy = hull.exterior.coords.xy
+
+    xmax = max(xx)+0.01
+    xmin = min(xx)-0.01
+    ymax = max(yy)+0.01
+    ymin = min(yy)-0.01
+    plt.xlim([xmin,xmax])
+    plt.ylim([ymin,ymax])
+    ax2.set_box_aspect(1)
+
+    textstr = '\n'.join((
+        r'$\mathrm{OD }=%.f\mathrm{mins}$' % (test[self.api_time_col].values[0]/60, ),
+        r'$\mathrm{Routing }=%.f\mathrm{mins}$' % (test['routing_time'].values[0]/60, ),))
+    # these are matplotlib.patch.Patch properties
+    props = dict(boxstyle='square', facecolor='white', alpha=1)
+    # place a text box in upper left in axes coords
+    ax2.text(0.05, 0.95, textstr, transform=ax2.transAxes, fontsize=12,
+            verticalalignment='top', bbox=props)
+
+    plt.title('Road speed prediction {i} to {j}'.format(i=origin,j=destination))
+    #plt.savefig(figdir + 'routing_example.png')
+    return fig, fig2
