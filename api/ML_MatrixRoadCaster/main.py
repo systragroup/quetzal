@@ -24,6 +24,8 @@ class Model(BaseModel):
     ff_time_col: Optional[str] = 'time'
     max_speed: Optional[float] = 100
     num_cores: Optional[int] = 1
+    gap_limit: Optional[float] = 0.5
+    max_num_it: Optional[int] = 30
     num_random_od: Optional[int] = 1
     create_zone: Optional[bool] = True
     hereApiKey: str = '' 
@@ -77,6 +79,8 @@ def handler(event, context):
     ff_time_col = args.ff_time_col
     max_speed = args.max_speed
     num_cores = args.num_cores
+    gap_limit = args.gap_limit
+    max_num_it = args.max_num_it
     num_random_od = args.num_random_od
     create_zone = args.create_zone
     hereApiKey = args.hereApiKey
@@ -143,7 +147,8 @@ def handler(event, context):
     self.predict_zones()
 
     print('apply OD time on road links')
-    err = self.apply_od_time_on_road_links(gap_limit=0.5,max_num_it=20, num_cores=num_cores, max_speed=max_speed,log_error=True)
+    
+    err = self.apply_od_time_on_road_links(gap_limit=gap_limit,max_num_it=max_num_it, num_cores=num_cores, max_speed=max_speed,log_error=True)
     print('merge links back to two ways')
     self.merge_quenedi_rlinks()
 

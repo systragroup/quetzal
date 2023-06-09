@@ -482,7 +482,7 @@ def plot_random_od(self,seed=42):
     from sklearn.neighbors import NearestNeighbors
     from shapely.geometry import Point, LineString
     import matplotlib.pyplot as plt
-    from quetzal.engine.pathfinder_utils import sparse_matrix, parallel_dijkstra, simple_routing, get_path
+    from quetzal.engine.pathfinder_utils import simple_routing, get_path
 
 
     def to_linestring(df):
