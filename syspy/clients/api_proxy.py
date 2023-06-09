@@ -225,7 +225,7 @@ class Proxy:
         df['current'] = False
         self.local = df.set_index(list(self.parameters + ('current',)))['json']
 
-def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode='car',region='polygon', time=None, buffer=0.1):
+def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode='car',region='polygon', time=None, buffer=0.1,verify=False):
     '''
     wrapper that return the time matrix (in seconds) for each OD
     with the Here matrix api or the google matrix api.
@@ -303,13 +303,13 @@ def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode=
             "regionDefinition": regionDefinition
         }
         try:
-            x = requests.post(url, json=body,verify=False)
+            x = requests.post(url, json=body,verify=verify)
             resp = json.loads(x.text)
             if x.status_code != 200:
                 raise Exception(resp)
         except:
             sleep(5)
-            x = requests.post(url, json=body,verify=False)
+            x = requests.post(url, json=body,verify=verify)
             resp = json.loads(x.text)
             if x.status_code != 200:
                 raise Exception(resp)
