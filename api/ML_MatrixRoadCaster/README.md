@@ -33,3 +33,4 @@ docker run -p 9000:8080 --env-file 'api/ML_MatrixRoadCaster/test.env' ml_matrixr
 ```bash
 curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"callID":"test"}'
 ```
+CallId correspond to a folder on the s3 Bucket matrixroadcaster. you need to add road_links.geojson and road_nodes.geojson first. if there is no here_OD.csv. the here api will be call and you need to provide your apikey il the XPOST payload (ex: {"callID":"test","hereApiKey":"THIS-IS-AN-API-KEY"})
