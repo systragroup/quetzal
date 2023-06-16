@@ -4,6 +4,7 @@ from quetzal.engine import connectivity, engine, gps_tracks
 from quetzal.engine.add_network import NetworkCaster
 from quetzal.engine.add_network_mapmatching import NetworkCaster_MapMaptching
 from quetzal.model import cubemodel, model
+from syspy.spatial import spatial
 from syspy.renumber import renumber
 from syspy.skims import skims
 from tqdm import tqdm
@@ -748,38 +749,35 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             )
 
     @track_args
-    def preparation_clusterize_nodes(self, n_clusters=None, adaptive_clustering=False, **kwargs):
+    def preparation_clusterize_nodes(self, n_clusters=None, adaptive_clustering=False, distance_threshold=150, **kwargs):
         """Create nodes clusters to optimize computation time.
             It will agregate nodes based on their relative distance to build "stop areas"
 
-        Requires
-        ----------
-        self.nodes
+            Requires
+            ----------
+            self.nodes
 
-        Parameters
-        ----------
-        n_clusters : int, optional, default None
-            Number of nodes clusters
-        adaptive_clustering : bool, optional, default False
-            If True, will define itself the number of clusters.
-            If False n_clusters must be defined
-        
-        
-        Builds
-        ----------
-        self.links :
-            contain recomputed links with the clusterized nodes
-        self.nodes :
-            contain the clusterized nodes
-        self.disaggregated_nodes :
-            contain the former nodes
+            Parameters
+            ----------
+            n_clusters : int, optional, default None
+                Number of nodes clusters
+            adaptive_clustering : bool, optional, default False
+                If True, will define itself the number of clusters.
+            distance_threshold : int, optional, default 150
+                If n_cluster and adaptive_clustering are None,
+                clustering will be done using a distance threshold
+                
+            Builds
+            ----------
+            self.links :
+                contain recomputed links with the clusterized nodes
+            self.nodes :
+                contain the clusterized nodes
+            self.disaggregated_nodes :
+                contain the former nodes
         
         """
         self.disaggregated_nodes = self.nodes.copy()
-        if not adaptive_clustering:
-            assert n_clusters is not None, 'n_clusters must be defined if adaptive_clustering is False'
-            if len(self.nodes) <= n_clusters:
-                return
 
         if adaptive_clustering:
             if 'clustering_zones' not in self.__dict__.keys():
@@ -788,11 +786,17 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             self.links, self.nodes, self.node_clusters, self.node_parenthood = connectivity.node_clustering(
                 self.links, self.nodes, n_clusters, group_id='adaptive_cluster_id'
             )
-        else:
+        elif n_clusters:
+            if len(self.nodes) <= n_clusters:
+                return
             self.links, self.nodes, self.node_clusters, self.node_parenthood = connectivity.node_clustering(
                 self.links, self.nodes, n_clusters, **kwargs
             )
-
+        else:
+            self.nodes['cluster'] = spatial.agglomerative_clustering(self.nodes, distance_threshold=distance_threshold)
+            self.links, self.nodes, self.node_clusters, self.node_parenthood = connectivity.node_clustering(
+                self.links, self.nodes, n_clusters, group_id='cluster'
+            )     
         self.node_parenthood = self.node_parenthood[['cluster', 'geometry']]
         self.node_clusters['geometry'] = self.node_clusters[
             'geometry'
