@@ -198,7 +198,19 @@ class RoadModel:
                                  mode='car',
                                  time=None,
                                  verify=False,
-                                 saving=True):
+                                 saving=True,
+                                 region='polygon'):
+        '''
+        Call Api on Training OD. return a matrix OD Time.
+        api (str) = here or google
+        train_od: from selg.get_training_set()
+        apiKey (str) : api key
+        mode (str) = here : "car" "truck" "pedestrian" "bicycle" "taxi" "scooter" "bus" "privateBus".
+                    google : driving", "walking", "transit" "bicycling"
+        region: 'polygon' or 'world'. world for long distance.
+        verify (bool): http or https.
+        saving (bool): save result matrix locally.
+        '''                  
         mat = pd.DataFrame()
         for row in tqdm(list(train_od.iterrows())):
             origin_nodes = row[0]
@@ -213,7 +225,8 @@ class RoadModel:
                                                 mode=mode,
                                                 api=api,
                                                 time=time,
-                                                verify=verify)
+                                                verify=verify,
+                                                region=region)
                 sleep(1)
             except:
                 sleep(5)
@@ -224,7 +237,8 @@ class RoadModel:
                                                 api=api,
                                                 mode=mode,
                                                 time=time,
-                                                verify=verify)
+                                                verify=verify,
+                                                region=region)
 
             mat = pd.concat([mat, res])
             sleep(0.2)
