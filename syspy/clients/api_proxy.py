@@ -292,7 +292,9 @@ def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode=
             regionDefinition =  { "type": "world" }
         else:
            raise Exception('{r} is not a valid region. use world or polygon.'.format(r=region))
-
+        if buffer >= 1.7:
+            print('buffer larger than 1.7. region definition set to world as the polygon is most likely')
+            regionDefinition = {"type": "world"}
         # departureTime : Time of departure at all origins, in ISO 8601 (RFC 3339) 
         url = 'https://matrix.router.hereapi.com/v8/matrix?apiKey=' + apiKey + '&async=false'
         body = {
