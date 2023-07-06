@@ -50,6 +50,7 @@ class RoadModel:
         """
 
         self.ff_time_col = ff_time_col
+        self.distance_col = distance_col
         self.road_links = road_links
         self.road_nodes = road_nodes
         self.zones = zones
@@ -164,7 +165,53 @@ class RoadModel:
 
         od_time = od_time[['origin', 'destination', self.ff_time_col, 'o_lon', 'o_lat', 'd_lon', 'd_lat']]
         self.od_time = od_time
-        
+
+    def add_distance_to_od_mat(self, od_set=None):
+        """
+        add the distance to self.od_time
+        run create_od_mat before.
+        """
+        od_dist = simple_routing(
+            origin=self.zones_centroid["node_index"].values,
+            destination=self.zones_centroid["node_index"].values,
+            links=self.road_links,
+            weight_col=self.distance_col,
+        )
+
+        od_dist = (
+            od_dist.stack()
+            .reset_index()
+            .rename(
+                columns={
+                    "level_0": "origin",
+                    "level_1": "destination",
+                    0: self.distance_col,
+                }
+            )
+        )
+        # remove Origin  ==  destination
+        od_dist = od_dist[od_dist["origin"] != od_dist["destination"]]
+        if od_set:  # need to be rnodes
+            od_dist = (
+                od_dist.set_index(["origin", "destination"])
+                .loc[list(od_set)]
+                .reset_index()
+            )
+
+        inf_od = od_dist[~np.isfinite(od_dist[self.distance_col])]
+        assert (
+            len(inf_od) == 0
+        ), "fail: there is infinitely long path, fix your links or your zones \n {val}".format(
+            val=inf_od[["origin", "destination"]]
+        )
+
+        dist_dict = od_dist.set_index(["origin", "destination"])[
+            self.distance_col
+        ].to_dict()
+        self.od_time[self.distance_col] = self.od_time.set_index(
+            ["origin", "destination"]
+        ).index.map(dist_dict)
+
     def get_training_set(self, train_size=10000, seed=42):
         '''
         train_size: number of OD to call (10 000  = 100 ori x 100 des)
@@ -218,27 +265,31 @@ class RoadModel:
             origins = self.zones_centroid[self.zones_centroid['node_index'] == origin_nodes]
             destinations = self.zones_centroid[self.zones_centroid['node_index'].isin(destination_nodes)]
             try:
-                res = multi_get_distance_matrix(origins=origins,
-                                                destinations=destinations,
-                                                batch_size=(1, 100),
-                                                apiKey=apiKey,
-                                                mode=mode,
-                                                api=api,
-                                                time=time,
-                                                verify=verify,
-                                                region=region)
+                res = multi_get_distance_matrix(
+                    origins=origins,
+                    destinations=destinations,
+                    batch_size=(1, 100),
+                    apiKey=apiKey,
+                    mode=mode,
+                    api=api,
+                    time=time,
+                    verify=verify,
+                    region=region,
+                )
                 sleep(1)
             except:
                 sleep(5)
-                res = multi_get_distance_matrix(origins=origins,
-                                                destinations=destinations,
-                                                batch_size=(1, 100),
-                                                apiKey=apiKey,
-                                                api=api,
-                                                mode=mode,
-                                                time=time,
-                                                verify=verify,
-                                                region=region)
+                res = multi_get_distance_matrix(
+                    origins=origins,
+                    destinations=destinations,
+                    batch_size=(1, 100),
+                    apiKey=apiKey,
+                    api=api,
+                    mode=mode,
+                    time=time,
+                    verify=verify,
+                    region=region,
+                )
 
             mat = pd.concat([mat, res])
             sleep(0.2)
@@ -500,7 +551,7 @@ def plot_random_od(self,seed=42):
 
 
     def to_linestring(df):
-        ls=[]
+        ls = []
         for row in df:
             line = LineString([Point(row[0], row[1]), Point(row[2], row[3])])
             ls.append(line)
