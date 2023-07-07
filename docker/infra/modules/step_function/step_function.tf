@@ -15,19 +15,7 @@ resource "aws_iam_role_policy" "s3_policy" {
 resource "aws_sfn_state_machine" "sfn_state_machine" {
   name     = var.step_function_name
   role_arn = aws_iam_role.iam_for_sfn.arn
-  definition = <<EOF
-      {
-        "Comment": "A Hello World example of the Amazon States Language using an AWS Lambda Function",
-        "StartAt": "HelloWorld",
-        "States": {
-          "HelloWorld": {
-            "Type": "Task",
-            "Resource": "${data.aws_lambda_function.lambda.arn}",
-            "End": true
-          }
-        }
-      }
-      EOF
+  definition = var.state_machine_definition
   lifecycle {
     ignore_changes = [
       definition,
