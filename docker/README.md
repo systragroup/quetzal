@@ -125,3 +125,14 @@ Configuring a model for ECR need help from the AWS Admin
 You need AWS permissions to update a model on ECR. You can ask for those permissions to the AWS Admin.
 
 ``./update-lambda.sh``
+
+
+# destroy Terraform workspace (for AWS admin)
+
+`terraform workspace select <your_model_name>`
+
+`terraform destroy`
+
+`terraform workspace delete <your_model_name>`
+
+empty S3 bucket and ECR. you may need to remove the policy in the cognito group too

@@ -4,7 +4,6 @@ data "aws_region" "current" {} # data.aws_region.current.name
 data "aws_ecr_image" "latest" {
   repository_name   = var.ecr_repo_name
   most_recent       = true
-
 }
 
 data "aws_iam_policy_document" "assume_role" {
