@@ -26,7 +26,9 @@ data "aws_iam_policy_document" "lambda_logging" {
     statement   {
         effect = "Allow"
         actions = ["logs:CreateLogGroup"]
-        resources = ["arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:*"]
+        resources = [
+            "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:*"
+            ]
     }
     statement {
         effect = "Allow"
@@ -35,7 +37,7 @@ data "aws_iam_policy_document" "lambda_logging" {
             "logs:PutLogEvents"
         ]
         resources = [
-            aws_cloudwatch_log_group.log_group.arn
+            "${aws_cloudwatch_log_group.log_group.arn}:*"
         ]
     }
 }
