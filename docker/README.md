@@ -111,18 +111,17 @@ Configuring a model for ECR need help from the AWS Admin
 
 
 
-1. Add Step function workflow (step-function.json)
+1. Add Step function workflow (step-function.json in the root directory of your model)
 
-   ``python update-s3-config.py <model_folder>``
+   ``python update-function-config.py <model_folder>``
 
 2. Add model files for base scenario to s3 (Optional)
 
    ``python update-s3-model-files.py <model_folder> <scenario1> <scenario2>``
 
-3. Push first version of the model
-
-   ``./update-lambda.sh``
 
 # Update a model on ECR
 
 You need AWS permissions to update a model on ECR. You can ask for those permissions to the AWS Admin.
+
+``./update-lambda.sh``

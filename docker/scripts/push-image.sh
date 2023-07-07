@@ -16,7 +16,7 @@ cd $QUETZAL_ROOT
 source $MODEL_FOLDER/.env
 
 # Build docker image
-docker build --build-arg QUETZAL_MODEL_NAME=$QUETZAL_MODEL_FOLDER \
+docker build --build-arg QUETZAL_MODEL_NAME=$QUETZAL_MODEL_NAME \
   -t $AWS_ECR_REPO_NAME:$TAG \
   -f $MODEL_FOLDER/Dockerfile .
 
@@ -30,5 +30,9 @@ aws ecr get-login-password --region $aws_region | docker login --username AWS --
 #Tag docker
 docker tag $AWS_ECR_REPO_NAME:$TAG $aws_account.dkr.ecr.$aws_region.amazonaws.com/$AWS_ECR_REPO_NAME:$TAG
 
-#Push docket to aws
+#Push docker to aws
 docker push $aws_account.dkr.ecr.$aws_region.amazonaws.com/$AWS_ECR_REPO_NAME:$TAG
+
+#update Lambda
+aws lambda update-function-code --region $aws_region --function-name  $AWS_LAMBDA_FUNCTION_NAME \
+    --image-uri $aws_account.dkr.ecr.$aws_region.amazonaws.com/$AWS_LAMBDA_FUNCTION_NAME:$TAG > /dev/null

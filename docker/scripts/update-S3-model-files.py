@@ -1,6 +1,5 @@
 import os
 import sys
-import json
 import boto3
 import logging
 
@@ -30,10 +29,12 @@ def main():
             key, value = line.strip().split('=', 1)
             os.environ[key] = value
 
-    with open('quenedi.config.json') as f:
-        config = json.load(f)
-
-    paths = list(config['network_paths'].values()) + config['output_paths'] + [config['parameters_path']]
+    paths = ['inputs/pt/links.geojson',
+             'inputs/pt/nodes.geojson',
+             'inputs/road/road_links.geojson',
+             'inputs/road/road_nodes.geojson',
+             'outputs/',
+             'inputs/params.json']
 
     bucket = s3.Bucket(os.environ["AWS_BUCKET_NAME"])
 
