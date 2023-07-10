@@ -43,8 +43,11 @@ class ParkRideModel(preparationmodel.PreparationModel):
         zn = 'a' if reverse else 'b'
 
         zones = set(self.zones.index).intersection(self.zone_to_road[zn])
+        zones = list(zones)
+        
         sources, targets = (zones, pr_nodes) if reverse else (pr_nodes, zones)
-
+        assert type(sources) is not set,"sources must not be a set"
+        assert type(targets) is not set,"targets must not be a set"
         node_transit_zone = pathfinder_utils.paths_from_graph(
             csgraph=matrix,
             node_index=node_index,
@@ -87,7 +90,10 @@ class ParkRideModel(preparationmodel.PreparationModel):
     ):
         zn = 'b' if reverse else 'a'
         zones = set(self.zones.index).intersection(self.zone_to_road[zn])
-
+        zones = list(zones)
+        
+        
+           
         zrt_edges = self.zone_road_node_edges(
             zrn_access_time=zrn_access_time,
             pr_nodes=pr_nodes, reverse=reverse,
@@ -96,6 +102,8 @@ class ParkRideModel(preparationmodel.PreparationModel):
         matrix, node_index = pathfinder_utils.sparse_matrix(zrt_edges)
 
         sources, targets = (pr_nodes, zones) if reverse else (zones, pr_nodes)
+        assert type(sources) is not set,"sources must not be a set"
+        assert type(targets) is not set,"targets must not be a set" 
         zone_road_node = pathfinder_utils.paths_from_graph(
             csgraph=matrix,
             node_index=node_index,
