@@ -225,7 +225,7 @@ class Proxy:
         df['current'] = False
         self.local = df.set_index(list(self.parameters + ('current',)))['json']
 
-def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode='car',region='polygon', time=None, buffer=0.1):
+def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode='car',region='polygon', time=None, buffer=0.1,verify=False):
     '''
     wrapper that return the time matrix (in seconds) for each OD
     with the Here matrix api or the google matrix api.
@@ -292,7 +292,9 @@ def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode=
             regionDefinition =  { "type": "world" }
         else:
            raise Exception('{r} is not a valid region. use world or polygon.'.format(r=region))
-
+        if buffer >= 1.7:
+            print('buffer larger than 1.7. region definition set to world as the polygon is most likely')
+            regionDefinition = {"type": "world"}
         # departureTime : Time of departure at all origins, in ISO 8601 (RFC 3339) 
         url = 'https://matrix.router.hereapi.com/v8/matrix?apiKey=' + apiKey + '&async=false'
         body = {
@@ -303,13 +305,13 @@ def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode=
             "regionDefinition": regionDefinition
         }
         try:
-            x = requests.post(url, json=body,verify=False)
+            x = requests.post(url, json=body,verify=verify)
             resp = json.loads(x.text)
             if x.status_code != 200:
                 raise Exception(resp)
         except:
             sleep(5)
-            x = requests.post(url, json=body,verify=False)
+            x = requests.post(url, json=body,verify=verify)
             resp = json.loads(x.text)
             if x.status_code != 200:
                 raise Exception(resp)
