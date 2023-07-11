@@ -15,8 +15,9 @@ from quetzal.engine.msa_utils import get_zone_index
 
 from syspy.clients.api_proxy import multi_get_distance_matrix
 
+
 class RoadModel:
-    def __init__(self, road_links, road_nodes, zones, ff_time_col='time_ff'):
+    def __init__(self, road_links, road_nodes, zones, ff_time_col='time_ff', distance_col='length'):
         """RoadModel class is used to calibrate a road network with the actual time from each OD.
     1) self.zones_nearest_node() find the nearest road_nodes to each zones
     2) self.create_od_mat() create a OD mat with each zones and get each routing time on road_links['time_ff']
@@ -75,7 +76,7 @@ class RoadModel:
     def copy(self):
         return copy.deepcopy(self)
     
-    def split_quenedi_rlinks(self,oneway='0'):
+    def split_quenedi_rlinks(self, oneway='0'):
         if 'oneway' not in self.road_links.columns:
             print('no column oneway. do not split')
             return
@@ -86,13 +87,13 @@ class RoadModel:
         # apply _r features to the normal non r features
         r_cols = [col for col in links_r.columns if col.endswith('_r')]
         cols = [col[:-2] for col in r_cols]
-        for col,r_col in zip(cols,r_cols):
+        for col, r_col in zip(cols, r_cols):
             links_r[col] = links_r[r_col]
-        # reindex with _r
-        links_r.index = links_r.index.astype(str)+ '_r'
+        # reindex with _r 
+        links_r.index = links_r.index.astype(str) + '_r'
         # reverse links (a=>b, b=>a)
-        links_r = links_r.rename(columns={'a':'b','b':'a'})
-        self.road_links = pd.concat([self.road_links,links_r])
+        links_r = links_r.rename(columns={'a': 'b', 'b': 'a'})
+        self.road_links = pd.concat([self.road_links, links_r])
     
     def merge_quenedi_rlinks(self):
         if 'oneway' not in self.road_links.columns:
@@ -105,20 +106,20 @@ class RoadModel:
             return
         links_r = self.road_links.loc[index_r].copy()
         # create new reversed column with here speed and time
-        links_r[self.api_time_col+'_r'] = links_r[self.api_time_col]
-        links_r[self.api_speed_col+'_r'] = links_r[self.api_speed_col]
-        #reindex with initial non _r index to merge
-        links_r.index = links_r.index.map(lambda x:x[:-2])
-        links_r = links_r[[self.api_time_col+'_r',self.api_speed_col+'_r']]
+        links_r[self.api_time_col + '_r'] = links_r[self.api_time_col]
+        links_r[self.api_speed_col + '_r'] = links_r[self.api_speed_col]
+        # reindex with initial non _r index to merge
+        links_r.index = links_r.index.map(lambda x: x[:-2])
+        links_r = links_r[[self.api_time_col + '_r', self.api_speed_col + '_r']]
         # drop added _r links, merge new here columns to inital two way links.
         self.road_links = self.road_links.drop(index_r, axis=0)
         # drop column if they exist before merge. dont want duplicates
-        if self.api_time_col+'_r' in self.road_links.columns:
-            self.road_links = self.road_links.drop(columns=self.api_time_col+'_r')
-        if self.api_speed_col+'_r' in self.road_links.columns:
-            self.road_links = self.road_links.drop(columns=self.api_speed_col+'_r')
-        self.road_links =  pd.merge(self.road_links,links_r,left_index=True,right_index
-                                    =True,how='left')
+        if self.api_time_col + '_r' in self.road_links.columns:
+            self.road_links = self.road_links.drop(columns=self.api_time_col + '_r')
+        if self.api_speed_col + '_r' in self.road_links.columns:
+            self.road_links = self.road_links.drop(columns=self.api_speed_col + '_r')
+        self.road_links = pd.merge(self.road_links, links_r, left_index=True, right_index
+                                    =True, how='left')
                 
     def zones_nearest_node(self):
         # getting zones centroids
