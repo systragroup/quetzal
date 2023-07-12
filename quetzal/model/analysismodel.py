@@ -3,8 +3,8 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 from quetzal.analysis import analysis
-from quetzal.engine import engine, linearsolver_utils, nested_logit, elevation
-from quetzal.io import export
+from quetzal.engine import engine, linearsolver_utils, nested_logit, elevation, fares
+from quetzal.io.export import build_lines
 from quetzal.model import model, summarymodel, transportmodel
 from syspy.spatial import geometries, spatial
 from syspy.syspy_utils import neighbors
@@ -138,6 +138,21 @@ class AnalysisModel(summarymodel.SummaryModel):
             self._disaggregate()
 
     def analysis_pt_route_type(self, hierarchy):
+        """Builds 'route_type' in pt_los based on 'route_types' and hierarchy.
+        Each path in pt_los has an attribute route_types which regroups all the modes used in the path.
+        This functions builds the 'route_type' which is the principal mode of the path based on the hierarchy of modes.
+
+        Parameters
+        ----------
+        hierarchy : list
+            Hierarchy of the modes found in the route_types. Ex : ['car','rail', 'subway', 'tram', 'bus', 'walk']
+            means that when a path uses rail, tram and walk, the route_type will be defined as 'rail' which has the higher hierarchy.
+
+        Returns
+        -------
+        self.pt_los
+            add columns route_type
+        """        
         route_type_dict = self.links['route_type'].to_dict()
 
         def higher_route_type(route_types):
@@ -230,6 +245,9 @@ class AnalysisModel(summarymodel.SummaryModel):
         self.lighten_los(keep_summary_columns=keep_summary_columns)
 
     def analysis_car_route_type(self):
+        """Add columns : route_type = 'car' and route_types in car_los
+        to allow concatenation with pt_los and use of logit functions.
+        """        
         self.car_los['route_types'] = [tuple(['car']) for i in self.car_los.index]
         self.car_los['route_type'] = 'car'
 
@@ -391,7 +409,7 @@ class AnalysisModel(summarymodel.SummaryModel):
             lambda l: sum([d[t] for t in l]))
         d = self.links['length'].to_dict()
         self.pt_los['in_vehicle_length'] = self.pt_los['link_path'].apply(
-            lambda l: sum([d[t] for t in l]))
+            lambda l: np.nansum([*map(d.get, l)]))
         self.pt_los['length'] = self.pt_los[
             ['access_length', 'footpath_length', 'in_vehicle_length']
         ].T.sum()
@@ -414,7 +432,7 @@ class AnalysisModel(summarymodel.SummaryModel):
 
         d = self.road_links['length'].to_dict()
         self.car_los['in_vehicle_length'] = self.car_los['link_path'].apply(
-            lambda l: sum([d[t] for t in l]))
+            lambda l: np.nansum([*map(d.get, l)]))
 
         self.car_los['length'] = self.car_los[
             ['access_length', 'in_vehicle_length']
@@ -503,7 +521,7 @@ class AnalysisModel(summarymodel.SummaryModel):
         self.checkpoint_nodes = selected[1]
 
     def analysis_lines(self, line_columns='all', group_id='trip_id', *args, **kwargs):
-        self.lines = export.build_lines(
+        self.lines = build_lines(
             self.links,
             line_columns=line_columns,
             group_id=group_id,
@@ -570,18 +588,27 @@ class AnalysisModel(summarymodel.SummaryModel):
             values.append(transfers_lists)
         self.pt_los['transfers_list'] = values
 
-    def compute_arod_list(self):
+    def compute_arod_list(self, tap_free_transfers=None, tap_free_networks=None):
+
         agency_dict = self.links['agency_id'].to_dict()
         route_dict = self.links['route_id'].to_dict()
         node_zone_dict = self.nodes['zone_id'].to_dict()
-        df = self.pt_los[['boardings', 'alightings', 'boarding_links', 'alighting_links']]
+        df = self.pt_los[['boardings', 'boarding_links',  'alightings', 'alighting_links']]
         leg_tuples = [tuple(zip(*r)) for r in df.values]
+
+        tap_free = tap_free_transfers
+        assert not (tap_free_transfers and tap_free_networks), 'tap_free_tranfers and tap_free_networks cannot be merged'
+        if tap_free_networks is not None:
+            tap_free = fares.get_tap_free_transfers(tap_free_networks)
+        if tap_free is not None:
+            leg_tuples = [fares.merge_tuple(t,route_dict=route_dict, tap_free=tap_free) for t in leg_tuples]
+        print(tap_free)
 
         values = []
         for leg in leg_tuples:
             agencies_od_lists = []
 
-            for boarding_node, alighting_node, boarding_link, alighting_link in leg:
+            for boarding_node, boarding_link, alighting_node, alighting_link in leg:
                 agency_id = agency_dict[boarding_link]
                 route_id = route_dict[boarding_link]
                 origin_id = node_zone_dict[boarding_node]
@@ -638,7 +665,28 @@ class AnalysisModel(summarymodel.SummaryModel):
 
         self.pt_los['od_fares'] = self.pt_los['arod_list'].apply(od_price_breakdown)
 
-    def compute_route_fares(self, consecutive=False):
+    def compute_route_fares(self, consecutive=False, irrelevant_consecutive_fares=None):
+        transfers = self.fare_attributes.set_index('fare_id')['transfers'].to_dict()
+        price = self.fare_attributes.set_index('fare_id')['price'].to_dict()
+        route_fares_dict = self.fare_rules.groupby('route_id')['fare_id'].agg(frozenset).to_dict()
+        fare_options = [fares.get_fare_options(arod_list, route_fares_dict) for arod_list in self.pt_los['arod_list']]
+        unique_fare_options = set(fare_options)
+        cheapest_breakdown_dict = dict()
+        for fo in unique_fare_options: 
+            breakdown_options = fares.get_breakdown_options(
+                fo, transfers, price, 
+                irrelevant_consecutive_fares=irrelevant_consecutive_fares, 
+                consecutive=consecutive
+            )
+            cheapest_breakdown = fares.get_cheapest_breakdown(breakdown_options)
+            cheapest_breakdown_dict[fo] = cheapest_breakdown
+
+        self.pt_los['route_fares'] = [cheapest_breakdown_dict[fo] for fo in fare_options]
+
+    def fast_compute_route_fares(self, consecutive=False):
+        msg = 'cannot be used with multiple fare_id for a given route'
+        assert self.fare_rules['route_id'].duplicated().sum() == 0, msg
+
         route_dict = self.links['route_id'].to_dict()
 
         # focus on fares rules that are given with unique within a route
@@ -713,7 +761,8 @@ class AnalysisModel(summarymodel.SummaryModel):
         keep_intermediate_results=True,
         consecutive=False,
         od_fares=True,
-        route_fares=True
+        route_fares=True,
+        irrelevant_consecutive_fares=None,
     ):
         self.pt_los['route_fares'] = [dict()] * len(self.pt_los)
         self.pt_los['od_fares'] = [dict()] * len(self.pt_los)
@@ -723,7 +772,10 @@ class AnalysisModel(summarymodel.SummaryModel):
             self.compute_od_fares()
 
         if route_fares:
-            self.compute_route_fares(consecutive)
+            self.compute_route_fares(
+                consecutive=consecutive, 
+                irrelevant_consecutive_fares=irrelevant_consecutive_fares,
+            )
 
         values = self.pt_los[['route_fares', 'od_fares']].values
         self.pt_los['price'] = [

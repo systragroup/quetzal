@@ -1,69 +1,33 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" />
-  
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
   <title>Quetzal Overview &mdash; quetzal  documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-
-  
-  
-
-  
-  
-
-  
-
-  
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-    
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-
-    
+    <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="quetzal.engine package" href="quetzal.engine.html" /> 
+    <link rel="next" title="quetzal.model.stepmodel module" href="quetzal.model.stepmodel.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
-
-          
             <a href="#" class="icon icon-home"> quetzal
-          
-
-          
           </a>
-
-          
-            
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -71,167 +35,220 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-
-          
-        </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
-<li class="toctree-l1"><a class="reference internal" href="quetzal.engine.html">quetzal.engine package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quetzal.model.html">quetzal.model package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quetzal.io.html">quetzal.io package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quetzal.analysis.html">quetzal.analysis package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.stepmodel.html">Read about stepmodel attributes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.preparationmodel.html">Documentation of the preparation functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.io.gtfs_reader.gtfs_importer.html">Documentation of the GFTS import functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.integritymodel.html">Documentation of the integrity functions</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.transportmodel.html">Documentation of the stepmodel functions</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.connectionscanmodel.html">Read about connection scan models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.timeexpandedmodel.html">Read about time expanded models</a></li>
 </ul>
 
-            
-          
         </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="#">quetzal</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
       <li><a href="#" class="icon icon-home"></a> &raquo;</li>
-        
       <li>Quetzal Overview</li>
-    
-    
       <li class="wy-breadcrumbs-aside">
-        
-          
             <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
-          
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
-  <div class="section" id="quetzal-overview">
-<h1>Quetzal Overview<a class="headerlink" href="#quetzal-overview" title="Permalink to this headline">¶</a></h1>
-<p><strong>Quetzal</strong> is a Python package providing flexible models for transport planning and traffic forecasting.</p>
+             
+  <section id="quetzal-overview">
+<h1>Quetzal Overview<a class="headerlink" href="#quetzal-overview" title="Permalink to this headline"></a></h1>
+<p><strong>Quetzal</strong> is a Python package providing flexible models for transport planning and traffic forecasting.
+It offers tools to help us carry out modelling tasks in the fields of data pre-processing and integrity checks, data-management and transport-modelling.</p>
 <a class="reference internal image-reference" href="https://raw.githubusercontent.com/systragroup/quetzal/master/docs/source/_images/paris.png"><img alt="paris.png" src="https://raw.githubusercontent.com/systragroup/quetzal/master/docs/source/_images/paris.png" style="width: 800px;" /></a>
-</div>
-<div class="section" id="free-software">
-<h1>Free software<a class="headerlink" href="#free-software" title="Permalink to this headline">¶</a></h1>
+<section id="free-software">
+<h2>Free software<a class="headerlink" href="#free-software" title="Permalink to this headline"></a></h2>
 <p>Quetzal is free; you can redistribute it and/or modify it under the terms of the CeCILL-B License.
 We welcome contributions, join us on GitHub: <a class="reference external" href="https://github.com/systragroup/quetzal">https://github.com/systragroup/quetzal</a>.</p>
-</div>
-<div class="section" id="history">
-<h1>History<a class="headerlink" href="#history" title="Permalink to this headline">¶</a></h1>
+</section>
+<section id="history">
+<h2>History<a class="headerlink" href="#history" title="Permalink to this headline"></a></h2>
 <p>Quetzal was born in 2016. The first public release was in 2018.</p>
-</div>
-<div class="section" id="documentation">
-<h1>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h1>
+</section>
+</section>
+<section id="documentation">
+<h1>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline"></a></h1>
+<p>Quetzal is based on a main object called StepModel.
+It stores the data as attributes and makes the modelling procedures available as methods.</p>
+<p>In terms of data storage, the models designed with Quetzal relies on light data formats.
+They can be stored as zipped HDF5 which is hyper fast or as JSONs, which are human readable and easy to track for changes.
+They can be stored, shared and versioned with Github which makes collaborative projects easier.</p>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="quetzal.engine.html">quetzal.engine package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quetzal.model.html">quetzal.model package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quetzal.io.html">quetzal.io package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quetzal.analysis.html">quetzal.analysis package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.stepmodel.html">Read about stepmodel attributes</a></li>
 </ul>
 </div>
+<p>In the documentation, for every method, the required attributes and the expected products are listed.
+The two main groups of methods are the preparation or pre-processing methods and the step methods.</p>
+<section id="data-preparation">
+<h2>Data Preparation<a class="headerlink" href="#data-preparation" title="Permalink to this headline"></a></h2>
+<p>Quetzal was designed around the use of open data and provides implementation of state-of-the-art
+algorithms to process poorly georeferenced GTFS and Open Street Map data. It takes advantage of graph
+analysis to build a consistent network-conscious timetable from a stop sequence-based,
+network-naïve timetable and an extraneous road network.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.preparationmodel.html">Documentation of the preparation functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.io.gtfs_reader.gtfs_importer.html">Documentation of the GFTS import functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.integritymodel.html">Documentation of the integrity functions</a></li>
+</ul>
 </div>
-<div class="section" id="indices-and-tables">
-<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<p>To save computer time, it is often worth reducing the size of the input data. Quetzal makes extensive use of geomatics algorithms to build:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>aggregated zonings : <strong>preparation_clusterize_zones</strong></p></li>
+<li><p>station clusters : <strong>preparation_clusterize_nodes</strong></p></li>
+</ul>
+</div></blockquote>
+<p>Quetzal embeds automated consistency checks on the timetables and the road network that spot the most frequent error sources such as :</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>non-convex road networks : <strong>integrity_fix_road_network</strong></p></li>
+<li><p>incomplete public transport stop sequences : <strong>integrity_fix_sequences</strong></p></li>
+<li><p>namespace collisions (names shared between independent objects) : <strong>integrity_fix_collision</strong></p></li>
+<li><p>fix circular lines : <strong>integrity_fix_circular_lines</strong></p></li>
+<li><p>fix nodeset consistency (public transport and roads): <strong>integrity_fix_nodeset_consistency</strong> and <strong>integrity_fix_road_nodeset_consistency</strong></p></li>
+</ul>
+</div></blockquote>
+<p>Network casting : Public transport timetables and road networks are key inputs to many studies, but often come from independent sources.
+It is necessary to link them in order to model their physical interactions such as the impact of private
+car traffic on the commercial speed of road-based public modes.
+Function : <strong>preparation_cast_network</strong></p>
+<p>In order to have a functioning model, before the application of stepmodel functions and after data preparation,
+the following functions will have to be used :</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Prepare connectors : <strong>preparation_ntlegs</strong></p></li>
+<li><p>allow public transport connections : <strong>preparation_footpaths</strong></p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="step-model">
+<h2>Step Model<a class="headerlink" href="#step-model" title="Permalink to this headline"></a></h2>
+<p>Quetzal provides a complete algorithm suite to help design a standard four-stage model or more customized ones.
+The downstream articulation between modal split and assignment is flexible since both use a utility-based nested Logit.
+The modal split and the assignment (volume split between the many PT options) can be performed with a single nested logit model.
+This approach helps enhance the consistency between the modal split and the assignment steps.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.transportmodel.html">Documentation of the stepmodel functions</a></li>
+</ul>
+</div>
+<p><strong>Generation</strong></p>
+<p>There is no real need for a specialized library to achieve the generation step and the Python language offers many options to do so.</p>
+<p><strong>Distribution</strong></p>
+<p>Once the productions and attractions are estimated, Quetzal offers a doubly constrained distribution based on
+an impedance matrix that can be provided as an input or generated from a gravitational model : <strong>step_distribution</strong>
+The growth of the OD matrix can also be performed with a Fratar.</p>
+<p><strong>Pathfinders</strong></p>
+<p>The goal of the public transport and car LOS estimation is to gather for all origin-destination pairs a collection of paths
+and compute a voyager utility for each of them.</p>
+<p>The levels of service (LOS) of the public transports (time, transfers, fares, …etc.) are estimated with graph algorithms.
+Those algorithms can be parametrized through the function <strong>step_pt_pathfinder</strong>, based on frequency.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>The fastest option is to compute only the best path</p></li>
+<li><p>The most accurate one is to alternatively break sections of the Public Transport graph and compute the best paths in the broken graphs.</p></li>
+</ul>
+</div></blockquote>
+<p>The car travel time can be estimated with <strong>step_road_pathfinder</strong>.
+This function performs road assigment by performing the pathfinder, because travel time depends on congestion.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>a simple use of the Dijkstra Algorithm if the congestion is of no concern.</p></li>
+<li><p>Frank Wolfe Algorithm which leads to a car assignment in Wardrop equilibrium</p></li>
+</ul>
+</div></blockquote>
+<p>There is the possibility to use Park and Ride with the dedicaded pathdfinder <strong>step_pr_pathfinder</strong></p>
+<p>Pathfinders based on timetables depend on other classes :</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.connectionscanmodel.html">Read about connection scan models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.timeexpandedmodel.html">Read about time expanded models</a></li>
+</ul>
+</div>
+<p><strong>Logit</strong></p>
+<p>Use the following functions to perform the nested logit :</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>concatenate pt_los and car_los in an unique table self.los</p></li>
+<li><p>Builds the necessary tables to perform the following functions : <strong>preparation_logit</strong></p></li>
+<li><p>Compute utilities per mode per segment based on logit parameters : <strong>analysis_mode_utility</strong></p></li>
+<li><p>Performs the nested logit, that is to say compute the probabilities per segment : <strong>step_logit</strong></p></li>
+</ul>
+</div></blockquote>
+<p><strong>Assignment</strong></p>
+<p>Assignment of private transport is done with the function <strong>step_pr_pathfinder</strong>.
+For public transport assignment, we will use :</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Compute volume in the level of services table : <strong>compute_los_volume</strong></p></li>
+<li><p>Compute the volumes on the links of the public transport network,
+and the boardings and alightings on the nodes of the PT network : <strong>step_assignment</strong></p></li>
+</ul>
+</div></blockquote>
+<section id="indices-and-tables">
+<h3>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline"></a></h3>
 <ul class="simple">
 <li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
 </ul>
-</div>
+</section>
+</section>
+</section>
 
 
            </div>
-           
           </div>
-          <footer>
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-        <a href="quetzal.engine.html" class="btn btn-neutral float-right" title="quetzal.engine package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="quetzal.model.stepmodel.html" class="btn btn-neutral float-right" title="quetzal.model.stepmodel module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        &#169; Copyright 2018, Systra.
-
-    </p>
+    <p>&#169; Copyright 2018, Systra.</p>
   </div>
-    
-    
-    
-    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
-    
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
-    
-    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
 
 </footer>
         </div>
       </div>
-
     </section>
-
   </div>
-  
-
-  <script type="text/javascript">
+  <script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>

@@ -14,6 +14,9 @@ Submodules
    quetzal.model.preparationmodel
    quetzal.model.stepmodel
    quetzal.model.transportmodel
+   quetzal.model.connectionscanmodel
+   quetzal.model.timeexpandedmodel
+   quetzal.model.parkridemodel
 
 Module contents
 ---------------

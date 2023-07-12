@@ -71,7 +71,7 @@ def free_flow(mat,der=False):
     
 
 
-def jam_time(links, vdf={'default_bpr': default_bpr},flow='flow',der=False):
+def jam_time(links, vdf={'default_bpr': default_bpr},flow='flow',der=False,time_col='time'):
     # vdf is a {function_name: function } to apply on links 
     keys = set(links['vdf'])
     missing_vdf = keys - set(vdf.keys())
@@ -81,20 +81,20 @@ def jam_time(links, vdf={'default_bpr': default_bpr},flow='flow',der=False):
         if type(vdf[key]).__name__=='function': #normal python function.
             links.loc[links['vdf']==key,'result'] = vdf[key](links.loc[links['vdf']==key], flow, der) 
         else: # numba function.
-            links.loc[links['vdf']==key,'result'] = vdf[key](links.loc[links['vdf']==key,['alpha','beta','limit',flow,'time','penalty','capacity']].values, der) 
+            links.loc[links['vdf']==key,'result'] = vdf[key](links.loc[links['vdf']==key,['alpha','beta','limit',flow,time_col,'penalty','capacity']].values, der) 
         
     return links['result']
 
 
-def z_prime(links,vdf, phi):
+def z_prime(links, vdf, phi, **kwargs):
     # min sum(on links) integral from 0 to formerflow + φΔ of Time(f) df
     # approx constant + jam_time(FormerFlow) x φΔ + 1/2 (jam_time(Formerflow + φΔ) - jam_time(FormerFlow) ) x φΔ
     # Δ = links['aux_flow'] - links['former_flow']
     delta = (links['auxiliary_flow'] - links['flow']).values
     links['new_flow'] = delta*phi+links['flow']
     #z = (jam_time(links,vdf={'default_bpr': default_bpr_phi},flow='delta',phi=phi) - links['jam_time']) / (links['delta']*phi + links['former_flow'])
-    t_f = jam_time(links,vdf=vdf,flow='flow')
-    t_del = jam_time(links,vdf=vdf,flow='new_flow')
+    t_f = jam_time(links,vdf=vdf,flow='flow',**kwargs)
+    t_del = jam_time(links,vdf=vdf,flow='new_flow',**kwargs)
     links['t_f'] = t_f
     links['t_del'] = t_del
     t_f = links['t_f'].values
@@ -104,10 +104,10 @@ def z_prime(links,vdf, phi):
     return np.ma.masked_invalid(z).sum()    
 
 
-def find_phi(links,vdf, phi=0, step=0.5, num_it=10):
-    a = z_prime(links,vdf,phi)
+def find_phi(links,vdf, phi=0, step=0.5, num_it=10, **kwargs):
+    a = z_prime(links, vdf, phi, **kwargs)
     for i in range(num_it):
-        b = z_prime(links,vdf,phi+step)
+        b = z_prime(links, vdf, phi + step,**kwargs)
         if b<a:
             phi+=step
             step=step/2

@@ -1,70 +1,34 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" />
-  
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
   <title>quetzal.model.integritymodel module &mdash; quetzal  documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-
-  
-  
-
-  
-  
-
-  
-
-  
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-    
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-
-    
+    <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="quetzal.model.model module" href="quetzal.model.model.html" />
-    <link rel="prev" title="quetzal.model.docmodel module" href="quetzal.model.docmodel.html" /> 
+    <link rel="next" title="quetzal.model.transportmodel module" href="quetzal.model.transportmodel.html" />
+    <link rel="prev" title="quetzal.io.gtfs_reader.gtfs_importer module" href="quetzal.io.gtfs_reader.gtfs_importer.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
-
-          
             <a href="index.html" class="icon icon-home"> quetzal
-          
-
-          
           </a>
-
-          
-            
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -72,115 +36,56 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.stepmodel.html">Read about stepmodel attributes</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.preparationmodel.html">Documentation of the preparation functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.io.gtfs_reader.gtfs_importer.html">Documentation of the GFTS import functions</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Documentation of the integrity functions</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.transportmodel.html">Documentation of the stepmodel functions</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.connectionscanmodel.html">Read about connection scan models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.timeexpandedmodel.html">Read about time expanded models</a></li>
+</ul>
 
-          
         </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
-              <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="quetzal.engine.html">quetzal.engine package</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="quetzal.model.html">quetzal.model package</a><ul class="current">
-<li class="toctree-l2 current"><a class="reference internal" href="quetzal.model.html#submodules">Submodules</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="quetzal.model.analysismodel.html">quetzal.model.analysismodel module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="quetzal.model.cubemodel.html">quetzal.model.cubemodel module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="quetzal.model.docmodel.html">quetzal.model.docmodel module</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">quetzal.model.integritymodel module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="quetzal.model.model.html">quetzal.model.model module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="quetzal.model.preparationmodel.html">quetzal.model.preparationmodel module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="quetzal.model.stepmodel.html">quetzal.model.stepmodel module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="quetzal.model.transportmodel.html">quetzal.model.transportmodel module</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="quetzal.model.html#module-quetzal.model">Module contents</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="quetzal.io.html">quetzal.io package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quetzal.analysis.html">quetzal.analysis package</a></li>
-</ul>
-
-            
-          
-        </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">quetzal</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
-        
-          <li><a href="quetzal.model.html">quetzal.model package</a> &raquo;</li>
-        
       <li>quetzal.model.integritymodel module</li>
-    
-    
       <li class="wy-breadcrumbs-aside">
-        
-          
             <a href="_sources/quetzal.model.integritymodel.rst.txt" rel="nofollow"> View page source</a>
-          
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
-  <div class="section" id="module-quetzal.model.integritymodel">
-<span id="quetzal-model-integritymodel-module"></span><h1>quetzal.model.integritymodel module<a class="headerlink" href="#module-quetzal.model.integritymodel" title="Permalink to this headline">¶</a></h1>
+             
+  <section id="module-quetzal.model.integritymodel">
+<span id="quetzal-model-integritymodel-module"></span><h1>quetzal.model.integritymodel module<a class="headerlink" href="#module-quetzal.model.integritymodel" title="Permalink to this headline"></a></h1>
 <dl class="py class">
-<dt id="quetzal.model.integritymodel.IntegrityModel">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">quetzal.model.integritymodel.</span></code><code class="sig-name descname"><span class="pre">IntegrityModel</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">walk_on_road</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epsg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coordinates_unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">quetzal.model.integritymodel.</span></span><span class="sig-name descname"><span class="pre">IntegrityModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">walk_on_road</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epsg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coordinates_unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <dl class="py method">
-<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_circular_lines">
-<code class="sig-name descname"><span class="pre">integrity_fix_circular_lines</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_circular_lines"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_circular_lines" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_circular_lines">
+<span class="sig-name descname"><span class="pre">integrity_fix_circular_lines</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_circular_lines"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_circular_lines" title="Permalink to this definition"></a></dt>
 <dd><ul class="simple">
 <li><p>requires: links</p></li>
 <li><p>builds: links</p></li>
@@ -188,8 +93,8 @@
 </dd></dl>
 
 <dl class="py method">
-<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_collision">
-<code class="sig-name descname"><span class="pre">integrity_fix_collision</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefixes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'links':</span> <span class="pre">'link_',</span> <span class="pre">'nodes':</span> <span class="pre">'node_',</span> <span class="pre">'zones':</span> <span class="pre">'zone_'}</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_collision"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_collision" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_collision">
+<span class="sig-name descname"><span class="pre">integrity_fix_collision</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefixes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'links':</span> <span class="pre">'link_',</span> <span class="pre">'nodes':</span> <span class="pre">'node_',</span> <span class="pre">'zones':</span> <span class="pre">'zone_'}</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_collision"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_collision" title="Permalink to this definition"></a></dt>
 <dd><ul class="simple">
 <li><p>requires: links, nodes, zones</p></li>
 <li><p>builds: links, nodes, zones</p></li>
@@ -197,13 +102,13 @@
 </dd></dl>
 
 <dl class="py method">
-<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_nodeset_consistency">
-<code class="sig-name descname"><span class="pre">integrity_fix_nodeset_consistency</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_nodeset_consistency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_nodeset_consistency" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_nodeset_consistency">
+<span class="sig-name descname"><span class="pre">integrity_fix_nodeset_consistency</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_nodeset_consistency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_nodeset_consistency" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_road_network">
-<code class="sig-name descname"><span class="pre">integrity_fix_road_network</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recursive_depth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_road_network"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_road_network" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_road_network">
+<span class="sig-name descname"><span class="pre">integrity_fix_road_network</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recursive_depth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_road_network"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_road_network" title="Permalink to this definition"></a></dt>
 <dd><dl class="simple">
 <dt>clean road_network</dt><dd><ul class="simple">
 <li><p>requires: road_links, road_nodes</p></li>
@@ -214,13 +119,13 @@
 </dd></dl>
 
 <dl class="py method">
-<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_road_nodeset_consistency">
-<code class="sig-name descname"><span class="pre">integrity_fix_road_nodeset_consistency</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_road_nodeset_consistency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_road_nodeset_consistency" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_road_nodeset_consistency">
+<span class="sig-name descname"><span class="pre">integrity_fix_road_nodeset_consistency</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_road_nodeset_consistency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_road_nodeset_consistency" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_sequences">
-<code class="sig-name descname"><span class="pre">integrity_fix_sequences</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_sequences"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_sequences" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_fix_sequences">
+<span class="sig-name descname"><span class="pre">integrity_fix_sequences</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_fix_sequences"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_fix_sequences" title="Permalink to this definition"></a></dt>
 <dd><ul class="simple">
 <li><p>requires: links</p></li>
 <li><p>builds: links</p></li>
@@ -228,14 +133,14 @@
 </dd></dl>
 
 <dl class="py method">
-<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_test_all">
-<code class="sig-name descname"><span class="pre">integrity_test_all</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">errors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'raise'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_all"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_all" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_test_all">
+<span class="sig-name descname"><span class="pre">integrity_test_all</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">errors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'raise'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_all"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_all" title="Permalink to this definition"></a></dt>
 <dd><p>errors=’ignore’ can be passed</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_test_circular_lines">
-<code class="sig-name descname"><span class="pre">integrity_test_circular_lines</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_circular_lines"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_circular_lines" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_test_circular_lines">
+<span class="sig-name descname"><span class="pre">integrity_test_circular_lines</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_circular_lines"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_circular_lines" title="Permalink to this definition"></a></dt>
 <dd><dl class="simple">
 <dt>The model does not work with circular lines</dt><dd><ul class="simple">
 <li><p>requires: links</p></li>
@@ -246,16 +151,16 @@
 </dd></dl>
 
 <dl class="py method">
-<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_test_collision">
-<code class="sig-name descname"><span class="pre">integrity_test_collision</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('links',</span> <span class="pre">'nodes',</span> <span class="pre">'zones',</span> <span class="pre">'road_links',</span> <span class="pre">'road_nodes')</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_collision"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_collision" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_test_collision">
+<span class="sig-name descname"><span class="pre">integrity_test_collision</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('links',</span> <span class="pre">'nodes',</span> <span class="pre">'zones',</span> <span class="pre">'road_links',</span> <span class="pre">'road_nodes')</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_collision"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_collision" title="Permalink to this definition"></a></dt>
 <dd><ul class="simple">
 <li><p>requires: links, nodes, zones</p></li>
 </ul>
 </dd></dl>
 
 <dl class="py method">
-<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_test_dead_ends">
-<code class="sig-name descname"><span class="pre">integrity_test_dead_ends</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_dead_ends"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_dead_ends" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_test_dead_ends">
+<span class="sig-name descname"><span class="pre">integrity_test_dead_ends</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_dead_ends"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_dead_ends" title="Permalink to this definition"></a></dt>
 <dd><p>look for dead-ends in the road network
 only the dead-ends with a dead-rank lower than the cutoff
 will be identified</p>
@@ -267,37 +172,37 @@ will be identified</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_test_isolated_roads">
-<code class="sig-name descname"><span class="pre">integrity_test_isolated_roads</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_isolated_roads"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_isolated_roads" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_test_isolated_roads">
+<span class="sig-name descname"><span class="pre">integrity_test_isolated_roads</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_isolated_roads"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_isolated_roads" title="Permalink to this definition"></a></dt>
 <dd><ul class="simple">
 <li><p>requires: road_links</p></li>
 </ul>
 </dd></dl>
 
 <dl class="py method">
-<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_test_nodeset_consistency">
-<code class="sig-name descname"><span class="pre">integrity_test_nodeset_consistency</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_nodeset_consistency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_nodeset_consistency" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_test_nodeset_consistency">
+<span class="sig-name descname"><span class="pre">integrity_test_nodeset_consistency</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_nodeset_consistency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_nodeset_consistency" title="Permalink to this definition"></a></dt>
 <dd><ul class="simple">
 <li><p>requires: nodes, links</p></li>
 </ul>
 </dd></dl>
 
 <dl class="py method">
-<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_test_road_network">
-<code class="sig-name descname"><span class="pre">integrity_test_road_network</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_road_network"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_road_network" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_test_road_network">
+<span class="sig-name descname"><span class="pre">integrity_test_road_network</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_road_network"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_road_network" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_test_road_nodeset_consistency">
-<code class="sig-name descname"><span class="pre">integrity_test_road_nodeset_consistency</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_road_nodeset_consistency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_road_nodeset_consistency" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_test_road_nodeset_consistency">
+<span class="sig-name descname"><span class="pre">integrity_test_road_nodeset_consistency</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_road_nodeset_consistency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_road_nodeset_consistency" title="Permalink to this definition"></a></dt>
 <dd><ul class="simple">
 <li><p>requires: nodes, links</p></li>
 </ul>
 </dd></dl>
 
 <dl class="py method">
-<dt id="quetzal.model.integritymodel.IntegrityModel.integrity_test_sequences">
-<code class="sig-name descname"><span class="pre">integrity_test_sequences</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_sequences"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_sequences" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.integrity_test_sequences">
+<span class="sig-name descname"><span class="pre">integrity_test_sequences</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.integrity_test_sequences"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.integrity_test_sequences" title="Permalink to this definition"></a></dt>
 <dd><ul class="simple">
 <li><p>requires: links</p></li>
 <li><p>builds: broken_sequences</p></li>
@@ -305,90 +210,78 @@ will be identified</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="quetzal.model.integritymodel.IntegrityModel.link_nodeset">
-<code class="sig-name descname"><span class="pre">link_nodeset</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.link_nodeset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.link_nodeset" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.link_nodeset">
+<span class="sig-name descname"><span class="pre">link_nodeset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.link_nodeset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.link_nodeset" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt id="quetzal.model.integritymodel.IntegrityModel.nodeset">
-<code class="sig-name descname"><span class="pre">nodeset</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.nodeset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.nodeset" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.nodeset">
+<span class="sig-name descname"><span class="pre">nodeset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.nodeset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.nodeset" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt id="quetzal.model.integritymodel.IntegrityModel.road_link_nodeset">
-<code class="sig-name descname"><span class="pre">road_link_nodeset</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.road_link_nodeset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.road_link_nodeset" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.road_link_nodeset">
+<span class="sig-name descname"><span class="pre">road_link_nodeset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.road_link_nodeset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.road_link_nodeset" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt id="quetzal.model.integritymodel.IntegrityModel.road_nodeset">
-<code class="sig-name descname"><span class="pre">road_nodeset</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.road_nodeset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.road_nodeset" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.IntegrityModel.road_nodeset">
+<span class="sig-name descname"><span class="pre">road_nodeset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#IntegrityModel.road_nodeset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.IntegrityModel.road_nodeset" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 </dd></dl>
 
 <dl class="py function">
-<dt id="quetzal.model.integritymodel.geodataframe_place_holder">
-<code class="sig-prename descclassname"><span class="pre">quetzal.model.integritymodel.</span></code><code class="sig-name descname"><span class="pre">geodataframe_place_holder</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geom_type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#geodataframe_place_holder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.geodataframe_place_holder" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.deprecated_method">
+<span class="sig-prename descclassname"><span class="pre">quetzal.model.integritymodel.</span></span><span class="sig-name descname"><span class="pre">deprecated_method</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#deprecated_method"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.deprecated_method" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
-<dt id="quetzal.model.integritymodel.label_links">
-<code class="sig-prename descclassname"><span class="pre">quetzal.model.integritymodel.</span></code><code class="sig-name descname"><span class="pre">label_links</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_prefixe</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#label_links"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.label_links" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.geodataframe_place_holder">
+<span class="sig-prename descclassname"><span class="pre">quetzal.model.integritymodel.</span></span><span class="sig-name descname"><span class="pre">geodataframe_place_holder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geom_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#geodataframe_place_holder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.geodataframe_place_holder" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
-<dt id="quetzal.model.integritymodel.list_duplicates">
-<code class="sig-prename descclassname"><span class="pre">quetzal.model.integritymodel.</span></code><code class="sig-name descname"><span class="pre">list_duplicates</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">l</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#list_duplicates"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.list_duplicates" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.label_links">
+<span class="sig-prename descclassname"><span class="pre">quetzal.model.integritymodel.</span></span><span class="sig-name descname"><span class="pre">label_links</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_prefixe</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#label_links"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.label_links" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
-</div>
+<dl class="py function">
+<dt class="sig sig-object py" id="quetzal.model.integritymodel.list_duplicates">
+<span class="sig-prename descclassname"><span class="pre">quetzal.model.integritymodel.</span></span><span class="sig-name descname"><span class="pre">list_duplicates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">l</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/model/integritymodel.html#list_duplicates"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.model.integritymodel.list_duplicates" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
 
 
            </div>
-           
           </div>
-          <footer>
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-        <a href="quetzal.model.model.html" class="btn btn-neutral float-right" title="quetzal.model.model module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-        <a href="quetzal.model.docmodel.html" class="btn btn-neutral float-left" title="quetzal.model.docmodel module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="quetzal.io.gtfs_reader.gtfs_importer.html" class="btn btn-neutral float-left" title="quetzal.io.gtfs_reader.gtfs_importer module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="quetzal.model.transportmodel.html" class="btn btn-neutral float-right" title="quetzal.model.transportmodel module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        &#169; Copyright 2018, Systra.
-
-    </p>
+    <p>&#169; Copyright 2018, Systra.</p>
   </div>
-    
-    
-    
-    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
-    
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
-    
-    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
 
 </footer>
         </div>
       </div>
-
     </section>
-
   </div>
-  
-
-  <script type="text/javascript">
+  <script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>

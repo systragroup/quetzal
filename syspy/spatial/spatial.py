@@ -315,6 +315,9 @@ def zones_in_influence_area(zones, area=None, links=None, cut_buffer=0.02):
 
 
 def voronoi_diagram_dataframes(points, **kwargs):
+    if isinstance(points, pd.DataFrame) | isinstance(points, pd.Series):
+        assert points.index.duplicated().sum() == 0, "Index must not be duplicated"
+
     items = list(dict(points).items())
     key_dict = {}
     key_list = []

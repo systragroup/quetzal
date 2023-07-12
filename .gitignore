@@ -9,3 +9,10 @@ tests/data/out/
 .venv/
 .idea/
 build/
+*.env
+# Local .terraform directories
+**/.terraform/*
+docker/infra/.terraform/*
+*.tfstate
+*.tfstate.*
+

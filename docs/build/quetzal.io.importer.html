@@ -1,70 +1,32 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" />
-  
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
   <title>quetzal.io.importer module &mdash; quetzal  documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-
-  
-  
-
-  
-  
-
-  
-
-  
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-    
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-
-    
+    <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="quetzal.analysis package" href="quetzal.analysis.html" />
-    <link rel="prev" title="quetzal.io.gtfs_importer module" href="quetzal.io.gtfs_importer.html" /> 
+    <link rel="search" title="Search" href="search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
-
-          
             <a href="index.html" class="icon icon-home"> quetzal
-          
-
-          
           </a>
-
-          
-            
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -72,170 +34,142 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.stepmodel.html">Read about stepmodel attributes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.preparationmodel.html">Documentation of the preparation functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.io.gtfs_reader.gtfs_importer.html">Documentation of the GFTS import functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.integritymodel.html">Documentation of the integrity functions</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.transportmodel.html">Documentation of the stepmodel functions</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.connectionscanmodel.html">Read about connection scan models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.timeexpandedmodel.html">Read about time expanded models</a></li>
+</ul>
 
-          
         </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
-              <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="quetzal.engine.html">quetzal.engine package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quetzal.model.html">quetzal.model package</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="quetzal.io.html">quetzal.io package</a><ul class="current">
-<li class="toctree-l2 current"><a class="reference internal" href="quetzal.io.html#submodules">Submodules</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="quetzal.io.display.html">quetzal.io.display module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="quetzal.io.export.html">quetzal.io.export module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="quetzal.io.export_utils.html">quetzal.io.export_utils module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="quetzal.io.gtfs_importer.html">quetzal.io.gtfs_importer module</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">quetzal.io.importer module</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="quetzal.io.html#module-quetzal.io">Module contents</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="quetzal.analysis.html">quetzal.analysis package</a></li>
-</ul>
-
-            
-          
-        </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">quetzal</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
-        
-          <li><a href="quetzal.io.html">quetzal.io package</a> &raquo;</li>
-        
       <li>quetzal.io.importer module</li>
-    
-    
       <li class="wy-breadcrumbs-aside">
-        
-          
             <a href="_sources/quetzal.io.importer.rst.txt" rel="nofollow"> View page source</a>
-          
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
-  <div class="section" id="module-quetzal.io.importer">
-<span id="quetzal-io-importer-module"></span><h1>quetzal.io.importer module<a class="headerlink" href="#module-quetzal.io.importer" title="Permalink to this headline">¶</a></h1>
+             
+  <section id="module-quetzal.io.importer">
+<span id="quetzal-io-importer-module"></span><h1>quetzal.io.importer module<a class="headerlink" href="#module-quetzal.io.importer" title="Permalink to this headline"></a></h1>
 <dl class="py function">
-<dt id="quetzal.io.importer.from_linedraft">
-<code class="sig-prename descclassname"><span class="pre">quetzal.io.importer.</span></code><code class="sig-name descname"><span class="pre">from_linedraft</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nodes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zones</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recolor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cut_buffer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">set_emission</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/importer.html#from_linedraft"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.importer.from_linedraft" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.io.importer.from_linedraft">
+<span class="sig-prename descclassname"><span class="pre">quetzal.io.importer.</span></span><span class="sig-name descname"><span class="pre">from_linedraft</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nodes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zones</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recolor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cut_buffer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">set_emission</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/importer.html#from_linedraft"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.importer.from_linedraft" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
-<dt id="quetzal.io.importer.from_lines">
-<code class="sig-prename descclassname"><span class="pre">quetzal.io.importer.</span></code><code class="sig-name descname"><span class="pre">from_lines</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lines</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_return</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/importer.html#from_lines"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.importer.from_lines" title="Permalink to this definition">¶</a></dt>
-<dd><p>lines index is used, links and nodes are returned
-if add_return = True, return lines are created</p>
+<dt class="sig sig-object py" id="quetzal.io.importer.from_lines">
+<span class="sig-prename descclassname"><span class="pre">quetzal.io.importer.</span></span><span class="sig-name descname"><span class="pre">from_lines</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lines</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_return</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_keep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/importer.html#from_lines"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.importer.from_lines" title="Permalink to this definition"></a></dt>
+<dd><p>Import public transport lines to Quetzal format from geodataframe
+containing the pt lines (as one per row).
+Creates the dataframe links and nodes defined in the stepmodel class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>lines</strong> (<em>geodataframe</em>) – Name of DataFrame describing the alignements as LineSring in a <em>geometry</em> column.</p></li>
+<li><p><strong>node_index</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default 0</em>) – number on which to start indexing nodes</p></li>
+<li><p><strong>add_return</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default True</em>) – if True, return lines are created.
+Use False if the two directions of the line are in the geodataframe.</p></li>
+<li><p><strong>to_keep</strong> (<em>list</em><em>, </em><em>optional</em><em>, </em><em>default</em><em> [</em><em>]</em>) – columns of lines geodataframe to keep in links</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>links</em> – Links of the public transport system and pt routes caracteristics.
+Each line of the geodataframe correspond to a section of a PT route between two nodes</p></li>
+<li><p><em>nodes</em> – Public transport stations.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
-<dt id="quetzal.io.importer.links_and_nodes">
-<code class="sig-prename descclassname"><span class="pre">quetzal.io.importer.</span></code><code class="sig-name descname"><span class="pre">links_and_nodes</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">linestring</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/importer.html#links_and_nodes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.importer.links_and_nodes" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.io.importer.from_lines_and_stations">
+<span class="sig-prename descclassname"><span class="pre">quetzal.io.importer.</span></span><span class="sig-name descname"><span class="pre">from_lines_and_stations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lines</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">og_geoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/importer.html#from_lines_and_stations"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.importer.from_lines_and_stations" title="Permalink to this definition"></a></dt>
+<dd><p>Convert a set of alignement and station into a table of links.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>lines</strong> (<em>pd.DataFrame</em><em> (or </em><em>gpd.GeoDataFrame</em><em>)</em>) – DataFrame describing the alignements as LineSring in a <em>geometry</em> column.</p></li>
+<li><p><strong>stations</strong> (<em>pd.DataFrame</em><em> (or </em><em>gpd.GeoDataFrame</em><em>)</em>) – DataFrame describing the stations as Point in a <em>geometry</em> column.</p></li>
+<li><p><strong>buffer</strong> (<em>Float</em><em>, </em><em>optional</em>) – Buffer for station detection near each alignement, by default 1e-3</p></li>
+<li><p><strong>og_geoms</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True (by default), the original geometry will be split between stations.
+If False, returned geometry will be a simplified geometry (st1 -&gt; st2)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Table of links. As per, <a class="reference internal" href="#quetzal.io.importer.from_lines" title="quetzal.io.importer.from_lines"><code class="xref py py-func docutils literal notranslate"><span class="pre">from_lines()</span></code></a> output.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="quetzal.io.importer.links_and_nodes">
+<span class="sig-prename descclassname"><span class="pre">quetzal.io.importer.</span></span><span class="sig-name descname"><span class="pre">links_and_nodes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">linestring</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/importer.html#links_and_nodes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.importer.links_and_nodes" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
-</div>
+<dl class="py function">
+<dt class="sig sig-object py" id="quetzal.io.importer.split_line_by_point">
+<span class="sig-prename descclassname"><span class="pre">quetzal.io.importer.</span></span><span class="sig-name descname"><span class="pre">split_line_by_point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">line</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tolerance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1e-09</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/importer.html#split_line_by_point"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.importer.split_line_by_point" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
 
 
            </div>
-           
           </div>
           <footer>
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-        <a href="quetzal.analysis.html" class="btn btn-neutral float-right" title="quetzal.analysis package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-        <a href="quetzal.io.gtfs_importer.html" class="btn btn-neutral float-left" title="quetzal.io.gtfs_importer module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-    </div>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        &#169; Copyright 2018, Systra.
-
-    </p>
+    <p>&#169; Copyright 2018, Systra.</p>
   </div>
-    
-    
-    
-    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
-    
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
-    
-    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
 
 </footer>
         </div>
       </div>
-
     </section>
-
   </div>
-  
-
-  <script type="text/javascript">
+  <script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>

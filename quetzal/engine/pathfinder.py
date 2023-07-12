@@ -9,6 +9,7 @@ from quetzal.engine.pathfinder_utils import los_from_graph, adjacency_matrix
 from quetzal.engine.pathfinder_utils import paths_from_edges, link_edge_array
 from quetzal.engine.pathfinder_utils import get_first_and_last, get_all
 
+
 class PublicPathFinder:
     def __init__(self, model, walk_on_road=False):
         self.zones = model.zones.copy()
@@ -78,8 +79,8 @@ class PublicPathFinder:
         self.splitted_od_sets = dict()
         for column in self.combinations.keys():
             od_set = {
-                combination : {
-                    (o, d) 
+                combination: {
+                    (o, d)
                     for o, d, s in self.best_paths[['origin', 'destination', column + '_set']].values 
                     if s.intersection(combination)
                 } for combination in self.combinations[column]
@@ -101,7 +102,7 @@ class PublicPathFinder:
 
         merged = pd.merge(los, right, left_on='first_link', right_index=True)
         merged = pd.merge(merged, right, left_on='last_link', right_index=True,
-            suffixes=['_first', '_last'])
+            suffixes = ['_first', '_last'])
 
         first = merged[['origin', route_column + '_first']]
         first.columns = ['zone', 'route']
@@ -228,7 +229,7 @@ class PublicPathFinder:
             route_od_set = {(o, d) for o, d in od_set if o in zones}
             route_do_set = {(d, o) for d, o in do_set if d in zones}
             iterator.desc = 'breaking route: ' + str(route_id) + ' '
-            links=self.links.loc[self.links[route_column] != route_id]
+            links = self.links.loc[self.links[route_column] != route_id]
             footpaths = self.footpaths
             ntlegs = self.ntlegs 
             try:
@@ -236,7 +237,7 @@ class PublicPathFinder:
                     removed_nodes = set(self.links['a']).union(self.links['b']) - set(links['a']).union(links['b'])
                     removed_nodes = removed_nodes.union(self.zones)
                     footpaths = footpaths.loc[(~footpaths['a'].isin(removed_nodes)) & (~footpaths['b'].isin(removed_nodes))]
-                    ntlegs  = ntlegs.loc[(~ntlegs['a'].isin(removed_nodes)) & (~ntlegs['b'].isin(removed_nodes))]
+                    ntlegs = ntlegs.loc[(~ntlegs['a'].isin(removed_nodes)) & (~ntlegs['b'].isin(removed_nodes))]
 
                 matrix, node_index = adjacency_matrix(
                     links=links,
@@ -315,7 +316,7 @@ class PublicPathFinder:
         for combination in iterator:
             iterator.desc = 'breaking modes: ' + str(combination) + ' '
 
-            links=self.links.loc[~self.links[mode_column].isin(combination)]
+            links = self.links.loc[~self.links[mode_column].isin(combination)]
             footpaths = self.footpaths
             ntlegs = self.ntlegs
 
@@ -324,8 +325,8 @@ class PublicPathFinder:
                     removed_nodes = set(self.links['a']).union(self.links['b']) - set(links['a']).union(links['b'])
                     removed_nodes = removed_nodes.union(self.zones)
                     footpaths = footpaths.loc[(~footpaths['a'].isin(removed_nodes)) & (~footpaths['b'].isin(removed_nodes))]
-                    ntlegs  = ntlegs.loc[(~ntlegs['a'].isin(removed_nodes)) & (~ntlegs['b'].isin(removed_nodes))]
-                print('starting ajacency_matrix')
+                    ntlegs = ntlegs.loc[(~ntlegs['a'].isin(removed_nodes)) & (~ntlegs['b'].isin(removed_nodes))]
+
                 matrix, node_index = adjacency_matrix(
                     links=links,
                     ntlegs=ntlegs,
@@ -374,44 +375,36 @@ class PublicPathFinder:
         self.broken_mode_paths = pd.concat(to_concat)
     
     def find_broken_combination_paths(
-        self, column=None, prune=True, 
+        self, column=None, prune=True,
         cutoff=np.inf, build_shortcuts=False,
-        boarding_time=None
-        ):
-    
+        boarding_time=None, od_set=None
+    ):
+
+        def get_task(column, combination, od_set=None):
+            od_sets = self.splitted_od_sets[column][combination] if od_set is None else (od_set, set())
+            return (column, combination, od_sets)
+        
         if column is not None:
-            iterator = tqdm(
-                [
-                    (column, combination, self.splitted_od_sets[column][combination])
-                    for combination in self.combinations[column]
-                ],
-            )
+            combinations = [(column, combination) for combination in self.combinations[column]]
         else:
-            flat_combinations = []
-            for column, combinations in self.combinations.items():
-                for combination in combinations:
-                    flat_combinations.append((column,combination))
-                    
-            iterator = tqdm(
-                [
-                    (column, combination, self.splitted_od_sets[column][combination])
-                    for column, combination in flat_combinations
-                ]
-            )
+            combinations = []
+            for column, _combinations in self.combinations.items():
+                for combination in _combinations:
+                    combinations.append((column, combination))
+        iterator = tqdm([get_task(column, combination, od_set) for column, combination in combinations])
         to_concat = []
         for column, combination, od_sets in iterator:
             iterator.desc = column + ' ' + str(set(combination))
             
-            links=self.links.loc[~self.links[column].isin(combination)]
+            links = self.links.loc[~self.links[column].isin(combination)]
             footpaths = self.footpaths
             ntlegs = self.ntlegs
 
             if prune:
                 removed_nodes = set(self.links['a']).union(self.links['b']) - set(links['a']).union(links['b'])
                 footpaths = footpaths.loc[(~footpaths['a'].isin(removed_nodes)) & (~footpaths['b'].isin(removed_nodes))]
-                ntlegs  = ntlegs.loc[(~ntlegs['a'].isin(removed_nodes)) & (~ntlegs['b'].isin(removed_nodes))]
+                ntlegs = ntlegs.loc[(~ntlegs['a'].isin(removed_nodes)) & (~ntlegs['b'].isin(removed_nodes))]
 
-            pole_set = set(self.zones.index)
             link_e = link_edge_array(links, boarding_time)
             footpaths_e = footpaths[['a', 'b', 'time']].values
             ntlegs_e = ntlegs[['a', 'b', 'time']].values

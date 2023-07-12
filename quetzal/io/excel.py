@@ -1,6 +1,8 @@
 import json
 import os
+import glob
 
+import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
@@ -101,3 +103,80 @@ def get_filepath(filepath, ancestry=['base'], log=True):
     if log:
         print("specified file or input path does not exist")
     return None
+
+def recursive_get_filepaths(path, ancestry=['base'], return_dicts=False, log=True):
+    file_filepath = {}
+    file_scen = {}
+
+    for scen in ancestry[::-1]:
+        filepaths = glob.glob(path.format(s=scen))
+        if log: 
+            print(f"{len(filepaths)} specified file found in {scen}")
+        for filepath in filepaths:
+            file = os.path.basename(filepath).split('.')[0]
+            if log & (file in file_filepath.keys()):
+                print(f"replacing {file} from {file_scen[file]} by {scen}")
+            file_filepath[file] = filepath
+            file_scen[file] = scen
+
+    if return_dicts:
+        return file_filepath, file_scen
+    else:
+        return list(file_filepath.values())
+    
+def to_json(file = 'parameters.xlsx', scenario = 'base'):
+    var = read_var(file = file, scenario = scenario).drop(('general', 'parent')).to_frame()
+    parameter_frame = pd.read_excel(file, sheet_name='parameters').dropna(axis=1, how='all')
+
+    # types
+    try:
+        types = parameter_frame.set_index(
+            ['category', 'parameter']
+        )['type'].dropna()
+        js_types_dict = {'float': 'Number', 'int': 'Number', 'bool': 'Boolean', 'str': 'String'}
+        var = var.join(types)
+        var['type'] = var['type'].apply(lambda x: js_types_dict.get(x, x))
+    except KeyError:
+        var['type'] = np.nan
+
+    # units
+    try:
+        units = parameter_frame.set_index(
+            ['category', 'parameter']
+        )['unit'].dropna()
+        var = var.join(units)
+    except KeyError:
+        var['unit'] = np.nan
+
+    # hints
+    try:
+        hints = parameter_frame.set_index(
+            ['category', 'parameter']
+        )['description'].dropna()
+        var = var.join(hints)
+    except KeyError:
+        var['description'] = np.nan
+
+    # rules
+    try:
+        rules = parameter_frame.set_index(
+            ['category', 'parameter']
+        )['rules'].dropna()
+        var = var.join(rules)
+    except KeyError:
+        var['rules'] = np.full((len(var), 1), ['required']).tolist()
+
+    var = var.reset_index().set_index('category')
+    var = var.rename(columns={'parameter': 'text', scenario: 'value', 'unit': 'units', 'description': 'hint'})
+    var['name'] = var.index + '_' + var['text']
+    var = var.where(pd.notnull(var), None)
+
+    def records(df):
+        if type(df) == pd.core.frame.DataFrame:
+            return df.to_dict('records')
+        elif type(df) == pd.core.frame.Series:
+            return [df.to_dict()]
+
+    js_params = [{'category': cat, 'params': records(var.loc[cat])} for cat in var.index.unique()]
+
+    return js_params

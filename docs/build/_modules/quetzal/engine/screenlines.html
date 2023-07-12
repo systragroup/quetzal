@@ -1,68 +1,31 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8" />
-  
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
   <title>quetzal.engine.screenlines &mdash; quetzal  documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
-
-  
-  
-
-  
-  
-
-  
-
-  
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
-    
-    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
-
-    
+    <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
-
-          
             <a href="../../../index.html" class="icon icon-home"> quetzal
-          
-
-          
           </a>
-
-          
-            
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -70,127 +33,85 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-
-          
-        </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.engine.html">quetzal.engine package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.html">quetzal.model package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.io.html">quetzal.io package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.analysis.html">quetzal.analysis package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.stepmodel.html">Read about stepmodel attributes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.preparationmodel.html">Documentation of the preparation functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.io.gtfs_reader.gtfs_importer.html">Documentation of the GFTS import functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.integritymodel.html">Documentation of the integrity functions</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.transportmodel.html">Documentation of the stepmodel functions</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.connectionscanmodel.html">Read about connection scan models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.timeexpandedmodel.html">Read about time expanded models</a></li>
 </ul>
 
-            
-          
         </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../../../index.html">quetzal</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
       <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
-        
           <li><a href="../../index.html">Module code</a> &raquo;</li>
-        
       <li>quetzal.engine.screenlines</li>
-    
-    
       <li class="wy-breadcrumbs-aside">
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
+             
   <h1>Source code for quetzal.engine.screenlines</h1><div class="highlight"><pre>
-<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
-
-<span class="kn">from</span> <span class="nn">syspy.spatial.geometries</span> <span class="kn">import</span>  <span class="n">b_crosses_a_to_the_left</span>
-<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">from</span> <span class="nn">syspy.spatial</span> <span class="kn">import</span> <span class="n">spatial</span>
+<span class="kn">from</span> <span class="nn">syspy.spatial.geometries</span> <span class="kn">import</span> <span class="n">b_crosses_a_to_the_left</span>
 
 
 <div class="viewcode-block" id="direct"><a class="viewcode-back" href="../../../quetzal.engine.screenlines.html#quetzal.engine.screenlines.direct">[docs]</a><span class="k">def</span> <span class="nf">direct</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
     <span class="n">direct</span> <span class="o">=</span> <span class="n">b_crosses_a_to_the_left</span><span class="p">(</span>
-        <span class="n">row</span><span class="p">[</span><span class="s1">&#39;geometry_screen&#39;</span><span class="p">],</span> 
+        <span class="n">row</span><span class="p">[</span><span class="s1">&#39;geometry_screen&#39;</span><span class="p">],</span>
         <span class="n">row</span><span class="p">[</span><span class="s1">&#39;geometry_link&#39;</span><span class="p">]</span>
     <span class="p">)</span>
     <span class="k">return</span> <span class="n">direct</span></div>
 
-<div class="viewcode-block" id="intersection_flows"><a class="viewcode-back" href="../../../quetzal.engine.screenlines.html#quetzal.engine.screenlines.intersection_flows">[docs]</a><span class="k">def</span> <span class="nf">intersection_flows</span><span class="p">(</span><span class="n">screens</span><span class="p">,</span> <span class="n">links</span><span class="p">,</span> <span class="n">flow_column</span><span class="p">,</span> <span class="o">**</span><span class="n">nearest_geometry_kwargs</span><span class="p">):</span>
 
+<div class="viewcode-block" id="intersection_flows"><a class="viewcode-back" href="../../../quetzal.engine.screenlines.html#quetzal.engine.screenlines.intersection_flows">[docs]</a><span class="k">def</span> <span class="nf">intersection_flows</span><span class="p">(</span><span class="n">screens</span><span class="p">,</span> <span class="n">links</span><span class="p">,</span> <span class="n">flow_column</span><span class="p">,</span> <span class="o">**</span><span class="n">nearest_geometry_kwargs</span><span class="p">):</span>
     <span class="n">screens</span> <span class="o">=</span> <span class="n">screens</span><span class="p">[[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="n">links</span> <span class="o">=</span> <span class="n">links</span><span class="p">[[</span><span class="s1">&#39;geometry&#39;</span><span class="p">,</span> <span class="n">flow_column</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
     <span class="n">cross</span> <span class="o">=</span> <span class="n">spatial</span><span class="o">.</span><span class="n">nearest_geometry</span><span class="p">(</span><span class="n">screens</span><span class="p">,</span> <span class="n">links</span><span class="p">,</span> <span class="o">**</span><span class="n">nearest_geometry_kwargs</span><span class="p">)</span>
-    <span class="n">cross</span> <span class="o">=</span> <span class="n">cross</span><span class="p">[</span><span class="n">cross</span><span class="p">[</span><span class="s1">&#39;actual_distance&#39;</span><span class="p">]</span><span class="o">==</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">cross</span> <span class="o">=</span> <span class="n">cross</span><span class="p">[</span><span class="n">cross</span><span class="p">[</span><span class="s1">&#39;actual_distance&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
     <span class="n">cross</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">cross</span><span class="p">,</span> <span class="n">screens</span><span class="p">,</span> <span class="n">left_on</span><span class="o">=</span><span class="s1">&#39;ix_one&#39;</span><span class="p">,</span> <span class="n">right_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">cross</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">cross</span><span class="p">,</span> <span class="n">links</span><span class="p">,</span> <span class="n">left_on</span><span class="o">=</span><span class="s1">&#39;ix_many&#39;</span><span class="p">,</span> 
+    <span class="n">cross</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">cross</span><span class="p">,</span> <span class="n">links</span><span class="p">,</span> <span class="n">left_on</span><span class="o">=</span><span class="s1">&#39;ix_many&#39;</span><span class="p">,</span>
                      <span class="n">right_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">suffixes</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;_screen&#39;</span><span class="p">,</span> <span class="s1">&#39;_link&#39;</span><span class="p">])</span>
 
     <span class="n">cross</span><span class="p">[</span><span class="s1">&#39;direct&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cross</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">direct</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-    <span class="n">cross</span> <span class="o">=</span> <span class="n">cross</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">cross</span><span class="p">[</span><span class="s1">&#39;direct&#39;</span><span class="p">]</span><span class="o">==</span><span class="kc">True</span><span class="p">]</span>
-    <span class="n">cross</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ix_one&#39;</span><span class="p">:</span><span class="s1">&#39;screen&#39;</span><span class="p">,</span> <span class="s1">&#39;ix_many&#39;</span><span class="p">:</span> <span class="s1">&#39;link&#39;</span><span class="p">},</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">cross</span><span class="p">[[</span><span class="s1">&#39;screen&#39;</span><span class="p">,</span> <span class="s1">&#39;link&#39;</span><span class="p">,</span>  <span class="n">flow_column</span><span class="p">]]</span></div>
+    <span class="n">cross</span> <span class="o">=</span> <span class="n">cross</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">cross</span><span class="p">[</span><span class="s1">&#39;direct&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">]</span>
+    <span class="n">cross</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ix_one&#39;</span><span class="p">:</span> <span class="s1">&#39;screen&#39;</span><span class="p">,</span> <span class="s1">&#39;ix_many&#39;</span><span class="p">:</span> <span class="s1">&#39;link&#39;</span><span class="p">},</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cross</span><span class="p">[[</span><span class="s1">&#39;screen&#39;</span><span class="p">,</span> <span class="s1">&#39;link&#39;</span><span class="p">,</span> <span class="n">flow_column</span><span class="p">]]</span></div>
+
 
 <div class="viewcode-block" id="intersection_flow"><a class="viewcode-back" href="../../../quetzal.engine.screenlines.html#quetzal.engine.screenlines.intersection_flow">[docs]</a><span class="k">def</span> <span class="nf">intersection_flow</span><span class="p">(</span><span class="n">screens</span><span class="p">,</span> <span class="n">links</span><span class="p">,</span> <span class="n">flow_column</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="n">flows</span> <span class="o">=</span> <span class="n">intersection_flows</span><span class="p">(</span><span class="n">screens</span><span class="p">,</span> <span class="n">links</span><span class="p">,</span> <span class="n">flow_column</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
     <span class="n">flow</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
-        <span class="n">flows</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;screen&#39;</span><span class="p">)[[</span><span class="n">flow_column</span><span class="p">]]</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> 
-        <span class="n">screens</span><span class="p">[[</span><span class="n">flow_column</span><span class="p">]],</span> 
-        <span class="n">left_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
-        <span class="n">right_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
+        <span class="n">flows</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;screen&#39;</span><span class="p">)[[</span><span class="n">flow_column</span><span class="p">]]</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span>
+        <span class="n">screens</span><span class="p">[[</span><span class="n">flow_column</span><span class="p">]],</span>
+        <span class="n">left_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">right_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">suffixes</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;_link&#39;</span><span class="p">,</span> <span class="s1">&#39;_screen&#39;</span><span class="p">]</span>
     <span class="p">)</span>
     <span class="n">flow</span><span class="p">[</span><span class="s1">&#39;screen&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">flow</span><span class="o">.</span><span class="n">index</span>
@@ -198,46 +119,30 @@
 </pre></div>
 
            </div>
-           
           </div>
           <footer>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        &#169; Copyright 2018, Systra.
-
-    </p>
+    <p>&#169; Copyright 2018, Systra.</p>
   </div>
-    
-    
-    
-    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
-    
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
-    
-    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
 
 </footer>
         </div>
       </div>
-
     </section>
-
   </div>
-  
-
-  <script type="text/javascript">
+  <script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>

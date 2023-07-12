@@ -5,6 +5,7 @@ import shutil
 import time
 import uuid
 from subprocess import Popen
+import string
 
 
 def add_freeze_support(file):
@@ -45,7 +46,7 @@ def parallel_call_jobs(jobs, mode='w', leave=False, workers=1, sleep=1):
                 else:
                     command_list = ['python', file] +[arg]
                 my_env = os.environ
-                my_env["PYTHONPATH"] = ";".join(sys.path)[1:]
+                my_env["PYTHONPATH"] = os.pathsep.join(sys.path)[1:]
                 popens[i] = Popen(
                     command_list,
                     stdout=stdout,
@@ -132,6 +133,7 @@ def parallel_call_notebook(
 
     mode = 'w' if errout_suffix else 'a+'
 
+    supported_characters = string.ascii_lowercase + string.ascii_uppercase + string.digits + '-_' 
     for i in range(len(arg_list)):
         arg = arg_list[i]
         suffix = ''
@@ -142,7 +144,7 @@ def parallel_call_notebook(
             except json.JSONDecodeError:
                 suffix = arg
         suffix += '_' + file.split('/')[-1].split('.')[0]
-
+        suffix = ''.join([s for s in suffix if s in supported_characters])
         stdout_file = stdout_path.replace('.txt', '_' + suffix + '.txt')
         stderr_file = stderr_path.replace('.txt', '_' + suffix + '.txt')
         jobs.append([i, file, arg, stdout_file, stderr_file])

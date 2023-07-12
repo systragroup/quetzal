@@ -18,7 +18,7 @@ class SummaryModel(transportmodel.TransportModel):
         """
         summarize earnings by fare_id and by segment
         """
-        df = self.los
+        df = self.los.copy()
 
         df.dropna(subset=['route_fares'], inplace=True)
         df['fare_id_tuple'] = df['route_fares'].apply(

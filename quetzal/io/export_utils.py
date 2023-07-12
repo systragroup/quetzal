@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from syspy.syspy_utils import syscolors
+from branca import colormap as cm
+from matplotlib import patches
 
 # Advice: import seaborn at the beginning of your project to create easily nice plots
 
@@ -496,3 +498,142 @@ def create_line_load_b_a_graph(
             image_name,
             bbox_inches='tight')
     return fig, ax
+
+def compute_line_od_vol(self, line, line_col='route_id', vol_col='volume'):
+    '''
+    Get the OD Matrix of a specified line  
+    '''
+    only_pt_los = self.pt_los[~self.pt_los['boarding_links'].isna() & ~self.pt_los['alighting_links'].isna()].copy()
+
+    # Filter LOS containing line
+    links_line = self.links[line_col].to_dict()
+    line_los = only_pt_los[only_pt_los['boarding_links'].apply(lambda boardings: any([links_line.get(x) == line for x in boardings]))]
+
+    # Create a dataframe of OD volume for line
+    line_los['line_od_links'] = line_los.apply(lambda x: list(zip(x['boarding_links'], x['alighting_links'])), axis=1)
+    link_a = self.links['a'].to_dict()
+    link_b = self.links['b'].to_dict()
+    link_line = self.links['route_id'].to_dict()
+    line_od = line_los.explode('line_od_links').groupby('line_od_links')[vol_col].sum().reset_index()
+    line_od['line_od'] = line_od['line_od_links'].apply(lambda x: (link_a.get(x[0]), link_b.get(x[1])))
+    line_od['line'] = line_od['line_od_links'].apply(lambda x: link_line.get(x[0]))
+    line_od = line_od[line_od['line'] == line].copy()
+
+    # Line Stations
+    links = self.links[self.links['route_id'] == line]
+    stations = links[links['direction_id'] == 0].sort_values(by='link_sequence')['a'].values
+    stations = np.append(stations, links[links['direction_id'] == 0].sort_values(by='link_sequence')['b'].values[-1])
+
+    # OD volume matrix
+    line_od[['a','b']] = pd.DataFrame(line_od['line_od'].tolist(), index=line_od.index)
+    line_od = line_od.set_index(['a', 'b'])
+    vol = line_od[line_od['line'] == line][vol_col].unstack()
+
+    return pd.DataFrame(vol, columns=stations, index=stations).fillna(0)
+
+def arc_diagram_from_dataframe(df, graph_direction='both', **kwargs):
+    stations = df.index.to_list()
+    vol = df.values
+    if graph_direction == 'both':
+        fig, ax = plt.subplots(1,1)
+        fig.set_facecolor('white')
+
+        ax = single_direction_arc_diagram(ax, stations, vol, reverse=False, **kwargs)
+        print(ax.get_ylim()[1])
+        ax = single_direction_arc_diagram(ax, stations, vol, reverse=True, ymax=ax.get_ylim()[1], **kwargs)
+
+        ax.annotate(
+                    '', xy=(0.1, 0.9),
+                    xycoords='axes fraction',
+                    xytext=(0.01, 0.9),
+                    arrowprops={'arrowstyle':"->", 'color': 'k'}
+                )
+        ax.annotate(
+                    '', xy=(1-0.1, 0.1),
+                    xycoords='axes fraction',
+                    xytext=(1-0.01, 0.1),
+                    arrowprops={'arrowstyle':"->", 'color': 'k'}
+                )
+        plt.grid(axis = 'x', linestyle = '--', linewidth = 0.5)
+        return fig, ax
+
+    elif graph_direction == 'single' :
+        fig1, ax1 = plt.subplots(1,1)
+        fig1.set_facecolor('white')
+        single_direction_arc_diagram(ax1, stations, np.triu(vol), reverse=False)
+        plt.grid()
+        ax1.annotate(
+                    '', xy=(0.1, 0.9),
+                    xycoords='axes fraction',
+                    xytext=(0.01, 0.9),
+                    arrowprops={'arrowstyle':"->", 'color': 'k'}
+                ) 
+
+        fig2, ax2 = plt.subplots(1,1)
+        fig2.set_facecolor('white')
+        single_direction_arc_diagram(ax2, stations, np.tril(vol), reverse=True)
+        ax2.spines['bottom'].set_position(('data', 0))
+        ax2.xaxis.tick_top()
+        ax2.set_xticklabels(stations, rotation=45)
+        plt.tick_params(top = False)
+        plt.setp(ax2.xaxis.get_majorticklabels(), rotation=45, ha="left" )
+        plt.grid()
+        ax2.annotate(
+                    '', xy=(1-0.1, 0.1),
+                    xycoords='axes fraction',
+                    xytext=(1-0.01, 0.1),
+                    arrowprops={'arrowstyle':"->", 'color': 'k'}
+                )
+        return [fig1, fig2], [ax1, ax2]
+
+def single_direction_arc_diagram(ax, stations, vol, max_width = 5.0, min_width = 1.0, 
+                                    ymax = 0.0, ymin = 0.0, reverse=False, cmap=None, 
+                                    **kwargs):
+    '''
+    Export arc diagram representing OD of a line
+    '''
+    max_vol = vol.max()
+    min_vol = vol.min()
+    plot_stations = stations[::-1] if reverse else stations
+
+    # Default colomap
+    if cmap is None:
+        cmap = cm.LinearColormap(["#ffffb2", "#fecc5c", "#fd8d3c", "#f03b20", "#bd0026", "#67000d"], vmin=min_vol, vmax=max_vol)
+
+    # Create arcs
+    for i in plot_stations:
+        ix = stations.index(i)
+        for j in plot_stations[plot_stations.index(i) +1 :]:
+            jx = stations.index(j)
+            if vol[ix, jx] == 0: continue
+            lw = (max_width - min_width)*vol[ix, jx]/(max_vol-min_vol) +min_width
+            mxmy = mx, my = [(ix + jx) / 2, 0.0]
+            r = abs(ix - mx)
+
+            if reverse & (-r < ymin): ymin = -r
+            if (not reverse) & (r > ymax): ymax = r
+
+            arc = patches.Arc(mxmy, 2*r, 2*r, 
+                                theta1=0, theta2=180, 
+                                color=cmap(vol[ix, jx]),
+                                angle=180 if reverse else 0, 
+                                linewidth=lw,
+                                zorder=vol[ix, jx],
+                                **kwargs)
+
+            ax.add_patch(arc)
+
+    # Plot Settings
+    ax.set_xlim(-0.1, len(stations) -0.9)
+    ax.set_ylim(ymin - 0.1, ymax + 0.1)
+    for pos in ['right', 'top', 'bottom', 'left']:
+        plt.gca().spines[pos].set_visible(False)
+    ax.set_xticks(range(len(stations)))
+    ax.set_xticklabels(stations)
+    plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha="right" )
+    plt.tick_params(bottom = False)
+    plt.tick_params(top = False)
+    ax.set_yticks([])
+    plt.axhline(y=0, linewidth=2.5, color='k', zorder=max_vol+1)
+    #plt.colorbar(cmap) #TODO
+    return ax

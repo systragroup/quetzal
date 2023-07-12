@@ -17,13 +17,23 @@ class NetworkCaster_MapMaptching:
         self.links = gpd.GeoDataFrame(road_links)
         self.nodes = gpd.GeoDataFrame(nodes)
 
+        assert self.links.crs != None, 'nodes and road_links crs must be set (crs in meter, NOT 3857)'
+        assert self.links.crs != 3857, 'CRS error. crs 3857 is not supported. use a local projection in meters.'
+        assert self.links.crs == nodes.crs, 'nodes and road_links should avec the same crs, in meter'
+        assert self.links.crs !=4326, 'CRS error, crs 4326 is not supported, use a crs in meter (NOT 3857)'
+
+ 
+       
+
         # Reindex road links to integer
         if self.links.index.name in self.links.columns:
             #if index already in column, the reset index will bug. remove it first
             self.links = self.links.drop(columns=self.links.index.name)
         self.links = self.links.reset_index()
         self.links_index_dict = self.links['index'].to_dict()
+        self.links_geom_dict = self.links.set_index('index')['geometry'] # this dict for later. link_x:linestring
         self.links = self.links.drop(columns=['index'])
+        
 
         # Format links to a "gps track". keep node a,b of first links and node b of evey other ones.
         self.gps_tracks = links[['a', 'b', by, sequence, 'route_id']]
@@ -72,7 +82,7 @@ class NetworkCaster_MapMaptching:
         dict_link = self.links.set_index(['a', 'b'], drop=False)['index'].to_dict()
         dict_link = self.links.set_index(['a', 'b'], drop=False)['index'].to_dict()
         length_dict = self.links['length'].to_dict()
-        geom_dict = dict(self.links['geometry'])
+        geom_dict = self.links['geometry'].to_dict() # we need this dict with index 0,1,2,3,4,5...
         x = self.links[['x_geometry', 'y_geometry']].values
         # Fit Nearest neighbors model
         nbrs = NearestNeighbors(n_neighbors=n_neighbors_centroid, algorithm='ball_tree').fit(x)
@@ -189,6 +199,7 @@ class NetworkCaster_MapMaptching:
         gps_dict = gps_track['geometry'].to_dict()
         # GPS point distance to next point.
         gps_dist_dict = gps_track['geometry'].distance(gps_track.shift(-1)).to_dict()
+
 
         # ======================================================
         # Nearest roads and data preparation

@@ -1,68 +1,31 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8" />
-  
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
   <title>quetzal.model.cubemodel &mdash; quetzal  documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
-
-  
-  
-
-  
-  
-
-  
-
-  
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
-    
-    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
-
-    
+    <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
-
-          
             <a href="../../../index.html" class="icon icon-home"> quetzal
-          
-
-          
           </a>
-
-          
-            
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -70,105 +33,63 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-
-          
-        </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.engine.html">quetzal.engine package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.html">quetzal.model package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.io.html">quetzal.io package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.analysis.html">quetzal.analysis package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.stepmodel.html">Read about stepmodel attributes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.preparationmodel.html">Documentation of the preparation functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.io.gtfs_reader.gtfs_importer.html">Documentation of the GFTS import functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.integritymodel.html">Documentation of the integrity functions</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.transportmodel.html">Documentation of the stepmodel functions</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.connectionscanmodel.html">Read about connection scan models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quetzal.model.timeexpandedmodel.html">Read about time expanded models</a></li>
 </ul>
 
-            
-          
         </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../../../index.html">quetzal</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
       <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
-        
           <li><a href="../../index.html">Module code</a> &raquo;</li>
-        
       <li>quetzal.model.cubemodel</li>
-    
-    
       <li class="wy-breadcrumbs-aside">
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
+             
   <h1>Source code for quetzal.model.cubemodel</h1><div class="highlight"><pre>
-<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
-
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">syspy.io.pandasdbf</span> <span class="kn">import</span> <span class="n">pandasdbf</span>
+<span class="kn">from</span> <span class="nn">syspy.io.pandasshp</span> <span class="kn">import</span> <span class="n">pandasshp</span>
+<span class="kn">from</span> <span class="nn">syspy.spatial</span> <span class="kn">import</span> <span class="n">spatial</span>
 <span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
 
-<span class="kn">from</span> <span class="nn">syspy.spatial</span> <span class="kn">import</span> <span class="n">spatial</span>
-<span class="kn">from</span> <span class="nn">syspy.io.pandasshp</span> <span class="kn">import</span> <span class="n">pandasshp</span>
-<span class="kn">from</span> <span class="nn">syspy.io.pandasdbf</span> <span class="kn">import</span> <span class="n">pandasdbf</span>
 
 <div class="viewcode-block" id="head_string"><a class="viewcode-back" href="../../../quetzal.model.cubemodel.html#quetzal.model.cubemodel.head_string">[docs]</a><span class="k">def</span> <span class="nf">head_string</span><span class="p">(</span><span class="n">links</span><span class="p">,</span> <span class="n">trip_id</span><span class="p">):</span>
-    <span class="k">return</span>  <span class="s1">&#39;LINE NAME=&quot;</span><span class="si">%s</span><span class="s1">&quot;, ONEWAY=T, &#39;</span> <span class="o">%</span> <span class="n">trip_id</span></div>
+    <span class="k">return</span> <span class="s1">&#39;LINE NAME=&quot;</span><span class="si">%s</span><span class="s1">&quot;, ONEWAY=T, &#39;</span> <span class="o">%</span> <span class="n">trip_id</span></div>
+
 
 <div class="viewcode-block" id="stop_and_node_string"><a class="viewcode-back" href="../../../quetzal.model.cubemodel.html#quetzal.model.cubemodel.stop_and_node_string">[docs]</a><span class="k">def</span> <span class="nf">stop_and_node_string</span><span class="p">(</span><span class="n">links</span><span class="p">,</span> <span class="n">trip_id</span><span class="p">,</span> <span class="n">road</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="k">if</span> <span class="s1">&#39;road_node_list&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">links</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-        <span class="n">road</span><span class="o">=</span><span class="kc">False</span>
+        <span class="n">road</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">line</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">links</span><span class="p">[</span><span class="s1">&#39;trip_id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">trip_id</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">road</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
@@ -176,25 +97,24 @@
             <span class="k">for</span> <span class="n">nodes</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="s1">&#39;road_node_list&#39;</span><span class="p">]):</span>
                 <span class="n">dicts</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s1">&#39;nodes&#39;</span><span class="p">:</span> <span class="n">nodes</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;stop&#39;</span><span class="p">:</span> <span class="n">nodes</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]})</span>
 
-            <span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;N=</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span><span class="p">(</span> <span class="nb">str</span><span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="s1">&#39;road_a&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;N=</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="s1">&#39;road_a&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
 
             <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">dicts</span><span class="p">:</span>
                 <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">chunk</span><span class="p">[</span><span class="s1">&#39;nodes&#39;</span><span class="p">]:</span>
-                    <span class="n">s</span> <span class="o">+=</span> <span class="s1">&#39;, &#39;</span> <span class="o">+</span>  <span class="s1">&#39;-&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
-                <span class="n">s</span> <span class="o">+=</span> <span class="s1">&#39;, &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">chunk</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">])</span> 
-        <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span> <span class="c1"># road_node_list is empty</span>
+                    <span class="n">s</span> <span class="o">+=</span> <span class="s1">&#39;, &#39;</span> <span class="o">+</span> <span class="s1">&#39;-&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+                <span class="n">s</span> <span class="o">+=</span> <span class="s1">&#39;, &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">chunk</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>  <span class="c1"># road_node_list is empty</span>
             <span class="k">return</span> <span class="n">stop_and_node_string</span><span class="p">(</span><span class="n">links</span><span class="p">,</span> <span class="n">trip_id</span><span class="p">,</span> <span class="n">road</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">line</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">links</span><span class="p">[</span><span class="s1">&#39;trip_id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">trip_id</span><span class="p">]</span>
-        <span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;N=</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span><span class="p">(</span> <span class="nb">str</span><span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;N=</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
         <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">line</span><span class="p">[</span><span class="s1">&#39;b&#39;</span><span class="p">]:</span>
-            <span class="n">s</span> <span class="o">+=</span> <span class="s1">&#39;, </span><span class="si">%s</span><span class="s1">&#39;</span><span class="o">%</span><span class="n">b</span>
-
+            <span class="n">s</span> <span class="o">+=</span> <span class="s1">&#39;, </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">b</span>
     <span class="k">return</span> <span class="n">s</span></div>
 
 
 <div class="viewcode-block" id="lin_string"><a class="viewcode-back" href="../../../quetzal.model.cubemodel.html#quetzal.model.cubemodel.lin_string">[docs]</a><span class="k">def</span> <span class="nf">lin_string</span><span class="p">(</span><span class="n">links</span><span class="p">,</span> <span class="n">trip_id</span><span class="p">,</span> <span class="n">custom_head</span><span class="o">=</span><span class="n">head_string</span><span class="p">):</span>
-    <span class="k">return</span> <span class="n">custom_head</span><span class="p">(</span><span class="n">links</span><span class="p">,</span> <span class="n">trip_id</span><span class="p">)</span> <span class="o">+</span>  <span class="n">stop_and_node_string</span><span class="p">(</span><span class="n">links</span><span class="p">,</span> <span class="n">trip_id</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">custom_head</span><span class="p">(</span><span class="n">links</span><span class="p">,</span> <span class="n">trip_id</span><span class="p">)</span> <span class="o">+</span> <span class="n">stop_and_node_string</span><span class="p">(</span><span class="n">links</span><span class="p">,</span> <span class="n">trip_id</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="cubeModel"><a class="viewcode-back" href="../../../quetzal.model.cubemodel.html#quetzal.model.cubemodel.cubeModel">[docs]</a><span class="k">class</span> <span class="nc">cubeModel</span><span class="p">():</span>
@@ -202,46 +122,40 @@
         <span class="k">pass</span>
 
 <div class="viewcode-block" id="cubeModel.to_lin"><a class="viewcode-back" href="../../../quetzal.model.cubemodel.html#quetzal.model.cubemodel.cubeModel.to_lin">[docs]</a>    <span class="k">def</span> <span class="nf">to_lin</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> 
-        <span class="n">path_or_buf</span><span class="p">,</span> 
-        <span class="n">custom_head</span><span class="o">=</span><span class="n">head_string</span><span class="p">,</span> 
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">path_or_buf</span><span class="p">,</span>
+        <span class="n">custom_head</span><span class="o">=</span><span class="n">head_string</span><span class="p">,</span>
         <span class="n">separate</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">route_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="o">**</span><span class="n">kwargs</span>
-        <span class="p">):</span>
-
+    <span class="p">):</span>
         <span class="k">if</span> <span class="n">separate</span><span class="p">:</span>
             <span class="n">route_types</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="o">.</span><span class="n">route_type</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">route_type</span> <span class="ow">in</span> <span class="n">route_types</span><span class="p">:</span>
                 <span class="n">route_type_path</span> <span class="o">=</span> <span class="n">path_or_buf</span> <span class="o">+</span> <span class="sa">r</span><span class="s1">&#39;/route_type_</span><span class="si">%s</span><span class="s1">.lin&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">route_type</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">to_lin</span><span class="p">(</span>
-                    <span class="n">route_type_path</span><span class="p">,</span> 
+                    <span class="n">route_type_path</span><span class="p">,</span>
                     <span class="n">custom_head</span><span class="o">=</span><span class="n">custom_head</span><span class="p">,</span>
                     <span class="n">separate</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                     <span class="n">route_type</span><span class="o">=</span><span class="n">route_type</span>
                 <span class="p">)</span>
-
         <span class="k">else</span><span class="p">:</span>
             <span class="n">links</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">[</span><span class="s1">&#39;b&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">route_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">links</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">links</span><span class="p">[</span><span class="s1">&#39;route_type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">route_type</span><span class="p">]</span>
-            
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">links</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">lines</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">links</span><span class="p">[</span><span class="s1">&#39;trip_id&#39;</span><span class="p">])))</span>
                 <span class="n">lin</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
                 <span class="k">for</span> <span class="n">trip_id</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
                     <span class="n">lin</span> <span class="o">+=</span> <span class="n">lin_string</span><span class="p">(</span><span class="n">links</span><span class="p">,</span> <span class="n">trip_id</span><span class="p">,</span> <span class="n">custom_head</span><span class="p">)</span>
                     <span class="n">lin</span> <span class="o">+=</span> <span class="s1">&#39; </span><span class="se">\n</span><span class="s1">&#39;</span>
-                    
                 <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path_or_buf</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
                     <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">lin</span><span class="p">)</span></div>
-                
-        
 
 <div class="viewcode-block" id="cubeModel.to_net"><a class="viewcode-back" href="../../../quetzal.model.cubemodel.html#quetzal.model.cubemodel.cubeModel.to_net">[docs]</a>    <span class="k">def</span> <span class="nf">to_net</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> 
-        <span class="n">folder</span><span class="p">,</span> 
-        <span class="n">zone_index_to_int</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> 
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">folder</span><span class="p">,</span>
+        <span class="n">zone_index_to_int</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
         <span class="n">node_index_to_int</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
         <span class="n">keep_link_columns</span><span class="o">=</span><span class="p">[],</span>
         <span class="n">keep_node_columns</span><span class="o">=</span><span class="p">[],</span>
@@ -250,18 +164,17 @@
         <span class="n">footpath_type</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
         <span class="n">separate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">road_network</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="p">):</span>
+    <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        dump all the files that you will need to build a network in the folder</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">check_link_references</span><span class="p">()</span> <span class="c1"># no orphan node</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_link_references</span><span class="p">()</span>  <span class="c1"># no orphan node</span>
         <span class="n">road_links</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">road_links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">if</span> <span class="n">road_network</span> <span class="k">else</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
         <span class="n">road_nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">road_nodes</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">if</span> <span class="n">road_network</span> <span class="k">else</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
         <span class="n">pt_links</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="n">road_links</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="n">pt_links</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pt_links</span><span class="p">[</span><span class="s1">&#39;route_type&#39;</span><span class="p">]</span>
         <span class="n">links</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">road_links</span><span class="p">,</span> <span class="n">pt_links</span><span class="p">])</span>
-        
 
         <span class="n">zones</span> <span class="o">=</span> <span class="n">spatial</span><span class="o">.</span><span class="n">add_geometry_coordinates</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">zones</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">])</span>
@@ -281,7 +194,7 @@
         <span class="n">links</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">node_index_to_int</span><span class="p">)</span>
         <span class="n">links</span><span class="p">[</span><span class="s1">&#39;b&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="s1">&#39;b&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">node_index_to_int</span><span class="p">)</span>
 
-        <span class="n">nodes</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">subset</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;n&#39;</span><span class="p">])</span>
+        <span class="n">nodes</span> <span class="o">=</span> <span class="n">nodes</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;n&#39;</span><span class="p">])</span>
 
         <span class="n">nodes</span> <span class="o">=</span> <span class="n">nodes</span><span class="p">[[</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;n&#39;</span><span class="p">,</span> <span class="s1">&#39;geometry&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">keep_node_columns</span><span class="p">]</span>
         <span class="n">zones</span> <span class="o">=</span> <span class="n">zones</span><span class="p">[[</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;n&#39;</span><span class="p">,</span> <span class="s1">&#39;geometry&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">keep_zone_columns</span><span class="p">]</span>
@@ -295,7 +208,7 @@
 
         <span class="n">access</span><span class="p">[</span><span class="s1">&#39;b&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">access</span><span class="p">[</span><span class="s1">&#39;b&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">node_index_to_int</span><span class="p">)</span>
         <span class="n">eggress</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">eggress</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">node_index_to_int</span><span class="p">)</span>
-        
+
         <span class="n">ntlegs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">access</span><span class="p">,</span> <span class="n">eggress</span><span class="p">])</span>
 
         <span class="c1"># footpaths</span>
@@ -315,105 +228,79 @@
 
         <span class="n">links</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-
         <span class="n">road_links</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="n">links</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">]</span>
         <span class="n">pt_links</span> <span class="o">=</span> <span class="n">links</span><span class="p">[</span><span class="n">links</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="n">road_network</span><span class="p">:</span>
             <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span><span class="n">folder</span> <span class="o">+</span> <span class="s1">&#39;road_links.shp&#39;</span><span class="p">,</span> <span class="n">road_links</span><span class="p">,</span> <span class="n">re_write</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        
-        <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span><span class="n">folder</span> <span class="o">+</span><span class="s1">&#39;nodes.shp&#39;</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">re_write</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span><span class="n">folder</span> <span class="o">+</span><span class="s1">&#39;zones.shp&#39;</span><span class="p">,</span> <span class="n">zones</span><span class="p">,</span> <span class="n">re_write</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span><span class="n">folder</span> <span class="o">+</span><span class="s1">&#39;ntlegs.shp&#39;</span><span class="p">,</span> <span class="n">ntlegs</span><span class="p">,</span> <span class="n">re_write</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span><span class="n">folder</span> <span class="o">+</span><span class="s1">&#39;footpaths.shp&#39;</span><span class="p">,</span> <span class="n">footpaths</span><span class="p">,</span> <span class="n">re_write</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span><span class="n">folder</span> <span class="o">+</span> <span class="s1">&#39;nodes.shp&#39;</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">re_write</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span><span class="n">folder</span> <span class="o">+</span> <span class="s1">&#39;zones.shp&#39;</span><span class="p">,</span> <span class="n">zones</span><span class="p">,</span> <span class="n">re_write</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span><span class="n">folder</span> <span class="o">+</span> <span class="s1">&#39;ntlegs.shp&#39;</span><span class="p">,</span> <span class="n">ntlegs</span><span class="p">,</span> <span class="n">re_write</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span><span class="n">folder</span> <span class="o">+</span> <span class="s1">&#39;footpaths.shp&#39;</span><span class="p">,</span> <span class="n">footpaths</span><span class="p">,</span> <span class="n">re_write</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
         <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span><span class="n">folder</span> <span class="o">+</span> <span class="s1">&#39;pt_links.shp&#39;</span><span class="p">,</span> <span class="n">pt_links</span><span class="p">,</span> <span class="n">re_write</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">separate</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">pt_type</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">pt_links</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]):</span>
                 <span class="n">type_links</span> <span class="o">=</span> <span class="n">pt_links</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">pt_links</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">pt_type</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
                 <span class="n">pandasshp</span><span class="o">.</span><span class="n">write_shp</span><span class="p">(</span>
-                    <span class="n">folder</span> <span class="o">+</span> <span class="s1">&#39;pt_links_route_type_</span><span class="si">%s</span><span class="s1">.shp&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">pt_type</span><span class="p">),</span> 
+                    <span class="n">folder</span> <span class="o">+</span> <span class="s1">&#39;pt_links_route_type_</span><span class="si">%s</span><span class="s1">.shp&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">pt_type</span><span class="p">),</span>
                     <span class="n">type_links</span><span class="p">,</span>
                     <span class="n">re_write</span><span class="o">=</span><span class="kc">True</span>
                 <span class="p">)</span></div>
 
-
 <div class="viewcode-block" id="cubeModel.to_mat"><a class="viewcode-back" href="../../../quetzal.model.cubemodel.html#quetzal.model.cubemodel.cubeModel.to_mat">[docs]</a>    <span class="k">def</span> <span class="nf">to_mat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">folder</span><span class="p">,</span> <span class="n">zone_index_to_int</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">volume_column</span><span class="o">=</span><span class="s1">&#39;volume_pt&#39;</span><span class="p">):</span>
         <span class="n">volumes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">pt_los</span><span class="p">[[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">]],</span> 
-            <span class="bp">self</span><span class="o">.</span><span class="n">volumes</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">],</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">pt_los</span><span class="p">[[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">]],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">volumes</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">],</span>
             <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-
-    
         <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">]:</span>
             <span class="n">volumes</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">volumes</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">zone_index_to_int</span><span class="p">)</span>
-            
         <span class="n">volumes</span><span class="o">.</span><span class="n">sort_values</span><span class="p">([</span><span class="s1">&#39;origin&#39;</span><span class="p">,</span> <span class="s1">&#39;destination&#39;</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">volumes</span><span class="o">.</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;O&#39;</span><span class="p">,</span> <span class="s1">&#39;D&#39;</span><span class="p">,</span> <span class="s1">&#39;TRIPS&#39;</span><span class="p">]</span>
-
-        <span class="n">pandasdbf</span><span class="o">.</span><span class="n">write_dbf</span><span class="p">(</span><span class="n">volumes</span><span class="p">,</span> <span class="n">folder</span> <span class="o">+</span> <span class="s1">&#39;od.dbf&#39;</span> <span class="p">)</span></div>
+        <span class="n">volumes</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;O&#39;</span><span class="p">,</span> <span class="s1">&#39;D&#39;</span><span class="p">,</span> <span class="s1">&#39;TRIPS&#39;</span><span class="p">]</span>
+        <span class="n">pandasdbf</span><span class="o">.</span><span class="n">write_dbf</span><span class="p">(</span><span class="n">volumes</span><span class="p">,</span> <span class="n">folder</span> <span class="o">+</span> <span class="s1">&#39;od.dbf&#39;</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="cubeModel.to_cube"><a class="viewcode-back" href="../../../quetzal.model.cubemodel.html#quetzal.model.cubemodel.cubeModel.to_cube">[docs]</a>    <span class="k">def</span> <span class="nf">to_cube</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">folder</span><span class="p">,</span> 
+        <span class="n">folder</span><span class="p">,</span>
         <span class="n">custom_head</span><span class="o">=</span><span class="n">head_string</span><span class="p">,</span>
-        <span class="n">zone_index_to_int</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> 
+        <span class="n">zone_index_to_int</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
         <span class="n">node_index_to_int</span><span class="o">=</span><span class="nb">int</span>
-        <span class="p">):</span>
-
+    <span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">to_lin</span><span class="p">(</span><span class="n">folder</span> <span class="o">+</span> <span class="s1">&#39;lines.lin&#39;</span><span class="p">,</span> <span class="n">custom_head</span><span class="o">=</span><span class="n">custom_head</span><span class="p">)</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">to_net</span><span class="p">(</span>
-            <span class="n">folder</span> <span class="o">=</span> <span class="n">folder</span><span class="p">,</span> 
-            <span class="n">zone_index_to_int</span><span class="o">=</span><span class="n">zone_index_to_int</span><span class="p">,</span> 
+            <span class="n">folder</span><span class="o">=</span><span class="n">folder</span><span class="p">,</span>
+            <span class="n">zone_index_to_int</span><span class="o">=</span><span class="n">zone_index_to_int</span><span class="p">,</span>
             <span class="n">node_index_to_int</span><span class="o">=</span><span class="n">node_index_to_int</span>
         <span class="p">)</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">to_mat</span><span class="p">(</span><span class="n">folder</span><span class="o">=</span><span class="n">folder</span><span class="p">,</span> <span class="n">zone_index_to_int</span><span class="o">=</span><span class="n">zone_index_to_int</span><span class="p">)</span></div></div>
-
 </pre></div>
 
            </div>
-           
           </div>
           <footer>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        &#169; Copyright 2018, Systra.
-
-    </p>
+    <p>&#169; Copyright 2018, Systra.</p>
   </div>
-    
-    
-    
-    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
-    
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
-    
-    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
 
 </footer>
         </div>
       </div>
-
     </section>
-
   </div>
-  
-
-  <script type="text/javascript">
+  <script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>

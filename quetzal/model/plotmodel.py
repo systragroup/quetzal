@@ -157,6 +157,7 @@ class PlotModel(summarymodel.SummaryModel):
         ax=None,
         rows=1,
         title=None,
+        titlesize=12,
         basemap_url=None,
         basemap_raster=None,
         north_arrow=None,
@@ -192,7 +193,7 @@ class PlotModel(summarymodel.SummaryModel):
                 styles.reindex(g_id_set).dropna(subset=['color'])
             ).plot(alpha=0, ax=ax)
             if len(t):
-                ax.set_title(t)
+                ax.set_title(t, fontsize=titlesize)
             ax.set_xticks([])
             ax.set_yticks([])
             i += 1
@@ -350,7 +351,7 @@ class PlotModel(summarymodel.SummaryModel):
 
         links = self.road_links if road else self.links
         links = links.dropna(subset=['dummy'])
-        links = links.loc[links['dummy'] > 0]
+        links = links.loc[links['dummy'] > 1e-9]
         links = gpd.GeoDataFrame(links)
 
         norm = TwoSlopeNorm(vmin=0, vcenter=0.5, vmax=1)
@@ -374,7 +375,8 @@ class PlotModel(summarymodel.SummaryModel):
         ax.set_yticks([])
         ax.set_xticks([])
 
-        nodes = gpd.GeoDataFrame(self.nodes.dropna(subset=['boardings', 'alightings'], how='all').fillna(0))
+        mask = (self.nodes['boardings'] +self.nodes['alightings']) > 1e-9
+        nodes = gpd.GeoDataFrame(self.nodes[mask])
         nodes.plot(ax=ax, marker=10, markersize=200, zorder=10, column='boardings', cmap=cmap, norm=norm, linewidth=0)
         nodes.plot(ax=ax, marker=11, markersize=200, zorder=10, column='alightings', cmap=cmap, norm=norm, linewidth=0)
 
@@ -389,6 +391,14 @@ class PlotModel(summarymodel.SummaryModel):
             self.volumes = volumes.copy()
         return ax
 
+    def plot_line_arc_diagram(self, line, stop_label_col=None, graph_direction='both', **kwargs):
+        line_od_vol = export_utils.compute_line_od_vol(self, line=line, **kwargs)
+        if stop_label_col is not None:
+            stop_names = self.nodes[stop_label_col].to_dict()
+            line_od_vol.rename(columns=stop_names, index=stop_names, inplace=True)
+            assert line_od_vol.index.duplicated().sum() == 0
+
+        return export_utils.arc_diagram_from_dataframe(line_od_vol)
 
 def _both_directions_graph_possible(df):
     try:

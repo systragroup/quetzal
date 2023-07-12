@@ -30,6 +30,16 @@ def linestring_geometry(dataframe, point_dict, from_point, to_point):
 
 class GtfsImporter(Feed):
 
+    """The file importer of quetzal contains a main class: GtfsImporter.
+    
+    It gives access to different method to handle GTFS data:
+
+        - description (GtfsImporter.describe())
+        - maps
+        - filtering on specific area, dates, trips, stops (GtfsImporter.restrict())
+        - stops / trips aggregation
+        - frequency conversion
+    """
     def __init__(self, epsg=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.epsg = epsg
@@ -68,9 +78,9 @@ class GtfsImporter(Feed):
         feed.build_links_and_nodes()
         return feed
 
-    def build_links_and_nodes(self, time_expanded=False, log=True):
+    def build_links_and_nodes(self, time_expanded=False, log=True, **kwargs):
         self.to_seconds()
-        self.build_links(time_expanded=time_expanded)
+        self.build_links(time_expanded=time_expanded, **kwargs)
         self.build_geometries(log=log)
 
     def to_seconds(self):
@@ -86,10 +96,16 @@ class GtfsImporter(Feed):
                 time_columns
             ].applymap(to_seconds)
 
-    def build_links(self, time_expanded=False):
+    def build_links(self, time_expanded=False, shape_dist_traveled=False):
         """
         Create links and add relevant information
         """
+        keep_origin_columns=['departure_time', 'pickup_type']
+        keep_destination_columns=['arrival_time', 'drop_off_type']
+        if shape_dist_traveled:
+            keep_origin_columns += ['shape_dist_traveled']
+            keep_destination_columns += ['shape_dist_traveled']
+
         self.links = feed_links.link_from_stop_times(
             self.stop_times,
             max_shortcut=1,
@@ -108,6 +124,10 @@ class GtfsImporter(Feed):
             },
             inplace=True
         )
+
+        if shape_dist_traveled:
+            self.links['shape_dist_traveled'] = self.links['shape_dist_traveled_destination'] -self.links['shape_dist_traveled_origin']
+            self.links.drop(columns=['shape_dist_traveled_origin', 'shape_dist_traveled_destination'], inplace=True)
 
         if not time_expanded:
             self.links = self.links.merge(self.frequencies[['trip_id', 'headway_secs']], on='trip_id')

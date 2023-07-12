@@ -1,70 +1,32 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" />
-  
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
   <title>quetzal.io.export_utils module &mdash; quetzal  documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-
-  
-  
-
-  
-  
-
-  
-
-  
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-    
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-
-    
+    <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="quetzal.io.gtfs_importer module" href="quetzal.io.gtfs_importer.html" />
-    <link rel="prev" title="quetzal.io.export module" href="quetzal.io.export.html" /> 
+    <link rel="search" title="Search" href="search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
-
-          
             <a href="index.html" class="icon icon-home"> quetzal
-          
-
-          
           </a>
-
-          
-            
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -72,113 +34,57 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.stepmodel.html">Read about stepmodel attributes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.preparationmodel.html">Documentation of the preparation functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.io.gtfs_reader.gtfs_importer.html">Documentation of the GFTS import functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.integritymodel.html">Documentation of the integrity functions</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.transportmodel.html">Documentation of the stepmodel functions</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.connectionscanmodel.html">Read about connection scan models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quetzal.model.timeexpandedmodel.html">Read about time expanded models</a></li>
+</ul>
 
-          
         </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
-              <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="quetzal.engine.html">quetzal.engine package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quetzal.model.html">quetzal.model package</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="quetzal.io.html">quetzal.io package</a><ul class="current">
-<li class="toctree-l2 current"><a class="reference internal" href="quetzal.io.html#submodules">Submodules</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="quetzal.io.display.html">quetzal.io.display module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="quetzal.io.export.html">quetzal.io.export module</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">quetzal.io.export_utils module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="quetzal.io.gtfs_importer.html">quetzal.io.gtfs_importer module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="quetzal.io.importer.html">quetzal.io.importer module</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="quetzal.io.html#module-quetzal.io">Module contents</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="quetzal.analysis.html">quetzal.analysis package</a></li>
-</ul>
-
-            
-          
-        </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">quetzal</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
-        
-          <li><a href="quetzal.io.html">quetzal.io package</a> &raquo;</li>
-        
       <li>quetzal.io.export_utils module</li>
-    
-    
       <li class="wy-breadcrumbs-aside">
-        
-          
             <a href="_sources/quetzal.io.export_utils.rst.txt" rel="nofollow"> View page source</a>
-          
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
-  <div class="section" id="module-quetzal.io.export_utils">
-<span id="quetzal-io-export-utils-module"></span><h1>quetzal.io.export_utils module<a class="headerlink" href="#module-quetzal.io.export_utils" title="Permalink to this headline">¶</a></h1>
+             
+  <section id="module-quetzal.io.export_utils">
+<span id="quetzal-io-export-utils-module"></span><h1>quetzal.io.export_utils module<a class="headerlink" href="#module-quetzal.io.export_utils" title="Permalink to this headline"></a></h1>
 <dl class="py function">
-<dt id="quetzal.io.export_utils.clean_seq">
-<code class="sig-prename descclassname"><span class="pre">quetzal.io.export_utils.</span></code><code class="sig-name descname"><span class="pre">clean_seq</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">col</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export_utils.html#clean_seq"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.export_utils.clean_seq" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.io.export_utils.clean_seq">
+<span class="sig-prename descclassname"><span class="pre">quetzal.io.export_utils.</span></span><span class="sig-name descname"><span class="pre">clean_seq</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">col</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export_utils.html#clean_seq"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.export_utils.clean_seq" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
-<dt id="quetzal.io.export_utils.create_line_load_b_a_graph">
-<code class="sig-prename descclassname"><span class="pre">quetzal.io.export_utils.</span></code><code class="sig-name descname"><span class="pre">create_line_load_b_a_graph</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">load_fwd</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_bwd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'line_load_b_a.png'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">yticks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xticks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">legend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forward_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'forward'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backward_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'backward'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Line</span> <span class="pre">load'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_fig</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clean_sequence</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export_utils.html#create_line_load_b_a_graph"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.export_utils.create_line_load_b_a_graph" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.io.export_utils.create_line_load_b_a_graph">
+<span class="sig-prename descclassname"><span class="pre">quetzal.io.export_utils.</span></span><span class="sig-name descname"><span class="pre">create_line_load_b_a_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">load_fwd</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_bwd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'line_load_b_a.png'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">yticks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xticks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">legend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forward_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'forward'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backward_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'backward'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Line</span> <span class="pre">load'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_fig</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clean_sequence</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export_utils.html#create_line_load_b_a_graph"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.export_utils.create_line_load_b_a_graph" title="Permalink to this definition"></a></dt>
 <dd><p>Export load graph for the specified line, with boardings and alightings at each station</p>
 <p>The user can directly chose the figure size and font size in jupyter notebook with the following lines:
 plt.rcParams[‘figure.figsize’] = (12, 8)
@@ -190,8 +96,8 @@ plt.rcParams[‘axes.labelsize’] = 15</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="quetzal.io.export_utils.create_two_directions_load_b_a_graph">
-<code class="sig-prename descclassname"><span class="pre">quetzal.io.export_utils.</span></code><code class="sig-name descname"><span class="pre">create_two_directions_load_b_a_graph</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">load_fwd_bwd</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'load'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boarding_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'boardings'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alighting_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'alightings'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forward_col_suffix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'_fwd'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backward_col_suffix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'_bwd'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forward_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'forward'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backward_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'backward'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">legend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export_utils.html#create_two_directions_load_b_a_graph"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.export_utils.create_two_directions_load_b_a_graph" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.io.export_utils.create_two_directions_load_b_a_graph">
+<span class="sig-prename descclassname"><span class="pre">quetzal.io.export_utils.</span></span><span class="sig-name descname"><span class="pre">create_two_directions_load_b_a_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">load_fwd_bwd</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'load'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boarding_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'boardings'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alighting_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'alightings'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forward_col_suffix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'_fwd'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backward_col_suffix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'_bwd'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forward_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'forward'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backward_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'backward'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">legend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export_utils.html#create_two_directions_load_b_a_graph"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.export_utils.create_two_directions_load_b_a_graph" title="Permalink to this definition"></a></dt>
 <dd><p>Export load graph for the specified line, with boardings and alightings at each station
 The input load_fwd_bwd must be a dataframe with the columns:
 - ‘a’: station
@@ -212,14 +118,14 @@ plt.rcParams[‘axes.labelsize’] = 15</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="quetzal.io.export_utils.directional_loads_to_station_bidirection_load">
-<code class="sig-prename descclassname"><span class="pre">quetzal.io.export_utils.</span></code><code class="sig-name descname"><span class="pre">directional_loads_to_station_bidirection_load</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">load_fwd</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_bwd</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stations_to_parent_stations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'load'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boarding_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'boardings'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alighting_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'alightings'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forward_suffix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'_fwd'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backward_suffix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'_bwd'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export_utils.html#directional_loads_to_station_bidirection_load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.export_utils.directional_loads_to_station_bidirection_load" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.io.export_utils.directional_loads_to_station_bidirection_load">
+<span class="sig-prename descclassname"><span class="pre">quetzal.io.export_utils.</span></span><span class="sig-name descname"><span class="pre">directional_loads_to_station_bidirection_load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">load_fwd</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_bwd</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stations_to_parent_stations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'load'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boarding_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'boardings'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alighting_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'alightings'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forward_suffix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'_fwd'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backward_suffix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'_bwd'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export_utils.html#directional_loads_to_station_bidirection_load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.export_utils.directional_loads_to_station_bidirection_load" title="Permalink to this definition"></a></dt>
 <dd><p>Take forward and backward loaded links for a line and return a station-oriented load df</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="quetzal.io.export_utils.plot_load_b_a_for_loadedlinks">
-<code class="sig-prename descclassname"><span class="pre">quetzal.io.export_utils.</span></code><code class="sig-name descname"><span class="pre">plot_load_b_a_for_loadedlinks</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">loaded_links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'load'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boarding_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'boardings'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alighting_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'alightings'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shift_alightings</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export_utils.html#plot_load_b_a_for_loadedlinks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.export_utils.plot_load_b_a_for_loadedlinks" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.io.export_utils.plot_load_b_a_for_loadedlinks">
+<span class="sig-prename descclassname"><span class="pre">quetzal.io.export_utils.</span></span><span class="sig-name descname"><span class="pre">plot_load_b_a_for_loadedlinks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">loaded_links</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'load'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boarding_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'boardings'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alighting_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'alightings'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shift_alightings</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export_utils.html#plot_load_b_a_for_loadedlinks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.export_utils.plot_load_b_a_for_loadedlinks" title="Permalink to this definition"></a></dt>
 <dd><p>Export load graph for the specified line.</p>
 <p>The user can directly chose the figure size and font size in jupyter notebook with the following lines:
 plt.rcParams[‘figure.figsize’] = (12, 8)
@@ -231,8 +137,8 @@ plt.rcParams[‘axes.labelsize’] = 15</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="quetzal.io.export_utils.save_line_load_graph">
-<code class="sig-prename descclassname"><span class="pre">quetzal.io.export_utils.</span></code><code class="sig-name descname"><span class="pre">save_line_load_graph</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">load_fwd</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_bwd</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'volume_pt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'line_load.png'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">yticks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Line</span> <span class="pre">load'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">legend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_fig</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clean_sequence</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export_utils.html#save_line_load_graph"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.export_utils.save_line_load_graph" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.io.export_utils.save_line_load_graph">
+<span class="sig-prename descclassname"><span class="pre">quetzal.io.export_utils.</span></span><span class="sig-name descname"><span class="pre">save_line_load_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">load_fwd</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_bwd</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'volume_pt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'line_load.png'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">yticks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Line</span> <span class="pre">load'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">legend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_fig</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clean_sequence</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export_utils.html#save_line_load_graph"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.export_utils.save_line_load_graph" title="Permalink to this definition"></a></dt>
 <dd><p>Export load graph for the specified line.</p>
 <p>The user can directly chose the figure size and font size in jupyter notebook with the following lines:
 plt.rcParams[‘figure.figsize’] = (12, 8)
@@ -244,66 +150,46 @@ plt.rcParams[‘axes.labelsize’] = 15</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="quetzal.io.export_utils.shift_loadedlinks_alightings">
-<code class="sig-prename descclassname"><span class="pre">quetzal.io.export_utils.</span></code><code class="sig-name descname"><span class="pre">shift_loadedlinks_alightings</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">load_df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['load']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alighting_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['alightings']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boarding_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['boardings']</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export_utils.html#shift_loadedlinks_alightings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.export_utils.shift_loadedlinks_alightings" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.io.export_utils.shift_loadedlinks_alightings">
+<span class="sig-prename descclassname"><span class="pre">quetzal.io.export_utils.</span></span><span class="sig-name descname"><span class="pre">shift_loadedlinks_alightings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">load_df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['load']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alighting_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['alightings']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boarding_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['boardings']</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export_utils.html#shift_loadedlinks_alightings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.export_utils.shift_loadedlinks_alightings" title="Permalink to this definition"></a></dt>
 <dd><p>Shift alighting column in a loadedlinks to get a station-wise df.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="quetzal.io.export_utils.sort_links">
-<code class="sig-prename descclassname"><span class="pre">quetzal.io.export_utils.</span></code><code class="sig-name descname"><span class="pre">sort_links</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">to_sort</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'a'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'b'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export_utils.html#sort_links"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.export_utils.sort_links" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="quetzal.io.export_utils.sort_links">
+<span class="sig-prename descclassname"><span class="pre">quetzal.io.export_utils.</span></span><span class="sig-name descname"><span class="pre">sort_links</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">to_sort</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'a'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'b'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/quetzal/io/export_utils.html#sort_links"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#quetzal.io.export_utils.sort_links" title="Permalink to this definition"></a></dt>
 <dd><p>Given a links dataframe for one line and one direction, that may contain branches,
 return the sorted dataframe based on origin and destination stops.</p>
 </dd></dl>
 
-</div>
+</section>
 
 
            </div>
-           
           </div>
           <footer>
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-        <a href="quetzal.io.gtfs_importer.html" class="btn btn-neutral float-right" title="quetzal.io.gtfs_importer module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-        <a href="quetzal.io.export.html" class="btn btn-neutral float-left" title="quetzal.io.export module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-    </div>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        &#169; Copyright 2018, Systra.
-
-    </p>
+    <p>&#169; Copyright 2018, Systra.</p>
   </div>
-    
-    
-    
-    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
-    
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
-    
-    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
 
 </footer>
         </div>
       </div>
-
     </section>
-
   </div>
-  
-
-  <script type="text/javascript">
+  <script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>
