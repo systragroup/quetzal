@@ -51,7 +51,7 @@ class NetworkCaster_MapMaptching:
         single_points[sequence] = -1
         single_points.index = 'node_a_' + single_points.index.map(str)
 
-        self.gps_tracks = self.gps_tracks.append(single_points)
+        self.gps_tracks = pd.concat([self.gps_tracks, single_points])
 
         # remove single links that a==b.
         self.gps_tracks = self.gps_tracks[self.gps_tracks['a'] != self.gps_tracks['b']]
@@ -102,22 +102,26 @@ class NetworkCaster_MapMaptching:
             if len(gps_track) < 2:  # cannot mapmatch less than 2 points.
                 unmatched_trip.append(trip_id)
             else:
-                val, node_list = self.Mapmatching(gps_track, mat, node_index, dict_node_a, dict_node_b, length_dict,
-                                                  geom_dict, dict_link, nbrs,
-                                                  routing=routing,
-                                                  n_neighbors_centroid=n_neighbors_centroid,
-                                                  n_neighbors=n_neighbors,
-                                                  distance_max=distance_max)
-                                                  
-                
-                # add the by column to every data
-                val[by] = trip_id
-                node_list[by] = trip_id
-                # apply input index
-                val.index = val.index.map(gps_index_dict)
-                node_list.index = node_list.index.map(gps_index_dict)
-                vals = vals.append(val)
-                node_lists = node_lists.append(node_list)
+                try:
+                    val, node_list = self.Mapmatching(gps_track, mat, node_index, dict_node_a, dict_node_b, length_dict,
+                                                    geom_dict, dict_link, nbrs,
+                                                    routing=routing,
+                                                    n_neighbors_centroid=n_neighbors_centroid,
+                                                    n_neighbors=n_neighbors,
+                                                    distance_max=distance_max)
+                                                    
+                    
+                    # add the by column to every data
+                    val[by] = trip_id
+                    node_list[by] = trip_id
+                    # apply input index
+                    val.index = val.index.map(gps_index_dict)
+                    node_list.index = node_list.index.map(gps_index_dict)
+                    vals = pd.concat([vals, val])
+                    node_lists = pd.concat([node_lists, node_list])
+                except Exception as e:
+                    print(e)
+                    unmatched_trip.append(trip_id)
         return vals, node_lists, unmatched_trip
 
     def Mapmatching(self, gps_track, mat, node_index, dict_node_a,
