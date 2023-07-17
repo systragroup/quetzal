@@ -3,7 +3,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 from quetzal.analysis import analysis
-from quetzal.engine import engine, linearsolver_utils, nested_logit, elevation, fares
+from quetzal.engine import engine, linearsolver_utils, nested_logit, fares
 from quetzal.io.export import build_lines
 from quetzal.model import model, summarymodel, transportmodel
 from syspy.spatial import geometries, spatial
@@ -828,6 +828,8 @@ class AnalysisModel(summarymodel.SummaryModel):
             https://dwtkns.com/srtm30m/
         It works well with Firefox (currently not working witch Chrome), and requires a nasa Earthdata login.
         """
+        from quetzal.engine import elevation
+
         # if a list of filepaths is passed, compose them all as a virtual raster
         # use the sha1 hash of the filepaths list as the vrt filename
         filepath = elevation.merge_rasters_virtually(filepath)

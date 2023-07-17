@@ -1,7 +1,8 @@
 import geopandas as gpd
 import pandas as pd
 import numpy as np
-import shapely
+from shapely.geometry import LineString, Point, MultiPoint
+from shapely import ops
 from syspy.spatial import spatial
 from syspy.syspy_utils.syscolors import linedraft_shades, rainbow_shades
 
@@ -61,7 +62,7 @@ def from_linedraft(
 def links_and_nodes(linestring, node_index=0):
     nodes = []
     for c in linestring.coords:
-        g = shapely.geometry.Point(c)
+        g = Point(c)
         nodes.append((node_index, g))
         node_index += 1
 
@@ -69,7 +70,7 @@ def links_and_nodes(linestring, node_index=0):
     sequence = 0
     node_index_a, node_a = nodes[0]
     for node_index_b, node_b in nodes[1:]:
-        g = shapely.geometry.LineString([node_a, node_b])
+        g = LineString([node_a, node_b])
         links.append((node_index_a, node_index_b, sequence, 0, g))
         node_index_a = node_index_b
         node_a = node_b
@@ -79,7 +80,7 @@ def links_and_nodes(linestring, node_index=0):
     sequence = 0
     node_index_a, node_a = nodes[0]
     for node_index_b, node_b in nodes[1:]:
-        g = shapely.geometry.LineString([node_a, node_b])
+        g = LineString([node_a, node_b])
         links.append((node_index_a, node_index_b, sequence, 1, g))
         node_index_a = node_index_b
         node_a = node_b
@@ -146,24 +147,30 @@ def from_lines(lines, node_index=0, add_return=True, to_keep=[]):
     nodes = pd.concat(to_concat_nodes)
     return links.reset_index(drop=True), nodes
 
+def euclidean_distance(p1, p2):
+    return math.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
+
 def cut(line, distance):
     # Cuts a line in two at a distance from its starting point
     if distance <= 0.0:
-        return [shapely.geometry.LineString(), shapely.geometry.LineString(line)]
-    elif distance >= line.length:
-        return [shapely.geometry.LineString(line), shapely.geometry.LineString()]
+        return [None, LineString(line)]
+    if distance >= line.length:
+        return [LineString(line), None]
     coords = list(line.coords)
+    pd = 0
     for i, p in enumerate(coords):
-        pd = line.project(shapely.geometry.Point(p))
+        if i == 0:
+            continue
+        pd += euclidean_distance(p, coords[i - 1])
         if pd == distance:
             return [
-                shapely.geometry.LineString(coords[:i+1]),
-                shapely.geometry.LineString(coords[i:])]
+                LineString(coords[:i + 1]),
+                LineString(coords[i:])]
         if pd > distance:
             cp = line.interpolate(distance)
             return [
-                shapely.geometry.LineString(coords[:i] + [(cp.x, cp.y)]),
-                shapely.geometry.LineString([(cp.x, cp.y)] + coords[i:])]
+                LineString(coords[:i] + [(cp.x, cp.y)]),
+                LineString([(cp.x, cp.y)] + coords[i:])]
 
 def cut_inbetween(geom, d_a, d_b):
     geom1 = cut(geom, d_a)[1]
@@ -248,7 +255,7 @@ def from_lines_and_stations(lines, stations, buffer=1e-3, og_geoms=True, **kwarg
 
         # Create simplified geometry (st1 -> st2 -> ...)
         nodes = [linestring.interpolate(d, normalized=True) for d in near['proj']]
-        lines.loc[index, 'geometry'] = shapely.geometry.LineString(nodes)
+        lines.loc[index, 'geometry'] = LineString(nodes)
 
         # Get links table from simplified geometry
         links, nodes = from_lines(lines.loc[[index]], **kwargs)
@@ -258,7 +265,7 @@ def from_lines_and_stations(lines, stations, buffer=1e-3, og_geoms=True, **kwarg
 
         # Split original geometry with stations to add orignal geometry at each links 
         if og_geoms:
-            split_pts = shapely.geometry.MultiPoint(nodes['geometry'].to_list())
+            split_pts = MultiPoint(nodes['geometry'].to_list())
             i1 = 0 if near.iloc[0]['proj'] == 0 else 1
             i2 = None if near.iloc[-1]['proj'] == 1.0 else -1
             og_geoms = list(split_line_by_point(linestring, split_pts).geoms)[i1:i2]
@@ -272,4 +279,4 @@ def from_lines_and_stations(lines, stations, buffer=1e-3, og_geoms=True, **kwarg
     return pd.concat(links_concat), og_geoms
 
 def split_line_by_point(line, point, tolerance: float=1.0e-9):
-    return shapely.ops.split(shapely.ops.snap(line, point, tolerance), point)
+    return ops.split(ops.snap(line, point, tolerance), point)

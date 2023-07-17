@@ -96,12 +96,12 @@ class GtfsImporter(Feed):
                 time_columns
             ].applymap(to_seconds)
 
-    def build_links(self, time_expanded=False, shape_dist_traveled=False):
+    def build_links(self, time_expanded=False, shape_dist_traveled=False, 
+            keep_origin_columns=['departure_time'],
+            keep_destination_columns=['arrival_time']):
         """
         Create links and add relevant information
         """
-        keep_origin_columns=['departure_time', 'pickup_type']
-        keep_destination_columns=['arrival_time', 'drop_off_type']
         if shape_dist_traveled:
             keep_origin_columns += ['shape_dist_traveled']
             keep_destination_columns += ['shape_dist_traveled']
@@ -110,8 +110,8 @@ class GtfsImporter(Feed):
             self.stop_times,
             max_shortcut=1,
             stop_id='stop_id',
-            keep_origin_columns=['departure_time'],
-            keep_destination_columns=['arrival_time'],
+            keep_origin_columns=keep_origin_columns,
+            keep_destination_columns=keep_destination_columns,
             stop_id_origin='origin',
             stop_id_destination='destination',
             out_sequence='link_sequence'
