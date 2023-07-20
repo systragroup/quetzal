@@ -1,6 +1,8 @@
+import geopandas as gpd
 import pandas as pd
 import numpy as np
-import shapely
+from shapely.geometry import LineString, Point, MultiPoint
+from shapely import ops
 from syspy.spatial import spatial
 from syspy.syspy_utils.syscolors import linedraft_shades, rainbow_shades
 
@@ -60,7 +62,7 @@ def from_linedraft(
 def links_and_nodes(linestring, node_index=0):
     nodes = []
     for c in linestring.coords:
-        g = shapely.geometry.Point(c)
+        g = Point(c)
         nodes.append((node_index, g))
         node_index += 1
 
@@ -68,7 +70,7 @@ def links_and_nodes(linestring, node_index=0):
     sequence = 0
     node_index_a, node_a = nodes[0]
     for node_index_b, node_b in nodes[1:]:
-        g = shapely.geometry.LineString([node_a, node_b])
+        g = LineString([node_a, node_b])
         links.append((node_index_a, node_index_b, sequence, 0, g))
         node_index_a = node_index_b
         node_a = node_b
@@ -78,7 +80,7 @@ def links_and_nodes(linestring, node_index=0):
     sequence = 0
     node_index_a, node_a = nodes[0]
     for node_index_b, node_b in nodes[1:]:
-        g = shapely.geometry.LineString([node_a, node_b])
+        g = LineString([node_a, node_b])
         links.append((node_index_a, node_index_b, sequence, 1, g))
         node_index_a = node_index_b
         node_a = node_b
@@ -145,6 +147,76 @@ def from_lines(lines, node_index=0, add_return=True, to_keep=[]):
     nodes = pd.concat(to_concat_nodes)
     return links.reset_index(drop=True), nodes
 
+def euclidean_distance(p1, p2):
+    return math.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
+
+def cut(line, distance):
+    # Cuts a line in two at a distance from its starting point
+    if distance <= 0.0:
+        return [None, LineString(line)]
+    if distance >= line.length:
+        return [LineString(line), None]
+    coords = list(line.coords)
+    pd = 0
+    for i, p in enumerate(coords):
+        if i == 0:
+            continue
+        pd += euclidean_distance(p, coords[i - 1])
+        if pd == distance:
+            return [
+                LineString(coords[:i + 1]),
+                LineString(coords[i:])]
+        if pd > distance:
+            cp = line.interpolate(distance)
+            return [
+                LineString(coords[:i] + [(cp.x, cp.y)]),
+                LineString([(cp.x, cp.y)] + coords[i:])]
+
+def cut_inbetween(geom, d_a, d_b):
+    geom1 = cut(geom, d_a)[1]
+    return cut(geom1, d_b - d_a)[0]
+
+
+def from_line_and_nodes(lines, nodes):
+    all_links = pd.DataFrame()
+    all_nodes = nodes.copy()
+    for trip_id in lines['trip_id'].unique():
+        line = lines.loc[lines['trip_id']==trip_id]
+        geom = line['geometry'].values[0]
+
+        # filter stops
+        if trip_id in nodes.columns:
+            nodes_loc = nodes[trip_id]==1
+        else:
+            buffer = line.buffer(100).geometry.values[0]
+            nodes_loc = nodes.within(buffer)
+        stops = nodes.loc[nodes_loc][['id', 'geometry']]
+
+        # sort stops
+        stops['seq'] = stops.apply(lambda x: line.project(x['geometry']), 1)
+        stops = stops.sort_values('seq').reset_index(drop=True)
+        stops['link_sequence'] = stops.index + 1
+
+        # build links
+        links_a = stops[['id', 'seq', 'link_sequence']].iloc[:-1].rename(columns={'id': 'a'})
+        links_b = stops[['id', 'seq', 'link_sequence']].iloc[1:].rename(columns={'id': 'b'})
+        links_b['link_sequence'] -= 1
+        links = links_a.merge(links_b, on='link_sequence')
+        links['geometry'] = links.apply(
+            lambda x: cut_inbetween(geom, x['seq_x'], x['seq_y']), 1
+        )
+        links['length'] = links['geometry'].apply(lambda x: x.length)
+        
+        links['trip_id'] = trip_id
+        links.drop(['seq_x', 'seq_y'], 1, inplace=True)
+
+        all_links = pd.concat([all_links, links])
+        all_nodes.drop(trip_id, 1, errors='ignore', inplace=True)
+
+    all_links = all_links.reset_index(drop=True)
+
+    return gpd.GeoDataFrame(all_links).set_crs(lines.crs), gpd.GeoDataFrame(all_nodes).set_crs(lines.crs)
+
 def from_lines_and_stations(lines, stations, buffer=1e-3, og_geoms=True, **kwargs):
     """Convert a set of alignement and station into a table of links.
 
@@ -183,7 +255,7 @@ def from_lines_and_stations(lines, stations, buffer=1e-3, og_geoms=True, **kwarg
 
         # Create simplified geometry (st1 -> st2 -> ...)
         nodes = [linestring.interpolate(d, normalized=True) for d in near['proj']]
-        lines.loc[index, 'geometry'] = shapely.geometry.LineString(nodes)
+        lines.loc[index, 'geometry'] = LineString(nodes)
 
         # Get links table from simplified geometry
         links, nodes = from_lines(lines.loc[[index]], **kwargs)
@@ -193,7 +265,7 @@ def from_lines_and_stations(lines, stations, buffer=1e-3, og_geoms=True, **kwarg
 
         # Split original geometry with stations to add orignal geometry at each links 
         if og_geoms:
-            split_pts = shapely.geometry.MultiPoint(nodes['geometry'].to_list())
+            split_pts = MultiPoint(nodes['geometry'].to_list())
             i1 = 0 if near.iloc[0]['proj'] == 0 else 1
             i2 = None if near.iloc[-1]['proj'] == 1.0 else -1
             og_geoms = list(split_line_by_point(linestring, split_pts).geoms)[i1:i2]
@@ -207,4 +279,4 @@ def from_lines_and_stations(lines, stations, buffer=1e-3, og_geoms=True, **kwarg
     return pd.concat(links_concat), og_geoms
 
 def split_line_by_point(line, point, tolerance: float=1.0e-9):
-    return shapely.ops.split(shapely.ops.snap(line, point, tolerance), point)
+    return ops.split(ops.snap(line, point, tolerance), point)

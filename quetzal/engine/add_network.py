@@ -311,6 +311,10 @@ def road_dataframe(links, road_links, road_graph):
     # index link data in order to improve performances of road_series
     road_links = road_links.copy()
     road_links['index'] = road_links.index
+    
+    # drop road_links duplicates, keeping only shortest link
+    road_links = road_links.sort_values('length').drop_duplicates(['a', 'b'], keep='first')
+
     indexed = road_links.set_index(['a', 'b']).sort_index()
     ab_indexed_dict = indexed['index'].to_dict()
     indexed = road_links.set_index(['index']).sort_index()

@@ -382,7 +382,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             self.integrity_test_collision(sets)
 
         self.links = engine.graph_links(self.links)
-
+        print('start publicpathfinder')
         publicpathfinder = PublicPathFinder(self, walk_on_road=walk_on_road)
         publicpathfinder.find_best_paths(
             broken_routes=broken_routes,
@@ -393,7 +393,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             boarding_time=boarding_time,
             **kwargs
         )
-
+        
         # if keep_graph:
         #     self.nx_graph=publicpathfinder.nx_graph
 
@@ -402,7 +402,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         self.pt_los = publicpathfinder.paths
         analysis_nodes = pd.concat([self.nodes, self.road_nodes]) if walk_on_road else self.nodes
-
+        print('path_analysis')
         if path_analysis:
             self.pt_los = analysis.path_analysis_od_matrix(
                 od_matrix=self.pt_los,

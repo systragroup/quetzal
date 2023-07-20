@@ -335,7 +335,7 @@ class PublicPathFinder:
                     boarding_time=boarding_time,
                     **kwargs
                 )
-
+                print('starting los_from_graph')
                 los = los_from_graph(
                     csgraph=matrix,
                     node_index=node_index,
@@ -344,7 +344,8 @@ class PublicPathFinder:
                     cutoff=cutoff,
                     ntlegs_penalty=ntlegs_penalty
                 )
-            except:
+            except Exception as e:
+                print(e)
                 if prune:
                     tqdm.write('Pathfinder failed with prune=True. Trying with prune=False')
                 footpaths = self.footpaths
@@ -482,7 +483,9 @@ class PublicPathFinder:
 
         if broken_modes:
             # self.build_graph(**kwargs)
+            print('build_mode_combinations')
             self.build_mode_combinations(mode_column=mode_column)
+            print('find_broken_mode_paths')
             self.find_broken_mode_paths(
                 od_set=od_set,
                 cutoff=cutoff,

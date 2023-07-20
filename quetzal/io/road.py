@@ -94,9 +94,10 @@ def split_directions(geojson_dict):
         f['geometry']['coordinates'] = list(reversed(f['geometry']['coordinates']))
     geojson_dict['features'] = features + reversed_features
 
-def get_links_and_nodes(geojson_file):
-    with open(geojson_file, 'r') as file:
-        text = file.read()
+def get_links_and_nodes(geojson_file, text=None):
+    if text is None:
+        with open(geojson_file, 'r') as file:
+            text = file.read()
     
     road =  json.loads(text)
     split_features(road)

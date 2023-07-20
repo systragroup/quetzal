@@ -8,7 +8,7 @@ from .filtering import restrict_to_timerange
 tqdm.pandas()
 
 
-def convert_to_frequencies(feed, time_range, pattern_column='pattern_id'):
+def convert_to_frequencies(feed, time_range, pattern_column='pattern_id', drop_unused=True):
     """
     Given:
         - a clean feed defined on one day / one service
@@ -24,7 +24,7 @@ def convert_to_frequencies(feed, time_range, pattern_column='pattern_id'):
     assert n_services == 1, error_message
 
     # Make a restricted copy
-    feed = restrict_to_timerange(feed, time_range)
+    feed = restrict_to_timerange(feed, time_range, drop_unused=drop_unused)
 
     # Compute pattern headway
     pattern_headways = compute_pattern_headways(feed, time_range, pattern_column)
@@ -44,8 +44,8 @@ def convert_to_frequencies(feed, time_range, pattern_column='pattern_id'):
     frequencies['end_time'] = time_range[1]
     feed.frequencies = frequencies
     # Clean
-    feed = feed.restrict_to_trips(feed.trips.trip_id)
-    feed = feed.clean()
+    feed = feed.restrict_to_trips(feed.trips.trip_id, drop_unused=drop_unused)
+    # feed = feed.clean()
     return feed
 
 
@@ -78,7 +78,7 @@ def compute_pattern_headways(feed, time_range, pattern_column='pattern_id'):
 
     freq_conv = GTFS_frequencies_utils(temp_frequencies, feed.trips.copy())
     pattern_headways = feed.trips.groupby(pattern_column)[['trip_id']].agg(list)
-    pattern_headways['headway_secs'] = pattern_headways['trip_id'].progress_apply(
+    pattern_headways['headway_secs'] = pattern_headways['trip_id'].apply(
         lambda x: freq_conv.compute_average_headway(x, time_range_sec)
     )
 

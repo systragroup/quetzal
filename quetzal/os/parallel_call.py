@@ -58,6 +58,7 @@ def parallel_call_jobs(jobs, mode='w', leave=False, workers=1, sleep=1):
                     # print('waiting')
                     for p in popens.values():
                         p.wait()
+                        p.terminate()
         time.sleep(sleep)
 
     for i, file, arg, stdout_file, stderr_file in jobs:
@@ -135,7 +136,13 @@ def parallel_call_notebook(
     supported_characters = string.ascii_lowercase + string.ascii_uppercase + string.digits + '-_' 
     for i in range(len(arg_list)):
         arg = arg_list[i]
-        suffix = ''.join(arg) if errout_suffix else ''
+        suffix = ''
+        if errout_suffix:
+            try:
+                temp = json.loads(arg)
+                suffix = '_'.join(temp.values())
+            except json.JSONDecodeError:
+                suffix = arg
         suffix += '_' + file.split('/')[-1].split('.')[0]
         suffix = ''.join([s for s in suffix if s in supported_characters])
         stdout_file = stdout_path.replace('.txt', '_' + suffix + '.txt')
@@ -178,6 +185,7 @@ def parallel_call_python(
                     # print('waiting')
                     for p in popens.values():
                         p.wait()
+                        p.terminate()
         time.sleep(sleep)
 
     for i in range(len(arg_list)):

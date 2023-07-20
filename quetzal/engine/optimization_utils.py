@@ -79,7 +79,7 @@ def optimize(od_classified, od_targets, classes, target_col, classes_bounds, od_
     x0 = [(x[0] + x[1]) / 2 for x in bounds]
     results = scipy.optimize.minimize(J, x0, bounds=bounds)
 
-    assert(results.success is True), 'Optimization failed'
+    assert(results.success is True), 'Optimization failed, {}'.format(results)
     return {classe: v for classe, v in zip(classes, results.x)}
 
 

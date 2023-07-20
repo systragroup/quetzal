@@ -4,6 +4,7 @@ import osmnx as ox
 import pandas as pd
 from quetzal.engine import gps_tracks
 from shapely.geometry import Point
+# from syspy.spatial.graph import graphbuilder as gb
 
 
 def _merge_reversed_geometries_dict(geojson_dict):
@@ -70,6 +71,38 @@ def _get_type(x):
     return 'other'
 
 
+def clean_osm_links(road_links, road_nodes):
+    links = road_links.copy()
+    decimal_threshold = 1
+    ng = road_nodes['geometry'].to_dict()
+
+    def directed(row):
+        a = tuple([round(x, decimal_threshold) for x in list(ng[row['a']].coords)[0]])
+        b = tuple([round(x, decimal_threshold) for x in list(row['geometry'].coords)[0]])
+        return a == b
+
+    def return_directed(row):
+        a = tuple([round(x, decimal_threshold) for x in list(ng[row['a']].coords)[0]])
+        b = tuple([round(x, decimal_threshold) for x in list(row['geometry'].coords)[-1]])
+        return a == b
+
+    import shapely
+
+    def reversed_polyline(polyline):
+        coords = list(polyline.coords)
+        return shapely.geometry.LineString(reversed(coords))
+
+    reverse = links.apply(
+        return_directed,
+        axis=1
+    )
+    loc = (reverse, 'geometry')
+    links.loc[loc] = links.loc[loc].apply(
+        reversed_polyline
+    )
+    return links
+
+
 def get_osm_data(north, south, east, west, network_type, epsg, output_folder):
     """
     Download OSM road data and project into new coordinate system.
@@ -123,6 +156,9 @@ def get_osm_data(north, south, east, west, network_type, epsg, output_folder):
     road_nodes.crs = {'init': 'epsg:4326'}
     road_nodes = road_nodes.to_crs({'init': 'epsg:{}'.format(epsg)})
 
+    # fix reversed geometries
+    road_links = clean_osm_links(road_links, road_nodes)
+
     # save
     road_links.to_file(output_folder + 'road_links.shp')
     road_nodes.to_file(output_folder + 'road_nodes.shp')
@@ -141,9 +177,9 @@ def _get_shape_coordinates(osm_road_links, road_links):
     return shape_coordinates
 
 
-def _create_shape_df(osm_road_links, road_links, shape_id):
+def _create_shape_df(osm_road_links, road_links, road_nodes, shape_id):
 
-    shape_coordinates = _get_shape_coordinates(osm_road_links, road_links)
+    shape_coordinates = _get_shape_coordinates(osm_road_links, road_links, road_nodes)
 
     shapes = pd.DataFrame(columns=['shape_id', 'shape_pt_lat', 'shape_pt_lon', 'shape_pt_sequence'])
     shapes = pd.DataFrame(shape_coordinates, columns=['shape_pt_lat', 'shape_pt_lon'])

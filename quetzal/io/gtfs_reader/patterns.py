@@ -80,14 +80,14 @@ def get_patterns(trips, trip_footprints, group=['route_id']):  # we can add dire
         left_index=True,
         right_index=True
     )
-    pattern_n = patterns.drop_duplicates().set_index('footprint').groupby(
-        group,
+    pattern_n = patterns.drop_duplicates().set_index(['footprint'] + group).groupby(
+        ['footprint'] + group,
         as_index=False
     ).cumcount()
     pattern_n.name = 'pattern_num'
     patterns = patterns.reset_index().merge(
         pattern_n,
-        on='footprint'
+        on=['footprint'] + group
     )
     patterns['pattern_id'] = patterns[group + ['pattern_num']].apply(
         lambda x: '_'.join(x.map(str)), 1

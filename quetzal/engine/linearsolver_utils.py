@@ -13,6 +13,7 @@ def linearsolver(
     pas_distance,
     maxiter,
     tolerance,
+    method='interior-point',
     **kwargs
 ):
     '''
@@ -43,7 +44,7 @@ def linearsolver(
         **kwargs
     )
     try:
-        lin = linprog(obj, A_ub=A_ub, b_ub=b_ub, bounds=bound_ub,
+        lin = linprog(obj, A_ub=A_ub, b_ub=b_ub, bounds=bound_ub, method=method,
                       options={'maxiter': maxiter, 'bland': True, 'tol': tolerance})
         x = lin.x[0:len(indicator)]
         pivot_stack_matrix = pd.merge(
@@ -88,8 +89,8 @@ def reduce_indicator(big_indicator, cluster_series, volumes, volume_column='volu
                      right_index=True, suffixes=['_origin', '_destination'])
     grouped = proto.groupby(
         ['cluster_origin', 'cluster_destination'])[
-            [i for i in range(nb_keys)]]
-
+            [i for i in range(nb_keys)] + [volume_column]
+    ]
     indicator = pd.DataFrame([
         tuple(np.ma.average(table[k], weights=table[volume_column], axis=0) for k in range(nb_keys))
         for couple, table in grouped
