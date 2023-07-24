@@ -5,6 +5,7 @@ import numpy as np
 from tqdm import tqdm
 from time import sleep
 import copy
+from  shapely.ops import transform
 
 from sklearn.model_selection import train_test_split
 import ray
@@ -93,6 +94,7 @@ class RoadModel:
         links_r.index = links_r.index.astype(str) + '_r'
         # reverse links (a=>b, b=>a)
         links_r = links_r.rename(columns={'a': 'b', 'b': 'a'})
+        links_r['geometry'] = links_r['geometry'].apply(lambda g: _reverse_geom(g))
         self.road_links = pd.concat([self.road_links, links_r])
     
     def merge_quenedi_rlinks(self):
@@ -432,6 +434,12 @@ class RoadModel:
         
         return errors
 
+def _reverse_geom(geom):
+    def _reverse(x, y, z=None):
+        if z:
+            return x[::-1], y[::-1], z[::-1]
+        return x[::-1], y[::-1]
+    return transform(_reverse, geom)
 
 @jit(nopython=True, locals={'predecessors': nb.int32[:, ::1], 'time_matrix': nb.float64[:, ::1]}, parallel=True)
 def _fast_assign_time(odt, predecessors, time_matrix, times, counter):

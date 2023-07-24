@@ -24,14 +24,10 @@ last_tag=$(aws ecr describe-images --repository-name $AWS_ECR_REPO_NAME \
 echo "Enter a docker TAG (last: $last_tag)":
 read TAG
 
-# Push Image
+# Push Image and update lambda
 ./push-image.sh $MODEL_FOLDER $TAG
 
-# Update Lambda
-aws_account=$(aws sts get-caller-identity | jq '.Account' | sed 's/"//g')
-aws_region=$(aws configure get region)
-aws lambda update-function-code --region $aws_region --function-name  $AWS_LAMBDA_FUNCTION_NAME \
-    --image-uri $aws_account.dkr.ecr.$aws_region.amazonaws.com/$AWS_LAMBDA_FUNCTION_NAME:$TAG > /dev/null
+
 
 
 

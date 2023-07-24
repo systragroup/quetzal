@@ -33,8 +33,9 @@ def main():
              'inputs/pt/nodes.geojson',
              'inputs/road/road_links.geojson',
              'inputs/road/road_nodes.geojson',
-             'outputs/',
-             'inputs/params.json']
+             'inputs/params.json',
+             'outputs/'
+             ]
 
     bucket = s3.Bucket(os.environ["AWS_BUCKET_NAME"])
 
@@ -48,7 +49,8 @@ def main():
             if (path == '') | (path is None):
                 continue
             if not os.path.exists(path):
-                logging.error(f"Local path does not exists: {path}")
+                print(f"Local path does not exists: {path}")
+                continue
             if os.path.isdir(path):
                 print(f"Uploading {path} folder")
                 upload_s3_folder(os.environ["AWS_BUCKET_NAME"], scenario, path)
