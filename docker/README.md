@@ -101,6 +101,9 @@ Quenedi need its inputs in the following folders :
 3. Create the `requirements.txt` for the model. We recommand using [pip chill](https://pypi.org/project/pip-chill/).
 4. Modify the step fonction configuration file `step-functions.json` according to model steps.
 5. Fill the `Dockerfile.dockerignore`. Inputs that are provided by quenedi and outputs are not necessary in the image. Note that Docker Build will be run from directory higher than the model. You should add the model folder path to your ignored path (Exemple: inputs -> QUETZAL_MODEL_NAME/inputs)
+ 
+    **note**: you need a .git in your model for the docker to work but you can ignore the quetzal .git
+
 6. Go to this quetzal docker script folder `(quetzal/docker/scipts)`
 7. Build and push the first image to the ECR Repository using the following command 
    ```bash
@@ -120,7 +123,7 @@ Quenedi need its inputs in the following folders :
 
 9. Add model files for base scenario to s3 **(first scenario should be base)**
    ```bash
-   python update-s3-model-files.py <model_folder> <scenario1> <scenario2>
+   python update-S3-model-files.py <model_folder> <scenario1> <scenario2>
    ```
 
 ## Create Cognito User group (AWS Admin only)
@@ -136,7 +139,7 @@ Quenedi need its inputs in the following folders :
 
 You need AWS permissions to update a model on ECR. You can ask for those permissions to the AWS Admin.
 
-``./update-lambda.sh``
+``./update-lambda.sh <model_folder_name>``
 
 
 # destroy Terraform workspace (for AWS admin)
@@ -151,7 +154,42 @@ This will fail for S3 and ECR because they are not empty.
 empty S3 bucket and ECR. you may need to remove the policy in the cognito group too
 
 
+# Test lambda function locally
+you can test the lambda function docker locally. but you will need to create a s3 folder with your files (ex: test/), and add your AWS crdential to the .env file.
+```
+QUETZAL_MODEL_NAME=<model_folder>
+AWS_ECR_REPO_NAME=<model-name>
+AWS_LAMBDA_FUNCTION_NAME=<model-name>
+AWS_BUCKET_NAME=<model-name>
+AWS_ACCESS_KEY_ID= <your access key>
+AWS_SECRET_ACCESS_KEY= <your secret key>
+```
+after that. you can run the test script to build and run the docker locally
+
+``./test-lambda.sh <model_folder_name> test ``
+
+here. test is the docker tag.
+
+Finally, run this command in a new terminal with the appropriate values.
+
+
+```bash
+ curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"notebook_path": "notebooks/model/model.ipynb", "scenario_path_S3": "test/", "launcher_arg": {"scenario": "test", "training_folder": "/tmp","params": {"some_param":"value"}},"metadata": {"user_email": "lamda_test@test.com"}}'
+ ```
+
+
+# debug a docker container
+running an interactive shell to explore the docker container
+ 
+ ``docker run -it --rm --entrypoint /bin/bash <docker_name>:<tag>``
+ 
+
+ by default, you will be in `/var/task` which is where all your files (main.py for instance)
+
 # Knowned issue
 
 ## terraform destroy
 ECR  will not be destroy as it is not empty. We need to empty and then destroy ECR as the last step. last step because Lambda depend on an image tag on ecr. if ECR is empty lambda will fail to destroy.
+
+## jupyter-nbconvert KeyError: 'template_paths'
+The entrypoint of the dockerfile convert .ipynb to .py files. For some reason. this will not work if there is no .git in the quetzal_model.

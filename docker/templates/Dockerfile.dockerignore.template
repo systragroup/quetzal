@@ -1,5 +1,6 @@
 **__pycache__**
-*.pyc
+**/*.pyc
 **.cache**
-**.ipynb_checkpoints**
-**.DS_store**
+**/*.ipynb_checkpoints*
+**/*.DS_store*
+quetzal/.git

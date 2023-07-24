@@ -59,10 +59,12 @@ def clean_folder(folder='/tmp'):
 
 def handler(event, context):
     notebook = event['notebook_path']
+    print(event)
 
     bucket_name = os.environ['BUCKET_NAME']
     # Move (and download) model data and inputs to ephemeral storage
     clean_folder()  # Clean ephemeral storage
+
 
     shutil.copytree('./inputs', '/tmp/inputs')
     download_s3_folder(bucket_name, event['scenario_path_S3'])
@@ -72,6 +74,7 @@ def handler(event, context):
     os.system('jupyter nbconvert --to python %s --output %s' % (notebook, file))
     cwd = os.path.dirname(notebook)
 
+
     command_list = ['python', file, arg]
 
     my_env = os.environ.copy()
@@ -80,14 +83,12 @@ def handler(event, context):
     process.wait(timeout=500)
 
     content = process.stdout.read().decode("utf-8")
-    print(content)
 
     if 'Error' in content and "end_of_notebook" not in content:
+        print(content)
         raise RuntimeError("Error on execution")
 
     os.remove(file)
-    if os.path.exists('/tmp/quenedi.config.json'):
-        os.remove('/tmp/quenedi.config.json')
     shutil.rmtree('/tmp/inputs')
     upload_s3_folder(bucket_name, event['scenario_path_S3'], metadata=event.get('metadata', {}))
 

@@ -48,7 +48,8 @@ def main():
             if (path == '') | (path is None):
                 continue
             if not os.path.exists(path):
-                logging.error(f"Local path does not exists: {path}")
+                print(f"Local path does not exists: {path}")
+                continue
             if os.path.isdir(path):
                 print(f"Uploading {path} folder")
                 upload_s3_folder(os.environ["AWS_BUCKET_NAME"], scenario, path)
