@@ -33,8 +33,9 @@ def main():
              'inputs/pt/nodes.geojson',
              'inputs/road/road_links.geojson',
              'inputs/road/road_nodes.geojson',
-             'outputs/',
-             'inputs/params.json']
+             'inputs/params.json',
+             'outputs/'
+             ]
 
     bucket = s3.Bucket(os.environ["AWS_BUCKET_NAME"])
 

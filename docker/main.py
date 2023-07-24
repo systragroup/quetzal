@@ -65,8 +65,10 @@ def handler(event, context):
     # Move (and download) model data and inputs to ephemeral storage
     clean_folder()  # Clean ephemeral storage
 
-
-    shutil.copytree('./inputs', '/tmp/inputs')
+    try:
+        shutil.copytree('./inputs', '/tmp/inputs')
+    except :
+        print('cannot copy local docker inputs/ folder. its maybe missing on purpose')
     download_s3_folder(bucket_name, event['scenario_path_S3'])
     arg = json.dumps(event['launcher_arg'])
 
