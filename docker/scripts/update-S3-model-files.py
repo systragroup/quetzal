@@ -3,25 +3,18 @@ import sys
 import boto3
 import logging
 
+# python update-S3-model-files.py quetzal_test base
+# copy files from quetzal_test/scenarios/base/
+# to base/ on s3.
 
 s3 = boto3.resource('s3')
 
-
-def upload_s3_folder(bucket_name, folder, local_dir):
-    """
-    Upload the contents of a folder directory to S3
-    Args:
-        bucket_name: the name of the s3 bucket
-        s3_folder: the folder path in the s3 bucket
-        local_dir: a relative or absolute directory path in the local file system
-    """
-    bucket = s3.Bucket(bucket_name)
-    for root, _, files in os.walk(local_dir):
-        for file in files:
-            local_path = os.path.join(root, file)
-            s3_path = os.path.join(folder, root, file)
-            bucket.upload_file(local_path, s3_path)
-
+def list_paths_in_directory(directory):
+    file_paths = []
+    for root, directories, files in os.walk(directory):
+        for file_name in files:
+            file_paths.append(os.path.join(root, file_name))
+    return file_paths
 
 def main():
     with open('.env') as f:
@@ -29,34 +22,27 @@ def main():
             key, value = line.strip().split('=', 1)
             os.environ[key] = value
 
-    paths = ['inputs/pt/links.geojson',
-             'inputs/pt/nodes.geojson',
-             'inputs/road/road_links.geojson',
-             'inputs/road/road_nodes.geojson',
-             'inputs/params.json',
-             'outputs/'
-             ]
-
     bucket = s3.Bucket(os.environ["AWS_BUCKET_NAME"])
-
     for scenario in sys.argv[2:]:
         # Delete content
         for obj in bucket.objects.filter(Prefix=scenario):
             s3.Object(bucket.name, obj.key).delete()
 
         print(f"Updating {scenario} scenario")
-        for path in paths:
-            if (path == '') | (path is None):
+        for path in ['inputs/', 'outputs/']:
+            localpath = 'scenarios/' + scenario + '/' + path
+            
+            if not os.path.exists(localpath):
+                print(f"Local path does not exists: {localpath}")
                 continue
-            if not os.path.exists(path):
-                print(f"Local path does not exists: {path}")
-                continue
-            if os.path.isdir(path):
-                print(f"Uploading {path} folder")
-                upload_s3_folder(os.environ["AWS_BUCKET_NAME"], scenario, path)
-            else:
-                print(f"Uploading {path}")
-                bucket.upload_file(path, os.path.join(scenario, path))
+            if os.path.isdir(localpath):
+               files = list_paths_in_directory(localpath)
+               for file in files:
+                    print('upload:',file[10:])
+                    bucket.upload_file(file, file[10:])
+
+
+          
 
 
 if __name__ == "__main__":

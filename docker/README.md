@@ -125,6 +125,8 @@ Quenedi need its inputs in the following folders :
    ```bash
    python update-S3-model-files.py <model_folder> <scenario1> <scenario2>
    ```
+Note: this script will copy all files from `<model_folder>/scenarios/<scenario1>/` to S3. <br>
+for example. with quetzal_test and a base scenario we would have in quetzal_test: `scenarios/base/inputs/pt/links.geojson` and so on
 
 ## Create Cognito User group (AWS Admin only)
 * Create new Cognito user group in quetzal user pool (Cognito Console -> User pool -> Quetzal -> Groups -> Create Group).
