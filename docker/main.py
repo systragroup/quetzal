@@ -56,14 +56,16 @@ def clean_folder(folder='/tmp'):
         except Exception as e:
             print('Failed to delete %s. Reason: %s' % (file_path, e))
 
+
 def format_error(err):
-    #return the error starting a Traceback.
+    # return the error starting a Traceback.
     part = err.partition('Traceback')
-    res = part[1]+part[2]
-    if len(res)>0:
-        return  res
+    res = part[1] + part[2]
+    if len(res) > 0:
+        return res
     else:
         return part[0]
+
 
 def handler(event, context):
     notebook = event['notebook_path']
@@ -75,7 +77,7 @@ def handler(event, context):
 
     try:
         shutil.copytree('./inputs', '/tmp/inputs')
-    except :
+    except:
         print('cannot copy local docker inputs/ folder. its maybe missing on purpose')
     download_s3_folder(bucket_name, event['scenario_path_S3'])
     arg = json.dumps(event['launcher_arg'])
@@ -83,10 +85,7 @@ def handler(event, context):
     file = os.path.join('/tmp', os.path.basename(notebook).replace('.ipynb', '.py'))
     os.system('jupyter nbconvert --to python %s --output %s' % (notebook, file))
     cwd = os.path.dirname(notebook)
-
-
     command_list = ['python', file, arg]
-
     my_env = os.environ.copy()
     my_env['PYTHONPATH'] = os.pathsep.join(sys.path)
     process = Popen(command_list, stdout=PIPE, stderr=STDOUT, env=my_env, cwd=cwd)

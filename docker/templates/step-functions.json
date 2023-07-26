@@ -8,7 +8,9 @@
       "Parameters": {
         "Payload": {
           "notebook_path": "notebooks/transport/A10_STEP_1.ipynb", # TO EDIT
-          "event.$": "$",
+          "scenario_path_S3.$": "$.scenario_path_S3",
+          "launcher_arg.$": "$.launcher_arg",
+          "metadata.$": "$.metadata"
         },
         "FunctionName": <LAMBDA-FUNCTION-ARN> # TO EDIT
       },
@@ -34,7 +36,9 @@
       "Parameters": {
         "Payload": {
           "notebook_path": "notebooks/transport/A20_STEP_2.ipynb", # TO EDIT
-          "event.$": "$",
+          "scenario_path_S3.$": "$.scenario_path_S3",
+          "launcher_arg.$": "$.launcher_arg",
+          "metadata.$": "$.metadata"
         },
         "FunctionName": <LAMBDA-FUNCTION-ARN> # TO EDIT
       },
