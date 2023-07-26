@@ -35,7 +35,7 @@ Install **Terraform** using [this guide](https://developer.hashicorp.com/terrafo
     lambda_time_limit       = 300
     lambda_storage_size     = 4016
 ```
-*NOTE*: Ressources configuration may differ depending on model requierements. time_+limit in secs and memory in mb
+*NOTE*: Ressources configuration may differ depending on model requierements. time in secs and memory in mb
 
 
 2. **Go to the infra folder** `(docker/infra)`
@@ -43,7 +43,11 @@ Install **Terraform** using [this guide](https://developer.hashicorp.com/terrafo
 cd docker/infra
 ```
 
-3. **Create a new workspace**. Each model share the same architecture and must be in separated workspace
+3. **Create a new workspace**. Each model share the same architecture and must be in separated workspace\
+
+```bash
+terraform init
+```   
 
 ```bash
 terraform workspace new <your_model_name>
