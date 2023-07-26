@@ -56,6 +56,14 @@ def clean_folder(folder='/tmp'):
         except Exception as e:
             print('Failed to delete %s. Reason: %s' % (file_path, e))
 
+def format_error(err):
+    #return the error starting a Traceback.
+    part = err.partition('Traceback')
+    res = part[1]+part[2]
+    if len(res)>0:
+        return  res
+    else:
+        return part[0]
 
 def handler(event, context):
     notebook = event['notebook_path']
@@ -88,7 +96,7 @@ def handler(event, context):
 
     if 'Error' in content and "end_of_notebook" not in content:
         print(content)
-        raise RuntimeError("Error on execution")
+        raise RuntimeError(format_error(content))
 
     os.remove(file)
     shutil.rmtree('/tmp/inputs')
