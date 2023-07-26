@@ -25,7 +25,7 @@ Install **Terraform** using [this guide](https://developer.hashicorp.com/terrafo
 
 # INFRA (TERRAFORM)
 
-1. **Create a new .tfvars file** with the name of your model `environement/<your_model_name>.tfvars` <br>
+1. **Create a new .tfvars file** with the name of your model `docker/infra/environement/<your_model_name>.tfvars` <br>
  * replace `<your_model_name>`  with the model name, ex: quetzal-paris <br>
  * the name must be unique in the AWS region (ca-central-1) (s3 bucket limitation)
 
@@ -38,9 +38,9 @@ Install **Terraform** using [this guide](https://developer.hashicorp.com/terrafo
 *NOTE*: Ressources configuration may differ depending on model requierements. time_+limit in secs and memory in mb
 
 
-2. **Go to the infra folder** `(quetzal/docker/infra)`
+2. **Go to the infra folder** `(docker/infra)`
 ```bash
-cd infra
+cd docker/infra
 ```
 
 3. **Create a new workspace**. Each model share the same architecture and must be in separated workspace
