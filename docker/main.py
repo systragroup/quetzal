@@ -3,6 +3,7 @@ import os
 import json
 import boto3
 import shutil
+import time
 from subprocess import Popen, PIPE, STDOUT
 
 sys.path.insert(0, os.path.abspath('quetzal'))
@@ -68,6 +69,7 @@ def format_error(err):
 
 
 def handler(event, context):
+    t0 = time.time()
     notebook = event['notebook_path']
     print(event)
 
@@ -79,6 +81,8 @@ def handler(event, context):
         shutil.copytree('./inputs', '/tmp/inputs')
     except:
         print('cannot copy local docker inputs/ folder. its maybe missing on purpose')
+    t1 = time.time()
+    print('Download inputs from s3: {} seconds'.format(t1 - t0))
     download_s3_folder(bucket_name, event['scenario_path_S3'])
     arg = json.dumps(event['launcher_arg'])
 
@@ -92,6 +96,8 @@ def handler(event, context):
     process.wait(timeout=500)
 
     content = process.stdout.read().decode("utf-8")
+    t2 = time.time()
+    print('Notebook execution: {} seconds'.format(t2 - t1))
 
     if 'Error' in content and "end_of_notebook" not in content:
         print(content)
@@ -100,5 +106,7 @@ def handler(event, context):
     os.remove(file)
     shutil.rmtree('/tmp/inputs')
     upload_s3_folder(bucket_name, event['scenario_path_S3'], metadata=event.get('metadata', {}))
+    t3 = time.time()
+    print('Upload to S3: {} seconds'.format(t3 - t2))
 
     return event
