@@ -20,12 +20,22 @@ class SummaryModel(transportmodel.TransportModel):
         """
         df = self.los.copy()
 
-        df.dropna(subset=['route_fares'], inplace=True)
+        msg = 'los must have either route_fares or od_fares'
+        assert ('od_fares' in df.columns) | ('route_fares' in df.columns), msg
+        if 'route_fares' not in df.columns:
+            df['route_fares'] = np.nan
+        if 'od_fares' not in df.columns:
+            df['od_fares'] = np.nan
+
+        df.dropna(subset=['od_fares', 'route_fares'], inplace=True, how='all')
+        df[['route_fares', 'od_fares']] = df[['route_fares', 'od_fares']].where(
+            df[['route_fares', 'od_fares']].notna(), lambda x: [{}])
+
         df['fare_id_tuple'] = df['route_fares'].apply(
-            lambda d: tuple(d.items())
-        ) + df['od_fares'].apply(
-            lambda d: tuple(d.items())
-        )
+                lambda d: tuple(d.items())
+            ) + df['od_fares'].apply(
+                lambda d: tuple(d.items())
+            )
 
         agg_dict = {'volume': sum}
         agg_dict['route_fares'] = 'first'
@@ -41,7 +51,7 @@ class SummaryModel(transportmodel.TransportModel):
             for fare_id, fare in route_fares.items():
                 fare_revenue_dict[fare_id] += volume * fare
                 agency_revenue_dict[agency_dict[fare_id]] += fare * volume
-            for agency_id, fare in od_fares:
+            for agency_id, fare in od_fares.items():
                 agency_revenue_dict[agency_id] += volume * fare
 
         fare_stack = pd.Series(fare_revenue_dict)

@@ -51,6 +51,43 @@ def geodataframe_place_holder(geom_type, prefix=None):
         i = 0
     return gpd.GeoDataFrame(pd.DataFrame([geo], columns=['geometry'], index=[i]))
 
+def rename_duplicate_stops(g, sep='_circular-fix_'):
+    stop_set = {}
+    u_ab = []
+    for a, b in g[['a', 'b']].values:
+        # a
+        ab = [a, b]
+        if b not in stop_set.keys():
+            ab[1] = b
+        else:
+            ab[1] = b + sep + str(stop_set[b])
+            count = stop_set[b]
+        
+        if a not in stop_set.keys():
+            ab[0] = a
+            stop_set.update({a: 0})
+        else:
+            ab[0] = a + sep + str(stop_set[a])
+            stop_set.update({a: count+1})
+
+        u_ab.append(ab)
+
+    g[['a', 'b']] = u_ab
+
+    return g
+
+def fix_circular_lines(links, nodes, on='trip_id', sep='_circular-fix_'):
+    links = links.groupby(on).apply(rename_duplicate_stops, sep='_circular-fix_')
+    # add new nodes
+    c_nodes = links[links['a'].apply(lambda x: sep in x )]['a']
+    c_nodes = c_nodes.append(links[links['b'].apply(lambda x: sep in x )]['b']).drop_duplicates()
+
+    c_nodes_geom = nodes.loc[c_nodes.apply(lambda x: x.split(sep)[0]).values]
+    c_nodes_geom.index = c_nodes.values
+    nodes = nodes.append(c_nodes_geom)
+
+    return links, nodes
+
 
 class IntegrityModel:
 
@@ -197,24 +234,29 @@ class IntegrityModel:
                 circular_lines.append(trip_id)
 
             message = "some lines stop many time at the same stop (circular) \n"
-            message += "ex : the following pattern is circular : a->b, b->c, c->d, d->b, b-f "
+            message += "ex : the following pattern is circular : a->b, b->c, c->d, d->b, b->f "
             message += " because it stops twice in b \n"
             message += "circular lines: " + str(circular_lines)
 
         self.circular_lines = circular_lines
         assert len(circular_lines) == 0, message
 
-    def integrity_fix_circular_lines(self):
+    def integrity_fix_circular_lines(self, method='drop', sep='_circular-fix_'):
         """
-            * requires: links
-            * builds: links
+            * requires: links, nodes
+            * builds: links, nodes
+            Either drop circular lines (method='drop') or create node duplicates (method='duplicate')
         """
         try:
             self.integrity_test_circular_lines()
         except AssertionError:
-            is_circular = self.links['trip_id'].isin(self.circular_lines)
-            self.links = self.links.loc[~is_circular]
-            print('dropped circular lines: ' + str(self.circular_lines))
+            if method == 'drop':
+                is_circular = self.links['trip_id'].isin(self.circular_lines)
+                self.links = self.links.loc[~is_circular]
+                print('dropped circular lines: ' + str(self.circular_lines))
+            elif method=='duplicate':
+                self.links, self.nodes = fix_circular_lines(self.links, self.nodes, sep=sep)
+    
 
     def integrity_test_isolated_roads(self):
         """
@@ -357,6 +399,12 @@ class IntegrityModel:
                 cutoff=cutoff,
                 recursive_depth=recursive_depth - 1
             )
+
+    def integrity_test_duplicate_volumes(self):
+        assert(self.volumes.set_index(['origin', 'destination']).index.is_unique), 'Volumes contain duplicate values'
+
+    def integrity_fix_duplicate_volumes(self):
+        self.volumes = self.volumes.groupby(['origin', 'destination'], as_index=False).sum()
 
     def integrity_test_all(self, errors='raise', verbose=True):
         """

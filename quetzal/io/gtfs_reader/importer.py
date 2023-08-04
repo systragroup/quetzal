@@ -57,13 +57,13 @@ class GtfsImporter(Feed):
     def build_stop_clusters(self, **kwargs):
         self.stops = patterns.build_stop_clusters(self.stops, **kwargs)
 
-    def build(self, date, time_range, cluster_distance_threshold=None):
+    def build(self, date, time_range, cluster_distance_threshold=None, drop_unused=True):
         print('Restricting to date…')
-        feed = self.restrict(dates=[date])
+        feed = self.restrict(dates=[date], drop_unused=drop_unused)
         print('Grouping services…')
         feed.group_services()
-        print('Cleaning…')
-        feed = feed.clean()
+        # print('Cleaning…')
+        # feed = feed.clean()
         if cluster_distance_threshold is not None:
             print('Clustering stops…')
             feed.build_stop_clusters(distance_threshold=cluster_distance_threshold)
@@ -73,7 +73,7 @@ class GtfsImporter(Feed):
             print('Building patterns…')
             feed.build_patterns()
         print('Converting to frequencies…')
-        feed = feed.convert_to_frequencies(time_range=time_range)
+        feed = feed.convert_to_frequencies(time_range=time_range, drop_unused=drop_unused)
         print('Building links and nodes…')
         feed.build_links_and_nodes()
         return feed
@@ -96,12 +96,12 @@ class GtfsImporter(Feed):
                 time_columns
             ].applymap(to_seconds)
 
-    def build_links(self, time_expanded=False, shape_dist_traveled=False):
+    def build_links(self, time_expanded=False, shape_dist_traveled=False, 
+            keep_origin_columns=['departure_time'],
+            keep_destination_columns=['arrival_time']):
         """
         Create links and add relevant information
         """
-        keep_origin_columns=['departure_time', 'pickup_type']
-        keep_destination_columns=['arrival_time', 'drop_off_type']
         if shape_dist_traveled:
             keep_origin_columns += ['shape_dist_traveled']
             keep_destination_columns += ['shape_dist_traveled']

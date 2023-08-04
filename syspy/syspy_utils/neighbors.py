@@ -22,8 +22,6 @@ both dictionaries use the 'dict[origin][destination]' convention
 pos is a dictionary that contains the coordinates of the centroids
 """
 
-__author__ = 'qchasserieau'
-
 import itertools
 import json
 import os
@@ -358,7 +356,7 @@ def neighborhood_dataframe(zones, additional_links=frozenset({})):
                         [zones.loc[id_destination]['longitude'], zones.loc[id_destination]['latitude']]
                     )
                 except Exception as e:
-                    print(str(e), ' --> computing centroid')
+                    print(e, ' --> computing centroid')
                     origin_centroid = geometry_origin.centroid
                     destination_centroid = geometry_destination.centroid
                 link_geometry = shapely.geometry.LineString([origin_centroid, destination_centroid])

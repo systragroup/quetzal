@@ -3,7 +3,7 @@ import pandas as pd
 from quetzal.engine import connectivity, engine, gps_tracks
 from quetzal.engine.add_network import NetworkCaster
 from quetzal.engine.add_network_mapmatching import NetworkCaster_MapMaptching
-from quetzal.model import cubemodel, model
+from quetzal.model import cubemodel, model, integritymodel
 from syspy.spatial import spatial
 from syspy.renumber import renumber
 from syspy.skims import skims
@@ -174,14 +174,12 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             )
         """
         if keep_centroids:
-
-            try:
-                self.centroids
-            except:
-
+            if not hasattr(self, 'centroids') or self.centroids.equals(
+                integritymodel.geodataframe_place_holder('Point')
+            ):
                 self.centroids = self.zones.copy()
                 self.centroids['geometry'] = self.centroids['geometry'].apply(
-                lambda g: g.centroid)
+                    lambda g: g.centroid)
         else:
             self.centroids = self.zones.copy()
             self.centroids['geometry'] = self.centroids['geometry'].apply(

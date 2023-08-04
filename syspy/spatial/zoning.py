@@ -136,7 +136,9 @@ def cluster_snail_number(zones, n_clusters=20, centre=None, buffer=10):
     """
     zones: GeoSeries
     """
-    df = pd.DataFrame(zones).reset_index().copy()
+
+    df = pd.DataFrame(zones['geometry']).copy()
+    df['index'] = zones.index
 
     if centre is None:
         union = cascaded_union(df.geometry).buffer(buffer)
@@ -168,7 +170,9 @@ def cluster_snail_number(zones, n_clusters=20, centre=None, buffer=10):
             'index': 'original_index'
         }
     )
-    return concat[['cluster', 'id', 'original_index']]
+    ids = concat.set_index('original_index')['id']
+    clusters = concat.set_index('original_index')['cluster']
+    return ids, clusters
 
 
 def greedy_color(zoning, colors=syscolors.rainbow_shades, buffer=1e-6):

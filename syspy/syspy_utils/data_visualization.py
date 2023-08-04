@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import rasterio
-from rasterio import plot as _
+from rasterio import plot
 import six
 from shapely import geometry
 from sklearn import linear_model
@@ -395,9 +395,11 @@ def add_north_and_scalebar(ax, fontsize=14):
 
 
 def bandwidth(
-    gdf, value_column, max_value=None, power=1, legend=True, legend_values=None, legend_length=1 / 3,
-    label_column=None, max_linewidth_meters=100, variable_width=True, line_offset=True, cmap=spectral,
-    geographical_bounds=None, label_kwargs={'size': 12}, *args, **kwargs
+    gdf, value_column, max_value=None, power=1, legend=True, offset_direction='right', offset_ratio=0.5,
+    label_column=None, max_linewidth_meters=100, variable_width=True, line_offset=True, cmap='Spectral',
+    arrows=False, geographical_bounds=None, label_kwargs={'size': 12}, 
+    arrow_kwargs={'head_width': -150}, 
+    *args, **kwargs
 ):
     # TODO:
     # 1. add to plot model
@@ -412,25 +414,14 @@ def bandwidth(
         label_column = 'label'
     # Create base plot
     plot = base_plot(df, geographical_bounds, *args, **kwargs)
-
-    # Handle legend
-    if legend:
-        if legend_values is None:
-            s = df[value_column].copy()
-            r = int(np.log10(s.mean()))
-            legend_values = [np.round(s.quantile(i / 5), -r) for i in range(6)]
-        legend_df = create_legend_geodataframe(
-            plot, legend_values=legend_values, relative_width=legend_length,
-            label_column=label_column, value_column=value_column
-        )
-        df = pd.concat([legend_df, df]).reset_index()
+    from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
+    divider = make_axes_locatable(plot)
+    cax = divider.append_axes('right', size="2%", pad=0.05)
 
     # Plot values
     # Power scale
     df['power'] = np.power(df[value_column], power)
     power_max_value = np.power(max_value, power) if max_value else df['power'].max()
-    # Color
-    df['color'] = color_series(df['power'], colors=cmap, max_value=power_max_value)
     # Linewidth
     if variable_width:
         df['geographical_width'] = width_series(df['power'], max_linewidth_meters, max_value=power_max_value)
@@ -440,21 +431,55 @@ def bandwidth(
     # Offset
     if line_offset:
         df['geometry'] = df.apply(
-            lambda x: x['geometry'].parallel_offset(x['geographical_width'] * 0.5, 'right'), 1
+            lambda x: x['geometry'].parallel_offset(x['geographical_width'] * offset_ratio, offset_direction), 1
         )
         df = df[df.geometry.type == 'LineString']
         df = df[df.length > 0]  # offset can create empty LineString
         # For some reason, right offset reverse the coordinates sequence
         # https://github.com/Toblerity/Shapely/issues/284
-        df['geometry'] = df.geometry.apply(lambda x: geometry.LineString(x.coords[::-1]))
+        if offset_direction=='right':
+            df['geometry'] = df.geometry.apply(lambda x: geometry.LineString(x.coords[::-1]))
+    
     # Plot
-    df.plot(color=df['color'], linewidth=df['linewidth'], ax=plot)
+    if arrows:
+        # Color and colorbar
+        plt_cmap = plt.get_cmap(cmap)  
+        df.plot(value_column, linewidth=1, ax=plot, cax=cax, legend=legend, cmap=cmap, zorder=-5)
+        norm = plt.Normalize(df[value_column].min(), df[value_column].max())
 
+        df['length'] = df.length
+
+        shape = 'right' if offset_direction=='right' else 'left'
+        
+        def plot_arrow(row):
+            g = row['geometry']
+            x_pos = g.coords[0][0]
+            y_pos = g.coords[0][1]
+            x_s = g.coords[1][0] - g.coords[0][0]
+            y_s = g.coords[1][1] - g.coords[0][1]
+            plot.arrow(
+                x_pos, y_pos,
+                x_s, y_s,
+                lw=row['linewidth']*0.9,
+                color=plt_cmap(norm(row[value_column])),
+                head_length=row['length'] * 0.25,
+                shape=shape,
+                length_includes_head=False,
+                **arrow_kwargs
+            )
+            
+        df.apply(plot_arrow, axis=1)
+    else:
+        df.plot(value_column, linewidth=df['linewidth'], ax=plot, cax=cax, legend=legend, cmap=cmap, vmax=max_value)
+    
     # Plot label
     df_label = create_label_dataframe(df, label_column)
+    if offset_direction == 'left':
+        df_label['label_angle'] += 180
+        df_label['label_offset'] *= -1
     df_label.apply(
         lambda x: plot.annotate(
-            text=x[label_column],
+            x[label_column],
             xy=x.geometry.centroid.coords[0],
             xytext=x['label_offset'],
             textcoords='offset pixels',
@@ -466,8 +491,9 @@ def bandwidth(
         axis=1
     )
 
-    plt.xticks([])
-    plt.yticks([])
+    plot.set_xticks([])
+    plot.set_yticks([])
+
     return plot
 
 
@@ -500,7 +526,7 @@ def trim_axs(axs, N):
 
 
 def create_legend_geodataframe(
-        plot, legend_values, relative_width=0.3,
+        plot, legend_values, relative_width=0.3, x_start=1/100, y_start=1/100,
         value_column='value', label_column='label'
 ):
     """
@@ -526,8 +552,8 @@ def create_legend_geodataframe(
     data = []
     for v in reversed(legend_values):
         g = geometry.LineString([
-            (xlims[1] - plot_width / 100 - rank * dx, ylims[0] + plot_height / 100),
-            (xlims[1] - plot_width / 100 - (rank + 1) * dx, ylims[0] + plot_height / 100)]
+            (xlims[1] - plot_width * x_start - rank * dx, ylims[0] + plot_height * y_start),
+            (xlims[1] - plot_width * x_start- (rank + 1) * dx, ylims[0] + plot_height * y_start)]
         )
         rank += 1
         data.append([v, g, str(v)])
@@ -632,4 +658,5 @@ def create_label_dataframe(df, label_column='label', linewidth_column='linewidth
     label_df['normal'] = label_df.geometry.apply(get_normal)
     columns = ['label_angle', 'label_offset', 'va']
     label_df[columns] = label_df.apply(get_label_angle_alignment_offset, 1)[columns]
+
     return label_df

@@ -5,6 +5,7 @@ import geopandas as gpd
 import pandas as pd
 from shapely import geometry
 import string
+from . import road as road_io
 
 
 class OSMContentHandler(xml.sax.handler.ContentHandler):
@@ -182,12 +183,12 @@ def printable(value):
         return value
 
 
-def clean_road_links(road_links, copy=False):
+def clean_road_links(road_links, copy=False, highway_order=highway_order):
 
     if copy:
         road_links = road_links.copy()
 
-    road_links['highway'] = road_links['highway'].apply(highest_highway_order)
+    road_links['highway'] = road_links['highway'].apply(highest_highway_order, highway_order)
     road_links['lanes'] = road_links['lanes'].fillna(1).apply(min_lanes).astype(int)
 
     for c in set(road_links.columns) - {'geometry'}:
@@ -196,3 +197,31 @@ def clean_road_links(road_links, copy=False):
     road_links['name'] = road_links['name'].apply(printable)
 
     return road_links
+
+
+def clean_osm_links_and_nodes(road_nodes, road_links, copy=False, highway_order=highway_order):
+    if copy:
+        road_links = road_links.copy()
+        road_nodes = road_nodes.copy()
+
+    # index
+    road_links.reset_index(drop=False, inplace=True)
+    road_links.rename(columns={'u': 'a', 'v': 'b'}, inplace=True)
+    try:
+        road_nodes['osmid'] = road_nodes['osmid'].astype(str)
+    except KeyError:
+        road_nodes['osmid'] = [str(i) for i in road_nodes.index]
+        
+    # prefix
+    road_nodes.index = 'osm_node_' + road_nodes['osmid'].astype(str)
+    road_nodes = road_nodes[['geometry']]
+    # print(road_links.columns)
+    road_links[['a', 'b']] = 'osm_node_' + road_links[['a', 'b']].astype(str)
+
+    # highway
+    road_links = clean_road_links(road_links, copy=copy, highway_order=highway_order)
+
+    # reversed geometries
+    road_links = road_io.merge_reversed_geometries(road_links)
+
+    return road_nodes, road_links

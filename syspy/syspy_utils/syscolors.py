@@ -11,6 +11,20 @@ import itertools
 import matplotlib.pyplot as plt
 import numpy as np
 
+# couleurs majeurs
+main_colors = ['#d22328', '#003e4a', '#647d6e', '#643c5a', '#5c7683', '#2eb2b2', '#559bb4']
+
+minor_colors = [
+    '#73b140', '#95c461', '#87a067', '#80c8be', #greens
+    '#5298d0', '#25b9ea', '#3a3678', #blues
+    '#6c3f98', '#855182',  '#a01c3d', '#ca3171', # purple-pink
+    '#f08029', '#f8b61d', #orange - yellow
+    '#5e3c1c', '#998872',  # browns
+    '#d7d5e0', '#e4dce0', '#f5bfad', '#feead1', '#ffeeaa',  #pastel 
+    '#b1cadc', '#b3dee6', '#c9d582', '#c5dfc7'
+]
+
+
 # Couleurs d'accompagnement de la charte graphique
 rainbow_shades = ["#D22328", "#559BB4", "#91A564", "#DC9100", "#8C4B7D", "#A08C69",
                   "#647D6E", "#5A7382", "#64411E", "#A00037", "#643C5A"]
@@ -37,6 +51,8 @@ linedraft_shades = ["#1f77b4", "#2ca02c", "#d62728", "#9467bd", "#ff7f0e", "#8c5
                     "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"]
 
 all_colors = {
+    'main_colors': main_colors,
+    'minor_colors': minor_colors,
     'rainbow_shades': rainbow_shades,
     'red_shades': red_shades,
     'grey_shades': grey_shades,

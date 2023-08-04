@@ -25,6 +25,7 @@ def read_var(file='parameters.xlsx', scenario='base', period=None, return_ancest
         parameter_frame.sort_index(inplace=True)
     parameter_frame.drop(['description', 'desc', 'unit', 'type', 'period'], axis=1, errors='ignore', inplace=True)
     parameter_frame.set_index(['category', 'parameter'], inplace=True)
+    parameter_frame.dropna(how='all', inplace=True)
     if return_ancestry:
         ancestry = get_ancestry(parameter_frame, scenario=scenario)
     for c in parameter_frame.columns:

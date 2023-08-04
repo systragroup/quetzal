@@ -106,6 +106,9 @@ class PlotModel(summarymodel.SummaryModel):
         ax=None,
         separated=False,
         basemap_url=None,
+        basemap_raster=None,
+        north_arrow=None,
+        scalebar=None,
         zoom=9,
         *args,
         **kwargs
@@ -116,21 +119,33 @@ class PlotModel(summarymodel.SummaryModel):
         paths = self.car_los.set_index(['origin', 'destination']).loc[origin, destination]
         if paths.ndim == 1: # their is only one path 
             paths = pd.DataFrame(data=paths).T 
-            
+        def build_road_path(p, lp):
+            if len(p):
+                rp = p[:2]
+                rp += lp
+                rp += p[-2:]
+                return rp
+            else:
+                return lp
+        paths['road_path'] = paths[['path', 'link_path']].apply(
+            lambda x: build_road_path(x['path'], x['link_path']), 1
+        )
         # the path is added to the ax
-        for p in tqdm(list(paths['path'])):
+        for p in tqdm(list(paths['road_path'])):
             ax = plot_one_path(p, styles, ax=ax)
             ax.set_xticks([])
             ax.set_yticks([])
 
-        for p in tqdm(list(paths['link_path'])):
-            ax = plot_one_path(p, styles, ax=ax)
-            ax.set_xticks([])
-            ax.set_yticks([])
 
         if basemap_url is not None:
             assert self.epsg == 3857
             data_visualization.add_basemap(ax, url=basemap_url, zoom=zoom)
+        if north_arrow is not None:
+            data_visualization.add_north(ax)
+        if scalebar is not None:
+            data_visualization.add_scalebar(ax)
+        if basemap_raster is not None:
+            data_visualization.add_raster(ax, raster=basemap_raster)
         
         return ax
 
@@ -277,6 +292,7 @@ class PlotModel(summarymodel.SummaryModel):
     def display_aggregated_edges(self, origin, destination, ranksep=0.1, rankdir='LR', *args, **kwargs):
         from graphviz import Source
         a = self.get_aggregated_edges(origin, destination, *args, **kwargs)
+        a = a.groupby(['i', 'j'], as_index=False)[['p']].sum() # for clusters
         a['l'] = 'p=' + np.round(a['p'], 2).astype(str)  # + '\nh:' + a['h'].astype(str)
         a.loc[a['p'] == 1, 'l'] = ''
 
@@ -320,7 +336,10 @@ class PlotModel(summarymodel.SummaryModel):
 
         try:
             loc = set(self.loaded_edges.loc[self.loaded_edges['dummy'] > 0].index)
-            access = pd.concat([self.road_links, self.zone_to_road, self.road_to_transit])
+            access = self.road_links
+            for attr in ['zone_to_road', 'road_to_transit']:
+                if hasattr(self, attr):
+                    access = pd.concat([access, getattr(self, attr)])
             loc = loc.intersection(access.index)
             access = access.loc[loc]
             assert len(access) > 0
@@ -357,7 +376,7 @@ class PlotModel(summarymodel.SummaryModel):
         ax.set_xticks([])
 
         mask = (self.nodes['boardings'] +self.nodes['alightings']) > 1e-9
-        nodes = self.nodes[mask]
+        nodes = gpd.GeoDataFrame(self.nodes[mask])
         nodes.plot(ax=ax, marker=10, markersize=200, zorder=10, column='boardings', cmap=cmap, norm=norm, linewidth=0)
         nodes.plot(ax=ax, marker=11, markersize=200, zorder=10, column='alightings', cmap=cmap, norm=norm, linewidth=0)
 
