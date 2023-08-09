@@ -620,7 +620,7 @@ class AnalysisModel(summarymodel.SummaryModel):
             values.append(agencies_od_lists)
         self.pt_los['arod_list'] = values
 
-    def compute_od_fares(self):
+    def compute_od_fares(self, no_transfers=False):
         # builds od fare graph to compute cheapest fare between o and d for a given agency
         fares = pd.merge(self.fare_rules, self.fare_attributes, on='fare_id')
         fare_graph_dict = {}
@@ -631,7 +631,7 @@ class AnalysisModel(summarymodel.SummaryModel):
             all_pairs = nx.all_pairs_dijkstra_path_length(dg)
             fare_graph_dict[agency_id] = dict(all_pairs)
 
-        def arod_list_to_aod_list(arod_list):
+        def arod_list_to_aod_list(arod_list, no_transfers=False):
             if len(arod_list) == 0:
                 return []
 
@@ -639,7 +639,7 @@ class AnalysisModel(summarymodel.SummaryModel):
             agency, route, origin, destination = arod_list[0]
 
             for a, r, o, d in arod_list[1:]:
-                if a != agency:
+                if (a != agency) | no_transfers:
                     aod.append((agency, origin, destination))
                     origin = o
                     agency = a
@@ -648,8 +648,8 @@ class AnalysisModel(summarymodel.SummaryModel):
             aod.append((agency, origin, destination))
             return aod
 
-        def od_price_breakdown(arod_list):
-            aod_list = arod_list_to_aod_list(arod_list)
+        def od_price_breakdown(arod_list, no_transfers=False):
+            aod_list = arod_list_to_aod_list(arod_list, no_transfers=no_transfers)
 
             breakdown = {}
             for agency, o, d in aod_list:
@@ -663,7 +663,7 @@ class AnalysisModel(summarymodel.SummaryModel):
                     price = np.nan
             return breakdown
 
-        self.pt_los['od_fares'] = self.pt_los['arod_list'].apply(od_price_breakdown)
+        self.pt_los['od_fares'] = self.pt_los['arod_list'].apply(od_price_breakdown, no_transfers=no_transfers)
 
     def compute_route_fares(self, consecutive=False, irrelevant_consecutive_fares=None):
         transfers = self.fare_attributes.set_index('fare_id')['transfers'].to_dict()
