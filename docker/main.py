@@ -85,6 +85,7 @@ def handler(event, context):
     print('Download inputs from s3: {} seconds'.format(t1 - t0))
     download_s3_folder(bucket_name, event['scenario_path_S3'])
     arg = json.dumps(event['launcher_arg'])
+    print(arg)
 
     file = os.path.join('/tmp', os.path.basename(notebook).replace('.ipynb', '.py'))
     os.system('jupyter nbconvert --to python %s --output %s' % (notebook, file))
@@ -99,8 +100,8 @@ def handler(event, context):
     t2 = time.time()
     print('Notebook execution: {} seconds'.format(t2 - t1))
 
+    print(content)
     if 'Error' in content and "end_of_notebook" not in content:
-        print(content)
         raise RuntimeError(format_error(content))
 
     os.remove(file)

@@ -168,7 +168,7 @@ def to_json(file = 'parameters.xlsx', scenario = 'base'):
 
     var = var.reset_index().set_index('category')
     var = var.rename(columns={'parameter': 'text', scenario: 'value', 'unit': 'units', 'description': 'hint'})
-    var['name'] = var.index + '_' + var['text']
+    var['name'] = var['text']
     var = var.where(pd.notnull(var), None)
 
     def records(df):
