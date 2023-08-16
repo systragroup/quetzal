@@ -282,7 +282,8 @@ def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode=
 
         while not centroid.buffer(buffer).contains(LineString(df['geometry'].values)):
             buffer += 0.1
-        polygon = [{"lat": y,"lng": x} for x, y in list(zip(*centroid.buffer(buffer).exterior.coords.xy))[:-1]]
+        polygon = [{"lat": np.round(y,5),"lng": np.round(x,5)} for x, y in list(zip(*centroid.buffer(buffer).exterior.coords.xy))]
+        polygon = _remove_duplicates(polygon)
         if region == 'polygon':
             regionDefinition = {
                                 "type": "polygon",
@@ -296,6 +297,7 @@ def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode=
             print('buffer larger than 1.7. region definition set to world as the polygon is most likely')
             regionDefinition = {"type": "world"}
         # departureTime : Time of departure at all origins, in ISO 8601 (RFC 3339) 
+
         url = 'https://matrix.router.hereapi.com/v8/matrix?apiKey=' + apiKey + '&async=false'
         body = {
             "origins": origins,
@@ -420,3 +422,13 @@ def multi_get_distance_matrix(origins,destinations,batch_size=(15,15),api='here'
             sleep(0.2)
         mat = pd.concat([mat,temp_mat],axis=0)
     return mat
+
+def _remove_duplicates(ls):
+    seen = {}
+    result = []
+
+    for item in ls:
+        if str(item) not in seen:
+            result.append(item)
+            seen[str(item)] = True
+    return result
