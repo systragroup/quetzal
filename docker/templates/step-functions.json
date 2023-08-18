@@ -1,6 +1,35 @@
 {
-  "StartAt": "STEP 1",
+  "StartAt": "Authorization",
   "States": {
+    "Authorization": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "Payload": {
+          "authorization.$": "$.authorization",
+          "model": <model-name>, # TO EDIT.
+          "scenario_path_S3.$": "$.scenario_path_S3",
+          "launcher_arg.$": "$.launcher_arg",
+          "metadata.$": "$.metadata"
+        },
+        "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-api-auth:$LATEST"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 3,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "STEP 1" # TO EDIT
+    },
     "STEP 1": { # TO EDIT
       "Type": "Task",
       "Resource": "arn:aws:states:::lambda:invoke",

@@ -1,5 +1,6 @@
 resource "aws_s3_bucket" "storage" {
     bucket = var.bucket_name
+    tags={"cost:project":"quetzal"}
 }
 
 resource "aws_s3_bucket_cors_configuration" "storage" {

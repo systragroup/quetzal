@@ -31,6 +31,16 @@ data "aws_iam_policy_document" "sfn_lambda_policy" {
         actions = ["lambda:InvokeFunction"]
         resources = ["${data.aws_lambda_function.lambda.arn}"]
     }
+    statement   {
+        effect = "Allow"
+        actions = ["lambda:InvokeFunction"]
+        resources = ["arn:aws:lambda:ca-central-1:142023388927:function:quetzal-api-auth:*"]
+    }
+    statement   {
+        effect = "Allow"
+        actions = ["lambda:InvokeFunction"]
+        resources = ["arn:aws:lambda:ca-central-1:142023388927:function:quetzal-api-auth"]
+    }
 }
 
 

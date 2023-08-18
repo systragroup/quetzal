@@ -98,7 +98,10 @@ Quenedi need its inputs in the following folders :
 * inputs/pt/nodes.geojson
 * inputs/road/links.geojson
 * inputs/road/nodes.geojson
+* inputs/od/od.geojson
 * inputs/params.json
+
+Note that those are optional. You can have a model without PT, or without road, or without ODs...
 
 ## Deploying Model
 
@@ -135,7 +138,7 @@ Quenedi need its inputs in the following folders :
    python update-S3-model-files.py <model_folder> <scenario1> <scenario2>
    ```
 
-Note: this script will copy all files from `<model_folder>/scenarios/<scenario1>/` to S3. `<br>`
+Note: this script will copy all files from `<model_folder>/scenarios/<scenario1>/` to S3. <br>
 for example. with quetzal_test and a base scenario we would have in quetzal_test: `scenarios/base/inputs/pt/links.geojson` and so on
 
 ## Create Cognito User group (AWS Admin only)
@@ -145,6 +148,8 @@ for example. with quetzal_test and a base scenario we would have in quetzal_test
   * Select the role created by terraform (Cognito_quetzal_pool_`<model-name>`).
 * Update congito_group_access.json in quetzal-config bucket to add available bucket to group.
 * you can add the policy and add the bucket (cognito_group_access.json) to existing group too.
+
+## Done !
 
 # Update a model on ECR
 
