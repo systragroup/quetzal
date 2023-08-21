@@ -13,6 +13,12 @@ variable "lambda_function_name" {
   type          = string
 }
 
+variable "tags" {
+    description = "Tags"
+    type        = map
+    default     = {"cost:project"="quetzal"}
+}
+
 variable "state_machine_definition" {
   description = "New state machine definition"
   type        = string

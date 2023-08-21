@@ -15,12 +15,14 @@ provider "aws" {
 module "s3" {
     source = "./modules/storage"
     bucket_name = var.quetzal_model_name       
+    tags = var.quetzal_tags
 }
 
 # create ECR isntance with a dummy docker image
 module "ecr" {
     source = "./modules/ecr"
-    repo_name = var.quetzal_model_name       
+    repo_name = var.quetzal_model_name
+    tags = var.quetzal_tags     
 }
 
 # create CloudWatch group, lambda function, IAM role and policy for the lambda function. use dummy image.
@@ -31,6 +33,7 @@ module "lambda" {
     ecr_repo_name = var.quetzal_model_name  
     bucket_name = var.quetzal_model_name
     role_name = "lambda-${var.quetzal_model_name}-role"
+    tags = var.quetzal_tags
     memory_size = var.lambda_memory_size
     time_limit = var.lambda_time_limit
     storage_size  = var.lambda_storage_size
@@ -41,7 +44,8 @@ module "step_function" {
     source = "./modules/step_function"
     step_function_name = var.quetzal_model_name       
     step_function_role_name="sfn-${var.quetzal_model_name}-role"
-    lambda_function_name = var.quetzal_model_name     
+    lambda_function_name = var.quetzal_model_name
+    tags = var.quetzal_tags 
 }
 # create IAM role and policy for Cognito user to access the bucket and other microservices.
 module "user_role"{

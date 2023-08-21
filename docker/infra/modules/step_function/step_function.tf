@@ -14,8 +14,11 @@ resource "aws_iam_role_policy" "s3_policy" {
 
 resource "aws_sfn_state_machine" "sfn_state_machine" {
   name     = var.step_function_name
+  tags     = var.tags
+
   role_arn = aws_iam_role.iam_for_sfn.arn
   definition = var.state_machine_definition
+  
   lifecycle {
     ignore_changes = [
       definition,

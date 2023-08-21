@@ -9,6 +9,7 @@ resource "aws_iam_role" "iam_for_lambda" {
 resource "aws_cloudwatch_log_group" "log_group" {
   name              = "/aws/lambda/${var.function_name}"
   retention_in_days = 14
+  tags              = var.tags
 }
 
 # 3) create lambda CloudWatch Logging policy
@@ -37,6 +38,7 @@ resource "aws_lambda_function" "test_lambda" {
     # If the file is not in the current working directory you will need to include a
     # path.module in the filename.
     function_name       = var.function_name
+    tags                = var.tags
     role                = aws_iam_role.iam_for_lambda.arn
     architectures       = ["x86_64"] 
     package_type        = "Image"
