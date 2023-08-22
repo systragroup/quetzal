@@ -1,5 +1,6 @@
 resource "aws_s3_bucket" "storage" {
-    bucket = var.bucket_name
+    bucket  = var.bucket_name
+    tags    = var.tags
 }
 
 resource "aws_s3_bucket_cors_configuration" "storage" {
