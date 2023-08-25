@@ -23,7 +23,7 @@ def _get_consecutive_counts(fare_id_list):
 
 def get_counts(fare_id_list,  consecutive=False):
     if consecutive :
-        return _get_consecutive_counts
+        return _get_consecutive_counts(fare_id_list)
     fare_counts = []
     for fare_id in list(np.unique(fare_id_list)):
         if fare_id != 'nan':
@@ -50,7 +50,7 @@ def get_price_breakdown(counts, transfers, price):
 
 
 def get_fare_options(arod_list, route_fares_dict):
-    return tuple(route_fares_dict[arod[1]] for arod in arod_list)
+    return tuple(route_fares_dict.get(arod[1],frozenset({'nan'})) for arod in arod_list)
 
 
 def get_fare_id_combinations(fare_options, irrelevant_consecutive_fares=None):

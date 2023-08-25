@@ -682,6 +682,7 @@ class AnalysisModel(summarymodel.SummaryModel):
             cheapest_breakdown_dict[fo] = cheapest_breakdown
 
         self.pt_los['route_fares'] = [cheapest_breakdown_dict[fo] for fo in fare_options]
+        self.pt_los['route_fares'] = self.pt_los['route_fares'].apply(lambda x: {np.nan: 0} if x == {'nan': 0} else x)
 
     def fast_compute_route_fares(self, consecutive=False):
         msg = 'cannot be used with multiple fare_id for a given route'
