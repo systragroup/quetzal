@@ -1,5 +1,5 @@
 # docker build need to be run from folder containing model and quetzal library
-FROM public.ecr.aws/lambda/python:3.8.2023.07.19.04
+FROM public.ecr.aws/lambda/python:3.8
 
 ARG QUETZAL_MODEL_NAME='./'
 ENV QUETZAL_MODEL_NAME=$QUETZAL_MODEL_NAME

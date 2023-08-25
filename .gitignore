@@ -10,6 +10,7 @@ tests/data/out/
 .idea/
 build/
 *.env
+!docker/templates/.env
 # Local .terraform directories
 **/.terraform/*
 docker/infra/.terraform/*
