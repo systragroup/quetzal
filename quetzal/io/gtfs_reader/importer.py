@@ -102,7 +102,7 @@ class GtfsImporter(Feed):
         """
         Create links and add relevant information
         """
-        if shape_dist_traveled:
+        if shape_dist_traveled and 'shape_dist_traveled' not in keep_origin_columns:
             keep_origin_columns += ['shape_dist_traveled']
             keep_destination_columns += ['shape_dist_traveled']
 
@@ -126,7 +126,7 @@ class GtfsImporter(Feed):
         )
 
         if shape_dist_traveled:
-            self.links['shape_dist_traveled'] = self.links['shape_dist_traveled_destination'] -self.links['shape_dist_traveled_origin']
+            self.links['shape_dist_traveled'] = self.links['shape_dist_traveled_destination'] - self.links['shape_dist_traveled_origin']
             self.links.drop(columns=['shape_dist_traveled_origin', 'shape_dist_traveled_destination'], inplace=True)
 
         if not time_expanded:
@@ -143,12 +143,12 @@ class GtfsImporter(Feed):
             epsg = get_epsg(self.stops.iloc[1]['stop_lat'], self.stops.iloc[1]['stop_lon'])
             if log: print('export geometries in epsg:', epsg)
             self.nodes = self.nodes.to_crs(epsg=epsg)
-
-        self.links['geometry'] = linestring_geometry(
-            self.links,
-            self.nodes.set_index('stop_id')['geometry'].to_dict(),
-            'a',
-            'b'
-        )
-        self.links = gpd.GeoDataFrame(self.links)
-        self.links.crs = self.nodes.crs
+        if len(self.links) > 0:
+            self.links['geometry'] = linestring_geometry(
+                self.links,
+                self.nodes.set_index('stop_id')['geometry'].to_dict(),
+                'a',
+                'b'
+            )
+            self.links = gpd.GeoDataFrame(self.links)
+            self.links.crs = self.nodes.crs
