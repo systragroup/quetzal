@@ -2,16 +2,18 @@
 import geopandas as gpd
 import gtfs_kit as gk
 import pandas as pd
+import numpy as np
 from shapely.geometry import LineString
 from syspy.transitfeed import feed_links
-
 from . import patterns
 from .feed_gtfsk import Feed
+from syspy.spatial import spatial
+from quetzal.engine.pathfinder_utils import paths_from_edges
+from tqdm import tqdm
 
 
 def get_epsg(lat, lon):
     return int(32700 - round((45 + lat) / 90, 0) * 100 + round((183 + lon) / 6, 0))
-
 
 
 def to_seconds(time_string):  # seconds
@@ -26,6 +28,132 @@ def linestring_geometry(dataframe, point_dict, from_point, to_point):
             (point_dict[row[from_point]], point_dict[row[to_point]]))
 
     return df.apply(geometry, axis=1)
+
+
+def euclidean_distance(p1, p2):
+    return np.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
+
+
+
+def cut(line, distance):
+    # Cuts a line in two at a distance from its starting point
+    if distance <= 0.0:
+        return [None, LineString(line)]
+    if distance >= line.length:
+        return [LineString(line), None]
+    coords = list(line.coords)
+    pd = 0
+    for i, p in enumerate(coords):
+        if i == 0:
+            continue
+        pd += euclidean_distance(p, coords[i - 1])
+        if pd == distance:
+            return [
+                LineString(coords[:i + 1]),
+                LineString(coords[i:])]
+        if pd > distance:
+            cp = line.interpolate(distance)
+            return [
+                LineString(coords[:i] + [(cp.x, cp.y)]),
+                LineString([(cp.x, cp.y)] + coords[i:])]
+
+
+def shape_geometry(self, from_point, to_point, max_candidates=10, log=False,**kwargs):
+    to_concat = []
+
+    point_dict = self.nodes.set_index('stop_id')['geometry'].to_dict()
+    shape_dict = self.shapes.set_index('shape_id')['geometry'].to_dict()
+
+    stop_ids = set(self.links[[from_point, to_point]].values.flatten())
+    stop_pts = pd.DataFrame([point_dict.get(n) for n in stop_ids], index=list(stop_ids), columns=['geometry'])
+
+    for trip in tqdm(set(self.links['trip_id'])):
+        links = self.links[self.links['trip_id'] == trip].copy()
+        links = links.drop_duplicates(subset=['link_sequence']).sort_values(by='link_sequence')
+        s = shape_dict.get(links.iloc[0]['shape_id'])
+        trip_stops = list(links[from_point]) + [links.iloc[-1][to_point]]
+
+        # Find segments candidates from shape for projection
+        segments = pd.DataFrame(list(map(LineString, zip(s.coords[:-1], s.coords[1:]))), columns=['geometry'])
+        n_candidates = min([len(segments), max_candidates])
+
+        ng = spatial.nearest(stop_pts.loc[set(trip_stops)], segments, n_neighbors=n_candidates)
+        ng = ng.set_index(['ix_one', 'rank'])['ix_many'].to_dict()
+
+        # Distance matrix (stops * n_candidates)
+        distances_a = np.empty((len(trip_stops), n_candidates))
+        for r in range(n_candidates):
+            proj_pts = []
+            for n in trip_stops:
+                seg = segments.loc[ng[(n, r)]]['geometry']
+                proj_pts.append(seg.interpolate(seg.project(point_dict.get(n))))
+            distances = [s.project(pts) for pts in proj_pts]
+            distances_a[:, r] = distances
+        # TODO (faster): create custom nearest to build distance matrix directly
+
+        # Differential distance matrix (transition cost between candidates)
+        df = pd.DataFrame(distances_a)
+        diff_df = pd.DataFrame({from_point: df.index[:-1], to_point: df.index[1:]})
+        for i in range(n_candidates):
+            for j in range(n_candidates):
+                diff_col = df.iloc[:, j].shift(-1) - df.iloc[:, i]
+                diff_df[(i, j)] = list(diff_col)[:-1]
+
+        diff_df = diff_df.set_index([from_point, to_point])
+        diff_df.columns = pd.MultiIndex.from_tuples(diff_df.columns, names=['from', 'to'])
+        diff_df[diff_df <= 0.0] = 1e9
+
+        # Compute diffrential between shape_dist_traveled and transition matrix
+        shape_dist_traveled_diff = list(self.stop_times[self.stop_times['trip_id'] == trip].sort_values(by='stop_sequence')['shape_dist_traveled'].diff())[1:]
+        for c in diff_df.columns:
+            diff_df[c] = abs(shape_dist_traveled_diff - diff_df[c])
+
+        diff_df = diff_df.stack().stack().reset_index()
+        diff_df['from'] = diff_df[from_point].astype(str) + '_' + diff_df['from'].astype(str)
+        diff_df['to'] = diff_df[to_point].astype(str) + '_' + diff_df['to'].astype(str)
+
+        # Build edges + dijkstra
+        candidates_e = diff_df[['from', 'to', 0]].values
+        source_e = np.array([["source"] * n_candidates,
+                            [str(0) + '_' + str(c) for c in range(n_candidates)],
+                            np.ones(n_candidates)], dtype="O").T
+        target_e = np.array([[str(len(trip_stops) - 1) + '_' + str(c) for c in range(n_candidates)],
+                            ["target"] * n_candidates,
+                            np.ones(n_candidates)], dtype="O").T
+
+        edges = np.concatenate([candidates_e, source_e, target_e])
+        path = paths_from_edges(edges=edges, od_set={('source', 'target')})
+        best_distances = [int(p.split('_')[-1]) for p in path['path'][0][1:-1]]
+
+        distances = list(np.take_along_axis(distances_a, np.array(best_distances)[:, np.newaxis], axis=1).flatten())
+
+        # Cut shape
+        cuts = []
+        for d1, d2 in zip(distances[:-1], distances[1:]):
+            first_cut = cut(s, d1)[1]
+            cuts.append(cut(first_cut, d2 - d1)[0])
+
+        for i, c in enumerate(cuts):
+            if c is None:
+                msg = f'''
+                Failed to cut shape for trip {trip}. Replacing by A -> B Linestring.
+                '''
+                if log:
+                    print(msg)
+                cuts = linestring_geometry(links, point_dict, 'a', 'b').values
+        if abs(1 - sum([c.length for c in cuts]) / s.length) > 0.1:
+            msg = f'''
+                Length of trip {trip} is more than 10% longer or shorter than shape.
+                This may be caused by a bad cutting of the shape.
+                Try increasing the maximum number of candidates (max_candidates)
+                '''
+            if log:
+                print(msg)
+
+        links['geometry'] = cuts
+        
+        to_concat.append(links)
+    return gpd.GeoDataFrame(pd.concat(to_concat))
 
 
 class GtfsImporter(Feed):
@@ -78,10 +206,10 @@ class GtfsImporter(Feed):
         feed.build_links_and_nodes()
         return feed
 
-    def build_links_and_nodes(self, time_expanded=False, log=True, **kwargs):
+    def build_links_and_nodes(self, time_expanded=False, shape_dist_traveled=False,from_shape=False, log=True, **kwargs):
         self.to_seconds()
-        self.build_links(time_expanded=time_expanded, **kwargs)
-        self.build_geometries(log=log)
+        self.build_links(time_expanded=time_expanded, shape_dist_traveled=shape_dist_traveled, **kwargs)
+        self.build_geometries(log=log,from_shape=from_shape, **kwargs)
 
     def to_seconds(self):
         # stop_times
@@ -137,18 +265,36 @@ class GtfsImporter(Feed):
         links_trips = pd.merge(self.trips, self.routes, on='route_id')
         self.links = pd.merge(self.links, links_trips, on='trip_id')
 
-    def build_geometries(self, use_utm=True, log=True):
+    def build_geometries(self, use_utm=True, from_shape=False, simplify_dist=5, log=True, **kwargs):
         self.nodes = gk.stops.geometrize_stops_0(self.stops)
         if use_utm:
             epsg = get_epsg(self.stops.iloc[1]['stop_lat'], self.stops.iloc[1]['stop_lon'])
             if log: print('export geometries in epsg:', epsg)
             self.nodes = self.nodes.to_crs(epsg=epsg)
+            if from_shape:
+                self.shapes = gk.shapes.geometrize_shapes_0(self.shapes)
+                self.shapes = self.shapes.to_crs(epsg=epsg)
         if len(self.links) > 0:
-            self.links['geometry'] = linestring_geometry(
-                self.links,
-                self.nodes.set_index('stop_id')['geometry'].to_dict(),
-                'a',
-                'b'
-            )
+            if from_shape:
+                if not use_utm:
+                    raise Exception("If using shape as geometry, use_utm should be set to true")
+                self.links = shape_geometry(
+                    self.copy(),
+                    'a',
+                    'b',
+                    log=log,
+                    **kwargs
+                )
+            else:
+                self.links['geometry'] = linestring_geometry(
+                    self.links,
+                    self.nodes.set_index('stop_id')['geometry'].to_dict(),
+                    'a',
+                    'b'
+                )
             self.links = gpd.GeoDataFrame(self.links)
             self.links.crs = self.nodes.crs
+            # simplify Linestring geometry. (remove anchor nodes)
+            if simplify_dist:
+                self.links.geometry = self.links.simplify(simplify_dist)
+
