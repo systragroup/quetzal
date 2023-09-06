@@ -3,7 +3,7 @@ import geopandas as gpd
 import gtfs_kit as gk
 import pandas as pd
 import numpy as np
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point
 from syspy.transitfeed import feed_links
 from . import patterns
 from .feed_gtfsk import Feed
@@ -206,10 +206,41 @@ class GtfsImporter(Feed):
         feed.build_links_and_nodes()
         return feed
 
-    def build_links_and_nodes(self, time_expanded=False, shape_dist_traveled=False,from_shape=False, log=True, **kwargs):
+    def build_links_and_nodes(self, 
+                              time_expanded=False, 
+                              shape_dist_traveled=False, 
+                              from_shape=False, 
+                              stick_nodes_on_links=False,
+                              log=True, 
+                              **kwargs):
+        """
+        Build links and nodes from a GTFS.
+
+        Parameters
+        ----------
+        time_expanded : bool, 
+            (default = False)
+        shape_dist_traveled : bool, 
+            if True, add the shape_dist_travel to each links (their lenght). (default = False)
+        from_shape : bool, 
+            if True, create links with the GTFS shapes.
+            else just conenct stops  with straight lines. (default = False)
+        stick_nodes_on_links : bool, 
+            Change nodes position to be on the links if true
+            and duplicated nodes used on multiple links (default = False)
+        log : bool
+            (default = False)
+
+
+      
+        Builds
+        links and nodes.
+        ----------
+
+        """        
         self.to_seconds()
         self.build_links(time_expanded=time_expanded, shape_dist_traveled=shape_dist_traveled, **kwargs)
-        self.build_geometries(log=log,from_shape=from_shape, **kwargs)
+        self.build_geometries(from_shape=from_shape, stick_nodes_on_links=stick_nodes_on_links, log=log, **kwargs)
 
     def to_seconds(self):
         # stop_times
@@ -265,7 +296,13 @@ class GtfsImporter(Feed):
         links_trips = pd.merge(self.trips, self.routes, on='route_id')
         self.links = pd.merge(self.links, links_trips, on='trip_id')
 
-    def build_geometries(self, use_utm=True, from_shape=False, simplify_dist=5, log=True, **kwargs):
+    def build_geometries(self, 
+                         use_utm=True, 
+                         from_shape=False, 
+                         simplify_dist=5, 
+                         stick_nodes_on_links=False,
+                         log=True,
+                           **kwargs):
         self.nodes = gk.stops.geometrize_stops_0(self.stops)
         if use_utm:
             epsg = get_epsg(self.stops.iloc[1]['stop_lat'], self.stops.iloc[1]['stop_lon'])
@@ -298,3 +335,85 @@ class GtfsImporter(Feed):
             if simplify_dist:
                 self.links.geometry = self.links.simplify(simplify_dist)
 
+            if stick_nodes_on_links:
+                self.stick_nodes_on_links()
+
+
+    def stick_nodes_on_links(self):
+        """
+        Replace Nodes geometry to match links geometry. This function will create new nodes
+        if a node is used by mutiples trips (or links). Duplicated nodes stop_id will be replace with
+        stop_id => "<stop_id> - <trip_id> - <link_sequence>",
+        while the first occurence will keep the original stop_id
+
+            Parameters
+            ----------
+            Builds
+            self.links : gpd.GeoDataFrame,
+                links with new a,b nodes
+            self.nodes : gpd.GeoDataFrame,
+                nodes with geometry matching the links linetring geometry.
+            ----------
+
+            """        
+        #sort value as we want to get the last link sequence per trip for b nodes.
+        self.links = self.links.sort_values(by='trip_id').sort_values(by='link_sequence')
+
+        #get all nodes in links.
+        nodes = self.links[['a','b','trip_id','link_sequence']]
+        nodes_a = nodes[['a','trip_id','link_sequence']].set_index('a')
+        nodes_b = nodes.groupby('trip_id')[['b','link_sequence']].agg('last').reset_index().set_index('b')
+        nodes = pd.concat([nodes_a,nodes_b])
+        nodes = nodes.reset_index()
+        nodes = nodes.rename(columns={'index':'stop_id'})
+
+        # create tuple trip_id,link_sequence for graoupby explode.
+        nodes['uuid'] = list(zip(nodes['trip_id'],nodes['link_sequence']))
+        #get all duplicated nodes and create new one (except the first encouter. stay the original node.)
+        nodes_dup_list = nodes.groupby('stop_id')[['uuid']].agg(list)
+
+        # geto only the trips after the first one (first is not changing)
+        nodes_dup_list['uuid'] = nodes_dup_list['uuid'].apply(lambda x: x[:-1])
+        nodes_dup_list['len'] = nodes_dup_list['uuid'].apply(len)
+        nodes_dup_list = nodes_dup_list[nodes_dup_list['len']>0]
+
+        # explode and split tuple (uuid) in original trip_id  link_sequence.
+        nodes_dup_list = nodes_dup_list.explode('uuid').reset_index()
+        nodes_dup_list['trip_id'], nodes_dup_list['link_sequence'] = zip(*nodes_dup_list['uuid'])
+        # new name!
+        nodes_dup_list['new_stop_id'] = nodes_dup_list['stop_id'].astype(str) + '-' + nodes_dup_list['trip_id'].astype(str)+ '-' + nodes_dup_list['link_sequence'].astype(str)
+        # create dict (trip_id, stop_id) : new_stop_name for changing the links
+        new_stop_id_dict = nodes_dup_list.set_index(['trip_id','link_sequence','stop_id'])['new_stop_id'].to_dict()
+        if len(nodes_dup_list[nodes_dup_list['new_stop_id'].duplicated()]) > 0:
+            print('there is at least a node with duplicated (stop_id, trip_id, link_sequence), will not be split in different nodes')
+
+        #duplicate nodes and concat them to the existing nodes.
+        new_nodes = nodes_dup_list[['stop_id','new_stop_id']].merge(self.nodes,left_on='stop_id',right_on='stop_id')
+        new_nodes = new_nodes.drop(columns=['stop_id']).rename(columns = {'new_stop_id': 'stop_id'})
+        self.nodes = pd.concat([self.nodes, new_nodes])
+
+        # change nodes stop_id with new ones in links
+
+        self.links['new_a'] = self.links.set_index(['trip_id','link_sequence','a']).index.map(new_stop_id_dict)
+        self.links['a'] = self.links['new_a'].combine_first(self.links['a'])
+
+        self.links['new_b'] = self.links.set_index(['trip_id','link_sequence','b']).index.map(new_stop_id_dict)
+        self.links['b'] = self.links['new_b'].combine_first(self.links['b'])
+
+        self.links = self.links.drop(columns = ['new_a','new_b'])
+
+        # apply new geometry (links geometry [0] or [-1] for last nodes.)
+        nodes = self.links[['a','b','trip_id','geometry']]
+        nodes_a = nodes[['a','trip_id','geometry']].set_index('a')
+        nodes_a['geometry'] = nodes_a['geometry'].apply(lambda g: Point(g.coords[0]))
+        nodes_b =nodes.groupby('trip_id')[['b','geometry']].agg('last').reset_index().set_index('b')
+        nodes_b['geometry'] = nodes_b['geometry'].apply(lambda g: Point(g.coords[-1]))
+        nodes = pd.concat([nodes_a,nodes_b])
+        nodes = nodes.reset_index()
+        nodes = nodes.rename(columns={'index':'stop_id'})
+        geom_dict = nodes.set_index('stop_id')['geometry'].to_dict()
+
+
+        self.nodes['new_geom'] = self.nodes['stop_id'].apply(lambda x: geom_dict.get(x))
+        self.nodes['geometry'] = self.nodes['new_geom'].combine_first(self.nodes['geometry'])
+        self.nodes = self.nodes.drop(columns = ['new_geom'])

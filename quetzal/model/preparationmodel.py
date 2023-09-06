@@ -541,23 +541,24 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         Parameters
         ----------
         routing : bool, 
-            _description_, True return the complete routing from the first to the last point on the road network (default = False)
+            if True return the complete routing from the first to the last point on the road network (default = False)
         n_neighbors_centroid : int, 
-            _description_, number of kneighbor in the first rough KNN on links centroid (default 100)
+            number of kneighbor in the first rough KNN on links centroid (default 100)
         n_neighbors : int, 
-            _description_, number of possible links for each point in the mapmatching. 10 top closest links (default 10)
+            number of possible links for each point in the mapmatching. 10 top closest links (default 10)
         distance_max : int
-            _description_, max radius to search candidat links for each gps point (default 5000)
+            max radius to search candidat links for each gps point (default 5000)
         by : str, 
-            _description_, links column name for each mapmaptching. they are group according to this column. (default 'trip_id')
+            links column name for each mapmaptching. they are group according to this column. (default 'trip_id')
         sequence : str, 
-            _description_, links column giving the sequence of point for a given by (trip_id)  (default 'link_sequence')
+            links column giving the sequence of point for a given by (trip_id)  (default 'link_sequence')
         overwrite_geom : bool, optional
-            _description_, by default True
-        Builds
+            by default True
         num_cores : int,
-            _description_ parallelize. in my test its around 50% faster per core, so 3 times faster for 6  and 2 time for 4 cores
+            parallelize. in my test its around 50% faster per core, so 3 times faster for 6  and 2 time for 4 cores
         ----------
+        Builds
+            
 
         """        
         self.links = add_geometry_coordinates(self.links, columns=['x_geometry', 'y_geometry'])
