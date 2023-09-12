@@ -154,15 +154,19 @@ def _join_geometry(link_row, one, many):
     )
 
 
-def add_geometry_coordinates(df, columns=['x_geometry', 'y_geometry']):
+def add_geometry_coordinates(df, columns=['x_geometry', 'y_geometry'],add_centroids=True):
+    '''
+    must have add_centroids=True if the geometry is not Points.
+    '''
     df = df.copy()
-
+    centroids = df['geometry']
     # if the geometry is not a point...
-    centroids = df['geometry'].apply(lambda g: g.centroid)
+    if add_centroids:
+        centroids = centroids.apply(lambda g: g.centroid)
 
-    df[columns[0]] = centroids.apply(lambda g: g.coords[0][0])
-    df[columns[1]] = centroids.apply(lambda g: g.coords[0][1])
+    df[columns[0]], df[columns[1]] = zip(*centroids.apply(lambda g: g.coords[0]))
     return df
+
 
 
 def nearest(one, many, geometry=False, n_neighbors=1):
