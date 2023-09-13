@@ -16,6 +16,7 @@ from shapely.ops import polygonize
 from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
+from pyproj import transform
 
 
 def bounds(df):
@@ -153,23 +154,32 @@ def _join_geometry(link_row, one, many):
         ]
     )
 
-
-def add_geometry_coordinates(df, columns=['x_geometry', 'y_geometry'],add_centroids=True):
+def add_geometry_coordinates(df, columns=['x_geometry', 'y_geometry'], to_crs=None):
     '''
-    must have add_centroids=True if the geometry is not Points.
+    get centroid and split geometry into 2 columns ['x_geometry', 'y_geometry'].
+    parameters
+    to_crs: (int)
+        convert geometry to this crs. (this is faster than gpd.to_crs() method.)
     '''
     df = df.copy()
     centroids = df['geometry']
     # if the geometry is not a point...
-    if add_centroids:
+    if not all(df.type == 'Point'):
         centroids = centroids.apply(lambda g: g.centroid)
 
     df[columns[0]], df[columns[1]] = zip(*centroids.apply(lambda g: g.coords[0]))
+    
+    if to_crs is not None:
+        from_crs = df.crs
+        if from_crs != to_crs:
+            # pyproj takes [y,x] and return [x,y]. however. if from_crs == to_crs. it return [y,x].
+            # so we do not apply this function if to_crs == from_crs.
+            df[columns[0]], df[columns[1]]  = transform(from_crs, to_crs, df[columns[1]], df[columns[0]])
+        
     return df
 
 
-
-def nearest(one, many, geometry=False, n_neighbors=1):
+def nearest(one, many, geometry=False, n_neighbors=1, to_crs=None):
     try:
         assert many.index.is_unique
         assert one.index.is_unique
@@ -178,8 +188,8 @@ def nearest(one, many, geometry=False, n_neighbors=1):
         print(msg)
         warnings.warn(msg)
 
-    df_many = add_geometry_coordinates(many.copy(), columns=['x_geometry', 'y_geometry'])
-    df_one = add_geometry_coordinates(one.copy(), columns=['x_geometry', 'y_geometry'])
+    df_many = add_geometry_coordinates(many.copy(), columns=['x_geometry', 'y_geometry'], to_crs=to_crs)
+    df_one = add_geometry_coordinates(one.copy(), columns=['x_geometry', 'y_geometry'], to_crs=to_crs)
 
     x = df_many[['x_geometry', 'y_geometry']].values
     y = df_one[['x_geometry', 'y_geometry']].values
@@ -216,7 +226,7 @@ def nearest(one, many, geometry=False, n_neighbors=1):
 
     return links
 
-def nearest_radius(one, many, radius=1):
+def nearest_radius(one, many, radius=1, to_crs=None):
     try:
         assert many.index.is_unique
         assert one.index.is_unique
@@ -224,8 +234,8 @@ def nearest_radius(one, many, radius=1):
         msg = 'index of one and many should not contain duplicates'
         print(msg)
 
-    df_many = add_geometry_coordinates(many.copy(), columns=['x_geometry', 'y_geometry'])
-    df_one = add_geometry_coordinates(one.copy(), columns=['x_geometry', 'y_geometry'])
+    df_many = add_geometry_coordinates(many.copy(), columns=['x_geometry', 'y_geometry'], to_crs=to_crs)
+    df_one = add_geometry_coordinates(one.copy(), columns=['x_geometry', 'y_geometry'], to_crs=to_crs)
 
     x = df_many[['x_geometry', 'y_geometry']].values
     y = df_one[['x_geometry', 'y_geometry']].values
