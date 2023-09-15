@@ -11,6 +11,7 @@ import pandas as pd
 import shapely
 import shapely.geometry.linestring
 import shapely.geometry.polygon
+import shapely.geometry.point
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from shapely.ops import polygonize
 from sklearn.cluster import AgglomerativeClustering, KMeans
@@ -163,8 +164,13 @@ def add_geometry_coordinates(df, columns=['x_geometry', 'y_geometry'], to_crs=No
     '''
     df = df.copy()
     centroids = df['geometry']
-    # if the geometry is not a point...
-    if not all(df.type == 'Point'):
+    # if the geometry is not a point... get centroids.
+    # need this try for pandas and geopandas type.
+    try:
+        all_points = all(centroids.type == 'Point')
+    except:
+        all_points = all(centroids.apply(type) == shapely.geometry.Point)
+    if not all_points:
         centroids = centroids.apply(lambda g: g.centroid)
 
     df[columns[0]], df[columns[1]] = zip(*centroids.apply(lambda g: g.coords[0]))
