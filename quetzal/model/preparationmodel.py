@@ -10,6 +10,9 @@ from syspy.skims import skims
 from tqdm import tqdm
 import networkx as nx
 import warnings
+from multiprocessing import Process, Manager
+from syspy.spatial.spatial import add_geometry_coordinates
+
 from shapely.geometry import LineString, Point
 
 
@@ -530,37 +533,75 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                                  distance_max=5000,
                                  by='trip_id',
                                  sequence = 'link_sequence',
-                                 overwrite_geom = True):
+                                 overwrite_geom = True,
+                                 num_cores = 1):
         
         """Mapmatch each trip_id in self.links to the road_network (self.road_links)
 
         Parameters
         ----------
-        routing : bool, optional
-            _description_, by default True
-        n_neighbors_centroid : int, optional
-            _description_, by default 100
-        n_neighbors : int, optional
-            _description_, by default 10
-        distance_max : int, optional
-            _description_, by default 5000
-        by : str, optional
-            _description_, by default 'trip_id'
-        sequence : str, optional
-            _description_, by default 'link_sequence'
+        routing : bool, 
+            if True return the complete routing from the first to the last point on the road network (default = False)
+        n_neighbors_centroid : int, 
+            number of kneighbor in the first rough KNN on links centroid (default 100)
+        n_neighbors : int, 
+            number of possible links for each point in the mapmatching. 10 top closest links (default 10)
+        distance_max : int
+            max radius to search candidat links for each gps point (default 5000)
+        by : str, 
+            links column name for each mapmaptching. they are group according to this column. (default 'trip_id')
+        sequence : str, 
+            links column giving the sequence of point for a given by (trip_id)  (default 'link_sequence')
         overwrite_geom : bool, optional
-            _description_, by default True
-        Builds
+            by default True
+        num_cores : int,
+            parallelize. in my test its around 50% faster per core, so 3 times faster for 6  and 2 time for 4 cores
         ----------
+        Builds
+            
 
         """        
-        
+        self.links = add_geometry_coordinates(self.links, columns=['x_geometry', 'y_geometry'])
         ncm = NetworkCaster_MapMaptching(self.nodes, self.road_links, self.links, by, sequence)
-        matched_links, links_mat, unmatched_trip = ncm.Multi_Mapmatching(routing=routing,
-                                                                         n_neighbors_centroid=n_neighbors_centroid,
-                                                                         n_neighbors=n_neighbors,
-                                                                         distance_max=distance_max,
-                                                                         by=by)
+
+        if num_cores == 1:
+            matched_links, links_mat, unmatched_trip = ncm.Multi_Mapmatching(routing=routing,
+                                                                            n_neighbors_centroid=n_neighbors_centroid,
+                                                                            n_neighbors=n_neighbors,
+                                                                            distance_max=distance_max,
+                                                                            by=by)
+        else:
+            # multi threading!
+            def process_wrapper(ncm_instance, kwargs, result_list, index):
+                result = ncm_instance.Multi_Mapmatching(**kwargs)
+                result_list[index] = result
+            #create n_cores instance of NetworkCaster_MapMaptching
+            ncm_list = [] 
+            trip_list  = self.links[by].unique()
+            chunk_length = len(trip_list) // num_cores
+            # Split the list into four sub-lists
+            chunks = [trip_list[i:i+chunk_length] for i in range(0, len(trip_list), chunk_length)]
+            for trips in chunks:
+                ncm_list.append(NetworkCaster_MapMaptching(self.nodes, self.road_links,  self.links[self.links[by].isin(trips)], by, sequence))
+            kwargs = {'routing':routing,'n_neighbors_centroid':n_neighbors_centroid,'n_neighbors':n_neighbors,'distance_max':distance_max,'by':by}
+            # This is necessary to get the result at the end.
+            manager = Manager()
+            result_list = manager.list([None] * len(ncm_list))
+            processes = []
+            for i, ncm_instance in enumerate(ncm_list):
+                process = Process(target=process_wrapper, args=(ncm_instance, kwargs, result_list, i))
+                process.start()
+                processes.append(process)
+            for process in processes:
+                process.join()
+            # Convert the manager list to a regular list for easier access
+            result_list = np.array(result_list)
+
+            matched_links = pd.concat(result_list[:,0])
+            links_mat = pd.concat(result_list[:,1])
+            unmatched_trip=[]
+
+
 
         
         matched_links['road_id_a'] = matched_links['road_id_a'].apply(lambda x: ncm.links_index_dict.get(x))

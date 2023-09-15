@@ -81,9 +81,11 @@ def handler(event, context):
         shutil.copytree('./inputs', '/tmp/inputs')
     except:
         print('cannot copy local docker inputs/ folder. its maybe missing on purpose')
-    t1 = time.time()
-    print('Download inputs from s3: {} seconds'.format(t1 - t0))
+   
     download_s3_folder(bucket_name, event['scenario_path_S3'])
+    t1 = time.time()
+    print('Download inputs from s3 and docker image: {} seconds'.format(t1 - t0))
+
     arg = json.dumps(event['launcher_arg'])
     print(arg)
 
@@ -93,12 +95,16 @@ def handler(event, context):
     command_list = ['python', file, arg]
     my_env = os.environ.copy()
     my_env['PYTHONPATH'] = os.pathsep.join(sys.path)
+
+    t2=time.time()
+    print('Notebook conversion: {} seconds'.format(t2 - t1))
+
     process = Popen(command_list, stdout=PIPE, stderr=STDOUT, env=my_env, cwd=cwd)
     process.wait(timeout=500)
 
     content = process.stdout.read().decode("utf-8")
-    t2 = time.time()
-    print('Notebook execution: {} seconds'.format(t2 - t1))
+    t3 = time.time()
+    print('Notebook execution: {} seconds'.format(t3 - t2))
 
     print(content)
     if 'Error' in content and "end_of_notebook" not in content:
@@ -107,7 +113,8 @@ def handler(event, context):
     os.remove(file)
     shutil.rmtree('/tmp/inputs')
     upload_s3_folder(bucket_name, event['scenario_path_S3'], metadata=event.get('metadata', {}))
-    t3 = time.time()
-    print('Upload to S3: {} seconds'.format(t3 - t2))
+    t4 = time.time()
+    print('Upload to S3: {} seconds'.format(t4 - t3))
+    print('Total excecution time: {} seconds'.format(t4 - t0))
 
     return event
