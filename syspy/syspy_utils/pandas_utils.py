@@ -1,5 +1,4 @@
 import copy
-
 import pandas as pd
 
 
@@ -36,3 +35,28 @@ def df_explode(df, column_to_explode):
     return_df = pd.DataFrame(new_observations)
     # Return
     return return_df
+
+
+def groupby_weighted_average(df, groupby, columns, weight):
+    """
+    perform a weighted average on specified columns
+    during a groupby operation
+
+    :param df: A dataframe to group
+    :type df: pandas.DataFrame
+    :param groupby: column(s) to groupby
+    :type groupby: str or list
+    :param columns: column(s) to average
+    :type columns: str or list
+    :param weight: column to use as weight
+    :type weight: str
+    :return: A grouped dataframe with averaged columns
+    :rtype: pandas.DataFrame
+    """
+    if not isinstance(columns, list):
+        columns = [columns]
+    new_columns = [(c, weight) for c in columns]
+    df[new_columns] = pd.concat([df[c] * df[weight] for c in columns], axis=1)
+    grouped = df.groupby(groupby)[new_columns].sum().div(df.groupby(groupby)['volume'].sum(), axis=0)
+    grouped = grouped.rename(columns={(c, w): c for c, w in grouped.columns})
+    return grouped
