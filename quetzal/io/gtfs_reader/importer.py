@@ -264,7 +264,8 @@ class GtfsImporter(Feed):
         if shape_dist_traveled and 'shape_dist_traveled' not in keep_origin_columns:
             keep_origin_columns += ['shape_dist_traveled']
             keep_destination_columns += ['shape_dist_traveled']
-
+            
+        self.stop_times = feed_links.clean_sequences(self.stop_times)
         self.links = feed_links.link_from_stop_times(
             self.stop_times,
             max_shortcut=1,
