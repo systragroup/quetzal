@@ -141,13 +141,26 @@ Note that those are optional. You can have a model without PT, or without road, 
 Note: this script will copy all files from `<model_folder>/scenarios/<scenario1>/` to S3. <br>
 for example. with quetzal_test and a base scenario we would have in quetzal_test: `scenarios/base/inputs/pt/links.geojson` and so on
 
-## Create Cognito User group (AWS Admin only)
+## Create Cognito User group (Optional) (AWS Admin only)
 
 * Create new Cognito user group in quetzal user pool (Cognito Console -> User pool -> Quetzal -> Groups -> Create Group).
   * Enter a group name.
   * Select the role created by terraform (Cognito_quetzal_pool_`<model-name>`).
-* Update congito_group_access.json in quetzal-config bucket to add available bucket to group.
-* you can add the policy and add the bucket (cognito_group_access.json) to existing group too.
+* You can then add user to the cognito user group in the AWS web interface
+
+* Update cognito_group_access.json in quetzal-config bucket to add available bucket (model) to group. 
+   * ex: `<cognito_user_group>` : [`<model-name>`]
+   * note: this is necessary as there are no other way for the front to know which models (buckets) are accessible.
+
+## Add Access to existing Cognito User group (if last step skipped) (AWS Admin only)
+
+* Find the IAM role associate to the Cognito user Group (ex: Cognito_quetzal_pool_`<cognito_user_group>`) under IAM>Roles
+* In the Permissions tab. click "Add persmissions" then attach policies.
+* Select the appropriated policy create by terraform (s3_read_put_`<model-name>`)
+  
+* Update cognito_group_access.json in quetzal-config bucket to add available bucket (model) to group. 
+   * ex: `<cognito_user_group>` : [`<model-name>`]
+   * note: this is necessary as there are no other way for the front to know which models (buckets) are accessible.
 
 ## Done !
 
@@ -190,7 +203,7 @@ here. test is the docker tag.
 Finally, run this command in a new terminal with the appropriate values.
 
 ```bash
- curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"notebook_path": "notebooks/model/model.ipynb", "scenario_path_S3": "test/", "launcher_arg": {"scenario": "test", "training_folder": "/tmp","params": {"some_param":"value"}},"metadata": {"user_email": "lamda_test@test.com"}}'
+ curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"notebook_path": "notebooks/model/model.ipynb", "scenario_path_S3": "test/", "launcher_arg": {"training_folder": "/tmp","params": {"some_param":"value"}},"metadata": {"user_email": "lambda_test@test.com"}}'
 ```
 
 # debug a docker container
