@@ -345,7 +345,8 @@ class GtfsImporter(Feed):
         Replace Nodes geometry to match links geometry. This function will create new nodes
         if a node is used by mutiples trips (or links). Duplicated nodes stop_id will be replace with
         stop_id => "<stop_id> - <trip_id> - <link_sequence>",
-        while the first occurence will keep the original stop_id
+        while the first occurence will keep the original stop_id.
+        NOTE: need link_sequence correctly order (0,1,2,3,...)
 
             Parameters
             ----------
@@ -357,14 +358,17 @@ class GtfsImporter(Feed):
             ----------
 
             """        
-        #sort value as we want to get the last link sequence per trip for b nodes.
         self.links = self.links.sort_values(by='trip_id').sort_values(by='link_sequence')
 
         #get all nodes in links.
         nodes = self.links[['a','b','trip_id','link_sequence']]
         nodes_a = nodes[['a','trip_id','link_sequence']].set_index('a')
         nodes_b = nodes.groupby('trip_id')[['b','link_sequence']].agg('last').reset_index().set_index('b')
+        nodes_b['link_sequence'] = nodes_b['link_sequence']+1 # we will remove 1 in link sequence later for nodes b dict
         nodes = pd.concat([nodes_a,nodes_b])
+        # all nodes are from a (first link) except last one from the last link.
+        # later we will overwrite them with link sequence. for nodes b, it will be link_sequence -1
+        # however, as the the last noode use the last link (node b). we add +1 to this link sequence
         nodes = nodes.reset_index()
         nodes = nodes.rename(columns={'index':'stop_id'})
 
@@ -384,9 +388,13 @@ class GtfsImporter(Feed):
         # new name!
         nodes_dup_list['new_stop_id'] = nodes_dup_list['stop_id'].astype(str) + '-' + nodes_dup_list['trip_id'].astype(str)+ '-' + nodes_dup_list['link_sequence'].astype(str)
         # create dict (trip_id, stop_id) : new_stop_name for changing the links
-        new_stop_id_dict = nodes_dup_list.set_index(['trip_id','link_sequence','stop_id'])['new_stop_id'].to_dict()
+        # for b. remove 1 in link_sequence as we used link sequence for a. last node we did add 1 in link sequence.
+        nodes_dup_list['link_sequence_b'] = nodes_dup_list['link_sequence']-1
+        new_stop_id_a_dict = nodes_dup_list.set_index(['trip_id','link_sequence','stop_id'])['new_stop_id'].to_dict()
+        new_stop_id_b_dict = nodes_dup_list.set_index(['trip_id','link_sequence_b','stop_id'])['new_stop_id'].to_dict()
         if len(nodes_dup_list[nodes_dup_list['new_stop_id'].duplicated()]) > 0:
             print('there is at least a node with duplicated (stop_id, trip_id, link_sequence), will not be split in different nodes')
+            print(nodes_dup_list[nodes_dup_list['new_stop_id'].duplicated()]['new_stop_id'])
 
         #duplicate nodes and concat them to the existing nodes.
         new_nodes = nodes_dup_list[['stop_id','new_stop_id']].merge(self.nodes,left_on='stop_id',right_on='stop_id')
@@ -395,10 +403,10 @@ class GtfsImporter(Feed):
 
         # change nodes stop_id with new ones in links
 
-        self.links['new_a'] = self.links.set_index(['trip_id','link_sequence','a']).index.map(new_stop_id_dict)
+        self.links['new_a'] = self.links.set_index(['trip_id','link_sequence','a']).index.map(new_stop_id_a_dict)
         self.links['a'] = self.links['new_a'].combine_first(self.links['a'])
 
-        self.links['new_b'] = self.links.set_index(['trip_id','link_sequence','b']).index.map(new_stop_id_dict)
+        self.links['new_b'] = self.links.set_index(['trip_id','link_sequence','b']).index.map(new_stop_id_b_dict)
         self.links['b'] = self.links['new_b'].combine_first(self.links['b'])
 
         self.links = self.links.drop(columns = ['new_a','new_b'])

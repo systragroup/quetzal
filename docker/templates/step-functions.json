@@ -41,7 +41,7 @@
           "launcher_arg.$": "$.launcher_arg",
           "metadata.$": "$.metadata"
         },
-        "FunctionName": <LAMBDA-FUNCTION-ARN> # TO EDIT
+        "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:<model-name>"  # TO EDIT
       },
       "Retry": [
         {
@@ -69,7 +69,7 @@
           "launcher_arg.$": "$.launcher_arg",
           "metadata.$": "$.metadata"
         },
-        "FunctionName": <LAMBDA-FUNCTION-ARN> # TO EDIT
+        "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:<model-name>"  # TO EDIT
       },
       "Retry": [
         {

@@ -67,14 +67,14 @@ terraform init
 ```
 
 5. **Plan your deployment**. This will create a plan of deployment. if it is a new deployment, make sure everything is created and **nothing is destroy** `<br>`
-   The plan should read  : `Plan: 18 to add, 0 to change, 0 to destroy.`
+   The plan should read  : `Plan: 16 to add, 0 to change, 0 to destroy.`
 
 ```bash
 terraform plan -var-file="environments/<your_model_name>.tfvars"
 ```
 
 6. **Apply your deployment**. Make sure the plan is the same as in the previous step and press yes  `<br>`
-   Again, the plan should read  : `Plan: 18 to add, 0 to change, 0 to destroy.`
+   Again, the plan should read  : `Plan: 16 to add, 0 to change, 0 to destroy.`
 
 ```bash
 terraform apply -var-file="environments/<your_model_name>.tfvars"
@@ -111,6 +111,7 @@ Note that those are optional. You can have a model without PT, or without road, 
    * `QUETZAL_MODEL_NAME` should be the same as the the **model folder** name.
    * Everything else should be the same as `<your_model_name>` in terraform
 3. Create the `requirements.txt` for the model. We recommand using [pip chill](https://pypi.org/project/pip-chill/).
+   * you an also use the one provided in this `template directory`
 4. Modify the step fonction configuration file `step-functions.json` according to model steps.
 5. Fill the `Dockerfile.dockerignore`. Inputs that are provided by quenedi and outputs are not necessary in the image. Note that Docker Build will be run from directory higher than the model. You should add the model folder path to your ignored path (Exemple: inputs -> QUETZAL_MODEL_NAME/inputs)
 
