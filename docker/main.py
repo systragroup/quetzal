@@ -100,7 +100,7 @@ def handler(event, context):
     print('Notebook conversion: {} seconds'.format(t2 - t1))
 
     process = Popen(command_list, stdout=PIPE, stderr=STDOUT, env=my_env, cwd=cwd)
-    process.wait(timeout=500)
+    process.wait(timeout=800)
 
     content = process.stdout.read().decode("utf-8")
     t3 = time.time()

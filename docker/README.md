@@ -224,3 +224,8 @@ ECR  will not be destroy as it is not empty. We need to empty and then destroy E
 ## jupyter-nbconvert KeyError: 'template_paths'
 
 The entrypoint of the dockerfile convert .ipynb to .py files. For some reason. this will not work if there is no .git in the quetzal_model.
+
+## tqdm
+
+tqdm doesnt work on lambda when the loop is too long (a priori).
+gives back a timeout error with no log. 
