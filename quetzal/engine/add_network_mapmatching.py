@@ -9,6 +9,8 @@ from sklearn.neighbors import NearestNeighbors
 from quetzal.engine.pathfinder_utils import sparse_matrix
 from syspy.spatial.spatial import add_geometry_coordinates
 from multiprocessing import Process, Manager
+from typing import Tuple
+
 
 class RoadLinks:
     '''
@@ -110,7 +112,7 @@ def Parallel_Mapmatching(gps_tracks: pd.DataFrame,
                         n_neighbors: int = 10,
                         distance_max: float = 200,
                         by: str = 'trip_id',
-                        num_cores: int = 1) -> tuple[pd.DataFrame, pd.DataFrame, list]:
+                        num_cores: int = 1) -> Tuple[pd.DataFrame, pd.DataFrame, list]:
     trip_list = gps_tracks[by].unique()
     chunk_length =  round(len(trip_list)/ num_cores)
     # Split the list into four sub-lists
@@ -146,7 +148,7 @@ def Multi_Mapmatching(gps_tracks: pd.DataFrame,
                         routing: bool = True,
                         n_neighbors: int = 10,
                         distance_max: float = 200,
-                        by: str = 'trip_id')->tuple[pd.DataFrame, pd.DataFrame, list]:
+                        by: str = 'trip_id') -> Tuple[pd.DataFrame, pd.DataFrame, list]:
     """
     gps_track: use get_gps_tracks
     links: RoadLinks object
@@ -198,7 +200,7 @@ def Multi_Mapmatching(gps_tracks: pd.DataFrame,
 
 
 def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10, distance_max:float=1000,
-                routing:bool=False, plot:bool=False) -> tuple[pd.DataFrame, pd.DataFrame]:
+                routing:bool=False, plot:bool=False) -> Tuple[pd.DataFrame, pd.DataFrame]:
     
 
     """

@@ -14,6 +14,15 @@ In order to improve the ergonomics, the code may be re-factored and a few method
 It is preferred to first create and use a virtual environment.
 ### For Linux
 One should choose between Virtualenv and Pipenv or use Anaconda 3.
+
+#### Pipenv
+```bash
+pipenv install
+pipenv shell
+python -m ipykernel install --user --name=quetzal_env
+
+```
+
 #### Virtualenv
 Virtual environment: `virtualenv .venv -p python3.8; source .venv/bin/activate` or any equivalent command.
 
@@ -21,10 +30,7 @@ Virtual environment: `virtualenv .venv -p python3.8; source .venv/bin/activate` 
 pip install -e .
 ```
 
-#### Pipenv
-```bash
-pipenv install
-```
+
 
 #### Anaconda
 In order to use python notebook, Anaconda 3 + Python 3.8 must be installed.

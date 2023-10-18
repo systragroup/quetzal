@@ -51,6 +51,7 @@ def get_policy_document(policy_arn):
     )
 
     return policy_version['PolicyVersion']['Document']['Statement']
+
 def get_policies_from_role(role_name):
 
      # Get the role's policies

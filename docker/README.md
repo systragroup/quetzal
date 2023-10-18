@@ -171,6 +171,10 @@ You need AWS permissions to update a model on ECR. You can ask for those permiss
 
 ``./update-lambda.sh <model_folder_name>``
 
+or, on Windows :
+
+``update-lambda.bat <model_folder_name>``
+
 # destroy Terraform workspace (for AWS admin)
 
 `terraform workspace select <your_model_name>`
@@ -214,6 +218,7 @@ running an interactive shell to explore the docker container
  ``docker run -it --rm --entrypoint /bin/bash <docker_name>:<tag>``
 
  by default, you will be in `/var/task` which is where all your files (main.py for instance)
+ the command `du -ah --max-depth=1` is usefull to see the size of each dir
 
 # Knowned issue
 

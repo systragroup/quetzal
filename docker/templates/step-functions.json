@@ -9,6 +9,7 @@
         "Payload": {
           "authorization.$": "$.authorization",
           "model": <model-name>, # TO EDIT.
+          "choice.$": "$.choice",
           "scenario_path_S3.$": "$.scenario_path_S3",
           "launcher_arg.$": "$.launcher_arg",
           "metadata.$": "$.metadata"

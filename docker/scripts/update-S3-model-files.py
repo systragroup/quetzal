@@ -29,17 +29,15 @@ def main():
             s3.Object(bucket.name, obj.key).delete()
 
         print(f"Updating {scenario} scenario")
-        for path in ['inputs/', 'outputs/']:
-            localpath = 'scenarios/' + scenario + '/' + path
-            
-            if not os.path.exists(localpath):
-                print(f"Local path does not exists: {localpath}")
-                continue
-            if os.path.isdir(localpath):
-               files = list_paths_in_directory(localpath)
-               for file in files:
-                    print('upload:',file[10:])
-                    bucket.upload_file(file, file[10:])
+        localpath = 'scenarios/' + scenario + '/' 
+        if not os.path.exists(localpath):
+            print(f"Local path does not exists: {localpath}")
+            continue
+        if os.path.isdir(localpath):
+            files = list_paths_in_directory(localpath)
+            for file in files:
+                print('upload:',file[10:])
+                bucket.upload_file(file, file[10:])
 
 
           
