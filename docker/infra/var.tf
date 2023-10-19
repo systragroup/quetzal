@@ -9,10 +9,11 @@ variable "quetzal_model_name" {
   default     = "quetzal-test"
 }
 
-variable "quetzal_tags" {
-  description = "Name for S3 bucket and lambda function"
-  type        = map
-  default     = {"cost:project" = "quetzal"}
+locals {
+  quetzal_tags = {
+    "cost:project" : "quetzal",
+    "cost:name" : "${var.quetzal_model_name}"
+  }
 }
 
 variable "cognito_identity_pool_id" {
