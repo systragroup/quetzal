@@ -9,7 +9,6 @@ from . import patterns
 from .feed_gtfsk import Feed
 from syspy.spatial import spatial
 from quetzal.engine.pathfinder_utils import paths_from_edges
-from tqdm import tqdm
 
 
 def get_epsg(lat, lon):
@@ -67,7 +66,7 @@ def shape_geometry(self, from_point, to_point, max_candidates=10, log=False,**kw
     stop_ids = set(self.links[[from_point, to_point]].values.flatten())
     stop_pts = pd.DataFrame([point_dict.get(n) for n in stop_ids], index=list(stop_ids), columns=['geometry'])
 
-    for trip in tqdm(set(self.links['trip_id'])):
+    for trip in set(self.links['trip_id']):
         links = self.links[self.links['trip_id'] == trip].copy()
         links = links.drop_duplicates(subset=['link_sequence']).sort_values(by='link_sequence')
         s = shape_dict.get(links.iloc[0]['shape_id'])
