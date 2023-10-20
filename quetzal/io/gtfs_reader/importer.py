@@ -377,39 +377,39 @@ class GtfsImporter(Feed):
         #get all duplicated nodes and create new one (except the first encouter. stay the original node.)
         nodes_dup_list = nodes.groupby('stop_id')[['uuid']].agg(list)
 
-        # geto only the trips after the first one (first is not changing)
+        # get only the trips after the first one (first is not changing)
         nodes_dup_list['uuid'] = nodes_dup_list['uuid'].apply(lambda x: x[:-1])
         nodes_dup_list['len'] = nodes_dup_list['uuid'].apply(len)
         nodes_dup_list = nodes_dup_list[nodes_dup_list['len']>0]
+        if len(nodes_dup_list)>0: # skip if no duplicated nodes
+            # explode and split tuple (uuid) in original trip_id  link_sequence.
+            nodes_dup_list = nodes_dup_list.explode('uuid').reset_index()
+            nodes_dup_list['trip_id'], nodes_dup_list['link_sequence'] = zip(*nodes_dup_list['uuid'])
+            # new name!
+            nodes_dup_list['new_stop_id'] = nodes_dup_list['stop_id'].astype(str) + '-' + nodes_dup_list['trip_id'].astype(str)+ '-' + nodes_dup_list['link_sequence'].astype(str)
+            # create dict (trip_id, stop_id) : new_stop_name for changing the links
+            # for b. remove 1 in link_sequence as we used link sequence for a. last node we did add 1 in link sequence.
+            nodes_dup_list['link_sequence_b'] = nodes_dup_list['link_sequence']-1
+            new_stop_id_a_dict = nodes_dup_list.set_index(['trip_id','link_sequence','stop_id'])['new_stop_id'].to_dict()
+            new_stop_id_b_dict = nodes_dup_list.set_index(['trip_id','link_sequence_b','stop_id'])['new_stop_id'].to_dict()
+            if len(nodes_dup_list[nodes_dup_list['new_stop_id'].duplicated()]) > 0:
+                print('there is at least a node with duplicated (stop_id, trip_id, link_sequence), will not be split in different nodes')
+                print(nodes_dup_list[nodes_dup_list['new_stop_id'].duplicated()]['new_stop_id'])
 
-        # explode and split tuple (uuid) in original trip_id  link_sequence.
-        nodes_dup_list = nodes_dup_list.explode('uuid').reset_index()
-        nodes_dup_list['trip_id'], nodes_dup_list['link_sequence'] = zip(*nodes_dup_list['uuid'])
-        # new name!
-        nodes_dup_list['new_stop_id'] = nodes_dup_list['stop_id'].astype(str) + '-' + nodes_dup_list['trip_id'].astype(str)+ '-' + nodes_dup_list['link_sequence'].astype(str)
-        # create dict (trip_id, stop_id) : new_stop_name for changing the links
-        # for b. remove 1 in link_sequence as we used link sequence for a. last node we did add 1 in link sequence.
-        nodes_dup_list['link_sequence_b'] = nodes_dup_list['link_sequence']-1
-        new_stop_id_a_dict = nodes_dup_list.set_index(['trip_id','link_sequence','stop_id'])['new_stop_id'].to_dict()
-        new_stop_id_b_dict = nodes_dup_list.set_index(['trip_id','link_sequence_b','stop_id'])['new_stop_id'].to_dict()
-        if len(nodes_dup_list[nodes_dup_list['new_stop_id'].duplicated()]) > 0:
-            print('there is at least a node with duplicated (stop_id, trip_id, link_sequence), will not be split in different nodes')
-            print(nodes_dup_list[nodes_dup_list['new_stop_id'].duplicated()]['new_stop_id'])
+            #duplicate nodes and concat them to the existing nodes.
+            new_nodes = nodes_dup_list[['stop_id','new_stop_id']].merge(self.nodes,left_on='stop_id',right_on='stop_id')
+            new_nodes = new_nodes.drop(columns=['stop_id']).rename(columns = {'new_stop_id': 'stop_id'})
+            self.nodes = pd.concat([self.nodes, new_nodes])
 
-        #duplicate nodes and concat them to the existing nodes.
-        new_nodes = nodes_dup_list[['stop_id','new_stop_id']].merge(self.nodes,left_on='stop_id',right_on='stop_id')
-        new_nodes = new_nodes.drop(columns=['stop_id']).rename(columns = {'new_stop_id': 'stop_id'})
-        self.nodes = pd.concat([self.nodes, new_nodes])
+            # change nodes stop_id with new ones in links
 
-        # change nodes stop_id with new ones in links
+            self.links['new_a'] = self.links.set_index(['trip_id','link_sequence','a']).index.map(new_stop_id_a_dict)
+            self.links['a'] = self.links['new_a'].combine_first(self.links['a'])
 
-        self.links['new_a'] = self.links.set_index(['trip_id','link_sequence','a']).index.map(new_stop_id_a_dict)
-        self.links['a'] = self.links['new_a'].combine_first(self.links['a'])
+            self.links['new_b'] = self.links.set_index(['trip_id','link_sequence','b']).index.map(new_stop_id_b_dict)
+            self.links['b'] = self.links['new_b'].combine_first(self.links['b'])
 
-        self.links['new_b'] = self.links.set_index(['trip_id','link_sequence','b']).index.map(new_stop_id_b_dict)
-        self.links['b'] = self.links['new_b'].combine_first(self.links['b'])
-
-        self.links = self.links.drop(columns = ['new_a','new_b'])
+            self.links = self.links.drop(columns = ['new_a','new_b'])
 
         # apply new geometry (links geometry [0] or [-1] for last nodes.)
         nodes = self.links[['a','b','trip_id','geometry']]

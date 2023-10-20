@@ -9,7 +9,7 @@
 see instruction on AWS ECR
 for step 2 however:
 ```bash
-docker build -f api/ML_MatrixRoadCaster/Dockerfile -t ml_matrixroadcaster .
+docker build -f api/ML_MatrixRoadCaster/Dockerfile -t quetzal-matrixroadcaster-api .
 ```
 ## TEST
 
