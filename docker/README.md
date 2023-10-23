@@ -123,7 +123,7 @@ Note that those are optional. You can have a model without PT, or without road, 
    ./push-image.sh <model_folder_name> initial
    ```
 
-   Or, in windows:
+   Or, in windows, make sure Docker desktop is running and run:
 
    ```bash
    push-image.bat <model_folder_name> initial
@@ -171,7 +171,7 @@ You need AWS permissions to update a model on ECR. You can ask for those permiss
 
 ``./update-lambda.sh <model_folder_name>``
 
-or, on Windows :
+Or, in windows, make sure Docker desktop is running and run:
 
 ``update-lambda.bat <model_folder_name>``
 
@@ -230,7 +230,9 @@ ECR  will not be destroy as it is not empty. We need to empty and then destroy E
 
 The entrypoint of the dockerfile convert .ipynb to .py files. For some reason. this will not work if there is no .git in the quetzal_model.
 
-## tqdm
+## Lambda.Unknown Task timed out (tqdm)
 
-tqdm doesnt work on lambda when the loop is too long (a priori).
+tqdm doesn't work on lambda when the loop is too long (a priori ~1000 iterations).
 gives back a timeout error with no log. 
+
+This could also be a timeout issue. lambda have 5 minutes to completes its task and it took more for example.

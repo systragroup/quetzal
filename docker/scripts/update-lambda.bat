@@ -11,9 +11,13 @@ if "%~1"=="" (
 set "MODEL_FOLDER=%~1"
 shift
 
+set ENV_FILE=%QUETZAL_ROOT%\%MODEL_FOLDER%\.env
 :: Load model .env
-call "%QUETZAL_ROOT%\%MODEL_FOLDER%\.env"
-
+:: Loop through the lines in the .env file and set environment variables
+for /f "delims=" %%a in (%ENV_FILE%) do (
+    set %%a
+)
+echo %AWS_ECR_REPO_NAME%
 :: Prompt user for a tag
 for /f %%i in ('aws ecr describe-images --repository-name %AWS_ECR_REPO_NAME% ^
     --query "sort_by(imageDetails,& imagePushedAt)[-1].imageTags[0]"') do set "last_tag=%%i"
