@@ -20,6 +20,15 @@ warnings.filterwarnings("ignore")
 
 # curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"callID":"test","files":["https://storage.googleapis.com/storage/v1/b/mdb-latest/o/ca-quebec-societe-de-transport-de-laval-gtfs-749.zip?alt=media"]}'
 
+DAY_DICT = {
+    'monday': 0,
+    'tuesday': 1,
+    'wednesday': 2,
+    'thursday': 3,
+    'friday': 4,
+    'saturday': 5,
+    'sunday': 6
+}
 
 
 class Model(BaseModel):
@@ -27,6 +36,7 @@ class Model(BaseModel):
     files: Optional[list] = []
     start_time: Optional[str] = '6:00:00'
     end_time: Optional[str] = '8:59:00'
+    day: Optional[str] = 'tuesday'
 
 db = DataBase()
 
@@ -39,12 +49,14 @@ def handler(event, context):
     files = args.files
     start_time = args.start_time
     end_time = args.end_time
+    day = args.day
+
+    selected_day = DAY_DICT[day]
 
     time_range = [start_time,end_time]
 
     
     print('read files')
-    #links = gpd.read_file(f's3://{db.BUCKET}/{uuid}/road_links.geojson', driver='GeoJSON')
     feeds=[]
     for file in files:
         print('Importing {f}.zip'.format(f=file))
@@ -73,11 +85,13 @@ def handler(event, context):
         feeds[i].stop_times['drop_off_type'].fillna(0, inplace=True)
         
         
-        '''
+    
         if 'shape_dist_traveled' not in feeds[i].stop_times.columns:
             feeds[i] = gtk.append_dist_to_stop_times(feeds[i])
+        elif  any(feeds[i].stop_times['shape_dist_traveled'].isnull()):
+            feeds[i] = gtk.append_dist_to_stop_times(feeds[i])
         feeds[i].stop_times.loc[(feeds[i].stop_times['stop_sequence'] == 1), 'shape_dist_traveled'] = feeds[i].stop_times[feeds[i].stop_times['stop_sequence'] == 1]['shape_dist_traveled'].fillna(0.0)
-
+        '''
         if feeds[i].stop_times['shape_dist_traveled'].max() < 100:
             print(f'convert to meters : {files[i]}')
             feeds[i].dist_units = 'km'
@@ -88,15 +102,22 @@ def handler(event, context):
         feeds[i].stop_times['arrival_time'] = feeds[i].stop_times['departure_time']
 
 
-    available_dates =[]
+    dates =[]
     for feed in feeds:
-        available_dates.append([feed.calendar['start_date'].unique().min(),feed.calendar['end_date'].unique().max()])
+        min_date = feed.calendar['start_date'].unique().min()
+        max_date = feed.calendar['end_date'].unique().max()
+        # get date range 
+        s = pd.date_range(min_date, max_date, freq='D').to_series()
+        # get dayofweek selected and take first one
+        s = s[s.dt.dayofweek==selected_day][0]
+        # format  ex: ['20231011'] and append
+        dates.append([f'{s.year}{str(s.month).zfill(2)}{str(s.day).zfill(2)}'])
 
 
     feeds_t = []
 
     for i, feed in enumerate(feeds):
-        feed_t = feed.restrict(dates=[available_dates[i][0]], time_range=time_range)
+        feed_t = feed.restrict(dates=dates[i], time_range=time_range)
         if len(feed_t.trips) > 0:
             feeds_t.append(feed_t)
 

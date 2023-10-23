@@ -3,4 +3,5 @@ __pycache__
 *.python-version
 *.md
 *.env
-notebook/
+api/GTFS_importer/notebook
+syspy/surveys
