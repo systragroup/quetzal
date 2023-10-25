@@ -6,11 +6,8 @@ from quetzal.io.gtfs_reader import importer
 from quetzal.io.gtfs_reader.frequencies import hhmmss_to_seconds_since_midnight 
 from quetzal.model import stepmodel
 from s3_utils import DataBase
-from io import BytesIO
 from pydantic import BaseModel
 from typing import  Optional
-import os
-import boto3
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -20,10 +17,8 @@ warnings.filterwarnings("ignore")
 # docker run -p 9000:8080 --env-file 'api/GTFS_importer/test.env' gtfs_importer 
 
 # curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"callID":"test","files":["https://storage.googleapis.com/storage/v1/b/mdb-latest/o/ca-quebec-societe-de-transport-de-laval-gtfs-749.zip?alt=media"]}'
-# curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"callID":"test","files":["stl.zip"]}'
+# curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"callID":"345e4cb4-4875-449a-bb32-666fb6e4dcb9","files":["stm.zip","stl.zip"]}'
 
-BUCKET= 'quetzal-api-bucket'
-s3 = boto3.resource('s3')
 
 
 DAY_DICT = {
@@ -47,23 +42,6 @@ class Model(BaseModel):
 
 db = DataBase()
 
-def download_s3_folder(bucket_name, s3_folder, local_dir='/tmp'):
-    """
-    Download the contents of a folder directory
-    Args:
-        bucket_name: the name of the s3 bucket
-        s3_folder: the folder path in the s3 bucket
-        local_dir: a relative or absolute directory path in the local file system
-    """
-    bucket = s3.Bucket(bucket_name)
-    for obj in bucket.objects.filter(Prefix=s3_folder):
-        target = obj.key if local_dir is None \
-            else os.path.join(local_dir, os.path.relpath(obj.key, s3_folder))
-        if not os.path.exists(os.path.dirname(target)):
-            os.makedirs(os.path.dirname(target))
-        if obj.key[-1] == '/':
-            continue
-        bucket.download_file(obj.key, target)
 
     
 def handler(event, context):
@@ -82,7 +60,7 @@ def handler(event, context):
     #if paths are not url (its from S3.)
     # need to download locally in lambda as gtfs_kit doesnt support s3 buffers.
     if any([f[:4] != 'http' for f in args.files]):
-        download_s3_folder(BUCKET, uuid, '/tmp')
+        db.download_s3_folder(uuid, '/tmp')
         files = ['/tmp/' + f for f in args.files]
     else:
         files = args.files
@@ -93,18 +71,18 @@ def handler(event, context):
 
 
     for i in range(len(feeds)):
-        print(i)
+        print('cleaning ', files[i])
         if 'agency_id' not in feeds[i].routes:
             print(f'add agency_id to routes in {files[i]}')
             feeds[i].routes['agency_id'] = feeds[i].agency['agency_id'].values[0]
 
         
         if 'pickup_type' not in feeds[i].stop_times:
-            print(f'picjup_type missing in stop_times. set to 0 in {files[i]}')
+            print(f'pickup_type missing in stop_times. set to 0 in {files[i]}')
             feeds[i].stop_times['pickup_type'] = 0
         
         if 'drop_off_type' not in feeds[i].stop_times:
-            print(f'drop_odd_type missing in stop_times. set to 0 in {files[i]}')
+            print(f'drop_off_type missing in stop_times. set to 0 in {files[i]}')
             feeds[i].stop_times['drop_off_type'] = 0
             
         if 'parent_station' not in feeds[i].stops:
@@ -126,7 +104,7 @@ def handler(event, context):
             feeds[i].dist_units = 'km'
             feeds[i] = gtk.convert_dist(feeds[i], new_dist_units='m')
         '''
-        assert all(~feeds[i].routes['agency_id'].isna())
+        #assert all(~feeds[i].routes['agency_id'].isna())
     
         feeds[i].stop_times['arrival_time'] = feeds[i].stop_times['departure_time']
 
@@ -141,13 +119,14 @@ def handler(event, context):
             # get dayofweek selected and take first one
             s = s[s.dt.dayofweek==selected_day][0]
             # format  ex: ['20231011'] and append
-            dates.append([f'{s.year}{str(s.month).zfill(2)}{str(s.day).zfill(2)}'])
+            dates.append(f'{s.year}{str(s.month).zfill(2)}{str(s.day).zfill(2)}')
 
 
     feeds_t = []
 
     for i, feed in enumerate(feeds):
-        feed_t = feed.restrict(dates=dates[i], time_range=time_range)
+        print('restrict feed', files[i])
+        feed_t = feed.restrict(dates=[dates[i]], time_range=time_range)
         if len(feed_t.trips) > 0:
             feeds_t.append(feed_t)
 
@@ -164,8 +143,7 @@ def handler(event, context):
 
     feeds_frequencies = []
     for i in range(len(feeds_t)):
-        print('Building links and nodes')
-        print(files[i])
+        print('Building links and nodes ', files[i])
         feed_s = feeds_t[i].copy()
         feed_s.group_services()
 
