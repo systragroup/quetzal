@@ -9,7 +9,8 @@ from s3_utils import DataBase
 from io import BytesIO
 from pydantic import BaseModel
 from typing import  Optional
-
+import os
+import boto3
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -19,6 +20,11 @@ warnings.filterwarnings("ignore")
 # docker run -p 9000:8080 --env-file 'api/GTFS_importer/test.env' gtfs_importer 
 
 # curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"callID":"test","files":["https://storage.googleapis.com/storage/v1/b/mdb-latest/o/ca-quebec-societe-de-transport-de-laval-gtfs-749.zip?alt=media"]}'
+# curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"callID":"test","files":["stl.zip"]}'
+
+BUCKET= 'quetzal-api-bucket'
+s3 = boto3.resource('s3')
+
 
 DAY_DICT = {
     'monday': 0,
@@ -37,8 +43,27 @@ class Model(BaseModel):
     start_time: Optional[str] = '6:00:00'
     end_time: Optional[str] = '8:59:00'
     day: Optional[str] = 'tuesday'
+    dates: Optional[list] = []
 
 db = DataBase()
+
+def download_s3_folder(bucket_name, s3_folder, local_dir='/tmp'):
+    """
+    Download the contents of a folder directory
+    Args:
+        bucket_name: the name of the s3 bucket
+        s3_folder: the folder path in the s3 bucket
+        local_dir: a relative or absolute directory path in the local file system
+    """
+    bucket = s3.Bucket(bucket_name)
+    for obj in bucket.objects.filter(Prefix=s3_folder):
+        target = obj.key if local_dir is None \
+            else os.path.join(local_dir, os.path.relpath(obj.key, s3_folder))
+        if not os.path.exists(os.path.dirname(target)):
+            os.makedirs(os.path.dirname(target))
+        if obj.key[-1] == '/':
+            continue
+        bucket.download_file(obj.key, target)
 
     
 def handler(event, context):
@@ -46,20 +71,24 @@ def handler(event, context):
     print('start')
     print(args)
     uuid = args.callID
-    files = args.files
     start_time = args.start_time
     end_time = args.end_time
     day = args.day
+    dates = args.dates
 
     selected_day = DAY_DICT[day]
-
     time_range = [start_time,end_time]
 
-    
-    print('read files')
+    #if paths are not url (its from S3.)
+    # need to download locally in lambda as gtfs_kit doesnt support s3 buffers.
+    if any([f[:4] != 'http' for f in args.files]):
+        download_s3_folder(BUCKET, uuid, '/tmp')
+        files = ['/tmp/' + f for f in args.files]
+    else:
+        files = args.files
     feeds=[]
     for file in files:
-        print('Importing {f}.zip'.format(f=file))
+        print('Importing {f}'.format(f=file))
         feeds.append(importer.GtfsImporter(path=file, dist_units='m'))
 
 
@@ -101,17 +130,18 @@ def handler(event, context):
     
         feeds[i].stop_times['arrival_time'] = feeds[i].stop_times['departure_time']
 
-
-    dates =[]
-    for feed in feeds:
-        min_date = feed.calendar['start_date'].unique().min()
-        max_date = feed.calendar['end_date'].unique().max()
-        # get date range 
-        s = pd.date_range(min_date, max_date, freq='D').to_series()
-        # get dayofweek selected and take first one
-        s = s[s.dt.dayofweek==selected_day][0]
-        # format  ex: ['20231011'] and append
-        dates.append([f'{s.year}{str(s.month).zfill(2)}{str(s.day).zfill(2)}'])
+    # if dates is not provided as inputs.
+    # get it from first dates of each GTFS
+    if len(dates)==0:
+        for feed in feeds:
+            min_date = feed.calendar['start_date'].unique().min()
+            max_date = feed.calendar['end_date'].unique().max()
+            # get date range 
+            s = pd.date_range(min_date, max_date, freq='D').to_series()
+            # get dayofweek selected and take first one
+            s = s[s.dt.dayofweek==selected_day][0]
+            # format  ex: ['20231011'] and append
+            dates.append([f'{s.year}{str(s.month).zfill(2)}{str(s.day).zfill(2)}'])
 
 
     feeds_t = []
@@ -134,7 +164,8 @@ def handler(event, context):
 
     feeds_frequencies = []
     for i in range(len(feeds_t)):
-        print(i)
+        print('Building links and nodes')
+        print(files[i])
         feed_s = feeds_t[i].copy()
         feed_s.group_services()
 
