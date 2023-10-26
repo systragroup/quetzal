@@ -75,7 +75,6 @@ def handler(event, context):
         if 'agency_id' not in feeds[i].routes:
             print(f'add agency_id to routes in {files[i]}')
             feeds[i].routes['agency_id'] = feeds[i].agency['agency_id'].values[0]
-
         
         if 'pickup_type' not in feeds[i].stop_times:
             print(f'pickup_type missing in stop_times. set to 0 in {files[i]}')
@@ -90,22 +89,7 @@ def handler(event, context):
             feeds[i].stops['parent_station'] = np.nan
         feeds[i].stop_times['pickup_type'].fillna(0, inplace=True)
         feeds[i].stop_times['drop_off_type'].fillna(0, inplace=True)
-        
-        
-    
-        if 'shape_dist_traveled' not in feeds[i].stop_times.columns:
-            feeds[i] = gtk.append_dist_to_stop_times(feeds[i])
-        elif  any(feeds[i].stop_times['shape_dist_traveled'].isnull()):
-            feeds[i] = gtk.append_dist_to_stop_times(feeds[i])
-        feeds[i].stop_times.loc[(feeds[i].stop_times['stop_sequence'] == 1), 'shape_dist_traveled'] = feeds[i].stop_times[feeds[i].stop_times['stop_sequence'] == 1]['shape_dist_traveled'].fillna(0.0)
-        '''
-        if feeds[i].stop_times['shape_dist_traveled'].max() < 100:
-            print(f'convert to meters : {files[i]}')
-            feeds[i].dist_units = 'km'
-            feeds[i] = gtk.convert_dist(feeds[i], new_dist_units='m')
-        '''
-        #assert all(~feeds[i].routes['agency_id'].isna())
-    
+
         feeds[i].stop_times['arrival_time'] = feeds[i].stop_times['departure_time']
 
     # if dates is not provided as inputs.
@@ -123,22 +107,25 @@ def handler(event, context):
 
 
     feeds_t = []
-
+    print('restrict feed')
     for i, feed in enumerate(feeds):
-        print('restrict feed', files[i])
         feed_t = feed.restrict(dates=[dates[i]], time_range=time_range)
         if len(feed_t.trips) > 0:
             feeds_t.append(feed_t)
+    del feeds
+    print('add shape_dist_traveled')
+    for feed in feeds_t:
+        if 'shape_dist_traveled' not in feed.shapes.columns:
+            feed.append_dist_to_shapes()
 
-    for i in range(len(feeds_t)):
-        if 'shape_dist_traveled' not in feeds_t[i].stop_times.columns:
-            feeds_t[i] = gtk.append_dist_to_stop_times(feeds_t[i])
-        feeds_t[i].stop_times.loc[(feeds_t[i].stop_times['stop_sequence'] == 1), 'shape_dist_traveled'] = feeds_t[i].stop_times[feeds_t[i].stop_times['stop_sequence'] == 1]['shape_dist_traveled'].fillna(0.0)
+    for feed in feeds_t:
+        if 'shape_dist_traveled' not in feed.stop_times.columns:
+            feed.append_dist_to_stop_times()
 
-        if feeds_t[i].stop_times['shape_dist_traveled'].max() < 100:
-            print(f'convert to meters')
-            feeds_t[i].dist_units = 'km'
-            feeds_t[i] = gtk.convert_dist(feeds_t[i], new_dist_units='m')
+        if feed.stop_times['shape_dist_traveled'].max() < 100:
+            print(f'convert to meters ')
+            feed.dist_units = 'km'
+            feed = gtk.convert_dist(feed, new_dist_units='m')
 
 
     feeds_frequencies = []
@@ -159,7 +146,7 @@ def handler(event, context):
                                             keep_origin_columns=['departure_time','pickup_type'],
                                             keep_destination_columns=['arrival_time','drop_off_type'])
         feeds_frequencies.append(feed_frequencies)
-
+    del feeds_t
     mapping = {0:'tram', 1:'subway', 2:'rail', 3:'bus',4:'ferry',5:'cable_car',6:'gondola',7:'funicular', 700:'bus', 1501:'taxi'}
     retire = ['taxi']
     for feed_frequencies in feeds_frequencies:
@@ -187,8 +174,15 @@ def handler(event, context):
         links_concat.append(feed_frequencies.links)
         nodes_concat.append(feed_frequencies.nodes)
 
+    # nothing to export. export empty geojson
+    if len(links_concat) == 0:
+        links = gpd.GeoDataFrame(columns=['feature'], geometry='feature',crs=4326)
+        nodes = gpd.GeoDataFrame(columns=['feature'], geometry='feature',crs=4326)
+        links.to_file(f's3://{db.BUCKET}/{uuid}/links.geojson', driver='GeoJSON')
+        nodes.to_file(f's3://{db.BUCKET}/{uuid}/nodes.geojson', driver='GeoJSON')
+        return
+    
     sm.links = pd.concat(links_concat)
-
     for col in columns:
         if col not in sm.links.columns:
             sm.links[col] = np.nan
