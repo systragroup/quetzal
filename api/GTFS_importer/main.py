@@ -152,7 +152,8 @@ def handler(event, context):
                                             from_shape=shapes, 
                                             stick_nodes_on_links=shapes,
                                             keep_origin_columns=['departure_time','pickup_type'],
-                                            keep_destination_columns=['arrival_time','drop_off_type'])
+                                            keep_destination_columns=['arrival_time','drop_off_type'],
+                                            num_cores=4)
         feeds_frequencies.append(feed_frequencies)
     #del feeds_t
     mapping = {0:'tram', 1:'subway', 2:'rail', 3:'bus',4:'ferry',5:'cable_car',6:'gondola',7:'funicular', 700:'bus', 1501:'taxi'}
