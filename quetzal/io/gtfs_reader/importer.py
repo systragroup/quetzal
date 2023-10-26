@@ -459,7 +459,7 @@ class GtfsImporter(Feed):
         
         return self with self.shapes['shape_dist_traveled'] and 'time_traveled'
         '''
-
+        
         self.stop_times['time'] = self.stop_times['departure_time'].apply(to_seconds)
         self.stop_times = self.stop_times.sort_values(['trip_id','stop_sequence']).reset_index(drop=True)
         self.stop_times['previous_time'] = self.stop_times['time'].shift(+1).fillna(method='bfill')

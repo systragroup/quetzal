@@ -16,7 +16,7 @@ warnings.filterwarnings("ignore")
 
 # docker run -p 9000:8080 --env-file 'api/GTFS_importer/test.env' gtfs_importer 
 
-# curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"callID":"test","files":["https://storage.googleapis.com/storage/v1/b/mdb-latest/o/ca-quebec-societe-de-transport-de-laval-gtfs-749.zip?alt=media"]}'
+# curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"callID":"test","files":["https://storage.googleapis.com/storage/v1/b/mdb-latest/o/ca-british-columbia-translink-vancouver-gtfs-1222.zip?alt=media"]}'
 # curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"callID":"345e4cb4-4875-449a-bb32-666fb6e4dcb9","files":["stm.zip","stl.zip"]}'
 
 
@@ -36,7 +36,7 @@ class Model(BaseModel):
     callID: Optional[str] = 'test'
     files: Optional[list] = []
     start_time: Optional[str] = '6:00:00'
-    end_time: Optional[str] = '8:59:00'
+    end_time: Optional[str] = '12:00:00'
     day: Optional[str] = 'tuesday'
     dates: Optional[list] = []
 
@@ -112,21 +112,29 @@ def handler(event, context):
         feed_t = feed.restrict(dates=[dates[i]], time_range=time_range)
         if len(feed_t.trips) > 0:
             feeds_t.append(feed_t)
-    del feeds
-    print('add shape_dist_traveled')
+    #del feeds
+    print('add shape_dist_traveled to shapes')
     for feed in feeds_t:
         if 'shape_dist_traveled' not in feed.shapes.columns:
             feed.append_dist_to_shapes()
 
+    print('add shape_dist_traveled to stop_times')
     for feed in feeds_t:
         if 'shape_dist_traveled' not in feed.stop_times.columns:
             feed.append_dist_to_stop_times()
-
+        else:
+            nan_sequence=feed.stop_times[feed.stop_times['shape_dist_traveled'].isnull()]['stop_sequence'].unique()
+            # if there but all nan are at seq=1. just fill wwith 0.
+            if all(seq==1 for seq in nan_sequence):
+                feed.stop_times['shape_dist_traveled'] = feed.stop_times['shape_dist_traveled'].fillna(0)
+            else:
+                feed.append_dist_to_stop_times()
+    print('convert to meter if necessary')
+    for feed in feeds_t:
         if feed.stop_times['shape_dist_traveled'].max() < 100:
-            print(f'convert to meters ')
-            feed.dist_units = 'km'
-            feed = gtk.convert_dist(feed, new_dist_units='m')
-
+                print(f'convert to meters')
+                feed.dist_units = 'km'
+                feed = gtk.convert_dist(feed, new_dist_units='m')
 
     feeds_frequencies = []
     for i in range(len(feeds_t)):
@@ -146,7 +154,7 @@ def handler(event, context):
                                             keep_origin_columns=['departure_time','pickup_type'],
                                             keep_destination_columns=['arrival_time','drop_off_type'])
         feeds_frequencies.append(feed_frequencies)
-    del feeds_t
+    #del feeds_t
     mapping = {0:'tram', 1:'subway', 2:'rail', 3:'bus',4:'ferry',5:'cable_car',6:'gondola',7:'funicular', 700:'bus', 1501:'taxi'}
     retire = ['taxi']
     for feed_frequencies in feeds_frequencies:
