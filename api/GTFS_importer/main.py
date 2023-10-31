@@ -121,14 +121,14 @@ def handler(event, context):
     print('add shape_dist_traveled to stop_times')
     for feed in feeds_t:
         if 'shape_dist_traveled' not in feed.stop_times.columns:
-            feed.append_dist_to_stop_times()
+            feed.append_dist_to_stop_times_fast()
         else:
             nan_sequence=feed.stop_times[feed.stop_times['shape_dist_traveled'].isnull()]['stop_sequence'].unique()
             # if there but all nan are at seq=1. just fill wwith 0.
             if all(seq==1 for seq in nan_sequence):
                 feed.stop_times['shape_dist_traveled'] = feed.stop_times['shape_dist_traveled'].fillna(0)
             else:
-                feed.append_dist_to_stop_times()
+                feed.append_dist_to_stop_times_fast()
     print('convert to meter if necessary')
     for feed in feeds_t:
         if feed.stop_times['shape_dist_traveled'].max() < 100:

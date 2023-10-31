@@ -498,7 +498,7 @@ class GtfsImporter(Feed):
         if self.dist_units == 'km':
             self.shapes['shape_dist_traveled'] = self.shapes['shape_dist_traveled']/1000
         
-    def append_dist_to_stop_times(self):
+    def append_dist_to_stop_times_fast(self):
         '''
         This function apply self.shapes['shape_dist_traveled'] to self.stop_times
         Use the departure time to interpolate the distance at each stop.
