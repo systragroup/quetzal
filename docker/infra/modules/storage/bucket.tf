@@ -12,6 +12,7 @@ resource "aws_s3_bucket_cors_configuration" "storage" {
                 "https://systragroup.github.io"]
         expose_headers  = ["x-amz-server-side-encryption",
                 "x-amz-meta-user_email",
+                "x-amz-meta-checksum",
                 "Access-Control-Allow-Origin",
                 "x-amz-request-id",
                 "x-amz-id-2",
