@@ -20,7 +20,7 @@ source $QUETZAL_ROOT/$MODEL_FOLDER/.env
 # Prompt user for a tag
 last_tag=$(aws ecr describe-images --repository-name $AWS_ECR_REPO_NAME \
     --query 'sort_by(imageDetails,& imagePushedAt)[-1].imageTags[0]')
-
+echo "this will update : $AWS_ECR_REPO_NAME"
 echo "Enter a docker TAG (last: $last_tag)":
 read TAG
 

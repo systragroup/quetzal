@@ -6,10 +6,8 @@ from quetzal.io.gtfs_reader import importer
 from quetzal.io.gtfs_reader.frequencies import hhmmss_to_seconds_since_midnight 
 from quetzal.model import stepmodel
 from s3_utils import DataBase
-from io import BytesIO
 from pydantic import BaseModel
 from typing import  Optional
-
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -18,17 +16,32 @@ warnings.filterwarnings("ignore")
 
 # docker run -p 9000:8080 --env-file 'api/GTFS_importer/test.env' gtfs_importer 
 
-# curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"callID":"test","files":["https://storage.googleapis.com/storage/v1/b/mdb-latest/o/ca-quebec-societe-de-transport-de-laval-gtfs-749.zip?alt=media"]}'
+# curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"callID":"test","files":["https://storage.googleapis.com/storage/v1/b/mdb-latest/o/ca-british-columbia-translink-vancouver-gtfs-1222.zip?alt=media"]}'
+# curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"callID":"345e4cb4-4875-449a-bb32-666fb6e4dcb9","files":["stm.zip","stl.zip"]}'
 
+
+
+DAY_DICT = {
+    'monday': 0,
+    'tuesday': 1,
+    'wednesday': 2,
+    'thursday': 3,
+    'friday': 4,
+    'saturday': 5,
+    'sunday': 6
+}
 
 
 class Model(BaseModel):
     callID: Optional[str] = 'test'
     files: Optional[list] = []
     start_time: Optional[str] = '6:00:00'
-    end_time: Optional[str] = '8:59:00'
+    end_time: Optional[str] = '12:00:00'
+    day: Optional[str] = 'tuesday'
+    dates: Optional[list] = []
 
 db = DataBase()
+
 
     
 def handler(event, context):
@@ -36,34 +49,39 @@ def handler(event, context):
     print('start')
     print(args)
     uuid = args.callID
-    files = args.files
     start_time = args.start_time
     end_time = args.end_time
+    day = args.day
+    dates = args.dates
 
+    selected_day = DAY_DICT[day]
     time_range = [start_time,end_time]
 
-    
-    print('read files')
-    #links = gpd.read_file(f's3://{db.BUCKET}/{uuid}/road_links.geojson', driver='GeoJSON')
+    #if paths are not url (its from S3.)
+    # need to download locally in lambda as gtfs_kit doesnt support s3 buffers.
+    if any([f[:4] != 'http' for f in args.files]):
+        db.download_s3_folder(uuid, '/tmp')
+        files = ['/tmp/' + f for f in args.files]
+    else:
+        files = args.files
     feeds=[]
     for file in files:
-        print('Importing {f}.zip'.format(f=file))
+        print('Importing {f}'.format(f=file))
         feeds.append(importer.GtfsImporter(path=file, dist_units='m'))
 
 
     for i in range(len(feeds)):
-        print(i)
+        print('cleaning ', files[i])
         if 'agency_id' not in feeds[i].routes:
             print(f'add agency_id to routes in {files[i]}')
             feeds[i].routes['agency_id'] = feeds[i].agency['agency_id'].values[0]
-
         
         if 'pickup_type' not in feeds[i].stop_times:
-            print(f'picjup_type missing in stop_times. set to 0 in {files[i]}')
+            print(f'pickup_type missing in stop_times. set to 0 in {files[i]}')
             feeds[i].stop_times['pickup_type'] = 0
         
         if 'drop_off_type' not in feeds[i].stop_times:
-            print(f'drop_odd_type missing in stop_times. set to 0 in {files[i]}')
+            print(f'drop_off_type missing in stop_times. set to 0 in {files[i]}')
             feeds[i].stop_times['drop_off_type'] = 0
             
         if 'parent_station' not in feeds[i].stops:
@@ -71,49 +89,56 @@ def handler(event, context):
             feeds[i].stops['parent_station'] = np.nan
         feeds[i].stop_times['pickup_type'].fillna(0, inplace=True)
         feeds[i].stop_times['drop_off_type'].fillna(0, inplace=True)
-        
-        
-        '''
-        if 'shape_dist_traveled' not in feeds[i].stop_times.columns:
-            feeds[i] = gtk.append_dist_to_stop_times(feeds[i])
-        feeds[i].stop_times.loc[(feeds[i].stop_times['stop_sequence'] == 1), 'shape_dist_traveled'] = feeds[i].stop_times[feeds[i].stop_times['stop_sequence'] == 1]['shape_dist_traveled'].fillna(0.0)
 
-        if feeds[i].stop_times['shape_dist_traveled'].max() < 100:
-            print(f'convert to meters : {files[i]}')
-            feeds[i].dist_units = 'km'
-            feeds[i] = gtk.convert_dist(feeds[i], new_dist_units='m')
-        '''
-        assert all(~feeds[i].routes['agency_id'].isna())
-    
         feeds[i].stop_times['arrival_time'] = feeds[i].stop_times['departure_time']
 
-
-    available_dates =[]
-    for feed in feeds:
-        available_dates.append([feed.calendar['start_date'].unique().min(),feed.calendar['end_date'].unique().max()])
+    # if dates is not provided as inputs.
+    # get it from first dates of each GTFS
+    if len(dates)==0:
+        for feed in feeds:
+            min_date = feed.calendar['start_date'].unique().min()
+            max_date = feed.calendar['end_date'].unique().max()
+            # get date range 
+            s = pd.date_range(min_date, max_date, freq='D').to_series()
+            # get dayofweek selected and take first one
+            s = s[s.dt.dayofweek==selected_day][0]
+            # format  ex: ['20231011'] and append
+            dates.append(f'{s.year}{str(s.month).zfill(2)}{str(s.day).zfill(2)}')
 
 
     feeds_t = []
-
+    print('restrict feed')
     for i, feed in enumerate(feeds):
-        feed_t = feed.restrict(dates=[available_dates[i][0]], time_range=time_range)
+        feed_t = feed.restrict(dates=[dates[i]], time_range=time_range)
         if len(feed_t.trips) > 0:
             feeds_t.append(feed_t)
+    #del feeds
+    print('add shape_dist_traveled to shapes')
+    for feed in feeds_t:
+        if 'shape_dist_traveled' not in feed.shapes.columns:
+            feed.append_dist_to_shapes()
 
-    for i in range(len(feeds_t)):
-        if 'shape_dist_traveled' not in feeds_t[i].stop_times.columns:
-            feeds_t[i] = gtk.append_dist_to_stop_times(feeds_t[i])
-        feeds_t[i].stop_times.loc[(feeds_t[i].stop_times['stop_sequence'] == 1), 'shape_dist_traveled'] = feeds_t[i].stop_times[feeds_t[i].stop_times['stop_sequence'] == 1]['shape_dist_traveled'].fillna(0.0)
-
-        if feeds_t[i].stop_times['shape_dist_traveled'].max() < 100:
-            print(f'convert to meters')
-            feeds_t[i].dist_units = 'km'
-            feeds_t[i] = gtk.convert_dist(feeds_t[i], new_dist_units='m')
-
+    print('add shape_dist_traveled to stop_times')
+    for feed in feeds_t:
+        if 'shape_dist_traveled' not in feed.stop_times.columns:
+            feed.append_dist_to_stop_times_fast()
+        else:
+            nan_sequence=feed.stop_times[feed.stop_times['shape_dist_traveled'].isnull()]['stop_sequence'].unique()
+            # if there but all nan are at seq=1. just fill wwith 0.
+            if all(seq==1 for seq in nan_sequence):
+                feed.stop_times['shape_dist_traveled'] = feed.stop_times['shape_dist_traveled'].fillna(0)
+            else:
+                feed.append_dist_to_stop_times_fast()
+    print('convert to meter if necessary')
+    for feed in feeds_t:
+        if feed.stop_times['shape_dist_traveled'].max() < 100:
+                print(f'convert to meters')
+                feed.dist_units = 'km'
+                feed = gtk.convert_dist(feed, new_dist_units='m')
 
     feeds_frequencies = []
     for i in range(len(feeds_t)):
-        print(i)
+        print('Building links and nodes ', files[i])
         feed_s = feeds_t[i].copy()
         feed_s.group_services()
 
@@ -127,9 +152,10 @@ def handler(event, context):
                                             from_shape=shapes, 
                                             stick_nodes_on_links=shapes,
                                             keep_origin_columns=['departure_time','pickup_type'],
-                                            keep_destination_columns=['arrival_time','drop_off_type'])
+                                            keep_destination_columns=['arrival_time','drop_off_type'],
+                                            num_cores=4)
         feeds_frequencies.append(feed_frequencies)
-
+    #del feeds_t
     mapping = {0:'tram', 1:'subway', 2:'rail', 3:'bus',4:'ferry',5:'cable_car',6:'gondola',7:'funicular', 700:'bus', 1501:'taxi'}
     retire = ['taxi']
     for feed_frequencies in feeds_frequencies:
@@ -157,8 +183,15 @@ def handler(event, context):
         links_concat.append(feed_frequencies.links)
         nodes_concat.append(feed_frequencies.nodes)
 
+    # nothing to export. export empty geojson
+    if len(links_concat) == 0:
+        links = gpd.GeoDataFrame(columns=['feature'], geometry='feature',crs=4326)
+        nodes = gpd.GeoDataFrame(columns=['feature'], geometry='feature',crs=4326)
+        links.to_file(f's3://{db.BUCKET}/{uuid}/links.geojson', driver='GeoJSON')
+        nodes.to_file(f's3://{db.BUCKET}/{uuid}/nodes.geojson', driver='GeoJSON')
+        return
+    
     sm.links = pd.concat(links_concat)
-
     for col in columns:
         if col not in sm.links.columns:
             sm.links[col] = np.nan

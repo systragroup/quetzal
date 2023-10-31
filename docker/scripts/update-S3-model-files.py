@@ -25,7 +25,7 @@ def main():
     bucket = s3.Bucket(os.environ["AWS_BUCKET_NAME"])
     for scenario in sys.argv[2:]:
         # Delete content
-        for obj in bucket.objects.filter(Prefix=scenario):
+        for obj in bucket.objects.filter(Prefix=scenario+'/'):
             s3.Object(bucket.name, obj.key).delete()
 
         print(f"Updating {scenario} scenario")
