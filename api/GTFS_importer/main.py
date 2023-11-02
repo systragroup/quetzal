@@ -96,14 +96,23 @@ def handler(event, context):
     # get it from first dates of each GTFS
     if len(dates)==0:
         for feed in feeds:
-            min_date = feed.calendar['start_date'].unique().min()
-            max_date = feed.calendar['end_date'].unique().max()
+            try:
+                min_date = feed.calendar['start_date'].unique().min()
+                max_date = feed.calendar['end_date'].unique().max()
+            except:
+                min_date = feed.calendar_dates['date'].unique().min()
+                max_date = feed.calendar_dates['date'].unique().max()
+                
             # get date range 
             s = pd.date_range(min_date, max_date, freq='D').to_series()
-            # get dayofweek selected and take first one
-            s = s[s.dt.dayofweek==selected_day][0]
-            # format  ex: ['20231011'] and append
-            dates.append(f'{s.year}{str(s.month).zfill(2)}{str(s.day).zfill(2)}')
+            try:
+                # get dayofweek selected and take first one
+                s = s[s.dt.dayofweek==selected_day][0]
+                # format  ex: ['20231011'] and append
+                dates.append([f'{s.year}{str(s.month).zfill(2)}{str(s.day).zfill(2)}'])
+            except:
+                print('date not available. use', min_date)
+                dates.append(min_date)
 
 
     feeds_t = []
