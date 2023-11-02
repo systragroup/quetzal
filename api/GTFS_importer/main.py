@@ -109,7 +109,7 @@ def handler(event, context):
                 # get dayofweek selected and take first one
                 s = s[s.dt.dayofweek==selected_day][0]
                 # format  ex: ['20231011'] and append
-                dates.append([f'{s.year}{str(s.month).zfill(2)}{str(s.day).zfill(2)}'])
+                dates.append(f'{s.year}{str(s.month).zfill(2)}{str(s.day).zfill(2)}')
             except:
                 print('date not available. use', min_date)
                 dates.append(min_date)
