@@ -1,4 +1,0 @@
-requests
-PyJWT
-cryptography
-boto3

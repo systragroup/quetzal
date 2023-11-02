@@ -117,6 +117,8 @@ def handler(event, context):
     for feed in feeds_t:
         if 'shape_dist_traveled' not in feed.shapes.columns:
             feed.append_dist_to_shapes()
+        elif any(feed.shapes['shape_dist_traveled'].isnull()):
+            feed.append_dist_to_shapes()
 
     print('add shape_dist_traveled to stop_times')
     for feed in feeds_t:
