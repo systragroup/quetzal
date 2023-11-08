@@ -1,6 +1,6 @@
 import bz2
 import os
-import xml
+from xml import sax
 import geopandas as gpd
 import pandas as pd
 from shapely import geometry
@@ -8,7 +8,7 @@ import string
 from . import road as road_io
 
 
-class OSMContentHandler(xml.sax.handler.ContentHandler):
+class OSMContentHandler(sax.handler.ContentHandler):
     """
     SAX content handler for OSM XML.
 
@@ -76,7 +76,7 @@ def overpass_json_from_file(filename):
 
     with opener(filename) as file:
         handler = OSMContentHandler()
-        xml.sax.parse(file, handler)
+        sax.parse(file, handler)
         return handler.object
 
 
