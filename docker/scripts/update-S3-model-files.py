@@ -27,6 +27,7 @@ def main():
         # Delete content
         for obj in bucket.objects.filter(Prefix=scenario+'/'):
             s3.Object(bucket.name, obj.key).delete()
+            pass
 
         print(f"Updating {scenario} scenario")
         localpath = 'scenarios/' + scenario + '/' 
@@ -36,8 +37,8 @@ def main():
         if os.path.isdir(localpath):
             files = list_paths_in_directory(localpath)
             for file in files:
-                print('upload:',file[10:])
-                bucket.upload_file(file, file[10:])
+                print('upload:',file)
+                bucket.upload_file(file, file[10:].replace(os.sep,'/'))
 
 
           
