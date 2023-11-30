@@ -57,6 +57,6 @@ def groupby_weighted_average(df, groupby, columns, weight):
         columns = [columns]
     new_columns = [(c, weight) for c in columns]
     df[new_columns] = pd.concat([df[c] * df[weight] for c in columns], axis=1)
-    grouped = df.groupby(groupby)[new_columns].sum().div(df.groupby(groupby)['volume'].sum(), axis=0)
+    grouped = df.groupby(groupby)[new_columns].sum().div(df.groupby(groupby)[weight].sum(), axis=0)
     grouped = grouped.rename(columns={(c, w): c for c, w in grouped.columns})
     return grouped
