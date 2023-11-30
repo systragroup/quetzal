@@ -67,14 +67,14 @@ terraform init
 ```
 
 5. **Plan your deployment**. This will create a plan of deployment. if it is a new deployment, make sure everything is created and **nothing is destroy** `<br>`
-   The plan should read  : `Plan: 18 to add, 0 to change, 0 to destroy.`
+   The plan should read  : `Plan: 16 to add, 0 to change, 0 to destroy.`
 
 ```bash
 terraform plan -var-file="environments/<your_model_name>.tfvars"
 ```
 
 6. **Apply your deployment**. Make sure the plan is the same as in the previous step and press yes  `<br>`
-   Again, the plan should read  : `Plan: 18 to add, 0 to change, 0 to destroy.`
+   Again, the plan should read  : `Plan: 17 to add, 0 to change, 0 to destroy.`
 
 ```bash
 terraform apply -var-file="environments/<your_model_name>.tfvars"
@@ -111,6 +111,7 @@ Note that those are optional. You can have a model without PT, or without road, 
    * `QUETZAL_MODEL_NAME` should be the same as the the **model folder** name.
    * Everything else should be the same as `<your_model_name>` in terraform
 3. Create the `requirements.txt` for the model. We recommand using [pip chill](https://pypi.org/project/pip-chill/).
+   * you an also use the one provided in this `template directory`
 4. Modify the step fonction configuration file `step-functions.json` according to model steps.
 5. Fill the `Dockerfile.dockerignore`. Inputs that are provided by quenedi and outputs are not necessary in the image. Note that Docker Build will be run from directory higher than the model. You should add the model folder path to your ignored path (Exemple: inputs -> QUETZAL_MODEL_NAME/inputs)
 
@@ -122,7 +123,7 @@ Note that those are optional. You can have a model without PT, or without road, 
    ./push-image.sh <model_folder_name> initial
    ```
 
-   Or, in windows:
+   Or, in windows, make sure Docker desktop is running and run:
 
    ```bash
    push-image.bat <model_folder_name> initial
@@ -141,13 +142,26 @@ Note that those are optional. You can have a model without PT, or without road, 
 Note: this script will copy all files from `<model_folder>/scenarios/<scenario1>/` to S3. <br>
 for example. with quetzal_test and a base scenario we would have in quetzal_test: `scenarios/base/inputs/pt/links.geojson` and so on
 
-## Create Cognito User group (AWS Admin only)
+## Create Cognito User group (Optional) (AWS Admin only)
 
 * Create new Cognito user group in quetzal user pool (Cognito Console -> User pool -> Quetzal -> Groups -> Create Group).
   * Enter a group name.
   * Select the role created by terraform (Cognito_quetzal_pool_`<model-name>`).
-* Update congito_group_access.json in quetzal-config bucket to add available bucket to group.
-* you can add the policy and add the bucket (cognito_group_access.json) to existing group too.
+* You can then add user to the cognito user group in the AWS web interface
+
+* Update cognito_group_access.json in quetzal-config bucket to add available bucket (model) to group. 
+   * ex: `<cognito_user_group>` : [`<model-name>`]
+   * note: this is necessary as there are no other way for the front to know which models (buckets) are accessible.
+
+## Add Access to existing Cognito User group (if last step skipped) (AWS Admin only)
+
+* Find the IAM role associate to the Cognito user Group (ex: Cognito_quetzal_pool_`<cognito_user_group>`) under IAM>Roles
+* In the Permissions tab. click "Add persmissions" then attach policies.
+* Select the appropriated policy create by terraform (s3_read_put_`<model-name>`)
+  
+* Update cognito_group_access.json in quetzal-config bucket to add available bucket (model) to group. 
+   * ex: `<cognito_user_group>` : [`<model-name>`]
+   * note: this is necessary as there are no other way for the front to know which models (buckets) are accessible.
 
 ## Done !
 
@@ -156,6 +170,10 @@ for example. with quetzal_test and a base scenario we would have in quetzal_test
 You need AWS permissions to update a model on ECR. You can ask for those permissions to the AWS Admin.
 
 ``./update-lambda.sh <model_folder_name>``
+
+Or, in windows, make sure Docker desktop is running and run:
+
+``update-lambda.bat <model_folder_name>``
 
 # destroy Terraform workspace (for AWS admin)
 
@@ -190,7 +208,7 @@ here. test is the docker tag.
 Finally, run this command in a new terminal with the appropriate values.
 
 ```bash
- curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"notebook_path": "notebooks/model/model.ipynb", "scenario_path_S3": "test/", "launcher_arg": {"scenario": "test", "training_folder": "/tmp","params": {"some_param":"value"}},"metadata": {"user_email": "lamda_test@test.com"}}'
+ curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"notebook_path": "notebooks/model/model.ipynb", "scenario_path_S3": "test/", "launcher_arg": {"training_folder": "/tmp","params": {"some_param":"value"}},"metadata": {"user_email": "lambda_test@test.com"}}'
 ```
 
 # debug a docker container
@@ -200,6 +218,7 @@ running an interactive shell to explore the docker container
  ``docker run -it --rm --entrypoint /bin/bash <docker_name>:<tag>``
 
  by default, you will be in `/var/task` which is where all your files (main.py for instance)
+ the command `du -ah --max-depth=1` is usefull to see the size of each dir
 
 # Knowned issue
 
@@ -210,3 +229,10 @@ ECR  will not be destroy as it is not empty. We need to empty and then destroy E
 ## jupyter-nbconvert KeyError: 'template_paths'
 
 The entrypoint of the dockerfile convert .ipynb to .py files. For some reason. this will not work if there is no .git in the quetzal_model.
+
+## Lambda.Unknown Task timed out (tqdm)
+
+tqdm doesn't work on lambda when the loop is too long (a priori ~1000 iterations).
+gives back a timeout error with no log. 
+
+This could also be a timeout issue. lambda have 5 minutes to completes its task and it took more for example.

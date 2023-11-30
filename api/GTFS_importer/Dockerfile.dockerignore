@@ -1,0 +1,7 @@
+__pycache__
+*.ipynb_checkpoints
+*.python-version
+*.md
+*.env
+api/GTFS_importer/notebook
+syspy/surveys

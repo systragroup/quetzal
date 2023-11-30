@@ -1,8 +1,11 @@
 
 
 
-declare AWS_ECR_REPO_NAME=quetzal-api-auth
-declare AWS_LAMBDA_FUNCTION_NAME=quetzal-api-auth
+declare AWS_ECR_REPO_NAME=quetzal-gtfs-api
+declare AWS_LAMBDA_FUNCTION_NAME=quetzal-gtfs-api
+declare FOLDER_NAME=GTFS_importer
+declare QUETZAL_ROOT=../..
+
 
 # Prompt user for a tag
 last_tag=$(aws ecr describe-images --repository-name $AWS_ECR_REPO_NAME \
@@ -11,9 +14,9 @@ last_tag=$(aws ecr describe-images --repository-name $AWS_ECR_REPO_NAME \
 echo "Enter a docker TAG (last: $last_tag)":
 read TAG
 
-
+cd $QUETZAL_ROOT
 # Build docker image
-docker build -t $AWS_ECR_REPO_NAME:$TAG .
+docker build -f api/$FOLDER_NAME/Dockerfile  -t $AWS_ECR_REPO_NAME:$TAG .
 
 # Connect to AWS ECR
 aws_account=$(aws sts get-caller-identity | jq '.Account' | sed 's/"//g')

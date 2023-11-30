@@ -9,9 +9,11 @@ resource "aws_s3_bucket_cors_configuration" "storage" {
         allowed_headers = ["*"]
         allowed_methods = [ "GET", "HEAD","PUT","POST","DELETE"]
         allowed_origins = ["http://localhost:8081",
-                "https://systragroup.github.io"]
+                            "https://localhost:8081",
+                            "https://systragroup.github.io"]
         expose_headers  = ["x-amz-server-side-encryption",
                 "x-amz-meta-user_email",
+                "x-amz-meta-checksum",
                 "Access-Control-Allow-Origin",
                 "x-amz-request-id",
                 "x-amz-id-2",

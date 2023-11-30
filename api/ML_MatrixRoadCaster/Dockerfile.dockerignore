@@ -3,4 +3,5 @@ __pycache__
 *.python-version
 *.md
 *.env
-notebook/
+api/ML_MatrixRoadCaster/notebook
+syspy/surveys

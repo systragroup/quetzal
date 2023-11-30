@@ -5,11 +5,8 @@
 ## License
 [CeCILL-B](LICENSE.md)
 ## Deploy
-
-see instruction on AWS ECR
-for step 2 however:
 ```bash
-docker build -f api/ML_MatrixRoadCaster/Dockerfile -t ml_matrixroadcaster .
+./update-lambda.sh
 ```
 ## TEST
 

@@ -2,14 +2,6 @@ data "aws_iam_policy" "config" {
   name = "s3_read_quetzal_config"
 }
 
-data "aws_iam_policy" "osm" {
-  name = "s3_read_put_quetzal-osm"
-}
-
-data "aws_iam_policy" "matrixroadcaster" {
-  name = "s3_read_put_matrixroadcaster"
-}
-
 # Role trusted policy
 data "aws_iam_policy_document" "assume_role" {
   statement {

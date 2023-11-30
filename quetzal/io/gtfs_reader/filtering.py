@@ -5,6 +5,19 @@ import numpy as np
 import pandas as pd
 from shapely import geometry
 
+def to_secs(time_int):
+    """
+        Convert  HH:MM:SS into seconds since midnight.
+        For example "01:02:03" returns 3723. The leading zero of the hours may be
+        omitted. HH may be more than 23 if the time is on the following day.
+        :param time_int: HH:MM:SS string. HH may be more than 23 if the time is on the following day.
+        :return: int number of seconds since midnight
+        """
+    time_int = int(''.join(time_int.split(':')))
+    hour = time_int // 10000
+    minute = (time_int - hour * 10000) // 100
+    second = time_int % 100
+    return hour * 3600 + minute * 60 + second
 
 def restrict(
         feed, dates=None, service_ids=None, time_range=None,
@@ -71,7 +84,7 @@ def restrict_to_timerange(feed, time_range, drop_unused=True):
         if len(t) == 7:
             t = "0" + t
         return t
-    time_range = [reformat(x) for x in time_range]
+    time_range = [to_secs(x) for x in time_range]
 
     # Initialize the new feed as the old feed.
     # Restrict its DataFrames below.
@@ -83,34 +96,41 @@ def restrict_to_timerange(feed, time_range, drop_unused=True):
     # Frequency case: trip is defined in feed.frequencies
     if feed.frequencies is not None:
         frequency_trip_ids = feed.frequencies['trip_id'].unique()
+        
+        feed.frequencies['start_time (s)'] = feed.frequencies['start_time'].apply(lambda x: to_secs(x))
+        feed.frequencies['end_time (s)'] = feed.frequencies['end_time'].apply(lambda x: to_secs(x))
         active_trips += list(
             feed.frequencies[
                 # case 1: start_time < end_time
                 (
-                    (feed.frequencies['start_time'] < feed.frequencies['end_time'])
-                    & (feed.frequencies['start_time'] <= time_range[1])
-                    & (feed.frequencies['end_time'] > time_range[0])
+                    (feed.frequencies['start_time (s)'] < feed.frequencies['end_time (s)'])
+                    & (feed.frequencies['start_time (s)'] <= time_range[1])
+                    & (feed.frequencies['end_time (s)'] > time_range[0])
                 )
                 # case 2: start_time == end_time: one trip, that must start within time range
                 | (
-                    (feed.frequencies['start_time'] == feed.frequencies['end_time'])
-                    & (feed.frequencies['start_time'] <= time_range[1])
-                    & (feed.frequencies['start_time'] >= time_range[0])
+                    (feed.frequencies['start_time (s)'] == feed.frequencies['end_time (s)'])
+                    & (feed.frequencies['start_time (s)'] <= time_range[1])
+                    & (feed.frequencies['start_time (s)'] >= time_range[0])
                 )
             ]['trip_id'].unique()
         )
+        feed.frequencies = feed.frequencies.drop(columns=['start_time (s)','end_time (s)'])
 
+    feed.stop_times = feed.stop_times[(~feed.stop_times['arrival_time'].isnull()) & (~feed.stop_times['departure_time'].isnull())]
+    feed.stop_times['arrival_time (s)'] = feed.stop_times['arrival_time'].apply(lambda x: to_secs(x))
+    feed.stop_times['departure_time (s)'] = feed.stop_times['departure_time'].apply(lambda x: to_secs(x))
     # Non-frequency case: trip is not defined in feed.frequencies
     active_trips += list(
         feed.stop_times[
             (~(feed.stop_times['trip_id'].isin(frequency_trip_ids)))
-            & (feed.stop_times['arrival_time'] <= time_range[1])
-            & (feed.stop_times['departure_time'] >= time_range[0])
+            & (feed.stop_times['arrival_time (s)'] <= time_range[1])
+            & (feed.stop_times['departure_time (s)'] >= time_range[0])
         ]['trip_id'].unique()
     )
-
     trip_ids = list(set(active_trips))
-
+    feed.stop_times = feed.stop_times.drop(columns = ['arrival_time (s)','departure_time (s)'])
+    
     if drop_unused:
         feed.drop_unused()
     return restrict_to_trips(feed, trip_ids, drop_unused=drop_unused)

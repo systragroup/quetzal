@@ -22,15 +22,3 @@ resource "aws_iam_role_policy_attachment" "user_config_policy" {
   role       = aws_iam_role.iam_for_user.name
   policy_arn = data.aws_iam_policy.config.arn
 }
-
-# 5) attach matrixroadcaster policy
-resource "aws_iam_role_policy_attachment" "user_matrixroadcaster_policy" {
-  role       = aws_iam_role.iam_for_user.name
-  policy_arn = data.aws_iam_policy.matrixroadcaster.arn
-}
-
-# 6) attach osm policy
-resource "aws_iam_role_policy_attachment" "user_osm_policy" {
-  role       = aws_iam_role.iam_for_user.name
-  policy_arn = data.aws_iam_policy.osm.arn
-}

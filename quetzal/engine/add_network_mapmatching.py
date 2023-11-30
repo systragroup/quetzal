@@ -4,140 +4,210 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import copy
 from scipy.sparse.csgraph import dijkstra
 from sklearn.neighbors import NearestNeighbors
 from quetzal.engine.pathfinder_utils import sparse_matrix
 from syspy.spatial.spatial import add_geometry_coordinates
-from tqdm import tqdm
-from threading import Thread
+from multiprocessing import Process, Manager
+from typing import Tuple
 
-class NetworkCaster_MapMaptching(Thread):
-    def __init__(self, nodes, road_links, links, by='trip_id', sequence='link_sequence'):
-        self.links = gpd.GeoDataFrame(road_links)
-        self.nodes = gpd.GeoDataFrame(nodes)
 
-        assert self.links.crs != None, 'nodes and road_links crs must be set (crs in meter, NOT 3857)'
+class RoadLinks:
+    '''
+    Link Object for mapmatching 
+
+    parameters
+    ----------
+    links (gpd.GeoDataFrame): links in a metre projection (not 4326 or 3857)
+    gps_track (gpd.GeoDataFrame): [['index','geometry']] ordered list of geometry Points. only needed if links is None (to import the links from osmnx)
+    n_neighbors_centroid (int) : number of neighbor using the links centroid. first quick pass to find all good candidat road.
+
+    returns
+    ----------
+    RoadLinks object for mapmatching
+    '''
+    def __init__(self, links, n_neighbors_centroid=100):
+
+        self.links = links
+        assert self.links.crs != None, 'road_links crs must be set (crs in meter, NOT 3857)'
         assert self.links.crs != 3857, 'CRS error. crs 3857 is not supported. use a local projection in meters.'
-        assert self.links.crs == nodes.crs, 'nodes and road_links should avec the same crs, in meter'
-        assert self.links.crs !=4326, 'CRS error, crs 4326 is not supported, use a crs in meter (NOT 3857)'
+        assert self.links.crs != 4326, 'CRS error, crs 4326 is not supported, use a crs in meter (NOT 3857)'
 
- 
-       
+        self.crs = links.crs
+        self.n_neighbors_centroid = n_neighbors_centroid
+        
+        try:
+            self.links['length']
+        except Exception:
+            self.links['length'] = self.links.length
 
-        # Reindex road links to integer
-        if self.links.index.name in self.links.columns:
-            #if index already in column, the reset index will bug. remove it first
-            self.links = self.links.drop(columns=self.links.index.name)
-        self.links = self.links.reset_index()
+        if 'index' not in self.links.columns:
+            self.links = self.links.reset_index()
+
+        self.get_sparse_matrix()
+        self.get_dict()
+        self.fit_nearest_model()
+
+        
+    def get_sparse_matrix(self):
+        self.mat, self.node_index = sparse_matrix(self.links[['a', 'b', 'length']].values)
+        self.index_node = {v: k for k, v in self.node_index.items()}
+
+    def get_dict(self):
+        # create dict of road network parameters
+        self.dict_node_a = self.links['a'].to_dict()
+        self.dict_node_b = self.links['b'].to_dict()
         self.links_index_dict = self.links['index'].to_dict()
-        self.links_geom_dict = self.links.set_index('index')['geometry'] # this dict for later. link_x:linestring
-        self.links = self.links.drop(columns=['index'])
-        if 'x_geometry' not in self.links.columns:
-            self.links = add_geometry_coordinates(self.links, columns=['x_geometry', 'y_geometry'])
+        self.dict_link = self.links.sort_values('length', ascending=True).drop_duplicates(['a', 'b'], keep='first').set_index(['a', 'b'], drop=False)[ 'index'].to_dict()
+        self.length_dict = self.links['length'].to_dict()
+        self.geom_dict = dict(self.links['geometry'])
 
-        
-
-        # Format links to a "gps track". keep node a,b of first links and node b of evey other ones.
-        self.gps_tracks = links[['a', 'b', by, sequence, 'route_id']]
-        node_dict = self.nodes['geometry'].to_dict()
-        # gps_tracks['geometry'] = gps_tracks['b'].apply(lambda x: node_dict.get(x))
-        self.gps_tracks['node_seq'] = self.gps_tracks['b']
-        # apply node a for the first link
-        counter = self.gps_tracks.groupby(by).agg(len)['a'].values
-        order = [i for j in range(len(counter)) for i in range(counter[j])]
-        self.gps_tracks[sequence] = order
-
-        # for trip with single links, duplicate them to have a mapmatching between a and b.
-        single_points = self.gps_tracks[self.gps_tracks[sequence] == 0]
-        single_points['node_seq'] = single_points['a']
-        single_points[sequence] = -1
-        single_points.index = 'node_a_' + single_points.index.map(str)
-
-        self.gps_tracks = self.gps_tracks.append(single_points)
-
-        # remove single links that a==b.
-        self.gps_tracks = self.gps_tracks[self.gps_tracks['a'] != self.gps_tracks['b']]
-        self.gps_tracks['geometry'] = self.gps_tracks['node_seq'].apply(lambda x: node_dict.get(x))
-
-        self.gps_tracks = self.gps_tracks.sort_values([by, sequence])
-        self.gps_tracks = gpd.GeoDataFrame(self.gps_tracks)
-        self.gps_tracks = self.gps_tracks.drop(columns=['a', 'b', sequence])
-    
-    def copy(self):
-        return copy.deepcopy(self)
-
-    def Multi_Mapmatching(self,
-                          routing=False,
-                          n_neighbors_centroid=100,
-                          n_neighbors=10,
-                          distance_max=200,
-                          by='trip_id',
-                          num_cores=1):
-        # ====================
-        # Map preparation
-        # ====================
-        # create sparse matrix of road network
-        mat, node_index = sparse_matrix(self.links[['a', 'b', 'length']].values.tolist())
-        # dict du node ID des road_id
-        dict_node_a = self.links['a'].to_dict()
-        dict_node_b = self.links['b'].to_dict()
-        self.links['index'] = self.links.index
-        dict_link = self.links.set_index(['a', 'b'], drop=False)['index'].to_dict()
-        dict_link = self.links.set_index(['a', 'b'], drop=False)['index'].to_dict()
-        length_dict = self.links['length'].to_dict()
-        geom_dict = self.links['geometry'].to_dict() # we need this dict with index 0,1,2,3,4,5...
-        x = self.links[['x_geometry', 'y_geometry']].values
+    def fit_nearest_model(self):
         # Fit Nearest neighbors model
-        nbrs = NearestNeighbors(n_neighbors=n_neighbors_centroid, algorithm='ball_tree').fit(x)
+        links = add_geometry_coordinates(self.links, columns=['x_geometry', 'y_geometry'])
+        x = links[['x_geometry', 'y_geometry']].values
 
-        vals = gpd.GeoDataFrame()
-        node_lists = gpd.GeoDataFrame()
-        unmatched_trip = []
-        for trip_id in tqdm(self.gps_tracks[by].unique()):
-            gps_track = self.gps_tracks[self.gps_tracks[by] == trip_id].drop(columns=by)
-            # format index. keep dict to reindex after the mapmatching
-            gps_track = gps_track.reset_index()
-            gps_track.index = gps_track.index - 1
-            gps_index_dict = gps_track['index'].to_dict()
-            gps_track.index = gps_track.index + 1
-            gps_track = gps_track.drop(columns=['index'])
+        if len(links) < self.n_neighbors_centroid: self.n_neighbors_centroid = len(links)
 
-            if len(gps_track) < 2:  # cannot mapmatch less than 2 points.
-                unmatched_trip.append(trip_id)
-            else:
-                val, node_list = Mapmatching(gps_track, self.links, mat, node_index, dict_node_a, dict_node_b, length_dict,
-                                                    geom_dict, dict_link, nbrs,self.links_index_dict,
-                                                    routing=routing,
-                                                    n_neighbors_centroid=n_neighbors_centroid,
-                                                    n_neighbors=n_neighbors,
-                                                    distance_max=distance_max)
+        self.nbrs = NearestNeighbors(n_neighbors=self.n_neighbors_centroid, algorithm='ball_tree').fit(x)
 
 
-                # add the by column to every data
-                val[by] = trip_id
-                node_list[by] = trip_id
-                # apply input index
-                val.index = val.index.map(gps_index_dict)
-                node_list.index = node_list.index.map(gps_index_dict)
-                vals = vals.append(val)
-                node_lists = node_lists.append(node_list)
-        
 
-        return vals, node_lists, unmatched_trip
+def get_gps_tracks(links, nodes, by='trip_id', sequence='link_sequence'):
+    '''
+    format links to a format used by the Multi Mapmatching
+    '''
 
-def Mapmatching(gps_track, links, mat, node_index, dict_node_a,
-                dict_node_b, length_dict, geom_dict, dict_link, nbrs,links_index_dict,
-                n_neighbors_centroid, n_neighbors=10, distance_max=1000,
-                links_duplicated=False, normalized_offset=False, routing=False, plot=False):
+    # Format links to a "gps track". keep node a,b of first links and node b of evey other ones.
+    gps_tracks = links[['a', 'b', by, sequence, 'route_id']]
+    node_dict = nodes['geometry'].to_dict()
+    # gps_tracks['geometry'] = gps_tracks['b'].apply(lambda x: node_dict.get(x))
+    gps_tracks['node_seq'] = gps_tracks['b']
+    # apply node a for the first link
+    counter = gps_tracks.groupby(by).agg(len)['a'].values
+    order = [i for j in range(len(counter)) for i in range(counter[j])]
+    gps_tracks[sequence] = order
+
+    # for trip with single links, duplicate them to have a mapmatching between a and b.
+    single_points = gps_tracks[gps_tracks[sequence] == 0]
+    single_points['node_seq'] = single_points['a']
+    single_points[sequence] = -1
+    single_points.index = 'node_a_' + single_points.index.map(str)
+
+    gps_tracks = gps_tracks.append(single_points)
+
+    # remove single links that a==b.
+    gps_tracks = gps_tracks[gps_tracks['a'] != gps_tracks['b']]
+    gps_tracks['geometry'] = gps_tracks['node_seq'].apply(lambda x: node_dict.get(x))
+
+    gps_tracks = gps_tracks.sort_values([by, sequence])
+    gps_tracks = gpd.GeoDataFrame(gps_tracks)
+    gps_tracks = gps_tracks.drop(columns=['a', 'b', sequence])
+    return gps_tracks
+
+
+def Parallel_Mapmatching(gps_tracks: pd.DataFrame,
+                        road_links: RoadLinks,
+                        routing: bool = True,
+                        n_neighbors: int = 10,
+                        distance_max: float = 200,
+                        by: str = 'trip_id',
+                        num_cores: int = 1) -> Tuple[pd.DataFrame, pd.DataFrame, list]:
+    trip_list = gps_tracks[by].unique()
+    chunk_length =  round(len(trip_list)/ num_cores)
+    # Split the list into four sub-lists
+    chunks = [trip_list[j:j+chunk_length] for j in range(0, len(trip_list), chunk_length)]
+
+    # multi threading!
+    def process_wrapper(chunk, kwargs, result_list, index):
+        result = Multi_Mapmatching(chunk, **kwargs)
+        result_list[index] = result
+    manager = Manager()
+    result_list = manager.list([None] * len(chunks))
+    processes = []
+    kwargs = {'road_links':road_links,'routing':routing,'n_neighbors':n_neighbors,'distance_max':distance_max,'by':by}
+    for i, trips in enumerate(chunks):
+        chunk_gps_tracks = gps_tracks[gps_tracks[by].isin(trips)]
+        process = Process(target=process_wrapper, args=(chunk_gps_tracks,kwargs, result_list, i))
+        process.start()
+        processes.append(process)
+    for process in processes:
+        process.join()
+    # Convert the manager list to a regular list for easier access
+    result_list = np.array(result_list)
+
+    vals = pd.concat(result_list[:,0])
+    node_lists = pd.concat(result_list[:,1])
+    unmatched_trip=[]
+    return vals, node_lists, unmatched_trip
+
+    
+
+def Multi_Mapmatching(gps_tracks: pd.DataFrame,
+                        road_links: RoadLinks,
+                        routing: bool = True,
+                        n_neighbors: int = 10,
+                        distance_max: float = 200,
+                        by: str = 'trip_id') -> Tuple[pd.DataFrame, pd.DataFrame, list]:
+    """
+    gps_track: use get_gps_tracks
+    links: RoadLinks object
+    distance_max: max radius to search candidat road for each gps point (default = 200m)
+    routing: True return the complete routing from the first to the last point on the road network (default = False)
+    Hidden Markov Map Matching Through Noise and Sparseness
+        Paul Newson and John Krumm 2009
+    """
+
+    vals = gpd.GeoDataFrame()
+    node_lists = gpd.GeoDataFrame()
+    unmatched_trip = []
+    trip_id_list = gps_tracks[by].unique()
+    it=0
+    for trip_id in trip_id_list:
+        if it % max((len(trip_id_list)//5),5) == 0: # print 5 time
+            print(f'{it} / {len(trip_id_list)}')
+        it+=1
+        gps_track = gps_tracks[gps_tracks[by] == trip_id].drop(columns=by)
+        # format index. keep dict to reindex after the mapmatching
+        gps_track = gps_track.reset_index()
+        gps_track.index = gps_track.index - 1
+        gps_index_dict = gps_track['index'].to_dict()
+        gps_track.index = gps_track.index + 1
+        gps_track = gps_track.drop(columns=['index'])
+
+        if len(gps_track) < 2:  # cannot mapmatch less than 2 points.
+            unmatched_trip.append(trip_id)
+        else:
+            val, node_list = Mapmatching(gps_track, road_links, 
+                                                routing=routing,
+                                                n_neighbors=n_neighbors,
+                                                distance_max=distance_max)
+            
+
+
+            # add the by column to every data
+            val[by] = trip_id
+            node_list[by] = trip_id
+            # apply input index
+            val.index = val.index.map(gps_index_dict)
+            node_list.index = node_list.index.map(gps_index_dict)
+            vals = vals.append(val)
+            node_lists = node_lists.append(node_list)
+    
+    print(f'{len(trip_id_list)} / {len(trip_id_list)}')
+    return vals, node_lists, unmatched_trip
+
+
+
+def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10, distance_max:float=1000,
+                routing:bool=False, plot:bool=False) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    
+
     """
     gps_track: ordered list of geometry Point (in metre)
-    nodes: data frame of street map nodes (crs in metre)
+    links: RoadLinks object
     distance_max: max radius to search candidat road for each gps point (default = 200m)
-    links_duplicated:
-    normalized_offset:
     routing: True return the complete routing from the first to the last point on the road network (default = False)
-
     Hidden Markov Map Matching Through Noise and Sparseness
         Paul Newson and John Krumm 2009
     """
@@ -198,10 +268,6 @@ def Mapmatching(gps_track, links, mat, node_index, dict_node_a,
     # plt.plot(x,path_prob)
 
     # process map
-    try:
-        links['length']
-    except Exception:
-        links['length'] = links.length
 
     gps_dict = gps_track['geometry'].to_dict()
     # GPS point distance to next point.
@@ -211,7 +277,7 @@ def Mapmatching(gps_track, links, mat, node_index, dict_node_a,
     # ======================================================
     # Nearest roads and data preparation
     # ======================================================
-    candidat_links = nearest(gps_track, nbrs).drop(columns=['rank'])
+    candidat_links = nearest(gps_track, links.nbrs).drop(columns=['rank'])
 
     def project(A, B, normalized=False):
         return [a.project(b, normalized=normalized) for a, b in zip(A, B)]
@@ -219,14 +285,14 @@ def Mapmatching(gps_track, links, mat, node_index, dict_node_a,
     def distance(A, B):
         return [a.distance(b) for a, b in zip(A, B)]
 
-    candidat_links['road_geom'] = candidat_links['index_nn'].apply(lambda x: geom_dict.get(x))
+    candidat_links['road_geom'] = candidat_links['index_nn'].apply(lambda x: links.geom_dict.get(x))
     candidat_links['gps_geom'] = candidat_links['ix_one'].apply(lambda x: gps_dict.get(x))
 
     # Add gps distance to road.
     candidat_links['distance'] = distance(candidat_links['gps_geom'], candidat_links['road_geom'])
 
     candidat_links.sort_values(['ix_one', 'distance'], inplace=True)
-    ranks = list(range(n_neighbors_centroid)) * len(gps_track)
+    ranks = list(range(links.n_neighbors_centroid)) * len(gps_track)
     candidat_links['actual_rank'] = ranks
     candidat_links = candidat_links.loc[candidat_links['actual_rank'] < n_neighbors]
     candidat_links = candidat_links[candidat_links['distance'] < distance_max]
@@ -275,27 +341,21 @@ def Mapmatching(gps_track, links, mat, node_index, dict_node_a,
 
     # lien de la route a vers b dans le pseudo graph
     # mais le dijkstra est entre le lien b(route a) vers le lien a(route b)
-    candidat_links['node_b'] = candidat_links['road_a'].apply(lambda x: dict_node_b.get(x))
-    candidat_links['node_a'] = candidat_links['road_b'].apply(lambda x: dict_node_a.get(x))
+    candidat_links['node_b'] = candidat_links['road_a'].apply(lambda x: links.dict_node_b.get(x))
+    candidat_links['node_a'] = candidat_links['road_b'].apply(lambda x: links.dict_node_a.get(x))
 
     # candidat_links = candidat_links.fillna(0)
 
-    # Create sparse matrix of the road network
-    try:  # for multi-mapmatching, feeding it as an input save time (it's the same mat every time)
-        mat
-    except Exception:
-        mat, node_index = sparse_matrix(links[['a', 'b', 'length']].values.tolist())
-
-    index_node = {v: k for k, v in node_index.items()}
+    index_node = {v: k for k, v in links.node_index.items()}
 
     # liste des origines pour le dijkstra
     origin = list(candidat_links['node_b'].unique())
-    origin_sparse = [node_index[x] for x in origin]
+    origin_sparse = [links.node_index[x] for x in origin]
 
     # Dijktra on the road network from node = incices to every other nodes.
     # From b to a.
     dist_matrix, predecessors = dijkstra(
-        csgraph=mat,
+        csgraph=links.mat,
         directed=True,
         indices=origin_sparse,
         return_predecessors=True,
@@ -307,7 +367,7 @@ def Mapmatching(gps_track, links, mat, node_index, dict_node_a,
 
     # Dijkstra Destinations list
     destination = list(candidat_links['node_a'].unique())
-    destination_sparse = [node_index[x] for x in destination]
+    destination_sparse = [links.node_index[x] for x in destination]
 
     # Filter. on garde seulement les destination d'intéret (les nodes a)
     dist_matrix = dist_matrix[destination_sparse]
@@ -328,11 +388,11 @@ def Mapmatching(gps_track, links, mat, node_index, dict_node_a,
     # on refait un Dijktra sans limite avec ces origin (noeud b).
     unfound_origin_nodes = (candidat_links[np.isnan(candidat_links['dijkstra'])]['node_b'].unique())
     if len(unfound_origin_nodes) > 0:
-        origin_sparse2 = [node_index[x] for x in unfound_origin_nodes]
+        origin_sparse2 = [links.node_index[x] for x in unfound_origin_nodes]
         # Dijktra on the road network from node = incices to every other nodes.
         # from b to a.
         dist_matrix2, predecessors2 = dijkstra(
-            csgraph=mat,
+            csgraph=links.mat,
             directed=True,
             indices=origin_sparse2,
             return_predecessors=True,
@@ -364,7 +424,7 @@ def Mapmatching(gps_track, links, mat, node_index, dict_node_a,
     # Apply offset difference to Dijkstra
     # candidat_links['dijkstra'] = candidat_links.apply(lambda x: routing_correction(links.loc[x['road_a']]['length'],x),axis=1)
 
-    candidat_links['length'] = candidat_links['road_a'].apply(lambda x: length_dict.get(x))
+    candidat_links['length'] = candidat_links['road_a'].apply(lambda x: links.length_dict.get(x))
 
     candidat_links['dijkstra'] = candidat_links['dijkstra'] + candidat_links['length'] - candidat_links[
         'road_a_offset'] + candidat_links['road_b_offset']
@@ -451,7 +511,7 @@ def Mapmatching(gps_track, links, mat, node_index, dict_node_a,
     if plot:
         f, ax = plt.subplots(figsize=(10, 10))
         gps_track.plot(ax=ax, marker='o', color='blue', markersize=20)
-        links.loc[path].plot(ax=ax, color='red')
+        links.links.loc[path].plot(ax=ax, color='red')
         plt.show()
 
     # ======================================================
@@ -471,7 +531,7 @@ def Mapmatching(gps_track, links, mat, node_index, dict_node_a,
 
         # predecessors = predecessors.apply(lambda x : index_node.get(x))
         df_path = pd.DataFrame(path[1:], columns=['road_id'])
-        df_path['sparse_node_b'] = df_path['road_id'].apply(lambda x: node_index.get(dict_node_b.get(x)))
+        df_path['sparse_node_b'] = df_path['road_id'].apply(lambda x: links.node_index.get(links.dict_node_b.get(x)))
 
         node_mat = []
 
@@ -484,7 +544,7 @@ def Mapmatching(gps_track, links, mat, node_index, dict_node_a,
                 node = predecessors.loc[df_path.iloc[-(1 + i + 1)]['sparse_node_b'], node]
 
             # if i==len(df_path)-2:
-            node_list.append(int(node_index[links.loc[df_path.iloc[-(1 + i + 1)]['road_id']]['a']]))  # ajoute le noeud a.
+            node_list.append(int(links.node_index[links.links.loc[df_path.iloc[-(1 + i + 1)]['road_id']]['a']]))  # ajoute le noeud a.
             node_list = [index_node[x] for x in node_list[::-1]]  # reverse and swap index
             node_mat.append(node_list)
         # ajoute le noed a du premier point. puisque le Dijkstra a été calculé à partir des noeds b. le noed a du premier point
@@ -497,7 +557,7 @@ def Mapmatching(gps_track, links, mat, node_index, dict_node_a,
             for i in range(len(node_list) - 1):
                 # probleme quand node list est egal a deux, liée au links_index_dict
                 try:
-                    link_list.append(links_index_dict[dict_link[node_list[i], node_list[i + 1]]])
+                    link_list.append(links.dict_link[node_list[i], node_list[i + 1]])
                     # print(node_list[i])
                     # print(node_list[i+1])
                 except Exception:
@@ -511,11 +571,12 @@ def Mapmatching(gps_track, links, mat, node_index, dict_node_a,
 
         if plot:
             f, ax = plt.subplots(figsize=(10, 10))
-            links.plot(ax=ax, linewidth=1)
+            links.links.plot(ax=ax, linewidth=1)
             gps_track.plot(ax=ax, marker='o', color='red', markersize=20)
-            links.loc[node_list['road_id']].plot(ax=ax, color='orange', linewidth=2)
+            links.links.loc[node_list['road_id']].plot(ax=ax, color='orange', linewidth=2)
             plt.xlim([gps_track['geometry'].x.min() - 1000, gps_track['geometry'].x.max() + 1000])
             plt.ylim([gps_track['geometry'].y.min() - 100, gps_track['geometry'].y.max() + 1000])
             plt.show()
-    return val, node_mat
-
+        return val, node_mat
+    else:
+        return val
