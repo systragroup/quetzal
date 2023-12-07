@@ -83,6 +83,7 @@ def nested_logit_from_paths(
     nchunks=10,
     workers=1,
     return_od_tables=True,
+    symmetric=False,
 ):
     paths['index'] = paths.index
     paths.set_index(od_cols[0], drop=False, inplace=True)
@@ -115,6 +116,7 @@ def nested_logit_from_paths(
                     decimals=decimals,
                     n_paths_max=n_paths_max,
                     return_od_tables=return_od_tables,
+                    symmetric=symmetric,
                 ))
 
         paths_list = []
@@ -143,6 +145,7 @@ def nested_logit_from_paths(
                 od_cols=od_cols,
                 decimals=decimals,
                 n_paths_max=n_paths_max,
+                symmetric=symmetric,
             )
             p_list.append(p)
             mu_list.append(mu)
@@ -162,7 +165,8 @@ def one_block_nested_logit_from_paths(
     verbose=False,
     decimals=None,  # minimum probability
     n_paths_max=None,
-    return_od_tables=True
+    return_od_tables=True,
+    symmetric=False
 ):
     if 'segment' not in paths.columns:
         paths['segment'] = 'all'
@@ -234,6 +238,11 @@ def one_block_nested_logit_from_paths(
                 phi=phi[mode]
             )
     mode_utilities = mode_utilities[descending_modes]
+    
+    if symmetric:
+        reversed_utilities = mode_utilities.swaplevel(0, 1)
+        reversed_utilities.index.names = od_cols + ['segment']
+        mode_utilities = mode_utilities.add(reversed_utilities) / 2
 
     # initialize probabilities
     mode_probabilities = pd.DataFrame(index=rank_utilities.index)

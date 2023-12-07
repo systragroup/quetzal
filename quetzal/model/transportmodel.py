@@ -1122,7 +1122,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         n_paths_max=None,
         nchunks=10,
         workers=1,
-        keep_od_tables=True
+        keep_od_tables=True,
+        symmetric=False,
     ):
         """Performs the nested logit : compute the probabilities per segment of the paths in self.los 
         after having computed the utilities with function analysis_mode_utility.
@@ -1150,6 +1151,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             Parameter to speed up computation time (division of calculation)
         keep_od_tables : bool, optional, default True
             _description_, by default True
+        symmetric
         
         Builds
         ----------
@@ -1165,6 +1167,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         od_cols = ['origin', 'destination']
         if time_expanded:
             od_cols.append('wished_departure_time')
+        if symmetric & (nchunks > 1):
+            raise Exception('symmetric utility unspported for nchunks > 1')
         to_concat = []
         for segment in self.segments:
             keep_columns = od_cols + ['route_type', (segment, 'utility')]
@@ -1201,7 +1205,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 verbose=False,
                 decimals=decimals, n_paths_max=n_paths_max,
                 nchunks=nchunks, workers=workers,
-                return_od_tables=keep_od_tables
+                return_od_tables=keep_od_tables,
+                symmetric=symmetric,
             )
 
         except AssertionError:
@@ -1221,6 +1226,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                     od_cols=od_cols,
                     decimals=decimals,
                     n_paths_max=n_paths_max,
+                    symmetric=symmetric,
 
                 )
                 p_list.append(p)
