@@ -21,7 +21,8 @@ def to_secs(time_int):
 
 def restrict(
         feed, dates=None, service_ids=None, time_range=None,
-        trip_ids=None, polygon_4326=None, drop_unused=True
+        route_ids=None, trip_ids=None, polygon_4326=None,
+        drop_unused=True
 ):
     feed = feed.copy()
     # Restrict to dates
@@ -36,8 +37,12 @@ def restrict(
     # restrict to time_range
     if time_range is not None:
         feed = restrict_to_timerange(feed, time_range=time_range, drop_unused=False)
+    # restrict to area
     if polygon_4326 is not None:
         feed = restrict_to_area(feed, polygon_4326=polygon_4326, drop_unused=False)
+    # restrict to routes
+    if route_ids is not None:
+        feed = feed.restrict_to_routes(route_ids)
 
     if drop_unused:
         feed.drop_unused()
