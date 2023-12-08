@@ -401,10 +401,15 @@ class IntegrityModel:
             )
 
     def integrity_test_duplicate_volumes(self):
-        assert(self.volumes.set_index(['origin', 'destination']).index.is_unique), 'Volumes contain duplicate values'
+        """
+            * requires: volumes
+        """
+        if hasattr(self, 'volumes') and self.volumes is not None:
+            assert(self.volumes.set_index(['origin', 'destination']).index.is_unique), 'Volumes contain duplicate values'
 
     def integrity_fix_duplicate_volumes(self):
-        self.volumes = self.volumes.groupby(['origin', 'destination'], as_index=False).sum()
+        if hasattr(self, 'volumes') and self.volumes is not None:
+            self.volumes = self.volumes.groupby(['origin', 'destination'], as_index=False).sum()
 
     def integrity_test_all(self, errors='raise', verbose=True):
         """
