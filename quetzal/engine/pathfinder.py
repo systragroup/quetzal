@@ -335,7 +335,7 @@ class PublicPathFinder:
                     boarding_time=boarding_time,
                     **kwargs
                 )
-                print('starting los_from_graph')
+                # print('starting los_from_graph')
                 los = los_from_graph(
                     csgraph=matrix,
                     node_index=node_index,
