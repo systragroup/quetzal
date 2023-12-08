@@ -409,9 +409,6 @@ def bandwidth(
     df = gdf[gdf.length > 0].sort_values(value_column).copy()
     df = df[df.geometry.type == 'LineString']
 
-    if label_column is None:  # Then it is 'label'
-        df.drop('label', 1, errors='ignore', inplace=True)
-        label_column = 'label'
     # Create base plot
     plot = base_plot(df, geographical_bounds, *args, **kwargs)
     from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
@@ -473,23 +470,24 @@ def bandwidth(
         df.plot(value_column, linewidth=df['linewidth'], ax=plot, cax=cax, legend=legend, cmap=cmap, vmax=max_value)
     
     # Plot label
-    df_label = create_label_dataframe(df, label_column)
-    if offset_direction == 'left':
-        df_label['label_angle'] += 180
-        df_label['label_offset'] *= -1
-    df_label.apply(
-        lambda x: plot.annotate(
-            x[label_column],
-            xy=x.geometry.centroid.coords[0],
-            xytext=x['label_offset'],
-            textcoords='offset pixels',
-            rotation=x['label_angle'],
-            rotation_mode='anchor',
-            ha='center', va=x['va'],
-            **label_kwargs
-        ),
-        axis=1
-    )
+    if label_column is not None:
+        df_label = create_label_dataframe(df, label_column)
+        if offset_direction == 'left':
+            df_label['label_angle'] += 180
+            df_label['label_offset'] *= -1
+        df_label.apply(
+            lambda x: plot.annotate(
+                x[label_column],
+                xy=x.geometry.centroid.coords[0],
+                xytext=x['label_offset'],
+                textcoords='offset pixels',
+                rotation=x['label_angle'],
+                rotation_mode='anchor',
+                ha='center', va=x['va'],
+                **label_kwargs
+            ),
+            axis=1
+        )
 
     plot.set_xticks([])
     plot.set_yticks([])
