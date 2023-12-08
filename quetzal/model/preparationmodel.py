@@ -770,7 +770,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             )
 
     @track_args
-    def preparation_clusterize_nodes(self, n_clusters=None, adaptive_clustering=False, distance_threshold=150, **kwargs):
+    def preparation_clusterize_nodes(self, n_clusters=None, adaptive_clustering=False, distance_threshold=150, prefix=None, **kwargs):
         """Create nodes clusters to optimize computation time.
             It will agregate nodes based on their relative distance to build "stop areas"
 
@@ -822,6 +822,13 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         self.node_clusters['geometry'] = self.node_clusters[
             'geometry'
         ].apply(lambda g: g.buffer(1e-9))
+
+        # add prefixes
+        if prefix:
+            self._add_type_prefixes({'nodes': prefix})
+            func = lambda x: '{}_{}'.format(prefix, str(x).split(prefix)[-1])
+            self.node_parenthood['cluster'] = self.node_parenthood['cluster'].apply(func)
+            self.disaggregated_nodes['cluster_id'] = self.disaggregated_nodes['cluster_id'].apply(func)
 
     def preparation_map_tracks(
         self,
