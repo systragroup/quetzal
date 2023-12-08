@@ -102,12 +102,17 @@ class IntegrityModel:
 
     def integrity_test_collision(
         self,
-        sets=('links', 'nodes', 'zones', 'road_links', 'road_nodes')
+        sets=('links', 'nodes', 'zones', 'road_links', 'road_nodes'),
+        type_sensitive=True
     ):
         """
             * requires: links, nodes, zones
         """
-        tuples = [(key, list(self.__getattribute__(key).index)) for key in sets]
+        if not type_sensitive:
+            tuples = [(key, list(self.__getattribute__(key).index)) for key in sets]
+        else:
+            # we force conversion to str to prevent duplicates with different types (1 and '1' for instance)
+            tuples = [(key, [str(i) for i in list(self.__getattribute__(key).index)]) for key in sets]
 
         for left, left_list in tuples:
             try:
@@ -132,6 +137,37 @@ class IntegrityModel:
                         %i values are shared between %s and %s indexes : %s
                         """ % (ilength, left, right, str(intersection))
                         raise AssertionError(message)
+        if not type_sensitive:
+            self.integrity_test_str_collision()
+        
+    def integrity_test_str_collision(
+        self,
+        sets=('links', 'nodes', 'zones', 'road_links', 'road_nodes')
+    ):
+        """
+            * requires: links, nodes, zones
+        """
+        tuples = [(key, [str(i) for i in list(self.__getattribute__(key).index)]) for key in sets]
+
+        for left, left_list in tuples:
+            try:
+                duplicates = list_duplicates(left_list)
+                assert len(duplicates) <= 0
+            except AssertionError:
+                message = "Warning: str duplicates in %s.index" % (left)
+                print(message)
+
+            left_set = set(left_list)
+            for right, right_list in tuples:
+                right_set = set(right_list)
+                if left != right:
+                    try:
+                        intersection = left_set.intersection(right_set)
+                        ilength = len(intersection)
+                        assert ilength == 0
+                    except AssertionError:
+                        message = "Warning: str values are shared between %s and %s indexes" % (left, right)
+                        print(message)
 
     def integrity_fix_collision(
         self,
