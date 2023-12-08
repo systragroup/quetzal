@@ -356,6 +356,19 @@ class IntegrityModel:
         self.missing_road_nodes = missing_road_nodes
         assert len(missing_road_nodes) == 0, msg
 
+    def integrity_test_road_duplicated_ab_links(self):
+        msg = 'there is duplicated road links (same a,b for a link)'
+        assert not self.road_links.set_index(['a','b']).index.has_duplicates, msg
+
+    def integrity_fix_road_duplicated_ab_links(self, by='length', ascending=True):
+        """
+            clean ab duplicates, keeping first after sorting by / ascending
+            (default = sort by length and keep shortest link)
+        """
+        rl = self.road_links.sort_values(by, ascending=ascending)
+        to_drop = rl[rl.duplicated(subset=['a', 'b'], keep='first')].index
+        self.road_links.drop(to_drop, inplace=True)
+
     def integrity_fix_nodeset_consistency(self):
         self.links = self.links.loc[self.links['a'].isin(self.nodeset())]
         self.links = self.links.loc[self.links['b'].isin(self.nodeset())]
@@ -378,6 +391,7 @@ class IntegrityModel:
         self.integrity_test_isolated_roads()
         self.integrity_test_dead_ends(cutoff=cutoff)
         self.integrity_test_road_nodeset_consistency()
+        self.integrity_test_road_duplicated_ab_links()
 
     def integrity_fix_road_network(self, cutoff=10, recursive_depth=1):
         """
@@ -392,6 +406,7 @@ class IntegrityModel:
         self.road_links = networktools.drop_secondary_components(self.road_links)
         self.road_links = networktools.drop_deadends(self.road_links, cutoff=cutoff)
         self.integrity_fix_road_nodeset_consistency()
+        self.integrity_fix_road_duplicated_ab_links()
         try:
             self.integrity_test_road_network()
         except AssertionError:
