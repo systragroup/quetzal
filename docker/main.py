@@ -90,8 +90,13 @@ def handler(event, context):
     print(arg)
 
     file = os.path.join('/tmp', os.path.basename(notebook).replace('.ipynb', '.py'))
-    os.system('jupyter nbconvert --to python %s --output %s' % (notebook, file))
+    if notebook.endswith('.ipynb'):
+        os.system('jupyter nbconvert --to python %s --output %s' % (notebook, file))
+    else:
+        os.system('cp %s %s' % (notebook, file))
     cwd = os.path.dirname(notebook)
+    if cwd =='':
+        cwd = '/'
     command_list = ['python', file, arg]
     my_env = os.environ.copy()
     my_env['PYTHONPATH'] = os.pathsep.join(sys.path)

@@ -11,6 +11,9 @@ resource "aws_ecr_repository" "repository" {
       encryption_type   = var.encryption_type
 
   }
+}
+
+resource "null_resource" "image" {
 
  #https://stackoverflow.com/questions/69907325/terraform-aws-lambda-function-requires-docker-image-in-ecr/74395215#74395215
   # create a dummy docker image. we need it to create a lambda function
