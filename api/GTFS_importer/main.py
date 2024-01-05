@@ -8,7 +8,7 @@ from quetzal.model import stepmodel
 from s3_utils import DataBase
 from pydantic import BaseModel
 from typing import  Optional
-
+import json
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -42,6 +42,8 @@ class Model(BaseModel):
 
 db = DataBase()
 
+def hello():
+    print('hello world')
 
     
 def handler(event, context):
@@ -64,18 +66,25 @@ def handler(event, context):
         files = ['/tmp/' + f for f in args.files]
     else:
         files = args.files
+    main(uuid, files, dates, selected_day, time_range, export=True)
+
+def main(uuid, files, dates, selected_day, time_range, export=True):
     feeds=[]
     for file in files:
         print('Importing {f}'.format(f=file))
         feeds.append(importer.GtfsImporter(path=file, dist_units='m'))
 
-
+    # 1) filling missing values
     for i in range(len(feeds)):
         print('cleaning ', files[i])
+        if 'agency_id' not in feeds[i].agency:
+            print(f'set agency_id to agency_name in {files[i]}')
+            feeds[i].agency['agency_id'] = feeds[i].agency['agency_name']
+
         if 'agency_id' not in feeds[i].routes:
             print(f'add agency_id to routes in {files[i]}')
             feeds[i].routes['agency_id'] = feeds[i].agency['agency_id'].values[0]
-        
+            
         if 'pickup_type' not in feeds[i].stop_times:
             print(f'pickup_type missing in stop_times. set to 0 in {files[i]}')
             feeds[i].stop_times['pickup_type'] = 0
@@ -87,10 +96,14 @@ def handler(event, context):
         if 'parent_station' not in feeds[i].stops:
             print(f'parent_station missing in stops. set to NaN in {files[i]}')
             feeds[i].stops['parent_station'] = np.nan
+        if 'stop_code' not in feeds[i].stops:
+            print(f'stop_code missing in stops. set to NaN in {files[i]}')
+            feeds[i].stops['stop_code'] = np.nan
+
         feeds[i].stop_times['pickup_type'].fillna(0, inplace=True)
         feeds[i].stop_times['drop_off_type'].fillna(0, inplace=True)
-
         feeds[i].stop_times['arrival_time'] = feeds[i].stop_times['departure_time']
+
 
     # if dates is not provided as inputs.
     # get it from first dates of each GTFS
@@ -114,24 +127,31 @@ def handler(event, context):
                 print('date not available. use', min_date)
                 dates.append(min_date)
 
-
+    # 2) restric feed to date
     feeds_t = []
     print('restrict feed')
     for i, feed in enumerate(feeds):
         feed_t = feed.restrict(dates=[dates[i]], time_range=time_range)
         if len(feed_t.trips) > 0:
             feeds_t.append(feed_t)
-    #del feeds
+
+    #3) add shape_dist_traveled to shapes and stop_times
     print('add shape_dist_traveled to shapes')
     for feed in feeds_t:
-        if 'shape_dist_traveled' not in feed.shapes.columns:
+        if feed.shapes is None:
+            print('no shapes in gtfs')
+            continue
+        elif 'shape_dist_traveled' not in feed.shapes.columns:
             feed.append_dist_to_shapes()
         elif any(feed.shapes['shape_dist_traveled'].isnull()):
             feed.append_dist_to_shapes()
 
     print('add shape_dist_traveled to stop_times')
     for feed in feeds_t:
-        if 'shape_dist_traveled' not in feed.stop_times.columns:
+        if feed.shapes is None:
+            print('no shapes in gtfs cannot add to stop_times')
+            continue
+        elif 'shape_dist_traveled' not in feed.stop_times.columns:
             feed.append_dist_to_stop_times_fast()
         else:
             nan_sequence=feed.stop_times[feed.stop_times['shape_dist_traveled'].isnull()]['stop_sequence'].unique()
@@ -147,6 +167,8 @@ def handler(event, context):
                 feed.dist_units = 'km'
                 feed = gtk.convert_dist(feed, new_dist_units='m')
 
+    
+    # 4) build links and nodes.
     feeds_frequencies = []
     for i in range(len(feeds_t)):
         print('Building links and nodes ', files[i])
@@ -166,15 +188,17 @@ def handler(event, context):
                                             keep_destination_columns=['arrival_time','drop_off_type'],
                                             num_cores=4)
         feeds_frequencies.append(feed_frequencies)
-    #del feeds_t
-    mapping = {0:'tram', 1:'subway', 2:'rail', 3:'bus',4:'ferry',5:'cable_car',6:'gondola',7:'funicular', 700:'bus', 1501:'taxi'}
+
+    # 5) rename route_type.
+    with open('route_type.json') as file:
+        mapping = json.load(file)
+        mapping = {int(key):item for key,item in mapping.items()}   
     retire = ['taxi']
     for feed_frequencies in feeds_frequencies:
         feed_frequencies.links['route_type'] = feed_frequencies.links['route_type'].apply(
             lambda t: mapping.get(t, np.nan)
         )
-        
-        assert not any(feed_frequencies.links['route_type'].isna())
+        #assert not any(feed_frequencies.links['route_type'].isna())
         feed_frequencies.links = feed_frequencies.links[~feed_frequencies.links['route_type'].isin(retire)]
 
     for feed_frequencies in feeds_frequencies:
@@ -183,9 +207,8 @@ def handler(event, context):
 
 
     columns=['trip_id','route_id','agency_id','direction_id','a','b', 'shape_dist_traveled',
-                                        'link_sequence','time','headway','pickup_type', 'drop_off_type',
-                                        'route_short_name','route_type','route_color','geometry']
-
+            'link_sequence','time','headway','pickup_type', 'drop_off_type',
+            'route_short_name','route_type','route_color','geometry']
 
     sm = stepmodel.StepModel(epsg=4326, coordinates_unit='meter')
 
@@ -213,7 +236,6 @@ def handler(event, context):
     sm.nodes = sm.nodes.reset_index(drop=True).sort_index()
     sm.links = sm.links.reset_index(drop=True).sort_index()
 
-
     sm.nodes.loc[sm.nodes['stop_code'].isna(),'stop_code'] = sm.nodes.loc[sm.nodes['stop_code'].isna(),'stop_id'] 
     sm.nodes.drop_duplicates(subset=['stop_id'], inplace=True)
 
@@ -233,13 +255,16 @@ def handler(event, context):
     sm.links.drop_duplicates(subset=['trip_id','link_sequence'], inplace=True)
 
     # Tag route with only one trip
-    time_slot = np.diff([hhmmss_to_seconds_since_midnight(time) for time in time_range])[0]
-    sm.links.loc[(time_slot/sm.links['headway']) < 2.0, 'headway'] = np.nan
+    #time_slot = np.diff([hhmmss_to_seconds_since_midnight(time) for time in time_range])[0]
+    #sm.links.loc[(time_slot/sm.links['headway']) < 2.0, 'headway'] = np.nan
 
     sm.links = sm.links.to_crs(4326)
     sm.nodes = sm.nodes.to_crs(4326)
-    print('Saving on S3'), 
-    sm.links.to_file(f's3://{db.BUCKET}/{uuid}/links.geojson', driver='GeoJSON')
-    sm.nodes.to_file(f's3://{db.BUCKET}/{uuid}/nodes.geojson', driver='GeoJSON')
+    if export:
+        print('Saving on S3'), 
+        sm.links.to_file(f's3://{db.BUCKET}/{uuid}/links.geojson', driver='GeoJSON')
+        sm.nodes.to_file(f's3://{db.BUCKET}/{uuid}/nodes.geojson', driver='GeoJSON')
+    else: 
+        return sm
     print('done')
 

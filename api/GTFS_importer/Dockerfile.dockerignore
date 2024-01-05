@@ -4,4 +4,9 @@ __pycache__
 *.md
 *.env
 api/GTFS_importer/notebook
+api/GTFS_importer/tests
 syspy/surveys
+.git
+.venv
+wheels-cp38-win_amd64
+docker/infra
