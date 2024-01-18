@@ -14,7 +14,12 @@ from multiprocessing import Process, Manager
 
 
 
-def get_epsg(lat, lon):
+def get_epsg(lat: float, lon: float) -> int:
+    '''
+    return EPSG in meter for a given (lat,lon)
+    lat is north south 
+    lon is est west
+    '''
     return int(32700 - round((45 + lat) / 90, 0) * 100 + round((183 + lon) / 6, 0))
 
 

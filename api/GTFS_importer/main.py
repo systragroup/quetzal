@@ -160,12 +160,11 @@ def main(uuid, files, dates, selected_day, time_range, export=True):
                 feed.stop_times['shape_dist_traveled'] = feed.stop_times['shape_dist_traveled'].fillna(0)
             else:
                 feed.append_dist_to_stop_times_fast()
-    print('convert to meter if necessary')
-    for feed in feeds_t:
+                
         if feed.stop_times['shape_dist_traveled'].max() < 100:
-                print(f'convert to meters')
-                feed.dist_units = 'km'
-                feed = gtk.convert_dist(feed, new_dist_units='m')
+            print(f'convert to meters')
+            feed.dist_units = 'km'
+            feed = gtk.convert_dist(feed, new_dist_units='m')
 
     
     # 4) build links and nodes.
@@ -181,7 +180,7 @@ def main(uuid, files, dates, selected_day, time_range, export=True):
         feed_frequencies = feed_s.convert_to_frequencies(time_range=time_range)
         shapes = feed_frequencies.shapes is not None
         feed_frequencies.build_links_and_nodes(log=False, 
-                                            shape_dist_traveled=True, 
+                                            shape_dist_traveled=shapes, 
                                             from_shape=shapes, 
                                             stick_nodes_on_links=shapes,
                                             keep_origin_columns=['departure_time','pickup_type'],
@@ -204,18 +203,18 @@ def main(uuid, files, dates, selected_day, time_range, export=True):
     for feed_frequencies in feeds_frequencies:
         feed_frequencies.links.loc[feed_frequencies.links['time'] == 0,'time'] = 1.0
 
+   
 
-
-    columns=['trip_id','route_id','agency_id','direction_id','a','b', 'shape_dist_traveled',
-            'link_sequence','time','headway','pickup_type', 'drop_off_type',
-            'route_short_name','route_type','route_color','geometry']
+    columns = ['trip_id', 'route_id', 'agency_id', 'direction_id', 'a', 'b', 'shape_dist_traveled',
+                'link_sequence', 'time', 'headway','pickup_type', 'drop_off_type',
+                'route_short_name', 'route_type', 'route_color', 'geometry']
 
     sm = stepmodel.StepModel(epsg=4326, coordinates_unit='meter')
 
     links_concat = []; nodes_concat = []
     for feed_frequencies in feeds_frequencies:
-        links_concat.append(feed_frequencies.links)
-        nodes_concat.append(feed_frequencies.nodes)
+        links_concat.append(feed_frequencies.links.to_crs(4326))
+        nodes_concat.append(feed_frequencies.nodes.to_crs(4326))
 
     # nothing to export. export empty geojson
     if len(links_concat) == 0:
@@ -239,8 +238,8 @@ def main(uuid, files, dates, selected_day, time_range, export=True):
     sm.nodes.loc[sm.nodes['stop_code'].isna(),'stop_code'] = sm.nodes.loc[sm.nodes['stop_code'].isna(),'stop_id'] 
     sm.nodes.drop_duplicates(subset=['stop_id'], inplace=True)
 
-    sm.links['trip_id'] = sm.links['agency_id'] +'_' +sm.links['trip_id']
-    sm.links['route_id'] = sm.links['agency_id'] +'_' +sm.links['route_id']
+    sm.links['trip_id'] = sm.links['agency_id'].astype(str) + '_' + sm.links['trip_id'].astype(str)
+    sm.links['route_id'] = sm.links['agency_id'].astype(str) + '_' + sm.links['route_id'].astype(str)
 
     sm.links = sm.links.sort_values(['route_type','trip_id']).reset_index(drop=True)
 
@@ -260,6 +259,13 @@ def main(uuid, files, dates, selected_day, time_range, export=True):
 
     sm.links = sm.links.to_crs(4326)
     sm.nodes = sm.nodes.to_crs(4326)
+
+    # add speed, add length.
+    epsg = importer.get_epsg(sm.nodes.iloc[0]['geometry'].y, sm.nodes.iloc[0]['geometry'].x)
+    sm.links['length'] = sm.links.to_crs(epsg).length
+    sm.links['speed'] = (sm.links['length']/sm.links['time'])*3.6
+    # regarder quetzal_transit pour voir les valeurs necessaires.
+
     if export:
         print('Saving on S3'), 
         sm.links.to_file(f's3://{db.BUCKET}/{uuid}/links.geojson', driver='GeoJSON')

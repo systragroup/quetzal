@@ -5,16 +5,18 @@
 ## License
 [CeCILL-B](LICENSE.md)
 
-##test
+## test
 
-export BUCKET_NAME=quetzal-api-bucket
+in quetzal folder
 
-pyenv shell in quetzal folder.
+```bash
+pipenv shell 
+```
 
 in this folder
-
+```bash
 python tests/run_tests.py
-
+```
 
 ## Deploy
 ```bash
