@@ -3,8 +3,10 @@ import pandas as pd
 import shapely
 from syspy.skims import skims
 from syspy.spatial import spatial
+from shapely.geometry import LineString
 
-
+def _reverse(g):
+    return LineString([g.coords[1],g.coords[0]])
 
 def node_clustering(links, nodes, n_clusters=None, prefixe='', group_id=None, **kwargs):
     disaggregated_nodes = nodes.copy()
@@ -87,17 +89,16 @@ def build_footpaths(nodes, speed=3, max_length=None, clusters_distance=None, coo
         # not a bool for the geodataframe to be serializabe
         links['voronoi'] = 0
 
-    graph, tesselation = voronoi_graph_and_tesselation(
+    graph, _ = voronoi_graph_and_tesselation(
         nodes,
         max_length,
         coordinates_unit=coordinates_unit
     )
-    footpaths = pd.concat(
-        [
-            graph,
-            graph.rename(columns={'a': 'b', 'b': 'a'})
-        ]
-    )
+    graph_r = graph.copy()
+    graph_r =  graph_r.rename(columns={'a': 'b', 'b': 'a'})
+    graph_r['geometry'] = graph_r['geometry'].apply(lambda x: _reverse(x))
+
+    footpaths = pd.concat([graph, graph_r])
     footpaths['voronoi'] = 1
     try:
         footpaths = footpaths.append(links)
