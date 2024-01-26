@@ -49,7 +49,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         road=False,
         speed=3,
         max_length=None,
-        n_clusters=None,
+        clusters_distance=None,
         **kwargs
     ):
         """Create the footpaths : pedestrian links between stations (nodes), 
@@ -68,9 +68,10 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             because the footpaths do not follow roads
         max_length : int, optional, default None
             Maximal length of footpaths
-        n_clusters : int, optional, default None
-            Number of nodes clusters : create nodes clusters to optimize computation time.
-            It will agregate nodes based on their relative distance to build "stop areas"
+        clusters_distance : float, optional, default None
+            distance to clusterize nodes. The nodes footpath are from those cluster and
+            all the clusterized node will be connected to the cluster one with 0 length.
+            It will agregate nodes based on their distance to build "stop areas"
         
 
         Builds
@@ -81,23 +82,28 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
 
         """
         try:
-            self.footpaths = connectivity.build_footpaths(
+            self.footpaths= connectivity.build_footpaths(
                 self.nodes,
                 speed=speed,
                 max_length=max_length,
-                n_clusters=n_clusters,
+                clusters_distance=clusters_distance,
                 coordinates_unit=self.coordinates_unit,
                 **kwargs
             )
         except ValueError as e:  # Shape of passed values is (1, 3019), indices imply (1, 5847)
             print('an error has occured: ', e)
-            n_clusters = int(int(str(e).split('1, ')[1].split(')')[0]) * 0.9)
-            print('now trying to run the method with n_cluster = ' + str(n_clusters))
+            if self.coordinates_unit == 'degree':
+                clusters_distance = 0.000002 #deg
+            else :
+                clusters_distance = 0.5 #meter
+            print('now trying to run the method with clusters_distance = ' + str(clusters_distance))
+            print('this error is usually because some nodes are really close or at the same exact position.\
+                  You should do a node clustering first.')
             self.footpaths = connectivity.build_footpaths(
                 self.nodes,
                 speed=speed,
                 max_length=max_length,
-                n_clusters=n_clusters,
+                clusters_distance=clusters_distance,
                 coordinates_unit=self.coordinates_unit,
                 **kwargs
             )
