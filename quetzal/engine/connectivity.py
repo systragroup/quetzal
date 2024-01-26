@@ -3,7 +3,6 @@ import pandas as pd
 import shapely
 from syspy.skims import skims
 from syspy.spatial import spatial
-from shapely.geometry import LineString
 from syspy.spatial.geometries import reverse_geometry
 
 
