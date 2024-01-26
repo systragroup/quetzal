@@ -5,6 +5,7 @@ from syspy.skims import skims
 from syspy.spatial import spatial
 
 
+
 def node_clustering(links, nodes, n_clusters=None, prefixe='', group_id=None, **kwargs):
     disaggregated_nodes = nodes.copy()
     if group_id is None:
@@ -79,10 +80,10 @@ def voronoi_graph_and_tesselation(nodes, max_length=None, coordinates_unit='degr
     return v_graph, v_tesselation
 
 
-def build_footpaths(nodes, speed=3, max_length=None, n_clusters=None, coordinates_unit='degree'):
-    if n_clusters and n_clusters < len(nodes):
-        centroids, links = centroid_and_links(nodes, n_clusters, coordinates_unit=coordinates_unit)
-        nodes = nodes.loc[centroids]
+def build_footpaths(nodes, speed=3, max_length=None, clusters_distance=None, coordinates_unit='degree'):
+    if clusters_distance :
+        nodes, links = agg_nodes_and_links(nodes, clusters_distance, coordinates_unit=coordinates_unit)
+        
         # not a bool for the geodataframe to be serializabe
         links['voronoi'] = 0
 
@@ -111,31 +112,28 @@ def build_footpaths(nodes, speed=3, max_length=None, n_clusters=None, coordinate
     return footpaths
 
 
-def centroid_and_links(nodes, n_clusters, coordinates_unit='degree'):
-    clusters, cluster_series = spatial.zone_clusters(
-        nodes,
-        n_clusters=n_clusters,
-        geo_union_method=lambda lg: shapely.geometry.MultiPoint(list(lg)),
-        geo_join_method=geo_join_method
-    )
+def agg_nodes_and_links(nodes, clusters_distance, coordinates_unit='degree'):
+    label = spatial.agglomerative_clustering(nodes, distance_threshold = clusters_distance)
+    nodes['cluster'] = label
 
-    index_name = cluster_series.index.name
+    index_name = nodes.index.name
     index_name = index_name if index_name else 'index'
-    grouped = cluster_series.reset_index().groupby('cluster')
-    first = list(grouped[index_name].first())
-    node_lists = list(grouped[index_name].agg(lambda s: list(s)))
 
+    node_lists = nodes.reset_index().groupby('cluster')[index_name].agg(list)
     node_geo_dict = nodes['geometry'].to_dict()
+    first = nodes.drop_duplicates('cluster')
+
 
     def link_geometry(a, b):
         return shapely.geometry.LineString([node_geo_dict[a], node_geo_dict[b]])
-
+    
+    # create links from the agg_node (first one) and all other one (in both direction).
     values = []
     for node_list in node_lists:
-        for a in node_list:
-            for b in node_list:
-                if a != b:
-                    values.append([a, b, link_geometry(a, b)])
+        agg_node = node_list[0]
+        for node in node_list[1:]:
+            values.append([agg_node, node, link_geometry(agg_node, node)])
+            values.append([node, agg_node, link_geometry(node, agg_node)])
 
     links = pd.DataFrame(values, columns=['a', 'b', 'geometry'])
     if coordinates_unit == 'degree':
