@@ -13,6 +13,9 @@ import pandas as pd
 import shapely
 from tqdm import tqdm
 
+def reverse_geometry(linestring):
+    return shapely.geometry.LineString(linestring.coords[::-1])
+
 
 def reversed_polyline(polyline):
     coords = list(polyline.coords)

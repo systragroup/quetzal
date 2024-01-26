@@ -4,9 +4,8 @@ import shapely
 from syspy.skims import skims
 from syspy.spatial import spatial
 from shapely.geometry import LineString
+from syspy.spatial.geometries import reverse_geometry
 
-def _reverse(g):
-    return LineString([g.coords[1],g.coords[0]])
 
 def node_clustering(links, nodes, n_clusters=None, prefixe='', group_id=None, **kwargs):
     disaggregated_nodes = nodes.copy()
@@ -96,7 +95,7 @@ def build_footpaths(nodes, speed=3, max_length=None, clusters_distance=None, coo
     )
     graph_r = graph.copy()
     graph_r =  graph_r.rename(columns={'a': 'b', 'b': 'a'})
-    graph_r['geometry'] = graph_r['geometry'].apply(lambda x: _reverse(x))
+    graph_r['geometry'] = graph_r['geometry'].apply(lambda x: reverse_geometry(x))
 
     footpaths = pd.concat([graph, graph_r])
     footpaths['voronoi'] = 1

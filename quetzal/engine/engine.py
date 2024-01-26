@@ -7,7 +7,7 @@ from syspy.routing.frequency import graph as frequency_graph
 from syspy.skims import skims
 from syspy.spatial import spatial
 from tqdm import tqdm
-
+from syspy.spatial.geometries import reverse_geometry
 
 def od_volume_from_zones(zones, deterrence_matrix=None, power=2,
                          coordinates_unit='degree', intrazonal=False):
@@ -117,6 +117,8 @@ def ntlegs_from_centroids_and_nodes(
     eggress = ntlegs.rename(columns={'centroid': 'b', 'node': 'a'})
     access['direction'] = 'access'
     eggress['direction'] = 'eggress'
+    eggress['geometry'] = eggress['geometry'].apply(lambda x: reverse_geometry(x))
+
 
     ntlegs = pd.concat([access, eggress], ignore_index=True)
 
