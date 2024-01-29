@@ -93,9 +93,9 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         except ValueError as e:  # Shape of passed values is (1, 3019), indices imply (1, 5847)
             print('an error has occured: ', e)
             if self.coordinates_unit == 'degree':
-                clusters_distance = 0.000002 #deg
+                clusters_distance = 0.00001 #deg (approx 1meters. to increase if error persist)
             else :
-                clusters_distance = 0.5 #meter
+                clusters_distance = 1 #meter (to increate if error persist)
             print('now trying to run the method with clusters_distance = ' + str(clusters_distance))
             print('this error is usually because some nodes are really close or at the same exact position.\
                   You should do a node clustering first.')
