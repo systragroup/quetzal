@@ -71,7 +71,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         clusters_distance : float, optional, default None
             distance to clusterize nodes. The nodes footpath are from those cluster and
             all the clusterized node will be connected to the cluster one with 0 length.
-            It will agregate nodes based on their distance to build "stop areas"
+            It will agregate nodes based on their distance to build "stop areas".
+            Works in increment of 10 (0.01, 0.1,0, 10, 100, etc)
         
 
         Builds

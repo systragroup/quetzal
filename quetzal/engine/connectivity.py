@@ -1,6 +1,7 @@
 import geopandas as gpd
 import pandas as pd
 import shapely
+import math
 from syspy.skims import skims
 from syspy.spatial import spatial
 from syspy.spatial.geometries import reverse_geometry
@@ -82,7 +83,8 @@ def voronoi_graph_and_tesselation(nodes, max_length=None, coordinates_unit='degr
 
 def build_footpaths(nodes, speed=3, max_length=None, clusters_distance=None, coordinates_unit='degree'):
     if clusters_distance :
-        nodes, links = agg_nodes_and_links(nodes, clusters_distance, coordinates_unit=coordinates_unit)
+        precision = 0 if clusters_distance==0 else -int(math.log10(clusters_distance))
+        nodes, links = agg_nodes_and_links(nodes, precision, coordinates_unit=coordinates_unit)
         
         # not a bool for the geodataframe to be serializabe
         links['voronoi'] = 0
@@ -111,25 +113,28 @@ def build_footpaths(nodes, speed=3, max_length=None, clusters_distance=None, coo
     return footpaths
 
 
-def agg_nodes_and_links(nodes, clusters_distance, coordinates_unit='degree'):
-    label = spatial.agglomerative_clustering(nodes, distance_threshold = clusters_distance)
-    nodes['cluster'] = label
+def agg_nodes_and_links(nodes, precision, coordinates_unit='degree'):
+
+    node_geo_dict = nodes['geometry'].to_dict()
 
     index_name = nodes.index.name
     index_name = index_name if index_name else 'index'
 
-    node_lists = nodes.reset_index().groupby('cluster')[index_name].agg(list)
-    node_geo_dict = nodes['geometry'].to_dict()
-    first = nodes.drop_duplicates('cluster')
-
+    def round_geom(g, precision):
+        return shapely.geometry.Point([round(c, precision) for c in g.coords[0]])
+    
+    nodes['geometry'] = nodes['geometry'].apply(lambda g: round_geom(g, precision))
+    node_lists = nodes.reset_index().groupby('geometry')['index'].agg(list).values
 
     def link_geometry(a, b):
         return shapely.geometry.LineString([node_geo_dict[a], node_geo_dict[b]])
     
     # create links from the agg_node (first one) and all other one (in both direction).
     values = []
+    first = []
     for node_list in node_lists:
         agg_node = node_list[0]
+        first.append(agg_node)
         for node in node_list[1:]:
             values.append([agg_node, node, link_geometry(agg_node, node)])
             values.append([node, agg_node, link_geometry(node, agg_node)])
@@ -139,7 +144,7 @@ def agg_nodes_and_links(nodes, clusters_distance, coordinates_unit='degree'):
         links['length'] = skims.distance_from_geometry(links['geometry'])
     else:
         links['length'] = gpd.GeoDataFrame(links).length
-    return first, links
+    return nodes.loc[first], links
 
 
 def adaptive_clustering(nodes, zones, mean_distance_threshold=None, distance_col=None):
