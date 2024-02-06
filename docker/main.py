@@ -117,6 +117,11 @@ def handler(event, context):
 
     os.remove(file)
     shutil.rmtree('/tmp/inputs')
+    try:
+        os.remove('/tmp/styles.json')
+    except: 
+        pass
+
     upload_s3_folder(bucket_name, event['scenario_path_S3'], metadata=event.get('metadata', {}))
     t4 = time.time()
     print('Upload to S3: {} seconds'.format(t4 - t3))
