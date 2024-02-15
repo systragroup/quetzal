@@ -475,10 +475,10 @@ class IntegrityModel:
                 try:
                     self.__getattribute__(name)()
                     if verbose:
-                        print('passed:', name)
+                        print("\x1b[32mpassed\x1b[0m:", name)
                 except AssertionError as e:
                     if verbose:
-                        print('failed:', name)
+                        print("\x1b[1;31mfailed\x1b[0m:", name)
                     if errors != 'ignore':
                         raise e
             except Exception as e:  # broad exception
