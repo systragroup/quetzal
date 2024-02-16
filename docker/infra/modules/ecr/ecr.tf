@@ -3,13 +3,11 @@ resource "aws_ecr_repository" "repository" {
   image_tag_mutability = "MUTABLE"
     tags               = var.tags
 
-
   image_scanning_configuration {
     scan_on_push        = var.scan
   }
   encryption_configuration{
       encryption_type   = var.encryption_type
-
   }
 }
 
@@ -23,27 +21,7 @@ resource "null_resource" "image" {
     #    a chicken-egg scenario where the lambda can't be provisioned because no
     #    image exists in the ECR
     when        = create
-    command = <<-EOF
-      if [ "$(terraform["os"])" == "windows" ]; then
-        set ecrEndpoint=${data.aws_ecr_authorization_token.token.proxy_endpoint}
-        set ecrPassword=${data.aws_ecr_authorization_token.token.password}
-        set repositoryUrl=${aws_ecr_repository.repository.repository_url}
-
-        docker login %ecrEndpoint% -u AWS -p %ecrPassword%
-        docker pull alpine
-        docker tag alpine "%repositoryUrl%:DUMMY"
-        docker push "%repositoryUrl%:DUMMY"
-      else
-        ecrEndpoint=${data.aws_ecr_authorization_token.token.proxy_endpoint}
-        ecrPassword=${data.aws_ecr_authorization_token.token.password}
-        repositoryUrl=${aws_ecr_repository.repository.repository_url}
-
-        docker login $ecrEndpoint -u AWS -p $ecrPassword
-        docker pull alpine
-        docker tag alpine "$repositoryUrl:DUMMY"
-        docker push "$repositoryUrl:DUMMY"
-      fi
-    EOF
+    command = var.os == "windows"? "cmd /c push_dummy.bat ${aws_ecr_repository.repository.repository_url}" : " bash push_dummy.sh ${aws_ecr_repository.repository.repository_url}"
   }
   
 

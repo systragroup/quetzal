@@ -1,3 +1,9 @@
+variable "os" {
+    description = "user os. chose between .bat and .sh script"
+    default     = "linux"
+    type        = string
+}
+
 variable "aws_region" {
   description = "Deployment region (e.g.: ca-central-1)."
   type        = string

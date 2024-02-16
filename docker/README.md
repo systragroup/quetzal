@@ -26,7 +26,7 @@ Install **Terraform** using [this guide](https://developer.hashicorp.com/terrafo
 
 # INFRA (TERRAFORM)
 
-1. **Create a new .tfvars file** with the name of your model `docker/infra/environement/<your_model_name>.tfvars` `<br>`
+1. **Create a new .tfvars file** with the name of your model `docker/infra/environement/<your_model_name>.tfvars` 
 
 * replace `<your_model_name>`  with the model name, ex: quetzal-paris `<br>`
 * the name must be unique in the AWS region (ca-central-1) (s3 bucket limitation)
@@ -73,11 +73,23 @@ terraform init
 terraform plan -var-file="environments/<your_model_name>.tfvars"
 ```
 
+or on windows make sure to <b>open docker desktop</b> and run
+
+```bash
+terraform plan -var-file="environments/<your_model_name>.tfvars" -var os="windows" 
+```
+
 6. **Apply your deployment**. Make sure the plan is the same as in the previous step and press yes  `<br>`
    Again, the plan should read  : `Plan: 17 to add, 0 to change, 0 to destroy.`
 
 ```bash
 terraform apply -var-file="environments/<your_model_name>.tfvars"
+```
+
+or on windows make sure to <b>open docker desktop</b> and run
+
+```bash
+terraform apply -var-file="environments/<your_model_name>.tfvars" -var os="windows" 
 ```
 
 That's it! terraform created:
@@ -215,7 +227,7 @@ running an interactive shell to explore the docker container
  ``docker run -it --rm --entrypoint /bin/bash <docker_name>:<tag>``
 
  by default, you will be in `/var/task` which is where all your files (main.py for instance)
- the command `du -ah --max-depth=1` is usefull to see the size of each dir
+ the command `du -ah --max-depth=1 | sort -n` is usefull to see the size of each dir
 
 # Knowned issue
 

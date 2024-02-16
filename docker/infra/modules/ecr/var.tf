@@ -20,3 +20,9 @@ variable "scan" {
     default     = false
     type        = bool
 }
+
+variable "os" {
+    description = "user os. chose between .bat and .sh script"
+    default     = "linux"
+    type        = string
+}
