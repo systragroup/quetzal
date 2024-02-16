@@ -23,6 +23,7 @@ module "ecr" {
     source = "./modules/ecr"
     repo_name = var.quetzal_model_name
     tags = local.quetzal_tags     
+    os = var.os
 }
 
 # create CloudWatch group, lambda function, IAM role and policy for the lambda function. use dummy image.
