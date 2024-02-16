@@ -18,7 +18,7 @@ module "s3" {
     tags = local.quetzal_tags
 }
 
-# create ECR isntance with a dummy docker image
+# create ECR instance with a dummy docker image
 module "ecr" {
     source = "./modules/ecr"
     repo_name = var.quetzal_model_name

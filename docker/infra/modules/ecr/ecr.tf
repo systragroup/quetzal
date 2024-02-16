@@ -23,12 +23,27 @@ resource "null_resource" "image" {
     #    a chicken-egg scenario where the lambda can't be provisioned because no
     #    image exists in the ECR
     when        = create
-    command     = <<EOF
-      docker login ${data.aws_ecr_authorization_token.token.proxy_endpoint} -u AWS -p ${data.aws_ecr_authorization_token.token.password}
-      docker pull alpine
-      docker tag alpine ${aws_ecr_repository.repository.repository_url}:DUMMY
-      docker push ${aws_ecr_repository.repository.repository_url}:DUMMY
-      EOF
+    command = <<-EOF
+      if [ "$(terraform["os"])" == "windows" ]; then
+        set ecrEndpoint=${data.aws_ecr_authorization_token.token.proxy_endpoint}
+        set ecrPassword=${data.aws_ecr_authorization_token.token.password}
+        set repositoryUrl=${aws_ecr_repository.repository.repository_url}
+
+        docker login %ecrEndpoint% -u AWS -p %ecrPassword%
+        docker pull alpine
+        docker tag alpine "%repositoryUrl%:DUMMY"
+        docker push "%repositoryUrl%:DUMMY"
+      else
+        ecrEndpoint=${data.aws_ecr_authorization_token.token.proxy_endpoint}
+        ecrPassword=${data.aws_ecr_authorization_token.token.password}
+        repositoryUrl=${aws_ecr_repository.repository.repository_url}
+
+        docker login $ecrEndpoint -u AWS -p $ecrPassword
+        docker pull alpine
+        docker tag alpine "$repositoryUrl:DUMMY"
+        docker push "$repositoryUrl:DUMMY"
+      fi
+    EOF
   }
   
 
