@@ -16,7 +16,7 @@ cd $QUETZAL_ROOT
 source $MODEL_FOLDER/.env
 
 # Build docker image
-docker build --build-arg QUETZAL_MODEL_NAME=$QUETZAL_MODEL_NAME \
+docker build --build-arg QUETZAL_MODEL_NAME=$MODEL_FOLDER \
   -t $AWS_ECR_REPO_NAME:$TAG \
   -f $MODEL_FOLDER/Dockerfile .
 

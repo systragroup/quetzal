@@ -15,9 +15,9 @@ cd %QUETZAL_ROOT%
 
 FOR /F "tokens=*" %%i in ('type "%MODEL_FOLDER%\.env"') do (SET "%%i")
 
-docker build --build-arg QUETZAL_MODEL_NAME=%QUETZAL_MODEL_NAME% ^
+docker build --build-arg QUETZAL_MODEL_NAME=%MODEL_FOLDER% ^
   -t %AWS_ECR_REPO_NAME%:%TAG% ^
-  -f %QUETZAL_MODEL_NAME%/Dockerfile .
+  -f %MODEL_FOLDER%/Dockerfile .
 
 REM Connect to ECR
 FOR /F "tokens=* USEBACKQ" %%F IN (`aws sts get-caller-identity --query "Account" --output text`) DO (

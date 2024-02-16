@@ -106,10 +106,7 @@ Note that those are optional. You can have a model without PT, or without road, 
 ## Deploying Model
 
 1. **Copy files** from this `template directory` to the **root of the model directory**
-2. Fill the environnement variable file `.env` .
-
-   * `QUETZAL_MODEL_NAME` should be the same as the the **model folder** name.
-   * Everything else should be the same as `<your_model_name>` in terraform
+2. Fill the environnement variable file `.env`. Everything should be the same as `<your_model_name>` in terraform
 3. Create the `requirements.txt` for the model. We recommand using [pip chill](https://pypi.org/project/pip-chill/).
    * you an also use the one provided in this `template directory`
 4. Modify the step fonction configuration file `step-functions.json` according to model steps.
