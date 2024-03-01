@@ -80,7 +80,7 @@ terraform plan -var-file="environments/<your_model_name>.tfvars" -var os="window
 ```
 
 6. **Apply your deployment**. Make sure the plan is the same as in the previous step and press yes  `<br>`
-   Again, the plan should read  : `Plan: 17 to add, 0 to change, 0 to destroy.`
+   Again, the plan should read  : `Plan: 18 to add, 0 to change, 0 to destroy.`
 
 ```bash
 terraform apply -var-file="environments/<your_model_name>.tfvars"

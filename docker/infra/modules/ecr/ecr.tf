@@ -21,7 +21,7 @@ resource "null_resource" "image" {
     #    a chicken-egg scenario where the lambda can't be provisioned because no
     #    image exists in the ECR
     when        = create
-    command = var.os == "windows"? "cmd /c push_dummy.bat ${aws_ecr_repository.repository.repository_url}" : " bash push_dummy.sh ${aws_ecr_repository.repository.repository_url}"
+    command = var.os == "windows"? "cmd /c push_dummy.bat ${aws_ecr_repository.repository.repository_url}" : " bash push_dummy.sh ${aws_ecr_repository.repository.repository_url}  ${aws_ecr_repository.repository.name}"
   }
   
 

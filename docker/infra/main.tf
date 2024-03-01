@@ -55,5 +55,4 @@ module "user_role"{
     user_role_name = "Cognito_quetzal_pool_${var.quetzal_model_name}"
     s3_policy_name = "s3_read_put_${var.quetzal_model_name}"
     bucket_name = var.quetzal_model_name
-    
 }
