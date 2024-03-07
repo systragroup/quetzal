@@ -19,10 +19,7 @@ def fast_assign(volume_array, paths):
     d = {}
     for volume, path in list(z):
         for key in path:
-            try:
-                d[key] += volume
-            except KeyError:
-                d[key] = volume
+            d[key] = d.get(key, 0) + volume
     return pd.Series(d)
 
 
