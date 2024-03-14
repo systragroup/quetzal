@@ -76,6 +76,10 @@ def parallel_shape_geometry(self, from_point, to_point, max_candidates=10, log=F
             self.stop_times = feed.stop_times
 
     trip_list = self.links['trip_id'].unique()
+
+    if len(trip_list) < num_cores: # if 2 trips, and 4 cores, use 2 core (cannot split more)
+        num_cores = max(len(trip_list), 1)
+
     chunk_length =  round(len(trip_list)/ num_cores)
     # Split the list into four sub-lists
     chunks = [trip_list[j:j+chunk_length] for j in range(0, len(trip_list), chunk_length)]
