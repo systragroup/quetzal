@@ -26,6 +26,25 @@ def read_hdf(filepath):
     m.read_hdf(filepath)
     return m
 
+def list_dir(folder):
+    if folder.startswith('s3://'):
+        import s3fs
+        s3 = s3fs.S3FileSystem()
+        prefix = folder.split('s3://')[1]
+        files = s3.ls(prefix)
+        return [f.split('/')[-1] for f in files]
+    else:
+        return os.listdir(folder)
+    
+def get_file(folder,key):
+    filname = '%s/%s.zippedpickle' % (folder, key)
+    if folder.startswith('s3://'):   
+        import s3fs
+        s3 = s3fs.S3FileSystem()
+        return s3.open(filname, 'rb')
+    else:
+         return open(filname, 'rb')
+ 
 
 def log(text, debug=False):
     if debug:
@@ -335,7 +354,7 @@ class Model(IntegrityModel):
                     )
 
     def read_zippedpickles(self, folder, omitted_attributes=(), only_attributes=None):
-        files = os.listdir(folder)
+        files = list_dir(folder)
         keys = [
             file.split('.zippedpickle')[0]
             for file in files
@@ -349,7 +368,7 @@ class Model(IntegrityModel):
                 continue
 
             iterator.desc = key
-            with open('%s/%s.zippedpickle' % (folder, key), 'rb') as file:
+            with get_file(folder,key) as file:
                 buffer = file.read()
                 bigbuffer = zlib.decompress(buffer)
                 self.__setattr__(key, pickle.loads(bigbuffer))
