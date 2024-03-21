@@ -17,6 +17,8 @@ from shapely.ops import polygonize
 from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
+from typing import Tuple
+
 from pyproj import transform
 
 
@@ -334,9 +336,10 @@ def zones_in_influence_area(zones, area=None, links=None, cut_buffer=0.02):
     return pd.DataFrame(keep).T.reset_index(drop=True)
 
 
-def voronoi_diagram_dataframes(points, **kwargs):
-    if isinstance(points, pd.DataFrame) | isinstance(points, pd.Series):
-        assert points.index.duplicated().sum() == 0, "Index must not be duplicated"
+def voronoi_diagram_dataframes(points: pd.Series)-> Tuple[gpd.GeoDataFrame, pd.DataFrame]:
+    """take series of geometry (ex: zones['geometry'])."""
+    assert isinstance(points, pd.Series), "points should be a series."
+    assert points.index.duplicated().sum() == 0, "Index must not be duplicated"
 
     items = list(dict(points).items())
     key_dict = {}
@@ -353,11 +356,9 @@ def voronoi_diagram_dataframes(points, **kwargs):
     assert len(key_list) == len(values)
 
     polygons, ridges = voronoi_diagram(values)
-    polygon_dataframe = pd.DataFrame(
-        polygons,
-        index=key_list,
-        columns=['geometry']
-    )
+    polygon_dataframe = gpd.GeoDataFrame(geometry=polygons)
+    index_dict = nearest(polygon_dataframe, gpd.GeoDataFrame(points)).set_index('ix_one')['ix_many'].to_dict()
+    polygon_dataframe.index = polygon_dataframe.index.map(index_dict.get)
 
     ridge_dataframe = pd.DataFrame(
         ridges,
