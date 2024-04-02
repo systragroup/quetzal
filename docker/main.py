@@ -30,7 +30,7 @@ def download_s3_folder(bucket_name, s3_folder, local_dir='/tmp'):
         bucket.download_file(obj.key, target)
 
 
-def upload_s3_folder(bucket_name, folder, local_dir='/tmp', metadata={}):
+def upload_s3_folder(bucket_name, prefix, local_dir='/tmp', metadata={}):
     """
     Upload the contents of a folder directory to S3
     Args:
@@ -42,9 +42,20 @@ def upload_s3_folder(bucket_name, folder, local_dir='/tmp', metadata={}):
     for root, _, files in os.walk(local_dir):
         for file in files:
             local_path = os.path.join(root, file)
-            s3_path = os.path.join(folder, os.path.relpath(root, local_dir), file)
+            folder = ''
+            if root != local_dir: #if not. return '.' and the os.path.join send root files to ./
+                folder = os.path.relpath(root, local_dir)
+            s3_path = os.path.join(prefix, folder, file)
             bucket.upload_file(local_path, s3_path, ExtraArgs={'Metadata': metadata})
 
+def upload_logs_to_s3(bucket_name, prefix, body, metadata={}):
+    # to logs/log.txt
+    session = boto3.Session()
+    s3 = session.client('s3')
+    s3.put_object(Body=body,
+                Bucket=bucket_name,
+                Key=os.path.join(prefix, 'logs/log.txt'),
+                Metadata=metadata)
 
 def clean_folder(folder='/tmp'):
     for filename in os.listdir(folder):
@@ -89,15 +100,15 @@ def handler(event, context):
     arg = json.dumps(event['launcher_arg'])
     print(arg)
 
-    file = os.path.join('/tmp', os.path.basename(notebook).replace('.ipynb', '.py'))
+    pyfile = os.path.join('/tmp', os.path.basename(notebook).replace('.ipynb', '.py'))
     if notebook.endswith('.ipynb'):
-        os.system('jupyter nbconvert --to python %s --output %s' % (notebook, file))
+        os.system('jupyter nbconvert --to python %s --output %s' % (notebook, pyfile))
     else:
-        os.system('cp %s %s' % (notebook, file))
+        os.system('cp %s %s' % (notebook, pyfile))
     cwd = os.path.dirname(notebook)
-    if cwd =='':
+    if cwd == '':
         cwd = '/'
-    command_list = ['python', file, arg]
+    command_list = ['python', pyfile, arg]
     my_env = os.environ.copy()
     my_env['PYTHONPATH'] = os.pathsep.join(sys.path)
 
@@ -108,19 +119,17 @@ def handler(event, context):
     process.wait(timeout=800)
 
     content = process.stdout.read().decode("utf-8")
+    upload_logs_to_s3(bucket_name, event['scenario_path_S3'], content, metadata=event.get('metadata', {}))
     t3 = time.time()
     print('Notebook execution: {} seconds'.format(t3 - t2))
-
     print(content)
+
     if 'Error' in content and "end_of_notebook" not in content:
         raise RuntimeError(format_error(content))
-
-    os.remove(file)
+    
+    # upload files to S3 (all except inputs)
+    os.remove(pyfile)
     shutil.rmtree('/tmp/inputs')
-    try:
-        os.remove('/tmp/styles.json')
-    except: 
-        pass
 
     upload_s3_folder(bucket_name, event['scenario_path_S3'], metadata=event.get('metadata', {}))
     t4 = time.time()
