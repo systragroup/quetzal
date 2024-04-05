@@ -48,13 +48,14 @@ def upload_s3_folder(bucket_name, prefix, local_dir='/tmp', metadata={}):
             s3_path = os.path.join(prefix, folder, file)
             bucket.upload_file(local_path, s3_path, ExtraArgs={'Metadata': metadata})
 
-def upload_logs_to_s3(bucket_name, prefix, body, metadata={}):
+def upload_logs_to_s3(bucket_name, prefix, name, body, metadata={}):
     # to logs/log.txt
     session = boto3.Session()
     s3 = session.client('s3')
     s3.put_object(Body=body,
                 Bucket=bucket_name,
-                Key=os.path.join(prefix, 'logs/log.txt'),
+                Key=os.path.join(prefix, 'logs/', name),
+                CacheControl='no-cache',
                 Metadata=metadata)
 
 def clean_folder(folder='/tmp'):
@@ -119,7 +120,10 @@ def handler(event, context):
     process.wait(timeout=800)
 
     content = process.stdout.read().decode("utf-8")
-    upload_logs_to_s3(bucket_name, event['scenario_path_S3'], content, metadata=event.get('metadata', {}))
+
+    logfile=os.path.basename(pyfile).replace('.py', '.txt')
+    upload_logs_to_s3(bucket_name, event['scenario_path_S3'], logfile, content, metadata=event.get('metadata', {}))
+    
     t3 = time.time()
     print('Notebook execution: {} seconds'.format(t3 - t2))
     print(content)
@@ -130,6 +134,10 @@ def handler(event, context):
     # upload files to S3 (all except inputs)
     os.remove(pyfile)
     shutil.rmtree('/tmp/inputs')
+    try: # dont reupload logs.
+        shutil.rmtree('/tmp/logs')
+    except:
+        pass
 
     upload_s3_folder(bucket_name, event['scenario_path_S3'], metadata=event.get('metadata', {}))
     t4 = time.time()
