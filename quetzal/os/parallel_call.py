@@ -45,13 +45,13 @@ def parallel_call_jobs(jobs, mode='w', leave=False, workers=1, sleep=1):
                     command_list = ['python', file] +list(arg)
                 else:
                     command_list = ['python', file] +[arg]
-                my_env = os.environ
-                my_env["PYTHONPATH"] = os.pathsep.join(sys.path)[1:]
+                #my_env = os.environ
+                #my_env["PYTHONPATH"] = os.pathsep.join(sys.path)[1:]
                 popens[i] = Popen(
                     command_list,
                     stdout=stdout,
                     stderr=stderr,
-                    env=my_env,
+                    #env=my_env,
                     cwd=cwd
                 )
                 if (i + 1) % workers == 0 or (i + 1) == len(jobs):
