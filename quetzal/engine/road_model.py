@@ -8,7 +8,6 @@ import copy
 from  shapely.ops import transform
 
 from sklearn.model_selection import train_test_split
-import ray
 from sklearn.neighbors import KNeighborsRegressor
 from syspy.spatial.spatial import nearest
 from quetzal.engine.pathfinder_utils import get_path, parallel_dijkstra, simple_routing, build_index, sparse_matrix
@@ -407,8 +406,7 @@ class RoadModel:
                 print(i, errors[-1][1])
             if errors[-1][1]<=gap_limit:
                 break
-        if num_cores > 1:
-            ray.shutdown()
+      
         # last time for consistency
         edges = df[['a', 'b', 'new_time']].values  # to build the index once and for all
         sparse, _ = sparse_matrix(edges, index=index)

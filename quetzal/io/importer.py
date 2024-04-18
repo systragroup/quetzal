@@ -5,7 +5,7 @@ from shapely.geometry import LineString, Point, MultiPoint
 from shapely import ops
 from syspy.spatial import spatial
 from syspy.syspy_utils.syscolors import linedraft_shades, rainbow_shades
-
+import json
 
 def from_linedraft(
     links,
@@ -280,3 +280,24 @@ def from_lines_and_stations(lines, stations, buffer=1e-3, og_geoms=True, **kwarg
 
 def split_line_by_point(line, point, tolerance: float=1.0e-9):
     return ops.split(ops.snap(line, point, tolerance), point)
+
+
+def read_geojson(file_name,list_columns=['road_link_list']):
+    '''
+    read with geopandas and manualy add list properties from list_columns.
+    '''
+    def get_property_values(json_data,column='road_link_list',default = []):
+        ls = []
+        for features in json_data['features']:
+            properties = features['properties']
+            ls.append(properties.get(column, default))
+        return ls
+    gdf = gpd.read_file(file_name)
+
+    with open(file_name) as f:
+        json_data = json.load(f)
+        
+    for col in list_columns:
+        ls = get_property_values(json_data, col)
+        gdf[col] = ls
+    return gdf

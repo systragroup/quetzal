@@ -5,17 +5,12 @@ from scipy.sparse.csgraph import dijkstra
 from tqdm import tqdm
 from numba import jit
 import numba as nb
-import ray
+from multiprocessing import Process, Manager
 
-#Simple wrapper to call dijkstra with ray (parallel computing)
-@ray.remote
-def ray_dijkstra(csgraph,indices,**kwargs):
-    return dijkstra(csgraph=csgraph, 
-                    indices=indices, 
-                    **kwargs)
+
   
 # Wrapper to split the indices (destination) into parallel batchs and compute the shortest path on each batchs.
-def parallel_dijkstra(csgraph,indices=None,return_predecessors=True, num_core=1, keep_running=False,**kwargs):
+def parallel_dijkstra(csgraph,indices=None,return_predecessors=True, num_core=1,keep_running=True,**kwargs):
     '''
     num_core = 1 : number of threads.
     keep_running = False : if you want to keep the subprocesses alive (mmutiple dijktra in a loop for example)
@@ -23,28 +18,35 @@ def parallel_dijkstra(csgraph,indices=None,return_predecessors=True, num_core=1,
     if num_core == 1:
         return  dijkstra(csgraph=csgraph, indices=indices, return_predecessors=return_predecessors,**kwargs)
 
-    if ray.is_initialized() == False:
-        ray.init(num_cpus=num_core)
-        #ray.shutdown()
-
     batch = round(len(indices)/num_core)
     indices_mat = [indices[i*batch:(1+i)*batch] for i in range(num_core-1)]
     indices_mat.append(indices[(num_core-1)*batch:])
-    
-    csgraph_id = ray.put(csgraph)
-    result = ray.get([ray_dijkstra.remote(csgraph=csgraph_id,indices=indices_mat[i], return_predecessors=return_predecessors,**kwargs) for i in range(num_core)])
-    #shutdown Ray if not specify to keep it running.
-    if not keep_running:
-        ray.shutdown()
+    def process_wrapper(indices, kwargs, result_list, index):
+        result = dijkstra(indices=indices, **kwargs)
+        result_list[index] = result
+
+    manager = Manager()
+    result_list = manager.list([None] * len(indices_mat))
+    processes = []
+
+    process_kwargs = {'csgraph':csgraph,'return_predecessors':return_predecessors,**kwargs}
+    for i, origins in enumerate(indices_mat):
+        process = Process(target=process_wrapper, args=(origins, process_kwargs, result_list, i))
+        process.start()
+        processes.append(process)
+    for process in processes:
+        process.join()
+    # Convert the manager list to a regular list for easier access
+    result_list = np.array(result_list)
 
     if return_predecessors == True: # result is a tuple
-        dist_matrix = [res[0] for res in result]
+        dist_matrix = [res[0] for res in result_list]
         dist_matrix = np.concatenate(dist_matrix,axis=0)
-        predecessors = [res[1] for res in result]
-        predecessors = np.concatenate(predecessors,axis=0)
+        predecessors = [res[1] for res in result_list]
+        predecessors = np.concatenate(predecessors,axis=0).astype(np.int32)
         return dist_matrix, predecessors
     else:
-        dist_matrix = np.concatenate(result,axis=0)
+        dist_matrix = np.concatenate(result_list,axis=0)
         return dist_matrix
 
 
