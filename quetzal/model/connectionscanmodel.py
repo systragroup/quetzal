@@ -93,7 +93,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
     def preparation_build_connection_dataframe(
         self, min_transfer_time=0,
         time_interval=None, cutoff=np.inf,
-        reindex=True,
+        reindex=True,step = None
     ):
         time_interval = time_interval if time_interval is not None else self.time_interval
 
@@ -120,7 +120,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         pseudo_links['link_index'] = pseudo_links['model_index'] = pseudo_links.index
         pseudo_links['actual_departure_time'] = pseudo_links['departure_time']
         pseudo_links['departure_time'] -= links['min_transfer_time']
-        zone_to_transit = csa.time_zone_to_transit(pseudo_links, self.zone_to_transit)
+        zone_to_transit = csa.time_zone_to_transit(pseudo_links, self.zone_to_transit,step = step)
         footpaths = csa.time_footpaths(pseudo_links, self.footpaths)
         self.time_expended_footpaths = footpaths
         self.time_expended_zone_to_transit = zone_to_transit
@@ -150,7 +150,8 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         targets=None,
         od_set=None,
         workers=1,
-        reindex=True
+        reindex=True,
+        step = None
     ):
         
         """Performs public transport pathfinder for connection scan models.
@@ -182,7 +183,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
                 min_transfer_time=min_transfer_time,
                 time_interval=time_interval,
                 cutoff=cutoff,
-                reindex=reindex,
+                reindex=reindex, step = step
             )
         seta = set(self.time_expended_zone_to_transit['a'])
         setb = set(self.time_expended_zone_to_transit['b'])
@@ -198,7 +199,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             min_transfer_time=min_transfer_time,
             time_interval=time_interval,
             cutoff=cutoff,
-            workers=workers
+            workers=workers,step = step
         )
 
     def analysis_paths(

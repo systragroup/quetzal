@@ -75,7 +75,7 @@ def time_footpaths(links, footpaths):
     return transfers[columns]
 
 
-def time_zone_to_transit(links, zone_to_transit, reindex=False):
+def time_zone_to_transit(links, zone_to_transit, reindex=False,step = None):
     ztt = zone_to_transit
     ztt['model_index'] = ztt.index
     # access
@@ -114,6 +114,10 @@ def time_zone_to_transit(links, zone_to_transit, reindex=False):
         df['csa_index'] = 'ztt_' + df['model_index'] + '_' + df['str'].astype(str)
 
     df['trip_id'] = 'ztt_trip_' + df['str'].astype(str)
+    if step is not None:
+        df["departure_time_round"] = df["departure_time"]//(step)
+        df = df.sort_values(by = "departure_time")
+        df = df.drop_duplicates(["a","b","departure_time_round","direction"])
     return df[['a', 'b', 'departure_time', 'arrival_time', 'trip_id', 'csa_index', 'model_index', 'direction']]
 
 
@@ -224,7 +228,7 @@ def pathfinder(
     pseudo_connections,
     zone_set,
     min_transfer_time=0, time_interval=None, cutoff=np.inf,
-    targets=None, workers=1, od_set=None
+    targets=None, workers=1, od_set=None,step = None
 ):
 
     targets = list(set(targets))
