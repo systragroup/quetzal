@@ -6,6 +6,7 @@ from quetzal.engine import engine, nested_logit
 from quetzal.engine.park_and_ride_pathfinder import ParkRidePathFinder
 from quetzal.engine.pathfinder import PublicPathFinder
 from quetzal.engine.road_pathfinder import RoadPathFinder
+from quetzal.engine.sampling import sample_od
 from quetzal.model import model, optimalmodel, parkridemodel
 from syspy.assignment import raw as raw_assignment
 from syspy.assignment.raw import fast_assign as assign
@@ -132,6 +133,35 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 coordinates_unit=self.coordinates_unit,
                 **od_volume_from_zones_kwargs
             )
+
+    def sample_volumes(self, bidimentional_sampling=True, fit_sums=True, sample_weight=1, sample_size=None, inplace=True):
+        od_volumes = self.volumes.set_index(['origin', 'destination'])
+
+        series = {}
+        for c in od_volumes.columns :
+            try : 
+                sw = sample_weight[c]
+            except TypeError: # it is not a dict but a value
+                sw = sample_weight 
+            try : 
+                ss = sample_size[c]
+            except TypeError:
+                ss = sample_size
+        
+            series[c] = sample_od(
+                od_volumes[c],  
+                bidimentional_sampling=bidimentional_sampling, 
+                fit_sums=fit_sums,
+                sample_weight=sw,
+                sample_size=ss,
+            )
+
+            volumes = pd.DataFrame(series).reset_index()
+        if inplace :
+            self.volumes = volumes
+        else :
+            return volumes
+
 
     @track_args
     def step_road_pathfinder(self, 
