@@ -37,7 +37,9 @@ def resample(series, sample_weight=None, sample_size=None):
     return sparse
 
 def resample_square(square, sample_weight=1, sample_size=None):
-
+    # remove origins and destinations with a null sum
+    square = square.loc[square.sum(axis=1)>0, square.sum(axis=0)>0]
+    
     destinations = square.apply(lambda d : resample(d, sample_weight=sample_weight, sample_size=sample_size))
     origins = square.apply(lambda o : resample(o, sample_weight=sample_weight, sample_size=sample_size), axis=1)
 
