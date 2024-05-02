@@ -7,6 +7,7 @@ from s3_utils import DataBase
 from io import BytesIO
 from pydantic import BaseModel
 from typing import  Optional
+import numba as nb
 import matplotlib.pyplot as plt
 # docker build -f api/ML_MatrixRoadCaster/Dockerfile -t ml_matrixroadcaster:latest .
 
@@ -23,7 +24,6 @@ class Model(BaseModel):
     date_time: Optional[str] = '2022-12-13T08:00:21-04:00'
     ff_time_col: Optional[str] = 'time'
     max_speed: Optional[float] = 100
-    num_cores: Optional[int] = 1
     gap_limit: Optional[float] = 0.5
     max_num_it: Optional[int] = 30
     num_random_od: Optional[int] = 1
@@ -78,26 +78,27 @@ def handler(event, context):
     date_time = args.date_time
     ff_time_col = args.ff_time_col
     max_speed = args.max_speed
-    num_cores = args.num_cores
     gap_limit = args.gap_limit
     max_num_it = args.max_num_it
     num_random_od = args.num_random_od
     create_zone = args.create_zone
     hereApiKey = args.hereApiKey
+    num_cores = nb.config.NUMBA_NUM_THREADS
+    print('num cores:',num_cores)
     
     print('read files')
     #links = db.read_geojson(uuid,'road_links.geojson')
 
-    links = gpd.read_file(f's3://{db.BUCKET}/{uuid}/road_links.geojson', driver='GeoJSON')
+    links = gpd.read_file(f's3://{db.BUCKET}/{uuid}/road_links.geojson', driver='GeoJSON', engine='pyogrio')
     links.set_index('index',inplace=True)
-    nodes = gpd.read_file(f's3://{db.BUCKET}/{uuid}/road_nodes.geojson', driver='GeoJSON')
+    nodes = gpd.read_file(f's3://{db.BUCKET}/{uuid}/road_nodes.geojson', driver='GeoJSON', engine='pyogrio')
     nodes.set_index('index',inplace=True)
 
     if create_zone:
         print('create zones')
         zones = create_zones_from_nodes(nodes,num_zones=num_zones)
     else: 
-        zones = gpd.read_file(f's3://{db.BUCKET}/{uuid}/zones.geojson', driver='GeoJSON')
+        zones = gpd.read_file(f's3://{db.BUCKET}/{uuid}/zones.geojson', driver='GeoJSON', engine='pyogrio')
         zones.set_index('index',inplace=True)
 
     print('init road_model')
@@ -175,10 +176,10 @@ def handler(event, context):
         f2.savefig(img_data, format='png')
         db.save_image(uuid,'4_HERE_speed_prediction_{idx}.png'.format(idx=i+1), img_data)
 
-
+    plot_model_calibration(self, uuid)
     print('Saving on S3'), 
-    self.road_links.to_file(f's3://{db.BUCKET}/{uuid}/road_links.geojson', driver='GeoJSON')
-    self.road_nodes.to_file(f's3://{db.BUCKET}/{uuid}/road_nodes.geojson', driver='GeoJSON')
+    self.road_links.to_file(f's3://{db.BUCKET}/{uuid}/road_links.geojson', driver='GeoJSON', engine='pyogrio')
+    self.road_nodes.to_file(f's3://{db.BUCKET}/{uuid}/road_nodes.geojson', driver='GeoJSON', engine='pyogrio')
     self.zones.to_file(f's3://{db.BUCKET}/{uuid}/zones.geojson', driver='GeoJSON')
     print('done')
 
@@ -202,3 +203,36 @@ def plot_zones(self,uuid):
     plt.title('Zones Centroids')
     plt.savefig(img_data, format='png')
     db.save_image(uuid, '1_HERE_zones_centroids.png', img_data)
+
+def plot_model_calibration(self, uuid):
+    import random
+    import numpy as np
+    seed = 43
+    validation_percent = 10  # percent of data to test on
+
+    test = self.copy()
+    test.od_time = test.od_time[test.od_time['interpolated']==False]
+    test.od_time = test.od_time.reset_index(drop=True)
+    test.od_time['api_time'] = test.od_time['here_time'].copy()
+    random.seed(seed)
+    randindex = [random.randint(0,len(test.od_time)-1) for i in range(round(len(test.od_time)*validation_percent/10))]
+
+    test.od_time.loc[randindex,'here_time'] = np.nan
+    test.od_time.loc[randindex,'interpolated'] = True
+
+    test.train_knn_model(weight='distance', n_neighbors=5)
+    test.predict_zones()
+
+    test.od_time = test.od_time[test.od_time['interpolated']]
+
+    img_data = BytesIO()
+    plot_correlation(test.od_time['api_time']/60, 
+                    test.od_time['here_time']/60, 
+                    colors=False,
+                    alpha=1,
+                    xlabel='Predicted OD time (mins)', 
+                    ylabel='API OD time (mins)',
+                    title = f'Model calibration ({validation_percent}% for validation)')
+    plt.savefig(img_data, format='png')
+    db.save_image(uuid,'5_HERE_model_calibration.png', img_data)
+

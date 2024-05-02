@@ -9,6 +9,8 @@ from s3_utils import DataBase
 from pydantic import BaseModel
 from typing import  Optional
 import json
+import os
+
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -160,7 +162,7 @@ def main(uuid, files, dates, selected_day, time_range, export=True):
                 feed.stop_times['shape_dist_traveled'] = feed.stop_times['shape_dist_traveled'].fillna(0)
             else:
                 feed.append_dist_to_stop_times_fast()
-                
+
         if feed.stop_times['shape_dist_traveled'].max() < 100:
             print(f'convert to meters')
             feed.dist_units = 'km'
@@ -189,7 +191,8 @@ def main(uuid, files, dates, selected_day, time_range, export=True):
         feeds_frequencies.append(feed_frequencies)
 
     # 5) rename route_type.
-    with open('route_type.json') as file:
+    path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "route_type.json")
+    with open(path) as file:
         mapping = json.load(file)
         mapping = {int(key):item for key,item in mapping.items()}   
     retire = ['taxi']
