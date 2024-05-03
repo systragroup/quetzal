@@ -148,7 +148,7 @@ def from_lines(lines, node_index=0, add_return=True, to_keep=[]):
     return links.reset_index(drop=True), nodes
 
 def euclidean_distance(p1, p2):
-    return math.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
+    return np.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
 
 def cut(line, distance):
     # Cuts a line in two at a distance from its starting point

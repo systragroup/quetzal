@@ -12,7 +12,7 @@ from sklearn.neighbors import KNeighborsRegressor
 from syspy.spatial.spatial import nearest
 from quetzal.engine.pathfinder_utils import get_path, parallel_dijkstra, simple_routing, build_index, sparse_matrix
 from quetzal.engine.msa_utils import get_zone_index
-
+from quetzal.engine.sampling import get_average_block_length, get_od_blocks
 from syspy.clients.api_proxy import multi_get_distance_matrix
 
 
@@ -214,7 +214,7 @@ class RoadModel:
             ["origin", "destination"]
         ).index.map(dist_dict)
 
-    def get_training_set(self, train_size=10000, seed=42):
+    def get_random_training_set(self, train_size=10000, seed=42):
         '''
         train_size: number of OD to call (10 000  = 100 ori x 100 des)
         '''
@@ -238,6 +238,29 @@ class RoadModel:
         print('max destination for an origin:', train_od.groupby('origin').agg(len).max()['destination'])
 
         train_od = train_od.groupby('origin').agg(list)
+        # list [[origins],[destinations]]
+        train_od = [[[a],b] for a,b in zip(list(train_od.index),list(train_od['destination']))]
+        return train_od
+    
+
+
+    def get_training_set(self, train_size=1000, seed=42, max_length=15, max_destinations=20):
+        '''
+        train_size: number of OD to call (10 000  = 100 ori x 100 des)
+        '''
+
+        pool = list(range(len(self.zones_centroid)))
+        block_length = get_average_block_length(n_od=train_size, pool=pool, max_length=max_length)
+        od_list, blocks = get_od_blocks(od_pool=pool, n_od=train_size, block_length=block_length, max_destinations=max_destinations, seed=seed)
+        print(block_length)
+        print(len(blocks), 'blocks of', block_length, 'origins,', len(od_list), 'ODs' )
+
+        zones_dict = self.zones_centroid.reset_index()['node_index'].to_dict()
+        train_od=[]
+        for block in blocks:
+            origins = set([zones_dict.get(el[0]) for el in block])
+            destinations = set([zones_dict.get(el[1]) for el in block])
+            train_od.append([list(origins),list(destinations)])
         return train_od
 
     def call_api_on_training_set(self,
@@ -261,16 +284,17 @@ class RoadModel:
         saving (bool): save result matrix locally.
         '''                  
         mat = pd.DataFrame()
-        for row in tqdm(list(train_od.iterrows())):
-            origin_nodes = row[0]
-            destination_nodes = row[1]['destination']
-            origins = self.zones_centroid[self.zones_centroid['node_index'] == origin_nodes]
+        for origin_nodes, destination_nodes in tqdm(train_od):
+            origins = self.zones_centroid[self.zones_centroid['node_index'].isin(origin_nodes)]
             destinations = self.zones_centroid[self.zones_centroid['node_index'].isin(destination_nodes)]
+            origins = self.zones_centroid[self.zones_centroid['node_index'].isin(origin_nodes)]
+            destinations = self.zones_centroid[self.zones_centroid['node_index'].isin(destination_nodes)]
+            batch_size = (15,15) if len(origins)>1 else (1,100)
             try:
                 res = multi_get_distance_matrix(
                     origins=origins,
                     destinations=destinations,
-                    batch_size=(1, 100),
+                    batch_size=batch_size,
                     apiKey=apiKey,
                     mode=mode,
                     api=api,
@@ -278,13 +302,12 @@ class RoadModel:
                     verify=verify,
                     region=region,
                 )
-                sleep(1)
             except:
-                sleep(5)
+                sleep(2)
                 res = multi_get_distance_matrix(
                     origins=origins,
                     destinations=destinations,
-                    batch_size=(1, 100),
+                    batch_size=batch_size,
                     apiKey=apiKey,
                     api=api,
                     mode=mode,
@@ -489,7 +512,7 @@ def _get_od_time(od, time_matrix):
 
 
 # vizualisation
-def plot_correlation(x, y, alpha=0.1, xlabel='actual time (mins)', ylabel='time interpolation (mins)', title='comparaison temps OD (jaune = 5% des points)'):
+def plot_correlation(x, y, colors=True, alpha=0.1, xlabel='actual time (mins)', ylabel='time interpolation (mins)', title='comparaison temps OD (jaune = 5% des points)'):
     import matplotlib
     import matplotlib.pyplot as plt
     from sklearn import linear_model
@@ -511,12 +534,19 @@ def plot_correlation(x, y, alpha=0.1, xlabel='actual time (mins)', ylabel='time 
     intercept = 0
 
     fig, ax = plt.subplots(figsize=(10, 10))
-
-    plt.scatter(x, y,
+    if colors == True:
+        plt.scatter(x, y,
+                    s=10,
+                    c=errors,
+                    norm=matplotlib.colors.Normalize(vmin=0, vmax=errors.quantile(0.95), clip=True),
+                    alpha=alpha)
+    else:
+        #if False, use default color (None) else its a str and use it (ex: red) 
+        c = None if colors==False else colors
+        plt.scatter(x, y,
                 s=10,
-                c=errors,
-                norm=matplotlib.colors.Normalize(vmin=0, vmax=errors.quantile(0.95), clip=True),
-                alpha=alpha)
+                c=c,
+                alpha=alpha)     
 
     maxvalue = max(max(x), max(y))
     plt.plot([0, maxvalue], [0, maxvalue], '--r', alpha=0.5)
@@ -548,14 +578,15 @@ def plot_correlation(x, y, alpha=0.1, xlabel='actual time (mins)', ylabel='time 
 
 
 
-def plot_random_od(self,seed=42):
+def plot_random_od(model,seed=42):
     import geopandas as gpd
     import random
     from sklearn.neighbors import NearestNeighbors
     from shapely.geometry import Point, LineString
     import matplotlib.pyplot as plt
     from quetzal.engine.pathfinder_utils import simple_routing, get_path
-
+    from syspy.spatial.spatial import plot_lineStrings
+    self = model.copy()
 
     def to_linestring(df):
         ls = []
@@ -568,15 +599,12 @@ def plot_random_od(self,seed=42):
     train_df = self.od_time[~self.od_time['interpolated']]
     interp_df = self.od_time[self.od_time['interpolated']]
 
-    geom = to_linestring(train_df[['o_lon','o_lat','d_lon','d_lat']].values)
-    train_df = gpd.GeoDataFrame(train_df,geometry=geom,crs=4326)
-    geom = to_linestring(interp_df[['o_lon','o_lat','d_lon','d_lat']].values)
-    interp_df = gpd.GeoDataFrame(interp_df,geometry=geom,crs=4326)
 
     # find an interp OD
     random.seed(seed)
     randint = random.randint(0,len(interp_df)-1)
-    test = interp_df.loc[[randint]]
+    test = interp_df.iloc[[randint]]
+    test = gpd.GeoDataFrame(test,geometry=to_linestring(test[['o_lon','o_lat','d_lon','d_lat']].values),crs=4326)
 
     # get OD node and zones.
     o_node = test['origin'].values[0]
@@ -593,18 +621,22 @@ def plot_random_od(self,seed=42):
         columns={'level_0': 'ix_one', 'level_1': 'rank'})
 
     voisin = train_df.iloc[indices['index_nn'].values]
+    voisin = gpd.GeoDataFrame(voisin, geometry=to_linestring(voisin[['o_lon','o_lat','d_lon','d_lat']].values),crs=4326)
     vtime = voisin[self.api_time_col].values/60
     vtime = [round(time) for time in vtime]
     itime = round(test[self.api_time_col].values[0]/60)
 
     # first plot
     fig, ax = plt.subplots(figsize=(10,10))
-    self.road_links.plot(ax=ax,alpha=0.2,zorder=1)
+    plot_lineStrings(self.road_links,ax=ax,alpha=0.2,zorder=1)
     voisin.plot(ax=ax,alpha=1,zorder=5,color='orange')
     test.plot(ax=ax,alpha=1,zorder=5,color='red')
 
-    self.road_nodes.loc[self.zones_centroid[self.zones_centroid['node_index'].isin(voisin['origin'].values)]['node_index'].values].plot(color='orange',marker='x',ax=ax,zorder=9)
-    self.road_nodes.loc[self.zones_centroid[self.zones_centroid['node_index'].isin(voisin['destination'].values)]['node_index'].values].plot(color='orange',marker='x',ax=ax,zorder=9)
+    for i,geom in enumerate(voisin['geometry']):
+        x,y = geom.coords[0]
+        ax.scatter(x,y,color='k',marker=f'$o${i+1}',zorder=9, s=200)
+        x,y = geom.coords[1]
+        ax.scatter(x,y,color='k',marker=f'$d${i+1}',zorder=9, s=200)
     self.road_nodes.loc[self.zones_centroid.loc[[origin,destination]]['node_index'].values].plot(color='r',ax=ax,zorder=8)
     self.road_nodes.loc[self.zones_centroid.loc[[origin]]['node_index'].values].plot(color='k',ax=ax,zorder=9,marker='$ori$',markersize=300)
     self.road_nodes.loc[self.zones_centroid.loc[[destination]]['node_index'].values].plot(color='k',ax=ax,zorder=9,marker='$des$',markersize=300)
@@ -632,6 +664,7 @@ def plot_random_od(self,seed=42):
     ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=12,
             verticalalignment='top', bbox=props)
     plt.title('OD Prediction {i} to {j}'.format(i=origin,j=destination))
+
     #plt.savefig(figdir+'knn_example.png')
     #centroid.plot(color='r',ax=ax)
 
@@ -652,7 +685,7 @@ def plot_random_od(self,seed=42):
 
     #plot2
     fig2, ax2 = plt.subplots(figsize=(10,10))
-    self.road_links.plot(ax=ax2,alpha=0.2)
+    plot_lineStrings(self.road_links,ax=ax2,alpha=0.2)
     route.plot(ax=ax2,column=self.api_speed_col,legend=True,linewidth=4,cmap='jet_r',legend_kwds={'label':'Speed (km/h)'})
     self.road_nodes.loc[[o_node]].plot(color='k',ax=ax2,zorder=8,marker='$ori$',markersize=300)
     self.road_nodes.loc[[d_node]].plot(color='k',ax=ax2,zorder=8,marker='$des$',markersize=300)

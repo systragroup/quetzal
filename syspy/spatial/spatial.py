@@ -407,3 +407,20 @@ def voronoi_diagram(points, plot=False, size=None, method='box'):
         axis=1
     )
     return polygons, ridges[['a', 'b', 'geometry']].values.tolist()
+
+
+def plot_lineStrings(gdf, ax, **kwargs):
+    # quickly plot a gpd.GeoDataframe. given an ax (fig, ax = plt.subplots())
+    # kwargs for matplotlib plot classic kwargs.
+    from matplotlib.collections import LineCollection
+    geometries = gdf['geometry'].apply(lambda g:[pts for pts in g.coords]).values
+    line_segments = LineCollection(geometries,**kwargs)
+    ax.add_collection(line_segments)
+    ax.autoscale()
+
+def plot_points(gdf, ax, **kwargs):
+    # quickly plot a gpd.GeoDataframe. given an ax (fig, ax = plt.subplots())
+    # kwargs for matplotlib plot classic kwargs.
+    xy = gdf['geometry'].map(lambda point: point.xy)
+    x, y = zip(*xy)
+    ax.scatter(x,y,**kwargs)

@@ -11,6 +11,8 @@ shapely==1.7.1
 matplotlib==3.7.1
 pydantic==1.10.8
 networkx==3.0
+pyogrio==0.7.2
+
 
 
 

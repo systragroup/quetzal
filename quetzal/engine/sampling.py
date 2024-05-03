@@ -91,3 +91,60 @@ def sample_od(od_indexed_series, bidimentional_sampling=True, fit_sums=True, sam
             sparse = proportional_fitting(sparse, sum_axis_0=square.sum(axis=0), sum_axis_1=square.sum(axis=1))
 
     return sparse.replace(0, np.nan).stack()
+
+
+def get_average_block_length(pool, n_od, max_length=15, min_od=100, max_blocks=100):
+    min_block_length = len(pool) / max_blocks
+    
+    if n_od <= min_od: 
+        return 1
+    else :
+        to_return = min(n_od / len(pool), max_length)
+        return max(to_return, min_block_length)
+
+def get_od_blocks(od_pool, n_od=100, block_length=None, pop_origins=True, pop_destinations=True, max_destinations=100,seed=42):
+    np.random.seed(seed)
+    pool_origins = od_pool
+    pool_destinations = od_pool
+    
+    od = []
+    blocks = []
+    remaining_od = n_od-len(od)
+    i = 0
+    while remaining_od>0:
+        i+=1
+        int_block_length = int(block_length + np.random.rand()) 
+        # statistically equall to block_length
+
+        n_origins = min(int_block_length, len(pool_origins))
+        origins = np.random.choice(pool_origins, n_origins, replace=False)
+
+        n_destinations = int(np.round(remaining_od/len(pool_origins)))
+        n_destinations = min(n_destinations, len(pool_destinations))
+        n_destinations = min(n_destinations, max_destinations)
+        #print(n_destinations)
+        destinations =  np.random.choice(pool_destinations, n_destinations, replace=False)
+
+        block = []
+        for o in origins: 
+            for d in destinations :
+                od.append((o, d))
+                block.append((o, d))
+        if len(block)>0:
+            blocks.append(block)
+
+        if pop_origins :
+            pool_origins = [i for i in pool_origins if i not in origins]
+            if len(pool_origins) == 0: # all the destinations have been covered
+                pool_origins = od_pool # we re-initiate with the pool
+                print('reset origins')
+                
+        if pop_destinations :
+            pool_destinations = [i for i in pool_destinations if i not in destinations]
+            if len(pool_destinations) == 0: # all the destinations have been covered
+                pool_destinations = od_pool # we re-initiate with the pool
+                print('reset destinations')
+                
+        remaining_od = n_od-len(od)
+        
+    return od, blocks
