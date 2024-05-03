@@ -164,11 +164,13 @@ class PlotModel(summarymodel.SummaryModel):
         scalebar=None,
         zoom=9,
         resize=False,
+        styles=None,
         *args,
         **kwargs,
     ):
-        styles = self.get_geometries()
-        styles = styles.groupby(styles.index).first()
+        if styles is None:
+            styles = self.get_geometries()
+            styles = styles[~styles.index.duplicated(keep='first')]
         paths = self.pt_los.set_index(['origin', 'destination']).loc[origin, destination]
         if paths.ndim == 1:  # their is only one path
             paths = pd.DataFrame(data=paths).T

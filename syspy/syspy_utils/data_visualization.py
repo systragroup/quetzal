@@ -498,7 +498,7 @@ def bandwidth(
 def add_basemap(
     ax,
     zoom,
-    url='http://tile.stamen.com/terrain-background/tileZ/tileX/tileY.png',
+    url = 'http://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png',
     errors='ignore',
 ):
     # TODO: move to another file
