@@ -6,8 +6,8 @@ from tqdm import tqdm
 from quetzal.engine import engine
 from quetzal.engine.graph_utils import combine_edges, expand_path
 from quetzal.engine.pathfinder_utils import los_from_graph, adjacency_matrix
-from quetzal.engine.pathfinder_utils import paths_from_edges, link_edge_array
-from quetzal.engine.pathfinder_utils import get_first_and_last, get_all
+from quetzal.engine.pathfinder_utils import paths_from_edges, link_edge_array, sparse_matrix_with_access_penalty
+from quetzal.engine.pathfinder_utils import get_first_and_last, get_all, pruned_matrix
 
 
 class PublicPathFinder:
@@ -23,14 +23,14 @@ class PublicPathFinder:
                 to_concat.append(model.footpaths)
             except AttributeError:
                 pass
-            self.footpaths = pd.concat(to_concat)
+            self.footpaths = pd.concat([df[['a','b', 'time']] for df in to_concat])
 
             to_concat = [model.zone_to_road]
             try:
                 to_concat.append(model.zone_to_transit)
             except AttributeError:
                 pass
-            self.ntlegs = pd.concat(to_concat)
+            self.ntlegs = pd.concat([df[['a','b', 'time']] for df in to_concat])
 
         else:
             self.footpaths = model.footpaths.copy()
@@ -377,12 +377,21 @@ class PublicPathFinder:
     def find_broken_combination_paths(
         self, column=None, prune=True,
         cutoff=np.inf, build_shortcuts=False,
-        boarding_time=None, od_set=None
+        boarding_time=None, od_set=None, reuse_matrix=True,
+        log=False, keep_matrix=False
     ):
 
         def get_task(column, combination, od_set=None):
             od_sets = self.splitted_od_sets[column][combination] if od_set is None else (od_set, set())
             return (column, combination, od_sets)
+        
+        csgraph, node_index, pcsgraph =None, None, None
+        if reuse_matrix :
+            link_e = link_edge_array(self.links, boarding_time)
+            footpaths_e = self.footpaths[['a', 'b', 'time']].values
+            ntlegs_e = self.ntlegs[['a', 'b', 'time']].values
+            edges = np.concatenate([link_e, footpaths_e, ntlegs_e])
+            csgraph, node_index = sparse_matrix_with_access_penalty(edges, sources=self.zones.index)
         
         if column is not None:
             combinations = [(column, combination) for combination in self.combinations[column]]
@@ -396,43 +405,56 @@ class PublicPathFinder:
         for column, combination, od_sets in iterator:
             iterator.desc = column + ' ' + str(set(combination))
             
-            links = self.links.loc[~self.links[column].isin(combination)]
+            to_prune = set(self.links.index[self.links[column].isin(combination)])
+            links = self.links.drop(to_prune)
             footpaths = self.footpaths
             ntlegs = self.ntlegs
 
             if prune:
                 removed_nodes = set(self.links['a']).union(self.links['b']) - set(links['a']).union(links['b'])
-                footpaths = footpaths.loc[(~footpaths['a'].isin(removed_nodes)) & (~footpaths['b'].isin(removed_nodes))]
-                ntlegs = ntlegs.loc[(~ntlegs['a'].isin(removed_nodes)) & (~ntlegs['b'].isin(removed_nodes))]
+                removed_footpaths = set(footpaths.index[
+                    (~footpaths['a'].isin(removed_nodes)) & (~footpaths['b'].isin(removed_nodes))
+                ])
+                footpaths = footpaths.drop(removed_footpaths)
+                removed_ntlegs = set(ntlegs.index[
+                    (~ntlegs['a'].isin(removed_nodes)) & (~ntlegs['b'].isin(removed_nodes))
+                ])
+                ntlegs = ntlegs.drop(removed_ntlegs)
+                to_prune = to_prune.union(removed_nodes).union(removed_footpaths).union(removed_ntlegs)
 
-            link_e = link_edge_array(links, boarding_time)
-            footpaths_e = footpaths[['a', 'b', 'time']].values
-            ntlegs_e = ntlegs[['a', 'b', 'time']].values
-            edges = np.concatenate([link_e, footpaths_e, ntlegs_e])
+            if not reuse_matrix:
+                link_e = link_edge_array(links, boarding_time)
+                footpaths_e = footpaths[['a', 'b', 'time']].values
+                ntlegs_e = ntlegs[['a', 'b', 'time']].values
+                edges = np.concatenate([link_e, footpaths_e, ntlegs_e])
 
             o_od_set, d_od_set = od_sets
             od_set = o_od_set.union(d_od_set)
+            if reuse_matrix:
+                # we remove the edges from the initial matrix
+                pcsgraph = pruned_matrix(csgraph, node_index, to_prune)
 
             if len(o_od_set) == 0 and len(d_od_set) == 0:
                 continue
             # OLOS forward search
             if len(o_od_set):
                 if build_shortcuts:
+                    assert not reuse_matrix, 'set reuse_matrix to false to if build_shortcuts is true'
                     keep = {o for o, d in od_set}.union({d for o, d in od_set})
                     e, s = combine_edges(edges, keep=keep)
-                    o_los = paths_from_edges(edges=e, od_set=o_od_set, cutoff=cutoff)
+                    o_los = paths_from_edges(edges=e, od_set=o_od_set, cutoff=cutoff, log=log)
                     o_los['path'] = [expand_path(p, shortcuts=s) for p in o_los['path']]
                 else:
-                    o_los = paths_from_edges(edges=edges, od_set=o_od_set, cutoff=cutoff)
+                    o_los = paths_from_edges(edges=edges, od_set=o_od_set, cutoff=cutoff, csgraph=pcsgraph, node_index=node_index, log=log)
                 o_los['reversed'] = False
                 
             # DLOS backward search
             if len(d_od_set):
                 if build_shortcuts:
-                    d_los = paths_from_edges(edges=e, od_set=d_od_set, cutoff=cutoff)
+                    d_los = paths_from_edges(edges=e, od_set=d_od_set, cutoff=cutoff, log=log)
                     d_los['path'] = [expand_path(p, shortcuts=s) for p in d_los['path']]
                 else:
-                    d_los = paths_from_edges(edges=edges, od_set=d_od_set, cutoff=cutoff)
+                    d_los = paths_from_edges(edges=edges, od_set=d_od_set, cutoff=cutoff, csgraph=pcsgraph, node_index=node_index, log=log)
                 d_los['reversed'] = True
                 # CONCAT
                 los = pd.concat([o_los, d_los])
@@ -443,6 +465,9 @@ class PublicPathFinder:
             los['broken_' + column] = [combination for i in range(len(los))]
             to_concat.append(los.rename(columns={'length': 'gtime'}))
         self.broken_combination_paths = pd.concat(to_concat)
+        if keep_matrix:
+            self.csgraph = csgraph
+            self.node_index = node_index
 
     def find_best_paths(
         self,

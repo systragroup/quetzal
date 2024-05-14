@@ -368,6 +368,20 @@ def sparse_matrix_with_access_penalty(edges, sources=set(), penalty=1e9):
     row, col, data = coefficients
     return csr_matrix((data, (row, col)), shape=(nlen, nlen)), index
 
+from copy import deepcopy
+def pruned_matrix(matrix, index, pruned):
+    """ 
+    copy a matrix and returns a matrix with infitine costs for a given row
+    the index is a dict name:ix 
+    pruned is a list of names to remove
+    """
+    pmatrix = deepcopy(matrix)
+    for vertex in pruned : 
+        i = index[vertex]
+        for j in pmatrix[i].indices:
+            pmatrix[i,j] = np.inf
+    return pmatrix
+
 def paths_from_edges(
     edges,
     sources=None,
@@ -375,7 +389,10 @@ def paths_from_edges(
     od_set=None,
     cutoff=np.inf,
     penalty=1e9,
-    log=False
+    log=False,
+    # edges can be transmitted as a CSR matrix
+    csgraph=None, # CSR matrix
+    node_index=None, # {name such as 'link_123': matrix index}
 ):
 
     reverse = False
@@ -392,19 +409,23 @@ def paths_from_edges(
             targets = list(d_set)
         
     
-    if len(sources) > len(targets):
+    if len(sources) > len(targets) :
         reverse = True
         if log:
             print(len(sources), 'sources', len(targets), 'targets', 'transposed search')
         sources, targets = targets, sources
-        edges = [(b, a, w) for a, b, w in edges]
+        if csgraph is None or node_index is None :
+            edges = [(b, a, w) for a, b, w in edges]
     elif log :
         print(len(sources), 'sources', len(targets), 'targets', 'direct search')
         
     st = set(sources).union(targets)
-    csgraph, node_index = sparse_matrix_with_access_penalty(
-        edges, sources=st, penalty=penalty
-    )
+    if csgraph is None or node_index is None :
+        csgraph, node_index = sparse_matrix_with_access_penalty(
+            edges, sources=st, penalty=penalty
+        )
+        if reverse:
+            csgraph=csgraph.transpose()
     
     # INDEX
     source_indices = [node_index[s] for s in sources]
