@@ -157,6 +157,7 @@ class PublicPathFinder:
         boarding_time=None,
         build_shortcuts=False,
         keep_matrix=False,
+        verbose=False,
     ):
 
         link_e = link_edge_array(self.links, boarding_time)
@@ -172,7 +173,7 @@ class PublicPathFinder:
             los = paths_from_edges(edges=e, od_set=od_set, cutoff=cutoff, log=True)
             los['path'] = [expand_path(p, shortcuts=s) for p in los['path']]
         else:
-            los = paths_from_edges(edges=edges, od_set=od_set, cutoff=cutoff, csgraph=self.csgraph, node_index=self.node_index)
+            los = paths_from_edges(edges=edges, od_set=od_set, cutoff=cutoff, csgraph=self.csgraph, node_index=self.node_index, log=verbose)
 
         los['pathfinder_session'] = 'best_path'
         los['reversed'] = False
@@ -298,6 +299,8 @@ class PublicPathFinder:
             boarding_time=boarding_time,
             cutoff=cutoff,
             od_set=od_set,
+            verbose=verbose,
+            keep_matrix=True,
             **kwargs
         )  # builds the graph
 

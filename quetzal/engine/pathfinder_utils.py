@@ -380,7 +380,7 @@ def index_access_pruned_matrix(matrix, index, pruned):
         i = index[vertex]
         for j in pmatrix[i].indices:
             pmatrix[i,j] = np.inf
-    return pmatrix
+    return pmatrix, index
 
 def pruned_matrix(matrix, index, pruned):
     """ 
@@ -450,8 +450,9 @@ def paths_from_edges(
         csgraph, node_index = sparse_matrix_with_access_penalty(
             edges, sources=st, penalty=penalty
         )
-        if reverse:
-            csgraph=csgraph.transpose()
+        
+    if reverse:
+        csgraph=csgraph.transpose()
     
     # INDEX
     source_indices = [node_index[s] for s in sources]
