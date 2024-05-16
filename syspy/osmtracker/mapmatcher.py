@@ -1,6 +1,5 @@
 import geopandas as gpd
 import json
-import osmnx as ox
 import pandas as pd
 from quetzal.engine import gps_tracks
 from shapely.geometry import Point
@@ -118,6 +117,8 @@ def get_osm_data(north, south, east, west, network_type, epsg, output_folder):
     """
 
     # download
+    import osmnx as ox
+
     osm_graph = ox.graph_from_bbox(north, south, east, west, network_type)
     road_nodes, road_links = ox.graph_to_gdfs(osm_graph)
 

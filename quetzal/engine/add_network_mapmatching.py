@@ -114,6 +114,8 @@ def Parallel_Mapmatching(gps_tracks: pd.DataFrame,
                         by: str = 'trip_id',
                         num_cores: int = 1) -> Tuple[pd.DataFrame, pd.DataFrame, list]:
     trip_list = gps_tracks[by].unique()
+    if num_cores>len(trip_list):
+        num_cores = max(len(trip_list), 1)
     chunk_length =  round(len(trip_list)/ num_cores)
     # Split the list into four sub-lists
     chunks = [trip_list[j:j+chunk_length] for j in range(0, len(trip_list), chunk_length)]
@@ -193,6 +195,8 @@ def Multi_Mapmatching(gps_tracks: pd.DataFrame,
             node_list.index = node_list.index.map(gps_index_dict)
             vals = vals.append(val)
             node_lists = node_lists.append(node_list)
+
+    # add matched points on road
     
     print(f'{len(trip_id_list)} / {len(trip_id_list)}')
     return vals, node_lists, unmatched_trip
@@ -503,8 +507,9 @@ def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10, distance_ma
 
     val = pd.DataFrame(temp_path, columns=['index', 'road_id', 'offset']).set_index('index')[1:]
     val['road_id_b'] = val['road_id'].shift(-1)
+    val['offset_b'] = val['offset'].shift(-1)
     val = val[:-1]
-    val = val.rename(columns={'road_id': 'road_id_a'})
+    val = val.rename(columns={'road_id': 'road_id_a', 'offset':'offset_a'})
     dijkstra_dict = candidat_links.set_index(['ix_one', 'road_a', 'road_b'], drop=False)['dijkstra'].to_dict()
     val['length'] = val.set_index([val.index, 'road_id_a', 'road_id_b']).index.map(dijkstra_dict.get)
 
@@ -580,3 +585,46 @@ def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10, distance_ma
         return val, node_mat
     else:
         return val
+
+
+def duplicate_nodes(original_links, original_nodes):
+    nodes = original_links[['a','b','trip_id']]
+    nodes_a = nodes[['a','trip_id']].set_index('a')
+    nodes_b = nodes.groupby('trip_id')[['b']].agg('last').reset_index().set_index('b')
+    nodes = pd.concat([nodes_a,nodes_b])
+    nodes = nodes.reset_index()
+    # get only the trips after the first one (first is not changing)
+    nodes_dup_list = nodes.groupby('index')[['trip_id']].agg(list)
+    nodes_dup_list['trip_id'] = nodes_dup_list['trip_id'].apply(lambda x: x[:-1])
+    nodes_dup_list['len'] = nodes_dup_list['trip_id'].apply(len)
+    nodes_dup_list = nodes_dup_list[nodes_dup_list['len']>0]
+
+    if len(nodes_dup_list)>0: # skip if no duplicated nodes
+        # explode and split tuple (uuid) in original trip_id  .
+        nodes_dup_list = nodes_dup_list.explode('trip_id').reset_index()
+        # new name!
+        nodes_dup_list['new_index'] = nodes_dup_list['index'].astype(str) + '-' + nodes_dup_list['trip_id'].astype(str)
+        # create dict (trip_id, index) : new_stop_name for changing the links
+        # for b. remove 1 in  as we used link sequence for a. last node we did add 1 in link sequence.
+        new_index_dict = nodes_dup_list.set_index(['trip_id','index'])['new_index'].to_dict()
+        new_index_dict = nodes_dup_list.set_index(['trip_id','index'])['new_index'].to_dict()
+        if len(nodes_dup_list[nodes_dup_list['index'].duplicated()]) > 0:
+            print('there is at least a node with duplicated (index, trip_id), will not be split in different nodes')
+            print(nodes_dup_list[nodes_dup_list['new_index'].duplicated()]['new_index'])
+
+        #duplicate nodes and concat them to the existing nodes.
+        new_nodes = nodes_dup_list[['index','new_index']].merge(original_nodes,left_on='index',right_on='index')
+        new_nodes = new_nodes.drop(columns=['index']).rename(columns = {'new_index': 'index'})
+        new_nodes = new_nodes.set_index('index')
+        original_nodes = pd.concat([original_nodes, new_nodes])
+
+        # change nodes stop_id with new ones in links
+
+        original_links['new_a'] = original_links.set_index(['trip_id','a']).index.map(new_index_dict)
+        original_links['a'] = original_links['new_a'].combine_first(original_links['a'])
+
+        original_links['new_b'] = original_links.set_index(['trip_id','b']).index.map(new_index_dict)
+        original_links['b'] = original_links['new_b'].combine_first(original_links['b'])
+
+        original_links = original_links.drop(columns = ['new_a','new_b'])
+    return original_links, original_nodes

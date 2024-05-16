@@ -1,0 +1,1146 @@
+{
+    "Comment": "step function calling the lambda function",
+    "StartAt": "preparation",
+    "States": {
+      "preparation": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "OutputPath": "$.Payload",
+        "Parameters": {
+          "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+          "Payload": {
+            "step": "preparation",
+            "callID.$": "$.callID",
+            "exclusions.$": "$.exclusions",
+            "exec_id": 0,
+            "num_machine": 1
+          }
+        },
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.SdkClientException",
+              "Lambda.TooManyRequestsException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 2,
+            "BackoffRate": 2
+          },
+          {
+            "ErrorEquals": [
+              "Lambda.AWSLambdaException"
+            ],
+            "IntervalSeconds": 30,
+            "MaxAttempts": 4,
+            "BackoffRate": 2
+          }
+        ],
+        "Next": "Choice"
+      },
+      "Choice": {
+        "Type": "Choice",
+        "Choices": [
+          {
+            "Variable": "$.num_machine",
+            "NumericEquals": 4,
+            "Next": "Parallel"
+          },
+          {
+            "Variable": "$.num_machine",
+            "NumericEquals": 8,
+            "Next": "Parallel (1)"
+          },
+          {
+            "Variable": "$.num_machine",
+            "NumericEquals": 12,
+            "Next": "Parallel (2)"
+          }
+        ],
+        "Default": "mm"
+      },
+      "mm": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "OutputPath": "$.Payload",
+        "Parameters": {
+          "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+          "Payload": {
+            "step": "mapmatching",
+            "callID.$": "$.callID",
+            "exclusions.$": "$.exclusions",
+            "exec_id": 0
+          }
+        },
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.SdkClientException",
+              "Lambda.TooManyRequestsException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 2,
+            "BackoffRate": 2
+          },
+          {
+            "ErrorEquals": [
+              "Lambda.AWSLambdaException"
+            ],
+            "IntervalSeconds": 30,
+            "MaxAttempts": 4,
+            "BackoffRate": 2
+          }
+        ],
+        "Next": "merge"
+      },
+      "merge": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "OutputPath": "$.Payload",
+        "Parameters": {
+          "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+          "Payload": {
+            "step": "merge",
+            "callID.$": "$.callID",
+            "exclusions.$": "$.exclusions",
+            "exec_id.$": "$.exec_id"
+          }
+        },
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.SdkClientException",
+              "Lambda.TooManyRequestsException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 2,
+            "BackoffRate": 2
+          },
+          {
+            "ErrorEquals": [
+              "Lambda.AWSLambdaException"
+            ],
+            "IntervalSeconds": 30,
+            "MaxAttempts": 4,
+            "BackoffRate": 2
+          }
+        ],
+        "End": true
+      },
+      "Parallel": {
+        "Type": "Parallel",
+        "Branches": [
+          {
+            "StartAt": "mm 0",
+            "States": {
+              "mm 0": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 0
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 1",
+            "States": {
+              "mm 1": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 1
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 2",
+            "States": {
+              "mm 2": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 2
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 3",
+            "States": {
+              "mm 3": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 3
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          }
+        ],
+        "Next": "merge parallel"
+      },
+      "merge parallel": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "OutputPath": "$.Payload",
+        "Parameters": {
+          "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+          "Payload": {
+            "step": "merge",
+            "callID.$": "$[0].callID",
+            "exclusions.$": "$[0].exclusions",
+            "exec_id.$": "$[0].exec_id"
+          }
+        },
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.SdkClientException",
+              "Lambda.TooManyRequestsException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 2,
+            "BackoffRate": 2
+          },
+          {
+            "ErrorEquals": [
+              "Lambda.AWSLambdaException"
+            ],
+            "IntervalSeconds": 30,
+            "MaxAttempts": 4,
+            "BackoffRate": 2
+          }
+        ],
+        "End": true
+      },
+      "Parallel (1)": {
+        "Type": "Parallel",
+        "Branches": [
+          {
+            "StartAt": "mm 0 (1)",
+            "States": {
+              "mm 0 (1)": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 0
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 1 (1)",
+            "States": {
+              "mm 1 (1)": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 1
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 2 (1)",
+            "States": {
+              "mm 2 (1)": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 2
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 3 (1)",
+            "States": {
+              "mm 3 (1)": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 3
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 4 (1)",
+            "States": {
+              "mm 4 (1)": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 4
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 5 (1)",
+            "States": {
+              "mm 5 (1)": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 5
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 6 (1)",
+            "States": {
+              "mm 6 (1)": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 6
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 7 (1)",
+            "States": {
+              "mm 7 (1)": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 7
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          }
+        ],
+        "Next": "merge parallel"
+      },
+      "Parallel (2)": {
+        "Type": "Parallel",
+        "Branches": [
+          {
+            "StartAt": "mm 0 (2)",
+            "States": {
+              "mm 0 (2)": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 0
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 1 (2)",
+            "States": {
+              "mm 1 (2)": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 1
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 2 (2)",
+            "States": {
+              "mm 2 (2)": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 2
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 3 (2)",
+            "States": {
+              "mm 3 (2)": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 3
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 4 (2)",
+            "States": {
+              "mm 4 (2)": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 4
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 5 (2)",
+            "States": {
+              "mm 5 (2)": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 5
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 6 (2)",
+            "States": {
+              "mm 6 (2)": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 6
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 7 (2)",
+            "States": {
+              "mm 7 (2)": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 7
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 8 (2)",
+            "States": {
+              "mm 8 (2)": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 8
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 9 (2)",
+            "States": {
+              "mm 9 (2)": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 9
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 10 (2)",
+            "States": {
+              "mm 10 (2)": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 10
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          },
+          {
+            "StartAt": "mm 11 (2)",
+            "States": {
+              "mm 11 (2)": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "OutputPath": "$.Payload",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:ca-central-1:142023388927:function:quetzal-mapmatching-api:$LATEST",
+                  "Payload": {
+                    "step": "mapmatching",
+                    "callID.$": "$.callID",
+                    "exclusions.$": "$.exclusions",
+                    "exec_id": 11
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.ServiceException",
+                      "Lambda.SdkClientException",
+                      "Lambda.TooManyRequestsException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2
+                  },
+                  {
+                    "ErrorEquals": [
+                      "Lambda.AWSLambdaException"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 2
+                  }
+                ],
+                "End": true
+              }
+            }
+          }
+        ],
+        "Next": "merge parallel"
+      }
+    }
+  }

@@ -5,6 +5,7 @@ from shapely.geometry import LineString, Point, MultiPoint
 from shapely import ops
 from syspy.spatial import spatial
 from syspy.syspy_utils.syscolors import linedraft_shades, rainbow_shades
+from syspy.spatial.geometries import  cut_inbetween
 import json
 
 def from_linedraft(
@@ -147,34 +148,7 @@ def from_lines(lines, node_index=0, add_return=True, to_keep=[]):
     nodes = pd.concat(to_concat_nodes)
     return links.reset_index(drop=True), nodes
 
-def euclidean_distance(p1, p2):
-    return np.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
 
-def cut(line, distance):
-    # Cuts a line in two at a distance from its starting point
-    if distance <= 0.0:
-        return [None, LineString(line)]
-    if distance >= line.length:
-        return [LineString(line), None]
-    coords = list(line.coords)
-    pd = 0
-    for i, p in enumerate(coords):
-        if i == 0:
-            continue
-        pd += euclidean_distance(p, coords[i - 1])
-        if pd == distance:
-            return [
-                LineString(coords[:i + 1]),
-                LineString(coords[i:])]
-        if pd > distance:
-            cp = line.interpolate(distance)
-            return [
-                LineString(coords[:i] + [(cp.x, cp.y)]),
-                LineString([(cp.x, cp.y)] + coords[i:])]
-
-def cut_inbetween(geom, d_a, d_b):
-    geom1 = cut(geom, d_a)[1]
-    return cut(geom1, d_b - d_a)[0]
 
 
 def from_line_and_nodes(lines, nodes):
