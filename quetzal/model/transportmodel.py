@@ -419,7 +419,6 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             broken_modes=broken_modes,
             route_column=route_column,
             mode_column=mode_column,
-            speedup=speedup,
             boarding_time=boarding_time,
             **kwargs
         )

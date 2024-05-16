@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, csc_matrix
 from scipy.sparse.csgraph import dijkstra
 from tqdm import tqdm
 from numba import jit
@@ -369,7 +369,7 @@ def sparse_matrix_with_access_penalty(edges, sources=set(), penalty=1e9):
     return csr_matrix((data, (row, col)), shape=(nlen, nlen)), index
 
 from copy import deepcopy
-def pruned_matrix(matrix, index, pruned):
+def index_access_pruned_matrix(matrix, index, pruned):
     """ 
     copy a matrix and returns a matrix with infitine costs for a given row
     the index is a dict name:ix 
@@ -381,6 +381,32 @@ def pruned_matrix(matrix, index, pruned):
         for j in pmatrix[i].indices:
             pmatrix[i,j] = np.inf
     return pmatrix
+
+def pruned_matrix(matrix, index, pruned):
+    """ 
+    copy a matrix and returns a matrix with infitine costs for a given row
+    the index is a dict name:ix 
+    pruned is a list of names to remove
+    """
+    pruned_ix = {index[p] for p in pruned}
+    kept_index = sorted(list(set(index.values()) - set(pruned_ix)))
+
+    # REINDEX
+    rank = 0 # {former_ix : new_ix}
+    reindex = {}
+    for i in kept_index:
+        reindex[i] = rank
+        rank += 1 
+        
+    pindex = {} # {name : new_ix}
+    for k, v in index.items():
+        try: 
+            pindex[k] = reindex[v]
+        except KeyError:
+            pass
+        
+    pmatrix = csr_matrix(csc_matrix(matrix[kept_index, :])[:, kept_index])
+    return pmatrix, pindex
 
 def paths_from_edges(
     edges,
@@ -433,7 +459,6 @@ def paths_from_edges(
     source_index = dict(zip(sources, range(len(sources))))
     index_node = {v: k for k, v in node_index.items()}
     # DIKSTRA
-
     dist_matrix, predecessors = dijkstra(
         csgraph=csgraph,
         directed=True,
