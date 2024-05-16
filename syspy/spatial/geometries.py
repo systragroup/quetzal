@@ -327,3 +327,32 @@ def geometries_with_side(
     l['offset'] = l['width'] * (l['side'] + 0.5)
 
     return gpd.GeoDataFrame(l[['geometry', 'width', 'side', 'offset', 'id']])
+
+def euclidean_distance(p1, p2):
+    return np.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
+
+def cut(line, distance):
+    # Cuts a line in two at a distance from its starting point
+    if distance <= 0.0:
+        return [None, shapely.geometry.LineString(line)]
+    if distance >= line.length:
+        return [shapely.geometry.LineString(line), None]
+    coords = list(line.coords)
+    pd = 0
+    for i, p in enumerate(coords):
+        if i == 0:
+            continue
+        pd += euclidean_distance(p, coords[i - 1])
+        if pd == distance:
+            return [
+                shapely.geometry.LineString(coords[:i + 1]),
+                shapely.geometry.LineString(coords[i:])]
+        if pd > distance:
+            cp = line.interpolate(distance)
+            return [
+                shapely.geometry.LineString(coords[:i] + [(cp.x, cp.y)]),
+                shapely.geometry.LineString([(cp.x, cp.y)] + coords[i:])]
+
+def cut_inbetween(geom, d_a, d_b):
+    geom1 = cut(geom, d_a)[1]
+    return cut(geom1, d_b - d_a)[0]

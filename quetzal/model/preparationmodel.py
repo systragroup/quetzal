@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from quetzal.engine import connectivity, engine, gps_tracks
 from quetzal.engine.add_network import NetworkCaster
-from quetzal.engine.add_network_mapmatching import RoadLinks,get_gps_tracks,Multi_Mapmatching,Parallel_Mapmatching
+from quetzal.engine.add_network_mapmatching import RoadLinks,get_gps_tracks,Multi_Mapmatching,Parallel_Mapmatching,duplicate_nodes
 from quetzal.model import cubemodel, model, integritymodel
 from syspy.spatial import spatial
 from syspy.renumber import renumber
@@ -540,6 +540,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                             distance_max=3000,
                             routing=True,
                             overwrite_geom=False,
+                            overwrite_nodes=False,
                             num_cores=1):
     
         """Mapmatch each trip_id in self.links to the road_network (self.road_links)
@@ -571,18 +572,20 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             self.links = self.links.drop(columns = ['road_link_list'])
         if 'road_node_list' in self.links.columns:
             self.links = self.links.drop(columns = ['road_node_list'])
+        if overwrite_nodes:
+            print('overwrite nodes: make sure nodes are not shared between trips')
 
         road_links = RoadLinks(self.road_links,n_neighbors_centroid=n_neighbors_centroid)
         gps_tracks = get_gps_tracks(self.links, self.nodes, by=by,sequence=sequence)
         if num_cores==1:
-            matched_links, links_mat, unmatched_trip = Multi_Mapmatching(gps_tracks,
+            matched_links, links_mat, _ = Multi_Mapmatching(gps_tracks,
                                                                         road_links,
                                                                         routing=routing,
                                                                         n_neighbors=n_neighbors,
                                                                         distance_max=distance_max,
                                                                         by=by)
         else:
-            matched_links, links_mat, unmatched_trip = Parallel_Mapmatching(gps_tracks,
+            matched_links, links_mat, _ = Parallel_Mapmatching(gps_tracks,
                                                                             road_links,
                                                                             routing=routing,
                                                                             n_neighbors=n_neighbors,
@@ -594,15 +597,47 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         matched_links['road_id_b'] = matched_links['road_id_b'].apply(lambda x: road_links.links_index_dict.get(x))
         road_a_dict = matched_links['road_id_a'].to_dict()
         road_b_dict = matched_links['road_id_b'].to_dict()
+        offset_a_dict = matched_links['offset_a'].to_dict()
+        offset_b_dict = matched_links['offset_b'].to_dict()
         length_dict = matched_links['length'].to_dict()
         self.links['road_a'] = self.links.index.map(road_a_dict.get)
         self.links['road_b'] = self.links.index.map(road_b_dict.get)
+        self.links['offset_a'] = self.links.index.map(offset_a_dict.get)
+        self.links['offset_b'] = self.links.index.map(offset_b_dict.get)
         self.links['length'] = self.links.index.map(length_dict.get)
         self.links = self.links.merge(links_mat[['road_node_list', 'road_link_list']], left_index=True, right_index=True, how='left')
-        if overwrite_geom:
-            links_geom_dict = road_links.links.set_index('index')['geometry']
+        
+        if overwrite_nodes:
+            # get nodes
+            node_dict_a = self.links['a'].to_dict()
+            node_dict_b = self.links['b'].to_dict()
+            matched_nodes = matched_links
+            matched_nodes = matched_nodes.reset_index()
+            matched_nodes['node_index'] = matched_nodes['index'].apply(lambda x: node_dict_a.get(x))
+            matched_nodes_a = matched_nodes.set_index('road_id_a')[['node_index','offset_a','trip_id']].rename(columns={'offset_a':'offset'})
+            matched_nodes_b = matched_nodes.groupby('trip_id')[['road_id_b','offset_b','index']].agg('last').reset_index().set_index('road_id_b')
+            matched_nodes_b['node_index'] = matched_nodes_b['index'].apply(lambda x: node_dict_b.get(x))
+            matched_nodes_b = matched_nodes_b.drop(columns=['index'])
 
+            matched_nodes_b = matched_nodes_b.rename(columns={'offset_b':'offset'})
+            matched_nodes = pd.concat([matched_nodes_a,matched_nodes_b])
+            matched_nodes = matched_nodes.rename(columns = {'matched_nodes':'road_id'})
+            def matched(line, offset):
+                return line.interpolate(offset)
+            geom_dict = road_links.links.set_index('index')['geometry'].to_dict()
+            matched_nodes['geometry'] = matched_nodes.index.map(geom_dict.get)
+            matched_nodes['geometry'] = matched_nodes.apply(lambda x: matched(x['geometry'], x['offset']), axis=1)
+            geom_dict = matched_nodes.set_index('node_index')['geometry'].to_dict()
+            self.nodes['new_geometry'] = self.nodes.index.map(geom_dict.get)
+            self.nodes['geometry'] = self.nodes['new_geometry'].combine_first(self.nodes['geometry'])
+            self.nodes.drop(columns=['new_geometry'],inplace=True)
+
+        if overwrite_geom:
+            links_geom_dict = road_links.links.set_index('index')['geometry'].to_dict()
             def get_geom(ls,geom_dict):
+                
+                if type(ls) is not list:
+                    return None
                 # transform road_links index to linetring
                 ls = [*map(geom_dict.get,ls)]
                 new_line=[]
@@ -622,7 +657,34 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                         new_line.extend(link[1:]) 
                 #return a linetring of all road points. 
                 return LineString(new_line)
-            self.links['geometry'] = self.links['road_link_list'].apply(lambda x: get_geom(x, links_geom_dict))
+            self.links['new_geometry'] = self.links['road_link_list'].apply(lambda x: get_geom(x, links_geom_dict))
+            self.links['geometry'] = self.links['new_geometry'].combine_first(self.links['geometry'])
+            self.links.drop(columns=['new_geometry'], inplace=True)
+        
+        if overwrite_geom and overwrite_nodes:
+            from syspy.spatial.geometries import cut
+            def crops(links,nodes):
+                # cut linestring at nodes a and b
+                nodes_dict = nodes['geometry'].to_dict()
+                nodes_a = [*map(nodes_dict.get,links['a'])]
+                nodes_b = [*map(nodes_dict.get,links['b'])]
+                geometries = links['geometry'].values
+                res=[]
+                for g, a, b in zip(geometries,nodes_a,nodes_b):
+                    offset_a =  g.project(a)
+                    g = cut(g, offset_a)[1]
+                    if g is None:
+                        res.append(LineString([a,b]))
+                        continue
+                    offset_b =  g.project(b)
+                    g = cut(g, offset_b)[0]
+                    if g is None:
+                        res.append(LineString([a,b]))
+                    else:
+                        res.append(g)
+                return res
+            
+            self.links['geometry'] = crops(self.links,self.nodes)
 
 
     @track_args
