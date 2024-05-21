@@ -112,7 +112,8 @@ def Parallel_Mapmatching(gps_tracks: pd.DataFrame,
                         n_neighbors: int = 10,
                         distance_max: float = 200,
                         by: str = 'trip_id',
-                        num_cores: int = 1) -> Tuple[pd.DataFrame, pd.DataFrame, list]:
+                        num_cores: int = 1,
+                        **kwargs) -> Tuple[pd.DataFrame, pd.DataFrame, list]:
     trip_list = gps_tracks[by].unique()
     if num_cores>len(trip_list):
         num_cores = max(len(trip_list), 1)
@@ -127,10 +128,10 @@ def Parallel_Mapmatching(gps_tracks: pd.DataFrame,
     manager = Manager()
     result_list = manager.list([None] * len(chunks))
     processes = []
-    kwargs = {'road_links':road_links,'routing':routing,'n_neighbors':n_neighbors,'distance_max':distance_max,'by':by}
+    pkwargs = {'road_links':road_links,'routing':routing,'n_neighbors':n_neighbors,'distance_max':distance_max,'by':by,**kwargs}
     for i, trips in enumerate(chunks):
         chunk_gps_tracks = gps_tracks[gps_tracks[by].isin(trips)]
-        process = Process(target=process_wrapper, args=(chunk_gps_tracks,kwargs, result_list, i))
+        process = Process(target=process_wrapper, args=(chunk_gps_tracks, pkwargs, result_list, i))
         process.start()
         processes.append(process)
     for process in processes:
@@ -150,7 +151,8 @@ def Multi_Mapmatching(gps_tracks: pd.DataFrame,
                         routing: bool = True,
                         n_neighbors: int = 10,
                         distance_max: float = 200,
-                        by: str = 'trip_id') -> Tuple[pd.DataFrame, pd.DataFrame, list]:
+                        by: str = 'trip_id',
+                        **kwargs) -> Tuple[pd.DataFrame, pd.DataFrame, list]:
     """
     gps_track: use get_gps_tracks
     links: RoadLinks object
@@ -183,7 +185,8 @@ def Multi_Mapmatching(gps_tracks: pd.DataFrame,
             val, node_list = Mapmatching(gps_track, road_links, 
                                                 routing=routing,
                                                 n_neighbors=n_neighbors,
-                                                distance_max=distance_max)
+                                                distance_max=distance_max,
+                                                **kwargs)
             
 
 
@@ -204,7 +207,7 @@ def Multi_Mapmatching(gps_tracks: pd.DataFrame,
 
 
 def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10, distance_max:float=1000,
-                routing:bool=False, plot:bool=False) -> Tuple[pd.DataFrame, pd.DataFrame]:
+                routing:bool=False, plot:bool=False, SIGMA:float=4.07, BETA:float=3) -> Tuple[pd.DataFrame, pd.DataFrame]:
     
 
     """
@@ -216,8 +219,7 @@ def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10, distance_ma
         Paul Newson and John Krumm 2009
     """
 
-    SIGMA = 4.07
-    BETA = 3
+    
     dijkstra_limit = 2000  # Limit on first dijkstra on road network.
 
     def nearest(one, nbrs, geometry=False):
@@ -559,20 +561,23 @@ def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10, distance_ma
         link_mat = []
         for node_list in node_mat:
             link_list = []
-            for i in range(len(node_list) - 1):
-                # probleme quand node list est egal a deux, liée au links_index_dict
-                try:
+            if len(node_list)>=2: # if only 1 node. skip this
+                for i in range(len(node_list) - 1):
                     link_list.append(links.dict_link[node_list[i], node_list[i + 1]])
-                    # print(node_list[i])
-                    # print(node_list[i+1])
-                except Exception:
-                    # print(node_list[i])
-                    # print(node_list[i+1])
-                    pass
             link_mat.append(link_list)
+            try: # if first and last road are not equal: correct it
+                if len(link_mat) >=2 :
+                    prev = link_mat[-2]
+                    current = link_mat[-1]
+                    if prev[-1]!=current[0]:
+                        prev.append(current[0])
+            except Exception:
+                pass
+            
         # format en liste dans un dataframe
         node_mat = pd.Series(node_mat).to_frame('road_node_list')
         node_mat['road_link_list'] = link_mat
+        print(node_list)
 
         if plot:
             f, ax = plt.subplots(figsize=(10, 10))

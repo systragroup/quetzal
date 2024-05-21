@@ -194,7 +194,7 @@ def mapmatching(uuid,exec_id,num_cores):
     sm.nodes = sm.nodes.to_crs(4326)
     sm.links = sm.links.to_crs(4326)
 
-    sm.links = sm.links.drop(columns=['road_a','road_b','offset_b','road_node_list'])
+    sm.links = sm.links.drop(columns=['road_a','road_b','offset_b','offset_a','road_node_list'])
     sm.links['road_link_list'] = sm.links['road_link_list'].fillna('[]')
     sm.links['road_link_list'] = sm.links['road_link_list'].astype(str)
 

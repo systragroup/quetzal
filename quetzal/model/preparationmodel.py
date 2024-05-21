@@ -541,7 +541,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                             routing=True,
                             overwrite_geom=False,
                             overwrite_nodes=False,
-                            num_cores=1):
+                            num_cores=1,
+                            **kwargs):
     
         """Mapmatch each trip_id in self.links to the road_network (self.road_links)
 
@@ -579,19 +580,21 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         gps_tracks = get_gps_tracks(self.links, self.nodes, by=by,sequence=sequence)
         if num_cores==1:
             matched_links, links_mat, _ = Multi_Mapmatching(gps_tracks,
-                                                                        road_links,
-                                                                        routing=routing,
-                                                                        n_neighbors=n_neighbors,
-                                                                        distance_max=distance_max,
-                                                                        by=by)
+                                                            road_links,
+                                                            routing=routing,
+                                                            n_neighbors=n_neighbors,
+                                                            distance_max=distance_max,
+                                                            by=by,
+                                                            **kwargs)
         else:
             matched_links, links_mat, _ = Parallel_Mapmatching(gps_tracks,
-                                                                            road_links,
-                                                                            routing=routing,
-                                                                            n_neighbors=n_neighbors,
-                                                                            distance_max=distance_max,
-                                                                            by=by,
-                                                                            num_cores=num_cores)
+                                                                road_links,
+                                                                routing=routing,
+                                                                n_neighbors=n_neighbors,
+                                                                distance_max=distance_max,
+                                                                by=by,
+                                                                num_cores=num_cores,
+                                                                **kwargs)
 
         matched_links['road_id_a'] = matched_links['road_id_a'].apply(lambda x: road_links.links_index_dict.get(x))
         matched_links['road_id_b'] = matched_links['road_id_b'].apply(lambda x: road_links.links_index_dict.get(x))
