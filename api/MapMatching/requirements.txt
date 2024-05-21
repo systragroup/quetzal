@@ -23,5 +23,5 @@ tqdm==4.65.0
 uri-template==1.2.0
 webcolors==1.13
 xlrd==2.0.1
-pydantic==1.10.8
+pydantic==1.10.13
 
