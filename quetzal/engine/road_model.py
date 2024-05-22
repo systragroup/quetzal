@@ -284,7 +284,11 @@ class RoadModel:
         saving (bool): save result matrix locally.
         '''                  
         mat = pd.DataFrame()
-        for origin_nodes, destination_nodes in tqdm(train_od):
+        it=0
+        for origin_nodes, destination_nodes in train_od:
+            if it % max((len(train_od)//5),5) == 0: # print 5 time
+                print(f'{it} / {len(train_od)}')
+            it+=1
             origins = self.zones_centroid[self.zones_centroid['node_index'].isin(origin_nodes)]
             destinations = self.zones_centroid[self.zones_centroid['node_index'].isin(destination_nodes)]
             origins = self.zones_centroid[self.zones_centroid['node_index'].isin(origin_nodes)]
