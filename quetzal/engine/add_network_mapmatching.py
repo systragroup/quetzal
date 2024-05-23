@@ -79,7 +79,8 @@ def get_gps_tracks(links, nodes, by='trip_id', sequence='link_sequence'):
     '''
 
     # Format links to a "gps track". keep node a,b of first links and node b of evey other ones.
-    gps_tracks = links[['a', 'b', by, sequence, 'route_id']]
+    gps_tracks = links[['a', 'b', by, sequence]]
+    gps_tracks = gps_tracks.sort_values([by, sequence])
     node_dict = nodes['geometry'].to_dict()
     # gps_tracks['geometry'] = gps_tracks['b'].apply(lambda x: node_dict.get(x))
     gps_tracks['node_seq'] = gps_tracks['b']
@@ -577,7 +578,6 @@ def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10, distance_ma
         # format en liste dans un dataframe
         node_mat = pd.Series(node_mat).to_frame('road_node_list')
         node_mat['road_link_list'] = link_mat
-        print(node_list)
 
         if plot:
             f, ax = plt.subplots(figsize=(10, 10))

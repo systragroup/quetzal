@@ -49,7 +49,7 @@ def handler(event, context):
 def preparation(uuid,exclusions,num_cores):
     from quetzal.engine.add_network_mapmatching import duplicate_nodes
 
-    basepath = f's3://{BUCKET_NAME}/{uuid}/' if ON_LAMBDA else 'test/'
+    basepath = f's3://{BUCKET_NAME}/{uuid}/' if ON_LAMBDA else '../test/'
 
     links = gpd.read_file(os.path.join(basepath,'links.geojson'),engine='pyogrio')
     links.set_index('index',inplace=True)
