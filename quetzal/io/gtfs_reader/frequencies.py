@@ -2,6 +2,7 @@ import collections
 
 import pandas as pd
 from tqdm import tqdm
+from math import floor
 
 from .filtering import restrict_to_timerange
 
@@ -230,6 +231,18 @@ def hhmmss_to_seconds_since_midnight(time_int):
     minute = (time_int - hour * 10000) // 100
     second = time_int % 100
     return hour * 3600 + minute * 60 + second
+
+
+def seconds_since_midnight_to_hhmmss(time_int):
+    """
+        Convert  seconds since midnight into HH:MM:SS.
+        For example 3723 returns "01:02:03". Numbers higher than 86400 (24:00:00) will return
+        HH over 24 to represent the following day.
+        :param time_int: int.
+        :return: HH:MM:SS string
+        """
+    time = (time_int / 60)
+    return "{:02d}:{:02d}:{:02d}".format(floor(time / 60), int(time % 60), round(time % 1 * 60))
 
 
 def compute_avg_headway(headways):
