@@ -24,7 +24,7 @@ def quenedi_to_quetzal_schedule(links, pattern_col='pattern_id'):
     df = pd.DataFrame(links)
     df = df.sort_values(by=['trip_id', 'link_sequence']).explode(['departures', 'arrivals'])
     suffixes = df.groupby(level=0).cumcount()
-    df.index = df.index + '_' + suffixes.astype(str)
+    df.index = df.index.astype(str) + '_' + suffixes.astype(str)
     suffixes.index = df.index
     df[pattern_col] = df['trip_id'].copy()
     df['trip_id'] = df['trip_id'] + '_' + suffixes.astype(str)
