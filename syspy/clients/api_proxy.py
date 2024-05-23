@@ -282,6 +282,8 @@ def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode=
 
         while not centroid.buffer(buffer).contains(LineString(df['geometry'].values)):
             buffer += 0.1
+            if buffer>1.7:
+                break
         polygon = [{"lat": np.round(y,5),"lng": np.round(x,5)} for x, y in list(zip(*centroid.buffer(buffer).exterior.coords.xy))]
         polygon = _remove_duplicates(polygon)
         if region == 'polygon':

@@ -102,7 +102,7 @@ def get_average_block_length(pool, n_od, max_length=15, min_od=100, max_blocks=1
         to_return = min(n_od / len(pool), max_length)
         return max(to_return, min_block_length)
 
-def get_od_blocks(od_pool, n_od=100, block_length=None, pop_origins=True, pop_destinations=True, max_destinations=100,seed=42):
+def get_od_blocks(od_pool, n_od=100, block_length=None, pop_origins=True, pop_destinations=True, max_destinations=100,seed=42, no_o_is_d=True):
     np.random.seed(seed)
     pool_origins = od_pool
     pool_destinations = od_pool
@@ -122,8 +122,11 @@ def get_od_blocks(od_pool, n_od=100, block_length=None, pop_origins=True, pop_de
         n_destinations = int(np.round(remaining_od/len(pool_origins)))
         n_destinations = min(n_destinations, len(pool_destinations))
         n_destinations = min(n_destinations, max_destinations)
-        #print(n_destinations)
-        destinations =  np.random.choice(pool_destinations, n_destinations, replace=False)
+        if no_o_is_d: # no origin is destination as the time is 0 and its a waste
+            filtered_pool_destinations = [d for d in pool_destinations if d not in origins]
+            destinations =  np.random.choice(filtered_pool_destinations, n_destinations, replace=False)
+        else:
+            destinations =  np.random.choice(pool_destinations, n_destinations, replace=False)
 
         block = []
         for o in origins: 
