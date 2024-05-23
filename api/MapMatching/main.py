@@ -107,7 +107,7 @@ def preparation(uuid,exclusions,num_cores):
         nodes_set = set(excluded_links['a'].unique()).union(set(excluded_links['b'].unique()))
         tnodes = nodes[nodes.reset_index()['index'].isin(nodes_set).values]
         excluded_links.to_file(os.path.join(basepath, 'parallel', f'links_excluded.geojson'),driver='GeoJSON')
-        excluded_links.to_file(os.path.join(basepath, 'parallel', f'nodes_excluded.geojson'),driver='GeoJSON')
+        tnodes.to_file(os.path.join(basepath, 'parallel', f'nodes_excluded.geojson'),driver='GeoJSON')
     return num_machine
 
 from shapely.ops import transform
