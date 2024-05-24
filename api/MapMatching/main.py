@@ -236,7 +236,7 @@ def merge(uuid):
     nodes.set_index('index').to_file(os.path.join(basepath,f'nodes_final.geojson'), driver='GeoJSON', engine='pyogrio')
 
 
-    df = links[['trip_id']].copy()
+    df = links[['index','trip_id']].copy()
     df['acf_distance'] = links['geometry'].apply(lambda x: get_acf_distance([x.coords[0],x.coords[-1]],True))
     df['routing_distance'] = links['length']
     df['routing - acf'] = df['routing_distance']-df['acf_distance']
@@ -249,5 +249,5 @@ def merge(uuid):
     if 'shape_dist_traveled' in df2.columns:
         df2['routing - sdt'] = df2['routing_distance']-df2['shape_dist_traveled']
 
-    db.save_csv(uuid, 'links_distances.csv', df.reset_index())
+    db.save_csv(uuid, 'links_distances.csv', df)
     db.save_csv(uuid, 'trips_distances.csv', df2)
