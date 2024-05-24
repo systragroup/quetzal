@@ -8,13 +8,14 @@ import pandas as pd
 import geopandas as gpd
 import numba as nb
 import os
+from s3_utils import DataBase
 
 import warnings
 warnings.filterwarnings("ignore")
 sys.path.insert(0, os.path.abspath('quetzal'))
 
-BUCKET_NAME = os.environ.get('BUCKET_NAME')
 ON_LAMBDA = bool(os.environ.get('AWS_EXECUTION_ENV'))
+db = DataBase()
 
 
 class Model(BaseModel):
@@ -49,7 +50,7 @@ def handler(event, context):
 def preparation(uuid,exclusions,num_cores):
     from quetzal.engine.add_network_mapmatching import duplicate_nodes
 
-    basepath = f's3://{BUCKET_NAME}/{uuid}/' if ON_LAMBDA else '../test/'
+    basepath = f's3://{db.BUCKET}/{uuid}/' if ON_LAMBDA else '../test/'
 
     links = gpd.read_file(os.path.join(basepath,'links.geojson'),engine='pyogrio')
     links.set_index('index',inplace=True)
@@ -147,7 +148,7 @@ def mapmatching(uuid,exec_id,num_cores):
     from quetzal.model import stepmodel
     from quetzal.io.gtfs_reader.importer import get_epsg
 
-    basepath = f's3://{BUCKET_NAME}/{uuid}/' if ON_LAMBDA else '../test'
+    basepath = f's3://{db.BUCKET}/{uuid}/' if ON_LAMBDA else '../test'
 
     links = gpd.read_file(os.path.join(basepath, 'parallel', f'links_{exec_id}.geojson'),engine='pyogrio')
     if 'index' in links.columns:
@@ -191,6 +192,11 @@ def mapmatching(uuid,exec_id,num_cores):
                             overwrite_nodes=True,
                             num_cores=num_cores)
     
+    # ovewrite Length with the real length and time
+    sm.links['length'] = sm.links['geometry'].apply(lambda g: g.length)
+    if 'speed' in sm.links.columns:
+        sm.links['time'] = sm.links['length']/sm.links['speed'] * 3.6
+
     sm.nodes = sm.nodes.to_crs(4326)
     sm.links = sm.links.to_crs(4326)
 
@@ -205,11 +211,13 @@ def merge(uuid):
     '''
     merge all linka and nodes in uuid/parallel/ folder on s3.
     '''
-    basepath = f's3://{BUCKET_NAME}/{uuid}/' if ON_LAMBDA else '../test'
-    s3path = f's3://{BUCKET_NAME}/'
+    from syspy.spatial.utils import get_acf_distance
+
+    basepath = f's3://{db.BUCKET}/{uuid}/' if ON_LAMBDA else '../test'
+    s3path = f's3://{db.BUCKET}/'
     s3 = boto3.client('s3')
     prefix = f'{uuid}/parallel/'
-    resp = s3.list_objects_v2(Bucket=BUCKET_NAME,Prefix=prefix)
+    resp = s3.list_objects_v2(Bucket=db.BUCKET,Prefix=prefix)
     links_concat = []; nodes_concat = []
     for obj in resp['Contents']:
         key = obj['Key']
@@ -226,3 +234,20 @@ def merge(uuid):
     links['road_link_list'] = links['road_link_list'].astype(str)
     links.set_index('index').to_file(os.path.join(basepath,f'links_final.geojson'), driver='GeoJSON', engine='pyogrio')
     nodes.set_index('index').to_file(os.path.join(basepath,f'nodes_final.geojson'), driver='GeoJSON', engine='pyogrio')
+
+
+    df = links[['trip_id']].copy()
+    df['acf_distance'] = links['geometry'].apply(lambda x: get_acf_distance([x.coords[0],x.coords[-1]],True))
+    df['routing_distance'] = links['length']
+    df['routing - acf'] = df['routing_distance']-df['acf_distance']
+    if 'shape_dist_traveled' in links.columns:
+        df['shape_dist_traveled'] = links['shape_dist_traveled']
+        df['routing - sdt'] = df['routing_distance']-df['shape_dist_traveled']
+
+    df2 = df.groupby('trip_id').agg(sum)
+    df2['routing - acf'] = df2['routing_distance']-df2['acf_distance']
+    if 'shape_dist_traveled' in df2.columns:
+        df2['routing - sdt'] = df2['routing_distance']-df2['shape_dist_traveled']
+
+    db.save_csv(uuid, 'links_distances.csv', df.reset_index())
+    db.save_csv(uuid, 'trips_distances.csv', df2)
