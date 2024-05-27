@@ -234,7 +234,7 @@ class ItsimGtfsImporter(FrequenciesGtfsImporter):
             lambda x: '{}_{}_{}'.format(x[group], x['direction_id'], x['pattern_id_n']),
             1
         )
-        patterns.drop(['id','pattern_id_n'], 1, inplace=True)
+        patterns.drop(['id','pattern_id_n'], axis=1, inplace=True)
         self.patterns = patterns
         if debug:
             self.trips_direction = trips_direction

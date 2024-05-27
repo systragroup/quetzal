@@ -34,7 +34,7 @@ def assign(volume_array, paths, checkpoints=None, checkpoints_how='all'):
     volumes = list(itertools.chain.from_iterable(nested_volumes))
     try:
         # volumes_array is an ndarray
-        assert isinstance(volumes[0], collections.Iterable)
+        assert isinstance(volumes[0], collections.abc.Iterable)
         sparse = pd.concat(
             (pd.DataFrame({'od': row_indices, 'link': column_indices}),
              pd.DataFrame(volumes)),

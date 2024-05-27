@@ -13,7 +13,7 @@ from random import random
 
 import pandas as pd
 import numpy as np
-from geopy.distance import vincenty
+from geopy.distance import geodesic
 
 from syspy.spatial import spatial
 from tqdm import tqdm

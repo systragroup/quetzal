@@ -387,7 +387,7 @@ def build_lines(links, line_columns='all', group_id='trip_id', sum_columns=[], m
 
     if line_columns is 'all':
         # all the columns that are shared by all the links of the group are listed
-        variability = links.groupby(group_id).agg(lambda s: s.nunique()).max()
+        variability = links.groupby(group_id).agg(lambda s: s.map(str).nunique()).max()
         line_columns = list(variability.loc[variability == 1].index)
 
     lines = links.groupby(group_id)[line_columns].first()
