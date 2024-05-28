@@ -1,47 +1,80 @@
 import numpy as np
 import pandas as pd
+from typing import Optional
 
-def resample(series, sample_weight=None, sample_size=None): 
 
+def resample(square:pd.DataFrame,
+            sample_weight:Optional[int]=None, 
+            sample_size:Optional[int]=None, 
+            seed:int=0, 
+            axis:int=1)-> pd.DataFrame: 
+    '''
+    square : matrix (pd.Dataframe). return a Matrix in the same form.
+    sample_weight: weight of each sample (if 10. each commute will represent 10 person's commute).
+    sample_size: number of random samples in the distribution. (if 100, 100 random commutes will be selected)
+    '''
+    
     if sample_weight is None and sample_size is None :
         sample_weight = 1 
+    if axis==0:
+        square = square.T
 
+    mat=np.zeros(square.values.shape)
+    for i,arr in enumerate(square.values):
+        sample = resample_arr(arr, sample_weight=sample_weight, sample_size=sample_size,seed=seed)
+        mat[i,:] = sample
+
+    mat = pd.DataFrame(mat,columns=square.columns,index=square.index)
+    if axis==0:
+        mat = mat.T
+
+    return mat 
+
+def resample_arr(arr:np.array,
+                  sample_weight:Optional[int]=None, 
+                  sample_size:Optional[int]=None, 
+                  seed:int=0) -> np.array:
+    '''
+    takes an np.array, weight or size. return resamples array.
+    sampling done randomly with the original array probability distribution.
+    '''
+    np.random.seed(seed)
+    total = arr.sum()
     # Build sample size and weight according to the other
     if sample_size :
         assert sample_weight is None
-        sample_weight = series.sum() / sample_size
+        sample_weight = total / sample_size
     elif sample_weight is not None:
-        sample_size = series.sum() / sample_weight
-        
+        sample_size = total / sample_weight
+
     # make sure everything is consistant in the end
-    sample_size = sample_size.astype(int)
+    sample_size = int(sample_size)
     if sample_size == 0 :
         sample_size = 1
 
-    sample_weight =  series.sum() / sample_size
+    weight =  total / sample_size
 
     # resampleing
-    probabilities = series / series.sum()
-    
-    np.random.seed(0)
+    probabilities = arr / total
+
     sample = np.random.choice(
-        a=series.index, 
+        a=[i for i in range(len(arr))], 
         size=sample_size,
         p=probabilities
     )
-
-    sparse = pd.Series(sample).value_counts() * sample_weight
-    if series.index.nlevels > 1 :
-        sparse.index = pd.MultiIndex.from_tuples(sparse.index)
-        sparse.index.names = series.index.names
-    return sparse
-
-def resample_square(square, sample_weight=1, sample_size=None):
-    # remove origins and destinations with a null sum
-    square = square.loc[square.sum(axis=1)>0, square.sum(axis=0)>0]
+    res = np.zeros(len(arr))
+    for v in sample:
+        res[v] += weight
     
-    destinations = square.apply(lambda d : resample(d, sample_weight=sample_weight, sample_size=sample_size))
-    origins = square.apply(lambda o : resample(o, sample_weight=sample_weight, sample_size=sample_size), axis=1)
+    return res
+
+def resample_square(square, sample_weight=1, sample_size=None,**kwargs):
+    # remove origins and destinations with a null sum
+    square = square.fillna(0)
+    square = square.loc[square.sum(axis=1)>0, square.sum(axis=0)>0]
+
+    destinations = resample(square, sample_weight=sample_weight, sample_size=sample_size,axis=0,**kwargs)
+    origins = resample(square, sample_weight=sample_weight, sample_size=sample_size,axis=1,**kwargs)
 
     origins.index.name = 'origin'
     origins.columns.name = 'destination'
@@ -79,14 +112,15 @@ def proportional_fitting(square, sum_axis_0=None, sum_axis_1=None, tolerance=1e-
     print('cannot fit both axis')
     return square
 
-def sample_od(od_indexed_series, bidimentional_sampling=True, fit_sums=True, sample_weight=1, sample_size=None):
+def sample_od(od_indexed_series, bidimentional_sampling=True, fit_sums=True, sample_weight=1, sample_size=None,**kwargs):
     square = od_indexed_series.unstack()
 
     if bidimentional_sampling :
-        sparse=resample_square(square, sample_weight=sample_weight, sample_size=sample_size)
+        sparse=resample_square(square, sample_weight=sample_weight, sample_size=sample_size,**kwargs)
     else : 
-        sparse=resample(od_indexed_series, sample_weight=sample_weight, sample_size=sample_size).unstack()
-
+        od_indexed_series[:] = resample_arr(od_indexed_series.values, sample_weight=sample_weight, sample_size=sample_size,**kwargs)
+        sparse = od_indexed_series.unstack()
+        
         if fit_sums:
             sparse = proportional_fitting(sparse, sum_axis_0=square.sum(axis=0), sum_axis_1=square.sum(axis=1))
 

@@ -134,7 +134,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 **od_volume_from_zones_kwargs
             )
 
-    def sample_volumes(self, bidimentional_sampling=True, fit_sums=True, sample_weight=1, sample_size=None, inplace=True):
+    def sample_volumes(self, bidimentional_sampling=True, fit_sums=True, sample_weight=1, sample_size=None, inplace=True,**kwargs):
         od_volumes = self.volumes.set_index(['origin', 'destination'])
 
         series = {}
@@ -154,9 +154,10 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 fit_sums=fit_sums,
                 sample_weight=sw,
                 sample_size=ss,
+                **kwargs,
             )
 
-            volumes = pd.DataFrame(series).reset_index()
+        volumes = pd.DataFrame(series).reset_index()
         if inplace :
             self.volumes = volumes
         else :
