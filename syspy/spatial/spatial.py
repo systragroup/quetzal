@@ -126,6 +126,7 @@ def zone_clusters(
 def agglomerative_clustering(
     stops,
     distance_threshold=150,
+    **kwargs
 ):
     """
     Stops must be in a metric cartesian coordinate system.
@@ -135,7 +136,8 @@ def agglomerative_clustering(
     df['y'] = df.geometry.y
     c = AgglomerativeClustering(
         n_clusters=None,
-        distance_threshold=distance_threshold
+        distance_threshold=distance_threshold,
+        **kwargs
     ).fit(df[['x', 'y']].values)
     return c.labels_
 

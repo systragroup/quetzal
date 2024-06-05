@@ -891,7 +891,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 self.links, self.nodes, n_clusters, **kwargs
             )
         else:
-            self.nodes['cluster'] = spatial.agglomerative_clustering(self.nodes, distance_threshold=distance_threshold)
+            self.nodes['cluster'] = spatial.agglomerative_clustering(self.nodes, distance_threshold=distance_threshold,**kwargs)
             self.links, self.nodes, self.node_clusters, self.node_parenthood = connectivity.node_clustering(
                 self.links, self.nodes, n_clusters, group_id='cluster'
             )     
