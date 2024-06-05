@@ -574,7 +574,12 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         if 'road_node_list' in self.links.columns:
             self.links = self.links.drop(columns = ['road_node_list'])
         if overwrite_nodes:
-            print('overwrite nodes: make sure nodes are not shared between trips')
+            print('overwrite nodes: nodes shares between different trips will be duplicated and rename')
+            if 'index' in self.nodes.columns:
+                self.nodes.set_index('index',inplace=True)
+            elif self.nodes.index.name != 'index': 
+                self.nodes.index.name = 'index'
+            self.links, self.nodes = duplicate_nodes(self.links,self.nodes)
 
         road_links = RoadLinks(self.road_links,n_neighbors_centroid=n_neighbors_centroid)
         gps_tracks = get_gps_tracks(self.links, self.nodes, by=by,sequence=sequence)
