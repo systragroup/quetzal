@@ -207,8 +207,10 @@ def Multi_Mapmatching(gps_tracks: pd.DataFrame,
 
 
 
-def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10, distance_max:float=1000,
-                routing:bool=False, plot:bool=False, SIGMA:float=4.07, BETA:float=3) -> Tuple[pd.DataFrame, pd.DataFrame]:
+
+def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10, 
+                distance_max:float=1000, routing:bool=False, plot:bool=False,
+                SIGMA:float=4.07, BETA:float=3, POWER:float=2,DIFF=True,) -> Tuple[pd.DataFrame, pd.DataFrame]:
     
 
     """
@@ -218,6 +220,8 @@ def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10, distance_ma
     routing: True return the complete routing from the first to the last point on the road network (default = False)
     Hidden Markov Map Matching Through Noise and Sparseness
         Paul Newson and John Krumm 2009
+
+    Weight : 1/2 * 1/SIGMA**2 * (proj dist)**2 + 1/BETA * abs(dijkstra_dist - as_the_crow_flies_dist)
     """
 
     
@@ -253,17 +257,20 @@ def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10, distance_ma
         else:
             return x['dijkstra'] + length - x['road_a_offset'] + x['road_b_offset']
 
-    def emission_logprob(distance, SIGMA=SIGMA):
+    def emission_logprob(distance, SIGMA=SIGMA, p=POWER):
         # c = 1 / (SIGMA * np.sqrt(2 * np.pi))
         # return c*np.exp(-0.5*(distance/SIGMA)**2)
         # return -np.log10(np.exp(-0.5*(distance/SIGMA)**2))
-        return 0.5 * (distance / SIGMA) ** 2  # Drop constant with log. its the same for everyone.
+        return 0.5 * (distance / SIGMA) ** p  # Drop constant with log. its the same for everyone.
 
-    def transition_logprob(dijkstra_dist, gps_dist, BETA=BETA):
+    def transition_logprob(dijkstra_dist, gps_dist, BETA=BETA,diff=DIFF):
         c = 1 / BETA
         delta = abs(dijkstra_dist - gps_dist)
         # return c * np.exp(-c * delta)
-        return c * delta
+        if diff:
+            return c * delta
+        else:
+            return c * dijkstra_dist
 
     # x=np.linspace(0,50,101)
     # y=transition_prob(x,25)
@@ -580,10 +587,12 @@ def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10, distance_ma
         node_mat['road_link_list'] = link_mat
 
         if plot:
+            from syspy.spatial.spatial import plot_lineStrings
             f, ax = plt.subplots(figsize=(10, 10))
-            links.links.plot(ax=ax, linewidth=1)
+            plot_lineStrings(links.links,ax=ax, linewidth=1)
             gps_track.plot(ax=ax, marker='o', color='red', markersize=20)
-            links.links.loc[node_list['road_id']].plot(ax=ax, color='orange', linewidth=2)
+            ls = [x for xs in link_mat for x in xs]
+            plot_lineStrings(links.links[links.links['index'].isin(ls)],ax=ax, color='orange', linewidth=2)
             plt.xlim([gps_track['geometry'].x.min() - 1000, gps_track['geometry'].x.max() + 1000])
             plt.ylim([gps_track['geometry'].y.min() - 100, gps_track['geometry'].y.max() + 1000])
             plt.show()
