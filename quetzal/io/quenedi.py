@@ -1,8 +1,11 @@
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-
 from quetzal.io.gtfs_reader.frequencies import hhmmss_to_seconds_since_midnight, seconds_since_midnight_to_hhmmss
+from pathlib import Path
+import tempfile
+import shutil
+import os
 
 
 def quenedi_to_quetzal_schedule(links, pattern_col='pattern_id'):
@@ -127,3 +130,39 @@ def compute_time_and_speed(links, dwell_from='departure'):
     links['speed'] = links['length'] * 3.6 / links['time']
 
     return links
+
+
+def to_zip(sm, path='test.zip', to_export=['pt','road'], engine='pyogrio'):
+    """
+    Export model to zip file (readable in quenedi)
+    sm: Quetzal stepmodel 
+    path: str. path to the zip fil
+    to_export: list of str ['pt','road']. only ['pt'] to export only links and nodes.
+    engine: str. 'pyogrio' or 'fiona'.
+    """
+    if not path.endswith('.zip'):
+        path = path + '.zip'
+    
+    path = Path(path)
+    # Write to temporary directory before zipping
+    tmp_dir = tempfile.TemporaryDirectory()
+    new_path = Path(tmp_dir.name)
+    if 'links' in sm.__dict__.keys() and 'pt' in to_export:
+        new_dir = new_path / 'inputs/pt'
+        os.makedirs(new_dir)
+        for name in ['links','nodes']:
+            gdf = getattr(sm, name)
+            p = new_path / os.path.join(new_dir, name + '.geojson')
+            gdf.to_file(str(p),driver='GeoJSON',engine=engine)
+
+    if 'road_links' in sm.__dict__.keys() and 'road' in to_export:
+        new_dir = new_path / 'inputs/road'
+        os.makedirs(new_dir)
+        for name in ['road_links','road_nodes']:
+            gdf = getattr(sm, name)
+            p = new_path / os.path.join(new_dir, name + '.geojson')
+            gdf.to_file(str(p),driver='GeoJSON',engine=engine)
+
+    basename = str(path.parent / path.stem)
+    shutil.make_archive(basename, format="zip", root_dir=tmp_dir.name)
+    tmp_dir.cleanup()
