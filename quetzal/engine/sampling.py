@@ -68,13 +68,14 @@ def resample_arr(arr:np.array,
     
     return res
 
-def resample_square(square, sample_weight=1, sample_size=None,**kwargs):
+def resample_square(square, sample_weight=1, sample_size=None,seed=0):
     # remove origins and destinations with a null sum
     square = square.fillna(0)
     square = square.loc[square.sum(axis=1)>0, square.sum(axis=0)>0]
 
-    destinations = resample(square, sample_weight=sample_weight, sample_size=sample_size,axis=0,**kwargs)
-    origins = resample(square, sample_weight=sample_weight, sample_size=sample_size,axis=1,**kwargs)
+    # x2 because we resample twice (origin and destination) and take average
+    destinations = resample(square, sample_weight=sample_weight*2, sample_size=sample_size,axis=0,seed=seed)
+    origins = resample(square, sample_weight=sample_weight*2, sample_size=sample_size,axis=1,seed=seed)
 
     origins.index.name = 'origin'
     origins.columns.name = 'destination'
@@ -88,14 +89,14 @@ def resample_square(square, sample_weight=1, sample_size=None,**kwargs):
     return sparse
 
 
-def proportional_fitting(square, sum_axis_0=None, sum_axis_1=None, tolerance=1e-3, maxiter=20):
+def proportional_fitting(square, sum_axis_0=None, sum_axis_1=None, tolerance=1e-3, maxiter=20, log=True):
 
     temp = square.copy()
     c = np.inf
 
     for i in range(maxiter):
         if c<tolerance :
-            print(i)
+            if log : print(i)
             return temp 
     
         sum_0 = temp.sum(axis=0)
@@ -108,21 +109,20 @@ def proportional_fitting(square, sum_axis_0=None, sum_axis_1=None, tolerance=1e-
         temp = (temp.T * multiply_1).T
 
         c = multiply_0.max() + multiply_1.max() -2
+    if log : print('cannot fit both axis. c = ',c)
+    return temp
 
-    print('cannot fit both axis')
-    return square
-
-def sample_od(od_indexed_series, bidimentional_sampling=True, fit_sums=True, sample_weight=1, sample_size=None,**kwargs):
+def sample_od(od_indexed_series, bidimentional_sampling=True, fit_sums=True, sample_weight=1, sample_size=None, seed=0, **kwargs):
     square = od_indexed_series.unstack()
 
     if bidimentional_sampling :
-        sparse=resample_square(square, sample_weight=sample_weight, sample_size=sample_size,**kwargs)
+        sparse=resample_square(square, sample_weight=sample_weight, sample_size=sample_size,seed=seed)
     else : 
-        od_indexed_series[:] = resample_arr(od_indexed_series.values, sample_weight=sample_weight, sample_size=sample_size,**kwargs)
+        od_indexed_series[:] = resample_arr(od_indexed_series.values, sample_weight=sample_weight, sample_size=sample_size,seed=seed)
         sparse = od_indexed_series.unstack()
         
-        if fit_sums:
-            sparse = proportional_fitting(sparse, sum_axis_0=square.sum(axis=0), sum_axis_1=square.sum(axis=1))
+    if fit_sums:
+        sparse = proportional_fitting(sparse, sum_axis_0=square.sum(axis=0), sum_axis_1=square.sum(axis=1),**kwargs)
 
     return sparse.replace(0, np.nan).stack()
 
