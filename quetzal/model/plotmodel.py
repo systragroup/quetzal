@@ -7,12 +7,12 @@ from IPython.core import display
 from matplotlib.colors import TwoSlopeNorm
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 from quetzal.io import export_utils
-from quetzal.model import model, summarymodel, transportmodel
+from quetzal.model import summarymodel
 from shapely import geometry
 from syspy.syspy_utils import data_visualization
 from syspy.syspy_utils.data_visualization import trim_axs
 from tqdm import tqdm
-from rasterio import plot
+
 
 styles = {
     'zones': {'color': 'grey', 'alpha': 0},
@@ -35,13 +35,13 @@ def plot_one_path(path, styles=styles, ax=None):
     coord_list += list(geometries[-1].centroid.coords)  # destination
     full_path = geometry.LineString(coord_list)
 
-    ax = gpd.GeoSeries(full_path).plot(color='black', linewidth=2, ax=ax)
+    ax = gpd.GeoSeries(full_path).plot(color='black', linewidth=2, ax=ax, aspect='equal')
     grouped = df.groupby(['color', 'width', 'alpha', 'markersize'], as_index=False)['geometry'].agg(list)
     for color, width, alpha, geometries, markersize in grouped[
         ['color', 'width', 'alpha', 'geometry', 'markersize']
     ].values.tolist():
         s = gpd.GeoSeries(geometries)
-        ax = s.plot(color=color, linewidth=width, ax=ax, alpha=alpha, markersize=markersize)
+        ax = s.plot(color=color, linewidth=width, ax=ax, alpha=alpha, markersize=markersize, aspect='equal')
     return ax
 
 
@@ -64,10 +64,21 @@ class PlotModel(summarymodel.SummaryModel):
         geometries['markersize'].fillna(1, inplace=True)
         return geometries
 
-    def od_basemap(self, origin, destination, alpha=0.5, color='grey', *args, **kwargs):
+    def od_basemap(self, origin, destination, alpha=0.5, color='grey', squared=False, *args, **kwargs):
         s = gpd.GeoSeries(self.zones.loc[[origin, destination]]['geometry'])
         ax = s.plot(alpha=alpha, color=color, *args, **kwargs)
         s.centroid.plot(ax=ax, color='black')
+
+        if squared:
+            xw = abs(ax.get_xlim()[0] - ax.get_xlim()[1])
+            yw = abs(ax.get_ylim()[0] - ax.get_ylim()[1])
+            if xw > yw:
+                mid = (ax.get_ylim()[1] + ax.get_ylim()[0]) / 2
+                ax.set_ylim([mid - xw / 2, mid + xw / 2])
+            else:
+                mid = (ax.get_xlim()[1] + ax.get_xlim()[0]) / 2
+                ax.set_xlim([mid - yw / 2, mid + yw / 2])
+
         return ax
 
     def plot_paths(
@@ -100,25 +111,33 @@ class PlotModel(summarymodel.SummaryModel):
         return ax
 
     def plot_car_paths(
-        self, 
-        origin, 
-        destination, 
+        self,
+        origin,
+        destination,
         ax=None,
+        title=None,
+        titlesize=12,
         separated=False,
         basemap_url=None,
         basemap_raster=None,
         north_arrow=None,
         scalebar=None,
         zoom=9,
+        styles=None,
+        squared=False,
         *args,
         **kwargs
     ):
 
-        styles = self.get_geometries()
-        ax = self.od_basemap(origin,  destination, *args, **kwargs)
+        if styles is None:
+            styles = self.get_geometries()
+            styles = styles[~styles.index.duplicated(keep='first')]
+        ax = self.od_basemap(origin, destination, squared=squared, *args, **kwargs)
         paths = self.car_los.set_index(['origin', 'destination']).loc[origin, destination]
-        if paths.ndim == 1: # their is only one path 
-            paths = pd.DataFrame(data=paths).T 
+        paths['title'] = '' if title is None else paths[title]
+        if paths.ndim == 1:
+            paths = pd.DataFrame(data=paths).T
+
         def build_road_path(p, lp):
             if len(p):
                 rp = p[:2]
@@ -131,11 +150,12 @@ class PlotModel(summarymodel.SummaryModel):
             lambda x: build_road_path(x['path'], x['link_path']), 1
         )
         # the path is added to the ax
-        for p in tqdm(list(paths['road_path'])):
+        for p, t in tqdm(list(paths[['road_path', 'title']].values.tolist())):
             ax = plot_one_path(p, styles, ax=ax)
+            if len(t):
+                ax.set_title(t, fontsize=titlesize)
             ax.set_xticks([])
             ax.set_yticks([])
-
 
         if basemap_url is not None:
             assert self.epsg == 3857
@@ -146,9 +166,7 @@ class PlotModel(summarymodel.SummaryModel):
             data_visualization.add_scalebar(ax)
         if basemap_raster is not None:
             data_visualization.add_raster(ax, raster=basemap_raster)
-        
         return ax
-
 
     def plot_separated_paths(
         self,
@@ -165,6 +183,7 @@ class PlotModel(summarymodel.SummaryModel):
         zoom=9,
         resize=False,
         styles=None,
+        squared=False,
         *args,
         **kwargs,
     ):
@@ -189,7 +208,7 @@ class PlotModel(summarymodel.SummaryModel):
         i = 0
         # the path is added to the ax
         for p, t in tqdm(list(paths[['path', 'title']].values.tolist())):
-            ax = self.od_basemap(origin, destination, ax=axes[i])
+            ax = self.od_basemap(origin, destination, ax=axes[i], squared=squared)
             ax = plot_one_path(p, styles, ax=ax)
             gpd.GeoDataFrame(
                 styles.reindex(g_id_set).dropna(subset=['color'])
@@ -294,7 +313,7 @@ class PlotModel(summarymodel.SummaryModel):
     def display_aggregated_edges(self, origin, destination, ranksep=0.1, rankdir='LR', *args, **kwargs):
         from graphviz import Source
         a = self.get_aggregated_edges(origin, destination, *args, **kwargs)
-        a = a.groupby(['i', 'j'], as_index=False)[['p']].sum() # for clusters
+        a = a.groupby(['i', 'j'], as_index=False)[['p']].sum()  # for clusters
         a['l'] = 'p=' + np.round(a['p'], 2).astype(str)  # + '\nh:' + a['h'].astype(str)
         a.loc[a['p'] == 1, 'l'] = ''
 
@@ -362,7 +381,7 @@ class PlotModel(summarymodel.SummaryModel):
         # access['dummy'] = 1
         access.plot(ax=ax, alpha=1, color='black', linewidth=2)
         links.plot(ax=ax, alpha=1, color='white', linewidth=7, zorder=3)
-        #links.plot(ax=ax, alpha=1, color='black', linewidth=6, zorder=4)
+        # links.plot(ax=ax, alpha=1, color='black', linewidth=6, zorder=4)
         if road:
             divider = make_axes_locatable(ax)
             cax = divider.append_axes(legend, size="2%", pad=0.05)
@@ -377,7 +396,7 @@ class PlotModel(summarymodel.SummaryModel):
         ax.set_yticks([])
         ax.set_xticks([])
 
-        mask = (self.nodes['boardings'] +self.nodes['alightings']) > 1e-9
+        mask = (self.nodes['boardings'] + self.nodes['alightings']) > 1e-9
         nodes = gpd.GeoDataFrame(self.nodes[mask])
         nodes.plot(ax=ax, marker=10, markersize=200, zorder=10, column='boardings', cmap=cmap, norm=norm, linewidth=0)
         nodes.plot(ax=ax, marker=11, markersize=200, zorder=10, column='alightings', cmap=cmap, norm=norm, linewidth=0)
@@ -402,17 +421,18 @@ class PlotModel(summarymodel.SummaryModel):
 
         return export_utils.arc_diagram_from_dataframe(line_od_vol)
 
+
 def _both_directions_graph_possible(df):
     try:
         directions = df['direction_id'].value_counts()
-        assert(len(directions) == 2), 'Cannot plot both directions'
-        assert(directions.iloc[0] == directions.iloc[1]), 'Cannot plot both directions'
+        assert (len(directions) == 2), 'Cannot plot both directions'
+        assert (directions.iloc[0] == directions.iloc[1]), 'Cannot plot both directions'
         d0 = df[df['direction_id'] == directions.keys()[0]][['a', 'b']].apply(lambda x: tuple(sorted(x)), 1).values
         d1 = df[df['direction_id'] == directions.keys()[1]][['b', 'a']].apply(lambda x: tuple(sorted(x)), 1).values
-        assert(set(d0) == set(d1)), 'Cannot plot both directions'
+        assert (set(d0) == set(d1)), 'Cannot plot both directions'
         return True
     except AssertionError as e:
         if str(e) == 'Cannot plot both directions':
             return False
         else:
-            raise(e)
+            raise e
