@@ -65,7 +65,7 @@ def cut(line, distance):
                 LineString(coords[:i] + [(cp.x, cp.y)]),
                 LineString([(cp.x, cp.y)] + coords[i:])]
         
-def parallel_shape_geometry(self, from_point, to_point, max_candidates=10, log=False, num_cores=2):
+def parallel_shape_geometry(self, from_point, to_point, max_candidates=10,emission_weight=0.5, log=False, num_cores=2):
 
     class SimpleFeed:
         # less memory intensive feed object with all we need for the shape_geometry() function
@@ -90,7 +90,7 @@ def parallel_shape_geometry(self, from_point, to_point, max_candidates=10, log=F
     manager = Manager()
     result_list = manager.list([None] * len(chunks))
     processes = []
-    kwargs = {'from_point':from_point,'to_point':to_point,'max_candidates':max_candidates,'log':log}
+    kwargs = {'from_point':from_point,'to_point':to_point,'max_candidates':max_candidates,'emission_weight':emission_weight,'log':log}
     for i, trips in enumerate(chunks):
         chunk_links = SimpleFeed(self.copy())
         chunk_links.links = chunk_links.links[chunk_links.links['trip_id'].isin(trips)]
@@ -103,38 +103,41 @@ def parallel_shape_geometry(self, from_point, to_point, max_candidates=10, log=F
     return pd.concat(result_list)
 
 
-def shape_geometry(self, from_point, to_point, max_candidates=10, log=False):
+def shape_geometry(self, from_point, to_point, max_candidates=10, log=False, emission_weight=0.5):
     to_concat = []
 
     point_dict = self.nodes.set_index('stop_id')['geometry'].to_dict()
     shape_dict = self.shapes.set_index('shape_id')['geometry'].to_dict()
 
     stop_ids = set(self.links[[from_point, to_point]].values.flatten())
-    stop_pts = pd.DataFrame([point_dict.get(n) for n in stop_ids], index=list(stop_ids), columns=['geometry'])
+    stops_pts = pd.DataFrame([point_dict.get(n) for n in stop_ids], index=list(stop_ids), columns=['geometry'])
 
     for trip in set(self.links['trip_id']):
         links = self.links[self.links['trip_id'] == trip].copy()
         links = links.drop_duplicates(subset=['link_sequence']).sort_values(by='link_sequence')
         s = shape_dict.get(links.iloc[0]['shape_id'])
         trip_stops = list(links[from_point]) + [links.iloc[-1][to_point]]
+        stop_pts = stops_pts.loc[trip_stops]
+
 
         # Find segments candidates from shape for projection
         segments = pd.DataFrame(list(map(LineString, zip(s.coords[:-1], s.coords[1:]))), columns=['geometry'])
         n_candidates = min([len(segments), max_candidates])
 
-        ng = spatial.nearest(stop_pts.loc[set(trip_stops)], segments, n_neighbors=n_candidates)
+        ng = spatial.nearest(stop_pts, segments, n_neighbors=n_candidates)
         ng = ng.set_index(['ix_one', 'rank'])['ix_many'].to_dict()
 
         # Distance matrix (stops * n_candidates)
+        emission_dict={}
         distances_a = np.empty((len(trip_stops), n_candidates))
         for r in range(n_candidates):
             proj_pts = []
-            for n in trip_stops:
+            for i,n in enumerate(trip_stops):
                 seg = segments.loc[ng[(n, r)]]['geometry']
+                emission_dict[f'{i}_{r}'] =  seg.distance(point_dict.get(n)) # get point to linestring dist
                 proj_pts.append(seg.interpolate(seg.project(point_dict.get(n))))
             distances = [s.project(pts) for pts in proj_pts]
             distances_a[:, r] = distances
-        # TODO (faster): create custom nearest to build distance matrix directly
 
         # Differential distance matrix (transition cost between candidates)
         df = pd.DataFrame(distances_a)
@@ -157,8 +160,12 @@ def shape_geometry(self, from_point, to_point, max_candidates=10, log=False):
         diff_df['from'] = diff_df[from_point].astype(str) + '_' + diff_df['from'].astype(str)
         diff_df['to'] = diff_df[to_point].astype(str) + '_' + diff_df['to'].astype(str)
 
+        diff_df['emission'] = diff_df['from'].apply(lambda x: emission_dict.get(x))
+        diff_df['prob'] = diff_df[0] + diff_df['emission']*emission_weight
+
+
         # Build edges + dijkstra
-        candidates_e = diff_df[['from', 'to', 0]].values
+        candidates_e = diff_df[['from', 'to', 'prob']].values
         source_e = np.array([["source"] * n_candidates,
                             [str(0) + '_' + str(c) for c in range(n_candidates)],
                             np.ones(n_candidates)], dtype="O").T
@@ -350,6 +357,7 @@ class GtfsImporter(Feed):
                          from_shape=False, 
                          simplify_dist=5, 
                          stick_nodes_on_links=False,
+                         emission_weight=0.5,
                          log=True,
                          num_cores=1,
                            **kwargs):
@@ -370,6 +378,7 @@ class GtfsImporter(Feed):
                         self.copy(),
                         'a',
                         'b',
+                        emission_weight=emission_weight,
                         log=log,
                     )
                 else:
@@ -377,6 +386,7 @@ class GtfsImporter(Feed):
                     self.copy(),
                     'a',
                     'b',
+                    emission_weight=emission_weight,
                     log=log,
                     num_cores=num_cores
                 )
@@ -394,6 +404,7 @@ class GtfsImporter(Feed):
                 self.links.geometry = self.links.simplify(simplify_dist)
 
             if stick_nodes_on_links:
+                self.ori_nodes = self.nodes.copy()
                 self.stick_nodes_on_links()
 
 
