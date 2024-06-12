@@ -1,6 +1,5 @@
 import math
 def haversine(coord1: object, coord2: object)->float:
-    # 
     # Coordinates in decimal degrees (e.g. 2.89078, 12.79797)
     lat1, lon1 = coord1
     lat2, lon2 = coord2
@@ -29,3 +28,13 @@ def get_acf_distance(x:list,reverse:bool=False)->list:
         return haversine(x[0][::-1],x[1][::-1])
     else:
         return haversine(x[0],x[1])
+    
+
+def get_epsg(lat: float, lon: float) -> int:
+    '''
+    lat, lon or y, x
+    return EPSG in meter for a given (lat,lon)
+    lat is north south 
+    lon is est west
+    '''
+    return int(32700 - round((45 + lat) / 90, 0) * 100 + round((183 + lon) / 6, 0))

@@ -18,6 +18,8 @@ from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
 from typing import Tuple
+from numba import jit, njit
+import numba as nb
 
 from pyproj import transform
 
@@ -265,7 +267,7 @@ def nearest_radius(one, many, radius=1, to_crs=None):
     df = pd.merge(df, index_many, left_on='index_nn', right_index=True)
     
     return df[['ix_one', 'ix_many', 'distance', 'rank']]
-
+    
 
 def nearest_geometry(
     one,
@@ -409,6 +411,60 @@ def voronoi_diagram(points, plot=False, size=None, method='box'):
         axis=1
     )
     return polygons, ridges[['a', 'b', 'geometry']].values.tolist()
+
+
+@jit(nopython=True)
+def fast_point_in_polygon(x: float, y: float , poly: np.ndarray) -> bool:
+    n = len(poly)
+    inside = False
+    p2x = 0.0
+    p2y = 0.0
+    xints = 0.0
+    p1x,p1y = poly[0]
+    for i in nb.prange(n+1):
+        p2x,p2y = poly[i % n]
+        if y > min(p1y,p2y):
+            if y <= max(p1y,p2y):
+                if x <= max(p1x,p2x):
+                    if p1y != p2y:
+                        xints = (y-p1y)*(p2x-p1x)/(p2y-p1y)+p1x
+                    if p1x == p2x or x <= xints:
+                        inside = not inside
+        p1x,p1y = p2x,p2y
+        
+    return inside
+
+
+
+@njit(parallel=True)
+def fast_points_in_polygon(points:np.ndarray, polygon:np.ndarray) -> np.ndarray:
+    D = np.empty(len(points), dtype=nb.boolean) 
+    for i in nb.prange(0, len(points)):
+        D[i] = fast_point_in_polygon(points[i,0], points[i,1], polygon)
+    return np.where(D)[0]
+
+
+def points_in_polygon(points:np.ndarray, polygon:gpd.GeoDataFrame) -> np.ndarray:
+    '''
+    return a list of point in the polygon. values are the index in the points array.
+    
+    points:np.array[np.array[float,float]]
+        list of all the points coords (x,y)
+    polygon: gpd.GeoDataFrame
+        geodataframe of multiples polygons.
+    '''
+    try:
+        poly = np.array([*polygon.exterior.coords])
+        return fast_points_in_polygon(points,poly)
+    except:
+        res=np.array([])
+        #polygon = polygon.geoms
+        for i in range(len(polygon)):
+            poly = np.array([*polygon[i].exterior.coords])
+            val =fast_points_in_polygon(points,poly)
+            res = np.append(res,val)
+        return res
+
 
 
 def plot_lineStrings(gdf, ax, **kwargs):
