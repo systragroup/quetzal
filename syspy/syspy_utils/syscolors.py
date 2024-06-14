@@ -15,12 +15,12 @@ import numpy as np
 main_colors = ['#d22328', '#003e4a', '#647d6e', '#643c5a', '#5c7683', '#2eb2b2', '#559bb4']
 
 minor_colors = [
-    '#73b140', '#95c461', '#87a067', '#80c8be', #greens
-    '#5298d0', '#25b9ea', '#3a3678', #blues
-    '#6c3f98', '#855182',  '#a01c3d', '#ca3171', # purple-pink
-    '#f08029', '#f8b61d', #orange - yellow
+    '#73b140', '#95c461', '#87a067', '#80c8be',  # greens
+    '#5298d0', '#25b9ea', '#3a3678',  # blues
+    '#6c3f98', '#855182', '#a01c3d', '#ca3171',  # purple-pink
+    '#f08029', '#f8b61d',  # orange - yellow
     '#5e3c1c', '#998872',  # browns
-    '#d7d5e0', '#e4dce0', '#f5bfad', '#feead1', '#ffeeaa',  #pastel 
+    '#d7d5e0', '#e4dce0', '#f5bfad', '#feead1', '#ffeeaa',  # pastel
     '#b1cadc', '#b3dee6', '#c9d582', '#c5dfc7'
 ]
 
@@ -126,6 +126,28 @@ def clear(rgb, x=50):
     _g = round(((100 - x) * g + x * 255) / 100)
     _b = round(((100 - x) * b + x * 255) / 100)
     return (_r, _g, _b)
+
+
+def lighten_color(color, amount=0.5):
+    """
+    Lightens the given color by multiplying (1-luminosity) by the given amount.
+    Input can be matplotlib color string, hex string, or RGB tuple.
+    Outputs are hex string
+
+    Examples:
+    >> lighten_color('g', 0.3)
+    >> lighten_color('#F034A3', 0.6)
+    >> lighten_color((.3,.55,.1), 0.5)
+    """
+    import matplotlib.colors as mc
+    import colorsys
+    try:
+        c = mc.cnames[color]
+    except KeyError:
+        c = color
+    c = colorsys.rgb_to_hls(*mc.to_rgb(c))
+    lc = colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
+    return "#" + "".join("%02X" % round(i * 255) for i in lc)
 
 
 def clear_shades():
