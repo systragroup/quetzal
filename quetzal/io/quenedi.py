@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import geopandas as gpd
 from quetzal.io.gtfs_reader.frequencies import hhmmss_to_seconds_since_midnight, seconds_since_midnight_to_hhmmss
+from syspy.spatial.geometries import reverse_geometry
 from pathlib import Path
 import tempfile
 import shutil
@@ -132,12 +133,55 @@ def compute_time_and_speed(links, dwell_from='departure'):
     return links
 
 
-def to_zip(sm, path='test.zip', to_export=['pt','road'], engine='pyogrio'):
+def split_quenedi_rlinks(self, oneway='0'):
+    """
+    split road_links into two directions.
+    attributes with _r suffix are applied to the reverse links.
+    """
+    if 'oneway' not in self.road_links.columns:
+        print('no column oneway. do not split')
+        return
+    links_r = self.road_links[self.road_links['oneway']==oneway].copy()
+    if len(links_r) == 0:
+        print('all oneway, nothing to split')
+        return
+    # apply _r features to the normal non r features
+    r_cols = [col for col in links_r.columns if col.endswith('_r')]
+    cols = [col[:-2] for col in r_cols]
+    for col, r_col in zip(cols, r_cols):
+        links_r[col] = links_r[r_col]
+    # reindex with _r 
+    links_r.index = links_r.index.astype(str) + '_r'
+    # reverse links (a=>b, b=>a)
+    links_r = links_r.rename(columns={'a': 'b', 'b': 'a'})
+    links_r['geometry'] = links_r['geometry'].apply(lambda g: reverse_geometry(g))
+    self.road_links = pd.concat([self.road_links, links_r])
+
+
+def to_geojson(gdf,tmp_path,new_dir,name,to_4326=True, engine='pyogrio'):
+    if to_4326:
+        gdf = gdf.to_crs(4326)
+    p = tmp_path / os.path.join(new_dir, name + '.geojson')
+    print(os.path.join(new_dir, name + '.geojson'))
+    gdf.to_file(str(p),driver='GeoJSON',engine=engine)
+
+
+def to_geojson(gdf,tmp_path,new_dir,name,to_4326=True, engine='pyogrio'):
+    if to_4326:
+        gdf = gdf.to_crs(4326)
+    p = tmp_path / os.path.join(new_dir, name + '.geojson')
+    print( name + '.geojson')
+    gdf.to_file(str(p),driver='GeoJSON',engine=engine)
+
+def to_zip(sm, path='test.zip', to_export=['pt','road'],inputs=[],outputs=[],to_4326=False, engine='pyogrio'):
     """
     Export model to zip file (readable in quenedi)
     sm: Quetzal stepmodel 
     path: str. path to the zip fil
     to_export: list of str ['pt','road']. only ['pt'] to export only links and nodes.
+    inputs: list of str. names of the input sm attributes to export
+    outputs: list of str. names of the output sm attributes to export
+    to_4326: bool. if True, perform to_crs(4326) on GeoDataFrames
     engine: str. 'pyogrio' or 'fiona'.
     """
     if not path.endswith('.zip'):
@@ -146,22 +190,48 @@ def to_zip(sm, path='test.zip', to_export=['pt','road'], engine='pyogrio'):
     path = Path(path)
     # Write to temporary directory before zipping
     tmp_dir = tempfile.TemporaryDirectory()
-    new_path = Path(tmp_dir.name)
+    tmp_path = Path(tmp_dir.name)
     if 'links' in sm.__dict__.keys() and 'pt' in to_export:
-        new_dir = new_path / 'inputs/pt'
+        new_dir = tmp_path / 'inputs/pt'
         os.makedirs(new_dir)
         for name in ['links','nodes']:
             gdf = getattr(sm, name)
-            p = new_path / os.path.join(new_dir, name + '.geojson')
-            gdf.to_file(str(p),driver='GeoJSON',engine=engine)
-
+            to_geojson(gdf,tmp_path,new_dir,name,to_4326,engine)
+        
     if 'road_links' in sm.__dict__.keys() and 'road' in to_export:
-        new_dir = new_path / 'inputs/road'
+        new_dir = tmp_path / 'inputs/road'
         os.makedirs(new_dir)
         for name in ['road_links','road_nodes']:
             gdf = getattr(sm, name)
-            p = new_path / os.path.join(new_dir, name + '.geojson')
-            gdf.to_file(str(p),driver='GeoJSON',engine=engine)
+            to_geojson(gdf,tmp_path,new_dir,name,to_4326,engine)
+
+    for name in inputs:
+        if name not in sm.__dict__.keys():
+            continue
+        new_dir = tmp_path / 'inputs/'
+        if not os.path.exists(new_dir):
+            os.makedirs(new_dir)
+        data = getattr(sm, name)
+        if type(data) == gpd.GeoDataFrame:
+            to_geojson(data,tmp_path,new_dir,name,to_4326,engine)
+        elif type(data) == pd.DataFrame:
+            p = tmp_path / os.path.join(new_dir, name + '.csv')
+            print( name + '.csv')
+            data.to_csv(str(p))
+            
+    for name in outputs:
+        if name not in sm.__dict__.keys():
+            continue
+        new_dir = tmp_path / 'outputs/'
+        if not os.path.exists(new_dir):
+            os.makedirs(new_dir)
+        data = getattr(sm, name)
+        if type(data) == gpd.GeoDataFrame:
+            to_geojson(data,tmp_path,new_dir,name,to_4326,engine)
+        elif type(data) == pd.DataFrame:
+            p = tmp_path / os.path.join(new_dir, name + '.csv')
+            print( name + '.csv')
+            data.to_csv(str(p))
 
     basename = str(path.parent / path.stem)
     shutil.make_archive(basename, format="zip", root_dir=tmp_dir.name)
