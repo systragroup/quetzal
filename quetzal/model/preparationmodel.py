@@ -903,9 +903,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         # add prefixes
         if prefix:
             self._add_type_prefixes({'nodes': prefix})
-            func = lambda x: '{}_{}'.format(prefix, str(x).split(prefix)[-1])
+            func = lambda x:  prefix + str(x).split(prefix)[-1]
             self.node_parenthood['cluster'] = self.node_parenthood['cluster'].apply(func)
-            self.disaggregated_nodes['cluster_id'] = self.disaggregated_nodes['cluster_id'].apply(func)
 
     def preparation_map_tracks(
         self,

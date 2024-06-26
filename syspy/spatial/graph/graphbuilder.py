@@ -256,4 +256,4 @@ class OsmnxCleaner():
     def fix_nodeset_consistency(self):
         self.links = self.links.loc[self.links['a'].isin(set(self.nodes.index))]
         self.links = self.links.loc[self.links['b'].isin(set(self.nodes.index))]
-        self.nodes = self.nodes.loc[set(self.links['a']).union(self.links['b'])]
+        self.nodes = self.nodes.loc[list(set(self.links['a']).union(self.links['b']))]
