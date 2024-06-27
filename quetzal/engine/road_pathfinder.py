@@ -138,14 +138,14 @@ class RoadPathFinder:
             #
            
             #  modelling transport eq 11.11. SUM currentFlow x currentCost - SUM AONFlow x currentCost / SUM currentFlow x currentCost
-            rel_gap.append(100*(np.sum(df['flow']*df['jam_time']) - np.sum(df['auxiliary_flow']*df['jam_time']))/np.sum(df['flow']*df['jam_time']))
+            rel_gap.append(100*(np.sum((df['flow']+df['base_flow'])*df['jam_time']) - np.sum((df['auxiliary_flow']+df['base_flow'])*df['jam_time']))/np.sum((df['flow']+df['base_flow'])*df['jam_time']))
             if log:
                 print(i, round(phi,4), round(rel_gap[-1],3))
             #Aux-flow direction a l'etape
 
             # conventional frank-wolfe
             # df['flow'] + phi*(df['auxiliary_flow'] - df['flow'])  flow +step x direction
-            df['flow'] = (1 - phi) * df['flow'] + phi * df['auxiliary_flow']     
+            df['flow'] = (1 - phi) * df['flow'] + phi * df['auxiliary_flow'] 
             df['flow'].fillna(0, inplace=True)
 
 
@@ -182,6 +182,7 @@ class RoadPathFinder:
         zone_to_road['limit'] = 0
         zone_to_road['beta'] = 0
         zone_to_road['penalty'] = 0
+        zone_to_road['base_flow'] = 0
         self.zone_to_road = zone_to_road
         # keep track of it (need to substract it in car_los)
         self.ntleg_penalty = ntleg_penalty
@@ -212,8 +213,11 @@ class RoadPathFinder:
             if 'penalty' not in self.road_links.columns:
                 self.road_links['penalty'] = 0
                 print("penalty not found in road_links columns. Values set to 0")
+
+            if 'base_flow' not in self.road_links.columns:
+                self.road_links['base_flow'] = 0
             
-            columns = ['a', 'b','length', self.time_col, 'capacity', 'vdf', 'alpha', 'beta', 'limit','penalty']
+            columns = ['a', 'b','length', self.time_col, 'capacity', 'vdf', 'alpha', 'beta', 'limit','penalty','base_flow']
             df = pd.concat([self.road_links[columns], self.zone_to_road[columns]]).set_index(['a', 'b'], drop=False)
             df['flow'] = 0
             df['auxiliary_flow'] = 0

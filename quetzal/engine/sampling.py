@@ -96,7 +96,6 @@ def proportional_fitting(square, sum_axis_0=None, sum_axis_1=None, tolerance=1e-
 
     for i in range(maxiter):
         if c<tolerance :
-            if log : print(i)
             return temp 
     
         sum_0 = temp.sum(axis=0)

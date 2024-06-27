@@ -18,6 +18,8 @@ def default_bpr(mat,der=False):
         t0 = mat[i,4]
         penalty = mat[i,5]
         Q = mat[i,6]
+        V0 = mat[i,7]
+        V += V0
         if der == False:
             res =  t0 * (1 + alpha*np.power(V/Q, beta))
             jam_time.append(res + penalty)     
@@ -28,7 +30,7 @@ def default_bpr(mat,der=False):
 
 @jit(nopython=True)
 def limited_bpr(mat,der=False):
-    #columns in mat : 'alpha','beta','limit','flow','time','penalty','capacity'
+    #columns in mat : 'alpha','beta','limit','flow','time','penalty','capacity','base_flow'
     #der return the first derivative (for the find beta...)
     jam_time=[]
     for i in range(mat.shape[0]):
@@ -39,6 +41,8 @@ def limited_bpr(mat,der=False):
         t0 = mat[i,4]
         penalty = mat[i,5]
         Q = mat[i,6]
+        V0 = mat[i,7]
+        V += V0
         res =  t0 * (1 + alpha*np.power(V/Q, beta))
         if res > t0*limit: # we plateau the curve at limit.
             if der == False:
@@ -80,7 +84,7 @@ def jam_time(links, vdf={'default_bpr': default_bpr},flow='flow',der=False,time_
         if type(vdf[key]).__name__=='function': #normal python function.
             links.loc[links['vdf']==key,'result'] = vdf[key](links.loc[links['vdf']==key], flow, der) 
         else: # numba function.
-            links.loc[links['vdf']==key,'result'] = vdf[key](links.loc[links['vdf']==key,['alpha','beta','limit',flow,time_col,'penalty','capacity']].values, der) 
+            links.loc[links['vdf']==key,'result'] = vdf[key](links.loc[links['vdf']==key,['alpha','beta','limit',flow,time_col,'penalty','capacity','base_flow']].values, der) 
         
     return links['result']
 
