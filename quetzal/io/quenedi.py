@@ -5,6 +5,7 @@ from quetzal.io.gtfs_reader.frequencies import hhmmss_to_seconds_since_midnight,
 from syspy.spatial.geometries import reverse_geometry
 from pathlib import Path
 import tempfile
+import json
 import shutil
 import os
 
@@ -236,3 +237,23 @@ def to_zip(sm, path='test.zip', to_export=['pt','road'],inputs=[],outputs=[],to_
     basename = str(path.parent / path.stem)
     shutil.make_archive(basename, format="zip", root_dir=tmp_dir.name)
     tmp_dir.cleanup()
+
+
+def read_geojson(file_name,list_columns=['road_link_list'],**kwargs):
+    '''
+    read with geopandas and manualy add list properties from list_columns.
+    '''
+    def get_property_values(json_data,column='road_link_list',default = []):
+        ls = []
+        for features in json_data['features']:
+            properties = features['properties']
+            ls.append(properties.get(column, default))
+        return ls
+    gdf = gpd.read_file(file_name,**kwargs)
+ 
+    with open(file_name) as f:
+        json_data = json.load(f)
+    for col in list_columns:
+        ls = get_property_values(json_data, col)
+        gdf[col] = ls
+    return gdf
