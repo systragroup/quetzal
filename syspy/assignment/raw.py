@@ -1,5 +1,5 @@
 __author__ = 'qchasserieau'
-import collections
+from collections.abc import Iterable
 import itertools
 
 import pandas as pd
@@ -42,7 +42,7 @@ def assign(volume_array, paths, checkpoints=None, checkpoints_how='all'):
     volumes = list(itertools.chain.from_iterable(nested_volumes))
     try:
         # volumes_array is an ndarray
-        assert isinstance(volumes[0], collections.Iterable)
+        assert isinstance(volumes[0], Iterable)
         sparse = pd.concat(
             (pd.DataFrame({'link': column_indices}),
              pd.DataFrame(volumes)),
