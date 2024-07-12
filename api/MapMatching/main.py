@@ -22,6 +22,10 @@ class Model(BaseModel):
     step: Optional[str]='preparation'
     callID: Optional[str] = 'test'
     exclusions: Optional[list]= [] 
+    SIGMA: Optional[float] = 4.07, 
+    BETA: Optional[float] = 3,
+    POWER: Optional[float] = 2,
+    DIFF: Optional[bool] = True,
     exec_id: Optional[int] = 0
     
     
@@ -30,6 +34,7 @@ def handler(event, context):
     args = Model.parse_obj(event)
     print('start')
     print(args)
+
     uuid = args.callID
     step = args.step
     exec_id = args.exec_id
@@ -49,7 +54,6 @@ def handler(event, context):
 
 def preparation(uuid,exclusions,num_cores):
     from quetzal.engine.add_network_mapmatching import duplicate_nodes
-
     basepath = f's3://{db.BUCKET}/{uuid}/' if ON_LAMBDA else '../test/'
 
     links = gpd.read_file(os.path.join(basepath,'links.geojson'),engine='pyogrio')

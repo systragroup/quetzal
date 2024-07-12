@@ -95,7 +95,7 @@ def get_gps_tracks(links, nodes, by='trip_id', sequence='link_sequence'):
     single_points[sequence] = -1
     single_points.index = 'node_a_' + single_points.index.map(str)
 
-    gps_tracks = gps_tracks.append(single_points)
+    gps_tracks = pd.concat([gps_tracks,single_points])
 
     # remove single links that a==b.
     gps_tracks = gps_tracks[gps_tracks['a'] != gps_tracks['b']]
@@ -197,8 +197,8 @@ def Multi_Mapmatching(gps_tracks: pd.DataFrame,
             # apply input index
             val.index = val.index.map(gps_index_dict)
             node_list.index = node_list.index.map(gps_index_dict)
-            vals = vals.append(val)
-            node_lists = node_lists.append(node_list)
+            vals = pd.concat([vals, val])
+            node_lists = pd.concat([node_lists, node_list])
 
     # add matched points on road
     
