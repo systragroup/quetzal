@@ -13,7 +13,7 @@ from multiprocessing import Process, Manager
 def parallel_dijkstra(csgraph,indices=None,return_predecessors=True, num_core=1,keep_running=True,**kwargs):
     '''
     num_core = 1 : number of threads.
-    keep_running = False : if you want to keep the subprocesses alive (mmutiple dijktra in a loop for example)
+    keep_running = not used anymore. deprecated
     '''
     if num_core == 1:
         return  dijkstra(csgraph=csgraph, indices=indices, return_predecessors=return_predecessors,**kwargs)
@@ -37,7 +37,7 @@ def parallel_dijkstra(csgraph,indices=None,return_predecessors=True, num_core=1,
     for process in processes:
         process.join()
     # Convert the manager list to a regular list for easier access
-    result_list = np.array(result_list)
+    result_list = np.array(result_list, dtype="object")
 
     if return_predecessors == True: # result is a tuple
         dist_matrix = [res[0] for res in result_list]

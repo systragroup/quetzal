@@ -468,7 +468,7 @@ class GtfsImporter(Feed):
             #duplicate nodes and concat them to the existing nodes.
             new_nodes = nodes_dup_list[['stop_id','new_stop_id']].merge(self.nodes,left_on='stop_id',right_on='stop_id')
             new_nodes = new_nodes.drop(columns=['stop_id']).rename(columns = {'new_stop_id': 'stop_id'})
-            self.nodes = pd.concat([self.nodes, new_nodes])
+            self.nodes = pd.concat([self.nodes, new_nodes],ignore_index=True)
 
             # change nodes stop_id with new ones in links
 
@@ -512,7 +512,7 @@ class GtfsImporter(Feed):
 
         self.shapes['dist'] = self.shapes[['previous_geom','geom']].apply(lambda x: euclidean_distance(x[0],x[1]), axis=1)
         # cumsum the dist minus the first one (should be 0 but its not due to the batch operation)
-        self.shapes['shape_dist_traveled'] = self.shapes.groupby('shape_id')['dist'].apply(cumulative_minus_first)
+        self.shapes['shape_dist_traveled'] = self.shapes.groupby('shape_id')['dist'].apply(cumulative_minus_first).values
 
         self.shapes = self.shapes.drop(columns=['shape_pt_x','shape_pt_y','geom','previous_geom','dist'])
         if self.dist_units == 'km':
@@ -533,7 +533,7 @@ class GtfsImporter(Feed):
 
         self.stop_times['diff_time'] = self.stop_times[['previous_time','time']].apply(lambda x: x[1]-x[0], axis=1)
         # cumsum the dist minus the first one (should be 0 but its not due to the batch operation)
-        self.stop_times['time_traveled'] = self.stop_times.groupby('trip_id')['diff_time'].apply(cumulative_minus_first)
+        self.stop_times['time_traveled'] = self.stop_times.groupby('trip_id')['diff_time'].apply(cumulative_minus_first).values
 
 
         df = self.stop_times.groupby('trip_id')['time_traveled'].agg(['last']).rename(columns={'last':'time_traveled'})

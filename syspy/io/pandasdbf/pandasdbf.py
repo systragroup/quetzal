@@ -1,9 +1,7 @@
 __author__ = 'qchasserieau'
 
 import os
-
 import pandas as pd
-from simpledbf import Dbf5
 from syspy.io.pandasdbf import exceltodbf_qc
 
 
@@ -20,6 +18,7 @@ def read_dbf(path, encoding='utf-8'):
 
     .. warnings:: not all encodings are handled by this function
     """
+    from simpledbf import Dbf5
     dbf_instance = Dbf5(path, codec=encoding)
     csv_name = path[:-4] + '_from_dbf' + '.csv'
 

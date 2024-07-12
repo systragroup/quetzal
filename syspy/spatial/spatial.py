@@ -21,7 +21,7 @@ from typing import Tuple
 from numba import jit, njit
 import numba as nb
 
-from pyproj import transform
+from pyproj import Transformer
 
 
 def bounds(df):
@@ -186,7 +186,8 @@ def add_geometry_coordinates(df, columns=['x_geometry', 'y_geometry'], to_crs=No
         if from_crs != to_crs:
             # pyproj takes [y,x] and return [x,y]. however. if from_crs == to_crs. it return [y,x].
             # so we do not apply this function if to_crs == from_crs.
-            df[columns[0]], df[columns[1]]  = transform(from_crs, to_crs, df[columns[1]], df[columns[0]])
+            transformer = Transformer.from_crs(from_crs, to_crs)
+            df[columns[0]], df[columns[1]]  = transformer.transform(df[columns[1]].values, df[columns[0]].values)
         
     return df
 

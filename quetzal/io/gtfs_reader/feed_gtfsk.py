@@ -7,7 +7,6 @@ import folium as fl
 import folium.plugins as fp
 import gtfs_kit as gk
 import pandas as pd
-from geojson import dump
 from tqdm import tqdm
 
 # See documentation of this library here: https://mrcagney.github.io/gtfs_kit_docs/index.html#document-index
@@ -58,6 +57,7 @@ class Feed(gk.feed.Feed):  # Overwrite Feed class
             return gk.map_routes(self, *args, **kwargs)
 
     def write_geojson(self, folder):
+        from geojson import dump
         to_export = {
             'routes_to_geojson': 'routes',
             'stops_to_geojson': 'stops',

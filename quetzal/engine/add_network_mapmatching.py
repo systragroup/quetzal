@@ -138,7 +138,7 @@ def Parallel_Mapmatching(gps_tracks: pd.DataFrame,
     for process in processes:
         process.join()
     # Convert the manager list to a regular list for easier access
-    result_list = np.array(result_list)
+    result_list = np.array(result_list, dtype="object")
 
     vals = pd.concat(result_list[:,0])
     node_lists = pd.concat(result_list[:,1])

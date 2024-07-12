@@ -75,9 +75,9 @@ def preparation(uuid,exclusions,num_cores):
     num_trips = len(trip_list)
 
     tot_num_iteration = num_trips//num_cores
-    def get_num_machine(num_it,target_it=20,choices=[12,8,4,1]):
+    def get_num_machine(num_it,target_it=20,choices=[12,8,4,2,1]):
         # return the number of machine (in choices) requiresd to have target_it per machine).
-        num_machine = num_it//target_it
+        num_machine = num_it /target_it
         best_diff=100
         best_val=12
         for v in choices: # choice of output.
@@ -87,9 +87,9 @@ def preparation(uuid,exclusions,num_cores):
                 best_val=v
         return best_val
 
-    num_machine =  get_num_machine(tot_num_iteration, target_it=20, choices=[12,8,4,1])
+    num_machine =  get_num_machine(tot_num_iteration, target_it=20, choices=[12,8,4,2,1])
 
-    print('num it per machine',tot_num_iteration//num_machine)
+    print('num it per machine',tot_num_iteration/num_machine)
 
     chunk_length =  round(len(trip_list) / num_machine)
     # Split the list into four sub-lists
