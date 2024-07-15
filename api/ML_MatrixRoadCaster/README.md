@@ -15,7 +15,7 @@
 AWS_ACCESS_KEY_ID=[your access key]
 AWS_SECRET_ACCESS_KEY=[your secret key]
 AWS_REGION=ca-central
-BUCKET_NAME=matrixroadcaster
+BUCKET_NAME=quetzal-api-bucket
 AWS_LAMBDA_FUNCTION_MEMORY_SIZE=3000
 ```
 2) Buld the Docker from quetzal root directory (not this one)
