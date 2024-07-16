@@ -18,7 +18,7 @@ if not "X%CONDA_DEFAULT_ENV%" == "X%env_name%" (
 
 @echo on
 echo Installing...
-call python -m pip install -e . -r requirements_new.txt --trusted-host pypi.org --trusted-host files.pythonhosted.org
+call python -m pip install -e . -r requirements_win.txt --trusted-host pypi.org --trusted-host files.pythonhosted.org
 
 call python -m ipykernel install --user --name=%env_name%
 
