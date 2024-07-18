@@ -693,7 +693,20 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 return res
             
             self.links['geometry'] = crops(self.links,self.nodes)
-
+        
+        def remove_dup_in_road_link_list(links):
+            res={}
+            for t in links['trip_id'].unique():
+                trip = links[links['trip_id']==t]
+                visited_links = set()
+                for i,ls in trip['road_link_list'].items():
+                    ls = [el for el in ls if el not in visited_links]
+                    visited_links.update(ls)
+                    res[i]=ls
+            links['road_link_list'] = links.index.map(res)
+            return links
+        
+        self.links = remove_dup_in_road_link_list(self.links)
 
     @track_args
     def preparation_logit(

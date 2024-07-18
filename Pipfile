@@ -5,7 +5,7 @@ name = "pypi"
 
 [packages]
 numpy = "<2.0"
-pandas = "*"
+pandas = "<3.0"
 geopandas = "*"
 gtfs-kit = "*"
 openpyxl = "*"
@@ -26,7 +26,6 @@ s3fs = "*"
 rasterio = "*"
 ipywidgets = "*"
 openmatrix = "*"
-pyogrio = "*"
 
 [dev-packages]
 snakeviz = "*" 

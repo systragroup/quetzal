@@ -134,15 +134,15 @@ def compute_time_and_speed(links, dwell_from='departure'):
     return links
 
 
-def split_quenedi_rlinks(self, oneway='0'):
+def split_quenedi_rlinks(road_links, oneway='0'):
     """
     split road_links into two directions.
     attributes with _r suffix are applied to the reverse links.
     """
-    if 'oneway' not in self.road_links.columns:
+    if 'oneway' not in road_links.columns:
         print('no column oneway. do not split')
         return
-    links_r = self.road_links[self.road_links['oneway']==oneway].copy()
+    links_r = road_links[road_links['oneway']==oneway].copy()
     if len(links_r) == 0:
         print('all oneway, nothing to split')
         return
@@ -156,8 +156,36 @@ def split_quenedi_rlinks(self, oneway='0'):
     # reverse links (a=>b, b=>a)
     links_r = links_r.rename(columns={'a': 'b', 'b': 'a'})
     links_r['geometry'] = links_r['geometry'].apply(lambda g: reverse_geometry(g))
-    self.road_links = pd.concat([self.road_links, links_r])
+    road_links = pd.concat([road_links, links_r])
+    return road_links
 
+
+def merge_quenedi_rlinks(road_links,new_cols=[]):
+    if 'oneway' not in road_links.columns:
+        print('no column oneway. do not merge')
+        return
+    #get reversed links
+    index_r = [idx for idx in road_links.index if idx.endswith('_r')]
+    if len(index_r) == 0:
+        print('all oneway, nothing to merge')
+        return
+    links_r = road_links.loc[index_r].copy()
+    # create new reversed column with new columns
+    for col in new_cols:
+        links_r[col + '_r'] = links_r[col]
+    # reindex with initial non _r index to merge
+    links_r.index = links_r.index.map(lambda x: x[:-2])
+    new_cols_r = [col+ '_r' for col in new_cols]
+    links_r = links_r[new_cols_r]
+    # drop added _r links, merge new columns to inital two way links.
+    road_links = road_links.drop(index_r, axis=0)
+    # drop column if they exist before merge. dont want duplicates
+    for col in new_cols_r:
+        if col in road_links.columns:
+            road_links = road_links.drop(columns=col)
+    
+    road_links = pd.merge(road_links, links_r, left_index=True, right_index=True, how='left')
+    return road_links
 
 def to_geojson(gdf,tmp_path,new_dir,name,to_4326=True, engine='pyogrio'):
     if to_4326:

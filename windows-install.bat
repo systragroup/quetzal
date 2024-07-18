@@ -6,7 +6,7 @@ call conda config --set ssl_verify false
 
 SET /P env_name=enter an environment name (default = quetzal_env):
 IF NOT DEFINED env_name SET "env_name=quetzal_env"
-echo salut
+
 if not "X%CONDA_DEFAULT_ENV%" == "X%env_name%" (
   conda info -e | findstr %env_name% > NUL
   if errorlevel 1 (
