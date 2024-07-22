@@ -22,10 +22,11 @@ class Model(BaseModel):
     step: Optional[str]='preparation'
     callID: Optional[str] = 'test'
     exclusions: Optional[list]= [] 
-    SIGMA: Optional[float] = 4.07, 
-    BETA: Optional[float] = 3,
-    POWER: Optional[float] = 2,
-    DIFF: Optional[bool] = True,
+    SIGMA: Optional[float] = 4.07
+    BETA: Optional[float] = 3
+    POWER: Optional[float] = 2
+    DIFF: Optional[bool] = True
+    ptMetrics: Optional[bool] = True
     exec_id: Optional[int] = 0
     
     
@@ -39,14 +40,21 @@ def handler(event, context):
     step = args.step
     exec_id = args.exec_id
     exclusions = args.exclusions
+    kwargs = {'SIGMA':args.SIGMA,
+              'BETA':args.BETA,
+              'POWER':args.POWER,
+              'DIFF':args.DIFF
+              }
+    add_pt_metrics = args.ptMetrics
+
     num_cores = nb.config.NUMBA_NUM_THREADS
     if step == 'preparation':
         num_machine = preparation(uuid,exclusions,num_cores)
         event['num_machine'] = num_machine
     elif step == 'mapmatching':
-        mapmatching(uuid,exec_id,num_cores)
+        mapmatching(uuid,exec_id,num_cores,**kwargs)
     else:
-        merge(uuid)
+        merge(uuid,add_pt_metrics)
 
     return event
 
@@ -115,39 +123,9 @@ def preparation(uuid,exclusions,num_cores):
         tnodes.to_file(os.path.join(basepath, 'parallel', f'nodes_excluded.geojson'),driver='GeoJSON')
     return num_machine
 
-from shapely.ops import transform
 
 
-def _reverse_geom(geom):
-    def _reverse(x, y, z=None):
-        if z:
-            return x[::-1], y[::-1], z[::-1]
-        return x[::-1], y[::-1]
-    return transform(_reverse, geom) 
-
-def split_quenedi_rlinks(road_links, oneway='0'):
-    if 'oneway' not in road_links.columns:
-        print('no column oneway. do not split')
-        return
-    links_r = road_links[road_links['oneway']==oneway].copy()
-    if len(links_r) == 0:
-        print('all oneway, nothing to split')
-        return
-    # apply _r features to the normal non r features
-    r_cols = [col for col in links_r.columns if col.endswith('_r')]
-    cols = [col[:-2] for col in r_cols]
-    for col, r_col in zip(cols, r_cols):
-        links_r[col] = links_r[r_col]
-    # reindex with _r 
-    links_r.index = links_r.index.astype(str) + '_r'
-    # reverse links (a=>b, b=>a)
-    links_r = links_r.rename(columns={'a': 'b', 'b': 'a'})
-    links_r['geometry'] = links_r['geometry'].apply(lambda g: _reverse_geom(g))
-    road_links = pd.concat([road_links, links_r])
-    return road_links
-
-
-def mapmatching(uuid,exec_id,num_cores):
+def mapmatching(uuid,exec_id,num_cores,**kwargs):
     from shapely.geometry import LineString
     from quetzal.model import stepmodel
     from quetzal.io.gtfs_reader.importer import get_epsg
@@ -194,7 +172,8 @@ def mapmatching(uuid,exec_id,num_cores):
                             distance_max=3000,
                             overwrite_geom=True,
                             overwrite_nodes=True,
-                            num_cores=num_cores)
+                            num_cores=num_cores,
+                            **kwargs)
     
     # ovewrite Length with the real length and time
     sm.links['length'] = sm.links['geometry'].apply(lambda g: g.length)
@@ -211,11 +190,12 @@ def mapmatching(uuid,exec_id,num_cores):
     sm.links.to_file(os.path.join(basepath, 'parallel', f'links_{exec_id}.geojson'), driver='GeoJSON')
     sm.nodes.to_file(os.path.join(basepath, 'parallel', f'nodes_{exec_id}.geojson'), driver='GeoJSON')
 
-def merge(uuid):
+def merge(uuid, add_pt_metrics=False):
     '''
     merge all linka and nodes in uuid/parallel/ folder on s3.
     '''
     from syspy.spatial.utils import get_acf_distance
+    from quetzal.io.quenedi import split_quenedi_rlinks
 
     basepath = f's3://{db.BUCKET}/{uuid}/' if ON_LAMBDA else '../test'
     s3path = f's3://{db.BUCKET}/'
@@ -233,6 +213,14 @@ def merge(uuid):
 
     links = pd.concat(links_concat)
     nodes = pd.concat(nodes_concat)
+
+    if add_pt_metrics:
+        road_links = gpd.read_file(os.path.join(basepath,'road_links.geojson'), engine='pyogrio')
+        road_links.set_index('index',inplace=True)
+        road_links = add_metrics_to_rlinks(links, road_links)
+        road_links.to_file(os.path.join(basepath,f'road_links.geojson'), driver='GeoJSON', engine='pyogrio')
+
+
 
     links['road_link_list'] = links['road_link_list'].fillna('[]')
     links['road_link_list'] = links['road_link_list'].astype(str)
@@ -255,3 +243,30 @@ def merge(uuid):
 
     db.save_csv(uuid, 'links_distances.csv', df)
     db.save_csv(uuid, 'trips_distances.csv', df2)
+
+def add_metrics_to_rlinks(links, rlinks):
+    # add metrics to road links
+
+    from quetzal.io.quenedi import split_quenedi_rlinks, merge_quenedi_rlinks
+
+    road_links = split_quenedi_rlinks(road_links)
+
+    df = links[['trip_id','route_id','headway','road_link_list']].explode('road_link_list')
+    df['frequency'] = 1/(df['headway']/3600)
+
+    agg_dict = {'trip_id':'nunique','route_id':'nunique','headway':lambda x: 1 / sum(1/x),'frequency':'sum'}
+    df = df.groupby('road_link_list').agg(agg_dict)
+
+    rename_dict = {'trip_id':'trip_id_count',
+                'route_id':'route_id_count',
+                'headway':'combine_headway (secs)',
+                'frequency':'combine_frequency (veh/h)'}
+    df = df.rename(columns=rename_dict)
+    new_columns = df.columns
+    
+    rlinks = rlinks.merge(df,left_index=True,right_index=True,how='left')
+    #cols_to_fill = [col for col in df.columns if col != 'combine_headway']
+    #rlinks[cols_to_fill] = rlinks[cols_to_fill].fillna(0)
+
+    rlinks = merge_quenedi_rlinks(rlinks,new_cols=new_columns)
+    return rlinks
