@@ -30,6 +30,17 @@ sm.volumes = sm.volumes.loc[list(od_set)]
 ```
 
 * shapely
+```python
+# before
+hull = zones.unary_union.convex_hull
+# now
+hull = zones.union_all().convex_hull
+```
+* scikitlearn
+```python
+# add n_init='auto'
+KMeans(n_clusters=num_zones,random_state=0,n_init='auto')
+```
 
 ## Installation from sources
 It is preferred to first create and use a virtual environment.
