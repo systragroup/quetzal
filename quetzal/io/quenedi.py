@@ -265,12 +265,12 @@ def read_geojson(filename,**kwargs):
     Set index if index in column else set index name as 'index'
     '''
     gdf = gpd.read_file(filename,**kwargs)
-
+    with open(filename, 'r') as j:
+        json_data = json.loads(j.read())
     json_prop = json_data['features'][0]['properties'].keys()
     missing_columns = set(json_prop).difference(gdf.columns)
     missing_columns.discard('index')# dont want to add index
-    with open(filename, 'r') as j:
-        json_data = json.loads(j.read())
+
     for col in missing_columns:
         d = {f['properties']['index']: f['properties'][col] for f in json_data['features']}
         gdf[col] = gdf.index.map(d)
