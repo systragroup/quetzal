@@ -26,6 +26,7 @@ s3fs = "*"
 rasterio = "*"
 ipywidgets = "*"
 openmatrix = "*"
+networkx = "*"
 
 [dev-packages]
 snakeviz = "*" 
