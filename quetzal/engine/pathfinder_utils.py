@@ -419,6 +419,7 @@ def paths_from_edges(
     # edges can be transmitted as a CSR matrix
     csgraph=None, # CSR matrix
     node_index=None, # {name such as 'link_123': matrix index}
+    num_cores=1
 ):
 
     reverse = False
@@ -460,12 +461,13 @@ def paths_from_edges(
     source_index = dict(zip(sources, range(len(sources))))
     index_node = {v: k for k, v in node_index.items()}
     # DIKSTRA
-    dist_matrix, predecessors = dijkstra(
+    dist_matrix, predecessors = parallel_dijkstra(
         csgraph=csgraph,
         directed=True,
         indices=source_indices,
         return_predecessors=True,
-        limit=cutoff+penalty
+        limit=cutoff+penalty,
+        num_core=num_cores
     )
 
     dist_matrix = dist_matrix.T[target_indices].T
