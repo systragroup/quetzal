@@ -186,8 +186,8 @@ def add_geometry_coordinates(df, columns=['x_geometry', 'y_geometry'], to_crs=No
         if from_crs != to_crs:
             # pyproj takes [y,x] and return [x,y]. however. if from_crs == to_crs. it return [y,x].
             # so we do not apply this function if to_crs == from_crs.
-            transformer = Transformer.from_crs(from_crs, to_crs)
-            df[columns[0]], df[columns[1]]  = transformer.transform(df[columns[1]].values, df[columns[0]].values)
+            transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
+            df[columns[0]], df[columns[1]]  = transformer.transform(df[columns[0]].values, df[columns[1]].values)
         
     return df
 
