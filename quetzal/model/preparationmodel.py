@@ -533,14 +533,18 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
 
     @track_args
     def preparation_map_matching(self,
-                            by='trip_id',
-                            sequence='link_sequence',
-                            n_neighbors_centroid=100,
-                            n_neighbors=10,
-                            distance_max=3000,
-                            routing=True,
-                            overwrite_geom=False,
-                            overwrite_nodes=False,
+                            by:str='trip_id',
+                            sequence:str='link_sequence',
+                            n_neighbors_centroid:int=1000,
+                            radius_centroid:int=100,
+                            n_neighbors:int=10,
+                            distance_max:int=3000,
+                            nearest_method:str='both',
+                            speed_limit:bool=False,
+                            turn_penalty:bool=False,
+                            routing:bool=True,
+                            overwrite_geom:bool=False,
+                            overwrite_nodes:bool=False,
                             num_cores=1,
                             **kwargs):
     
@@ -551,7 +555,9 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         routing : bool, 
             if True return the complete routing from the first to the last point on the road network (default = False)
         n_neighbors_centroid : int, 
-            number of kneighbor in the first rough KNN on links centroid (default 100)
+            number of kneighbor in the first rough KNN on links centroid (default 1000)
+        n_radius_centroid : int, 
+            radius of kneighbor in the first rough KNN on links centroid (default 100m)
         n_neighbors : int, 
             number of possible links for each point in the mapmatching. 10 top closest links (default 10)
         distance_max : int
@@ -581,7 +587,9 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 self.nodes.index.name = 'index'
             self.links, self.nodes = duplicate_nodes(self.links,self.nodes)
 
-        road_links = RoadLinks(self.road_links,n_neighbors_centroid=n_neighbors_centroid)
+        road_links = RoadLinks(self.road_links,
+                               n_neighbors_centroid=n_neighbors_centroid,
+                               radius_centroid=radius_centroid)
         gps_tracks = get_gps_tracks(self.links, self.nodes, by=by,sequence=sequence)
         if num_cores==1:
             matched_links, links_mat, _ = Multi_Mapmatching(gps_tracks,
@@ -590,6 +598,9 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                                                             n_neighbors=n_neighbors,
                                                             distance_max=distance_max,
                                                             by=by,
+                                                            nearest_method=nearest_method,
+                                                            speed_limit=speed_limit,
+                                                            turn_penalty=turn_penalty,
                                                             **kwargs)
         else:
             matched_links, links_mat, _ = Parallel_Mapmatching(gps_tracks,
@@ -598,6 +609,9 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                                                                 n_neighbors=n_neighbors,
                                                                 distance_max=distance_max,
                                                                 by=by,
+                                                                nearest_method=nearest_method,
+                                                                speed_limit=speed_limit,
+                                                                turn_penalty=turn_penalty,
                                                                 num_cores=num_cores,
                                                                 **kwargs)
 
