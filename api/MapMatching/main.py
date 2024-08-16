@@ -129,6 +129,7 @@ def mapmatching(uuid,exec_id,num_cores,**kwargs):
     from shapely.geometry import LineString
     from quetzal.model import stepmodel
     from quetzal.io.gtfs_reader.importer import get_epsg
+    from quetzal.io.quenedi import split_quenedi_rlinks
 
     basepath = f's3://{db.BUCKET}/{uuid}/' if ON_LAMBDA else '../test'
 
@@ -167,8 +168,8 @@ def mapmatching(uuid,exec_id,num_cores,**kwargs):
     sm.preparation_map_matching(sequence='link_sequence',
                             by='trip_id',
                             routing=True,
-                            n_neighbors_centroid=100,
-                            n_neighbors=25,
+                            n_neighbors_centroid=1000,
+                            n_neighbors=20,
                             distance_max=3000,
                             overwrite_geom=True,
                             overwrite_nodes=True,
@@ -195,7 +196,6 @@ def merge(uuid, add_pt_metrics=False):
     merge all linka and nodes in uuid/parallel/ folder on s3.
     '''
     from syspy.spatial.utils import get_acf_distance
-    from quetzal.io.quenedi import split_quenedi_rlinks
 
     basepath = f's3://{db.BUCKET}/{uuid}/' if ON_LAMBDA else '../test'
     s3path = f's3://{db.BUCKET}/'
@@ -249,7 +249,7 @@ def add_metrics_to_rlinks(links, rlinks):
 
     from quetzal.io.quenedi import split_quenedi_rlinks, merge_quenedi_rlinks
 
-    road_links = split_quenedi_rlinks(road_links)
+    rlinks = split_quenedi_rlinks(rlinks)
 
     df = links[['trip_id','route_id','headway','road_link_list']].explode('road_link_list')
     df['frequency'] = 1/(df['headway']/3600)
