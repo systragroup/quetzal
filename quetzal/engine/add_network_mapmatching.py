@@ -558,7 +558,7 @@ def Mapmatching(gps_track:list,
         dist_matrix.loc[dist_matrix2.index] = dist_matrix2
 
         candidat_links = candidat_links.drop(columns='dijkstra')
-        temp_dist_matrix = dist_matrix.stack(dropna=True).reset_index().rename(
+        temp_dist_matrix = dist_matrix.stack().reset_index().rename(
             columns={'level_0': 'b', 'level_1': 'a', 0: 'dijkstra'}
         )
         candidat_links = candidat_links.merge(temp_dist_matrix, left_on=['node_b', 'node_a'], right_on=['b', 'a'],
@@ -610,7 +610,8 @@ def Mapmatching(gps_track:list,
         candidat_links.loc[candidat_links['gps_time'] == 0, 'speed']=0
 
         # add penality of 1 per km over the limit.
-        candidat_links['path_prob'] += candidat_links['speed'].apply(lambda x: max(x - MAX_SPEED,0)).max()
+        #candidat_links= candidat_links[candidat_links['speed']<MAX_SPEED]
+        candidat_links['path_prob'] += candidat_links['speed'].apply(lambda x: np.log10(max(x - MAX_SPEED,1)))
 
 
 
@@ -700,25 +701,25 @@ def Mapmatching(gps_track:list,
 
         # predecessors = predecessors.apply(lambda x : index_node.get(x))
         df_path = pd.DataFrame(path[1:], columns=['road_id'])
-        df_path['sparse_node_b'] = df_path['road_id'].apply(lambda x: links.node_index.get(links.dict_node_b.get(x)))
+        df_path['from_a'] = df_path['road_id'].apply(lambda x: links.node_index.get(links.dict_node_a.get(x)))
+        df_path['from_b'] = df_path['road_id'].apply(lambda x: links.node_index.get(links.dict_node_b.get(x)))
+        df_path['to_a'] = df_path['from_a'].shift(-1)
+        df_path['to_b'] = df_path['from_b'].shift(-1)
 
         node_mat = []
-
-        for i in range(len(df_path) - 1):
-            node_list = []
-            node_list.append(int(df_path.iloc[-(1 + i)]['sparse_node_b']))  # premier noed (noed b)
-            node = predecessors.loc[df_path.iloc[-(1 + i + 1)]['sparse_node_b'], df_path.iloc[-(1 + i)]['sparse_node_b']]
+        for ori, des, from_a, to_a in df_path[['from_b','to_b','from_a','to_a']].values[:-1]:
+            node_list = [des] 
+            # this make sure we us the correct path. between 2 matched point (there could be a faster path incoherent)
+            if ori == to_a:
+                node = to_a
+            else:
+                node = predecessors.loc[ori, des]
             while node != -9999:  # Ajoute les noeds b jusqua ce qu'on arrive au prochain point gps
                 node_list.append(node)
-                node = predecessors.loc[df_path.iloc[-(1 + i + 1)]['sparse_node_b'], node]
-
-            # if i==len(df_path)-2:
-            node_list.append(int(links.node_index[links.links.loc[df_path.iloc[-(1 + i + 1)]['road_id']]['a']]))  # ajoute le noeud a.
+                node = predecessors.loc[ori, node]
+            node_list.append(from_a)
             node_list = [index_node[x] for x in node_list[::-1]]  # reverse and swap index
             node_mat.append(node_list)
-        # ajoute le noed a du premier point. puisque le Dijkstra a été calculé à partir des noeds b. le noed a du premier point
-        # gps doit être ajouté manuellement.
-        node_mat = node_mat[::-1]
         # transforme la liste de noeud en liste de route
         link_mat = []
         for node_list in node_mat:
