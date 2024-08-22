@@ -414,8 +414,7 @@ class RoadModel:
                                                           directed=True,
                                                           indices=zones,
                                                           return_predecessors=True,
-                                                          num_core=num_cores,
-                                                          keep_running=True)
+                                                          num_core=num_cores)
 
             # this give OD_time/time_matrix on each links. then X links time for the ratio links_time/tot_time
             ab_times = _assign_time(odt, predecessors, time_matrix, time_sparse_keys, reversed_index)
@@ -441,8 +440,7 @@ class RoadModel:
                                                       directed=True,
                                                       indices=zones,
                                                       return_predecessors=True,
-                                                      num_core=num_cores,
-                                                      keep_running=True)
+                                                      num_core=num_cores)
         od_time['routing_time'] = _get_od_time(od_time[['o', 'd']].values, time_matrix)
         errors.append((i + 1, (round(np.mean(abs(od_time[self.api_time_col] - od_time['routing_time']) / 60), 2))))
         print(i + 1, errors[-1][1])

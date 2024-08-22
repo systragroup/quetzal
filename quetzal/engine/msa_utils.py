@@ -198,7 +198,7 @@ def get_car_los(v,df,index,reversed_index,zones,ntleg_penalty,num_cores=1):
     car_los = v[['origin','destination','o','d']]
     edges = df['jam_time'].reset_index().values # build the edges again, useless
     sparse, _ = sparse_matrix(edges, index=index)
-    dist_matrix, predecessors = parallel_dijkstra(sparse, directed=True, indices=zones, return_predecessors=True, num_core=num_cores, keep_running=False)
+    dist_matrix, predecessors = parallel_dijkstra(sparse, directed=True, indices=zones, return_predecessors=True, num_core=num_cores)
     odlist = list(zip(car_los['o'].values, car_los['d'].values))
     time_dict = {(o,d):dist_matrix[o,d]-ntleg_penalty for o,d in odlist} # time for each od
     car_los['time'] = car_los.set_index(['o','d']).index.map(time_dict)

@@ -76,7 +76,7 @@ class RoadPathFinder:
 
         sparse, _ = sparse_matrix(edges, index=index)
         
-        _ , predecessors = parallel_dijkstra(sparse, directed=True, indices=zones, return_predecessors=True, num_core=num_cores, keep_running=True)
+        _ , predecessors = parallel_dijkstra(sparse, directed=True, indices=zones, return_predecessors=True, num_core=num_cores)
 
         
         df['sparse_a'] = df['a'].apply(lambda x:index.get(x))
@@ -110,7 +110,7 @@ class RoadPathFinder:
             edges = df['jam_time'].reset_index().values # build the edges again, useless
             sparse, _ = sparse_matrix(edges, index=index)
             #shortest path
-            _, predecessors = parallel_dijkstra(sparse, directed=True, indices=zones, return_predecessors=True, num_core=num_cores, keep_running=True)
+            _, predecessors = parallel_dijkstra(sparse, directed=True, indices=zones, return_predecessors=True, num_core=num_cores)
 
             # BUILD PATHS FROM PREDECESSORS AND ASSIGN VOLUMES
             ab_volumes = assign_volume(odv,predecessors,volumes_sparse_keys,reversed_index)

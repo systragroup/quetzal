@@ -5,15 +5,14 @@ from scipy.sparse.csgraph import dijkstra
 from tqdm import tqdm
 from numba import jit
 import numba as nb
-from multiprocessing import Process, Manager
+from concurrent.futures import ProcessPoolExecutor
 
 
   
 # Wrapper to split the indices (destination) into parallel batchs and compute the shortest path on each batchs.
-def parallel_dijkstra(csgraph,indices=None,return_predecessors=True, num_core=1,keep_running=True,**kwargs):
+def parallel_dijkstra(csgraph,indices=None,return_predecessors=True, num_core=1,**kwargs):
     '''
     num_core = 1 : number of threads.
-    keep_running = not used anymore. deprecated
     '''
     if num_core == 1:
         return  dijkstra(csgraph=csgraph, indices=indices, return_predecessors=return_predecessors,**kwargs)
@@ -21,32 +20,25 @@ def parallel_dijkstra(csgraph,indices=None,return_predecessors=True, num_core=1,
     batch = round(len(indices)/num_core)
     indices_mat = [indices[i*batch:(1+i)*batch] for i in range(num_core-1)]
     indices_mat.append(indices[(num_core-1)*batch:])
-    def process_wrapper(indices, kwargs, result_list, index):
-        result = dijkstra(indices=indices, **kwargs)
-        result_list[index] = result
 
-    manager = Manager()
-    result_list = manager.list([None] * len(indices_mat))
-    processes = []
-
-    process_kwargs = {'csgraph':csgraph,'return_predecessors':return_predecessors,**kwargs}
-    for i, origins in enumerate(indices_mat):
-        process = Process(target=process_wrapper, args=(origins, process_kwargs, result_list, i))
-        process.start()
-        processes.append(process)
-    for process in processes:
-        process.join()
-    # Convert the manager list to a regular list for easier access
-    result_list = np.array(result_list, dtype="object")
+    results = []
+    with ProcessPoolExecutor(max_workers=num_core) as executor:
+        for i in range(num_core):
+            p = executor.submit(
+                dijkstra,
+                indices=indices_mat[i],
+                csgraph=csgraph,
+                return_predecessors=return_predecessors,
+                **kwargs
+            )
+            results.append(p)
 
     if return_predecessors == True: # result is a tuple
-        dist_matrix = [res[0] for res in result_list]
-        dist_matrix = np.concatenate(dist_matrix,axis=0)
-        predecessors = [res[1] for res in result_list]
-        predecessors = np.concatenate(predecessors,axis=0).astype(np.int32)
+        dist_matrix = np.concatenate([res.result()[0] for res in results],axis=0)
+        predecessors = np.concatenate([res.result()[1] for res in results],axis=0).astype(np.int32)
         return dist_matrix, predecessors
     else:
-        dist_matrix = np.concatenate(result_list,axis=0)
+        dist_matrix = np.concatenate([res.result() for res in results],axis=0)
         return dist_matrix
 
 
