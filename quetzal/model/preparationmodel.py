@@ -535,11 +535,12 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
     def preparation_map_matching(self,
                             by:str='trip_id',
                             sequence:str='link_sequence',
-                            n_neighbors_centroid:int=1000,
-                            radius_centroid:int=100,
-                            n_neighbors:int=10,
+                            n_neighbors_centroid:int=10,
+                            radius_search:int=500,
+                            on_centroid:bool=False,
+                            n_neighbors:int=20,
                             distance_max:int=3000,
-                            nearest_method:str='both',
+                            nearest_method:str='radius',
                             speed_limit:bool=False,
                             turn_penalty:bool=False,
                             routing:bool=True,
@@ -552,20 +553,28 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
 
         Parameters
         ----------
-        routing : bool, 
-            if True return the complete routing from the first to the last point on the road network (default = False)
-        n_neighbors_centroid : int, 
-            number of kneighbor in the first rough KNN on links centroid (default 1000)
-        n_radius_centroid : int, 
-            radius of kneighbor in the first rough KNN on links centroid (default 100m)
-        n_neighbors : int, 
-            number of possible links for each point in the mapmatching. 10 top closest links (default 10)
-        distance_max : int
-            max radius to search candidat links for each gps point (default 5000)
         by : str, 
-            links column name for each mapmaptching. they are group according to this column. (default 'trip_id')
+            links column name for each mapmaptching. they are group according to this column
         sequence : str, 
-            links column giving the sequence of point for a given by (trip_id)  (default 'link_sequence')
+            links column giving the sequence of point for a given by (trip_id) 
+        routing : bool, 
+            if True return the complete routing from the first to the last point on the road network.
+        n_neighbors_centroid : int, 
+            number of kneighbor in the first rough KNN on links centroid. if using on_centroid: you can go real high (ex: 2000)
+        radius_search : int, 
+            radius of kneighbor in the first rough KNN on links. markers are added to links every radius_search meters to be sure we find
+            them if on_centroid = False.
+        on_centroid :bool,
+            if false add points along line for the KNN. so we actually find a really long highway with a centroid really far away.
+            Using True here is not recommended, it is the old behavior of this function wich caused problems.
+        n_neighbors : int, 
+            number of possible links for each point in the mapmatching. 10 top closest links
+        distance_max : int
+            max radius to search candidat links for each gps point
+        nearest_method: str [radius, knn, both]:
+             finding candidats with the radius, the knn or both. If radius is used, any point with 0 candidat will use the knn.
+             This occur when a point is really far away. we still want the closest roads so knn is use as it is fail proof.
+        
         overwrite_geom : bool, optional
             by default True
         num_cores : int,
@@ -589,7 +598,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
 
         road_links = RoadLinks(self.road_links,
                                n_neighbors_centroid=n_neighbors_centroid,
-                               radius_centroid=radius_centroid)
+                               radius_search=radius_search,
+                               on_centroid=on_centroid)
         gps_tracks = get_gps_tracks(self.links, self.nodes, by=by,sequence=sequence)
         if num_cores==1:
             matched_links, links_mat, _ = Multi_Mapmatching(gps_tracks,

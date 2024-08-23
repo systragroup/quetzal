@@ -5,12 +5,39 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy.sparse.csgraph import dijkstra
+from shapely import get_coordinates
 from sklearn.neighbors import NearestNeighbors
 from quetzal.engine.pathfinder_utils import sparse_matrix
 from syspy.spatial.spatial import add_geometry_coordinates
 from multiprocessing import Process, Manager
 from typing import Tuple
 from numba import njit
+
+@njit
+def get_points_along_line(p1,p2,distance=20):
+    direction = p2 - p1
+    # Calculate the magnitude of the direction vector
+    length = np.linalg.norm(direction)
+    # ge number of points to interp
+    points_count = int(length // distance) 
+    resp=np.empty((points_count,2))
+    # Normalize the direction vector to get the unit vector
+    unit_vector = direction / length
+    
+    # Compute the point at distance t meters along the vector
+    for i in range(points_count):
+        pt = p1 + distance*(i + 1) * unit_vector
+        resp[i]=pt
+
+    return resp
+
+def get_points_along_multiline(multiline,distance=10):
+    resp=multiline
+    num_pts = len(multiline)
+    for i in range(num_pts-1):
+        new_pts = get_points_along_line(multiline[i], multiline[i+1],distance)
+        resp = np.concatenate([resp,new_pts])
+    return resp
 
 @njit
 def _point_to_segment_distance(point, segment):
@@ -94,7 +121,7 @@ def nearest(one, links, radius=False):
 
     y = df_one[['x_geometry', 'y_geometry']].values
     if radius:
-        indices = links.r_nbrs.radius_neighbors(y, radius = links.radius_centroid, return_distance=False)
+        indices = links.r_nbrs.radius_neighbors(y, radius = links.radius_search, return_distance=False)
     else:
         indices = links.nbrs.kneighbors(y,n_neighbors=links.n_neighbors_centroid,return_distance=False)
         
@@ -104,6 +131,8 @@ def nearest(one, links, radius=False):
     )
     if radius:
         indices = indices.explode('index_nn')
+    
+    indices['index_nn'] = indices['index_nn'].apply(lambda x: links.knn_dict.get(x))
 
     return indices
 
@@ -181,13 +210,15 @@ class RoadLinks:
     links (gpd.GeoDataFrame): links in a metre projection (not 4326 or 3857)
     gps_track (gpd.GeoDataFrame): [['index','geometry']] ordered list of geometry Points. only needed if links is None (to import the links from osmnx)
     n_neighbors_centroid (int) : number of neighbor using the links centroid. first quick pass to find all good candidat road.
-    radius_centroid (int) : radius to search neighbot. first quick pass to find all good candidat road.
+    radius_search (int) : radius (meters) to search neighbor. first quick pass to find all good candidat road.
+    on_centroid (bool) : if False. add points on links every search_radius * 2 meters. so we are sure to find close roads.
+                        else: use links centroid for the neighbor search.
     
     returns
     ----------
     RoadLinks object for mapmatching
     '''
-    def __init__(self, links, n_neighbors_centroid=100,radius_centroid=100):
+    def __init__(self, links, n_neighbors_centroid=10,radius_search=250,on_centroid=False):
 
         self.links = links
         assert self.links.crs != None, 'road_links crs must be set (crs in meter, NOT 3857)'
@@ -196,8 +227,9 @@ class RoadLinks:
 
         self.crs = links.crs
         self.n_neighbors_centroid = n_neighbors_centroid
-        self.radius_centroid = radius_centroid
-        
+        if len(links) < self.n_neighbors_centroid: self.n_neighbors_centroid = len(links)
+        self.radius_search = radius_search
+    
         try:
             self.links['length']
         except Exception:
@@ -208,7 +240,10 @@ class RoadLinks:
 
         self.get_sparse_matrix()
         self.get_dict()
-        self.fit_nearest_model()
+        if on_centroid:
+            self.fit_nearest_centroid()
+        else:
+            self.fit_nearest_model()
 
         
     def get_sparse_matrix(self):
@@ -223,23 +258,38 @@ class RoadLinks:
         self.dict_link = self.links.sort_values('length', ascending=True).drop_duplicates(['a', 'b'], keep='first').set_index(['a', 'b'], drop=False)[ 'index'].to_dict()
         self.length_dict = self.links['length'].to_dict()
         self.geom_dict = dict(self.links['geometry'])
-        self.geom_dict_arr = {key: np.array(item.coords) for key, item in self.geom_dict.items()}
+        self.geom_dict_arr = {key: get_coordinates(item) for key, item in self.geom_dict.items()}
         if 'bearing' in self.links.columns:
             self.bearing_dict = self.links['bearing'].to_dict()
 
 
     def fit_nearest_model(self):
         # Fit Nearest neighbors model
+        # add points along each links at every self.radius_search
+        # do the knn on those points. this will make sure that every links is found in the search radius,
+        # even very long links with centroid realy far away.
+        
+        dist = self.radius_search #* 1.41 could divide by 2 or srt2. as we seach in diameter of double de radius
+        interp_points_dict = {key:get_points_along_multiline(item,dist) for key,item in  self.geom_dict_arr.items()}
+
+        indexes=[]; points=[]
+        for key,item in interp_points_dict.items():
+            indexes+=[key]*len(item)
+            points.append(item)
+        points = np.concatenate(points, axis=0)
+        self.nbrs = NearestNeighbors(n_neighbors=self.n_neighbors_centroid, algorithm='ball_tree').fit(points)
+        self.r_nbrs = NearestNeighbors(radius=self.radius_search, algorithm='ball_tree').fit(points)
+        # we added points to links. this give us: knn_index:link_index
+        self.knn_dict = {i:j for i,j in enumerate(indexes)}
+
+    def fit_nearest_centroid(self):
+        # Fit Nearest neighbors model with links centroid
         links = add_geometry_coordinates(self.links, columns=['x_geometry', 'y_geometry'])
         x = links[['x_geometry', 'y_geometry']].values
-
-        if len(links) < self.n_neighbors_centroid: self.n_neighbors_centroid = len(links)
-
         self.nbrs = NearestNeighbors(n_neighbors=self.n_neighbors_centroid, algorithm='ball_tree').fit(x)
-        
-        self.r_nbrs = NearestNeighbors(radius=self.radius_centroid, algorithm='ball_tree').fit(x)
-
-
+        self.r_nbrs = NearestNeighbors(radius=self.radius_search, algorithm='ball_tree').fit(x)
+        # we added points to links. this give us: knn_index:link_index
+        self.knn_dict = {i:i for i in range(len(x))}
 
 def get_gps_tracks(links, nodes, by='trip_id', sequence='link_sequence'):
     '''
@@ -379,7 +429,7 @@ def Mapmatching(gps_track:list,
                 distance_max:float=1000, 
                 dijkstra_limit = None,
                 routing:bool=False,
-                nearest_method:str='knn',
+                nearest_method:str='radius',
                 speed_limit:bool=False,
                 turn_penalty:bool=False,
                 plot:bool=False,
@@ -411,9 +461,10 @@ def Mapmatching(gps_track:list,
         dijkstra_limit = add_geometry_coordinates(gps_track)[['x_geometry','y_geometry']].std().mean() / 2
 
     gps_dict = gps_track['geometry'].to_dict()
+    gps_dict_arr = {key: item.coords[0] for key, item in gps_dict.items()}
     # GPS point distance to next point.
     gps_dist_dict = gps_track['geometry'].distance(gps_track.shift(-1)).to_dict()
-    gps_dict_arr = {key: item.coords[0] for key, item in gps_dict.items()}
+   
 
 
     if speed_limit:

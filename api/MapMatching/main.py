@@ -166,15 +166,18 @@ def mapmatching(uuid,exec_id,num_cores,**kwargs):
     sm = sm.change_epsg(crs,coordinates_unit='meter')
 
     sm.preparation_map_matching(sequence='link_sequence',
-                            by='trip_id',
-                            routing=True,
-                            n_neighbors_centroid=1000,
-                            n_neighbors=20,
-                            distance_max=3000,
-                            overwrite_geom=True,
-                            overwrite_nodes=True,
-                            num_cores=num_cores,
-                            **kwargs)
+                                by='trip_id',
+                                routing=True,
+                                n_neighbors_centroid=100,
+                                radius_search=500,
+                                on_centroid=False,
+                                nearest_method='radius',
+                                n_neighbors=20,
+                                distance_max=3000,
+                                overwrite_geom=True,
+                                overwrite_nodes=True,
+                                num_cores=num_cores,
+                                **kwargs)
     
     # ovewrite Length with the real length and time
     sm.links['length'] = sm.links['geometry'].apply(lambda g: g.length)
