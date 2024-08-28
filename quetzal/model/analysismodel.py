@@ -317,7 +317,21 @@ class AnalysisModel(summarymodel.SummaryModel):
         boarding_time=None,
         alighting_time=None,
         walk_on_road=False,
+        time_only=False,
     ):
+        '''
+        boarding_time: 
+            constant number. if none, will try to use boarding_time in self.links.columns
+        alighting_time: 
+            should be None.
+        walk_on_road: 
+            if walk on road:
+        time_only: 
+            if True. only add 'time' to self.pt_los: else
+            'time', 'access_time', 'footpath_time', 'waiting_time', 'boarding_time', 'in_vehicle_time'
+
+        return self.pt_los
+        '''
         assert not (boarding_time is not None and 'boarding_time' in self.links.columns)
         boarding_time = 0 if boarding_time is None else boarding_time
 
@@ -370,9 +384,11 @@ class AnalysisModel(summarymodel.SummaryModel):
             self.pt_los['boarding_time'] = self.pt_los['boarding_links'].apply(
                 lambda t: len(t) * boarding_time)
 
-        self.pt_los['time'] = self.pt_los[
-            ['access_time', 'footpath_time', 'waiting_time', 'boarding_time', 'in_vehicle_time']
-        ].T.sum()
+        cols = ['access_time', 'footpath_time', 'waiting_time', 'boarding_time', 'in_vehicle_time']
+        self.pt_los['time'] = self.pt_los[cols].T.sum()
+        
+        if time_only:
+            self.pt_los = self.pt_los.drop(columns = cols)
 
     def analysis_pt_length(self, walk_on_road=False):
 

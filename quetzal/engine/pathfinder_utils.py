@@ -5,8 +5,7 @@ from scipy.sparse.csgraph import dijkstra
 from tqdm import tqdm
 from numba import jit
 import numba as nb
-from concurrent.futures import ProcessPoolExecutor
-
+from quetzal.os.parallel_call import parallel_executor
 
   
 # Wrapper to split the indices (destination) into parallel batchs and compute the shortest path on each batchs.
@@ -21,24 +20,19 @@ def parallel_dijkstra(csgraph,indices=None,return_predecessors=True, num_core=1,
     indices_mat = [indices[i*batch:(1+i)*batch] for i in range(num_core-1)]
     indices_mat.append(indices[(num_core-1)*batch:])
 
-    results = []
-    with ProcessPoolExecutor(max_workers=num_core) as executor:
-        for i in range(num_core):
-            p = executor.submit(
-                dijkstra,
-                indices=indices_mat[i],
-                csgraph=csgraph,
-                return_predecessors=return_predecessors,
-                **kwargs
-            )
-            results.append(p)
+    results = parallel_executor(dijkstra,
+                                num_workers=num_core,
+                                parallel_kwargs={'indices':indices_mat},
+                                csgraph=csgraph,
+                                return_predecessors=return_predecessors,
+                                **kwargs)
 
     if return_predecessors == True: # result is a tuple
-        dist_matrix = np.concatenate([res.result()[0] for res in results],axis=0)
-        predecessors = np.concatenate([res.result()[1] for res in results],axis=0).astype(np.int32)
+        dist_matrix = np.concatenate([res[0] for res in results],axis=0)
+        predecessors = np.concatenate([res[1] for res in results],axis=0).astype(np.int32)
         return dist_matrix, predecessors
     else:
-        dist_matrix = np.concatenate([res.result() for res in results],axis=0)
+        dist_matrix = np.concatenate(results,axis=0)
         return dist_matrix
 
 

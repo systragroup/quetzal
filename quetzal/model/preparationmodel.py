@@ -546,6 +546,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                             routing:bool=True,
                             overwrite_geom:bool=False,
                             overwrite_nodes:bool=False,
+                            remove_duplicated_links_per_trips:bool=True,
                             num_cores=1,
                             **kwargs):
     
@@ -574,9 +575,14 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         nearest_method: str [radius, knn, both]:
              finding candidats with the radius, the knn or both. If radius is used, any point with 0 candidat will use the knn.
              This occur when a point is really far away. we still want the closest roads so knn is use as it is fail proof.
-        
         overwrite_geom : bool, optional
             by default True
+        overwrite_nodes: bool
+            'overwrite nodes: nodes shares between different trips will be duplicated and rename'
+        remove_duplicated_links_per_trips: bool
+            for a trip (multiple links) remove rlinks in road_link_list if its duplicated between adjacent links.
+            ex: links 1 et 2 are [rlink_1, rlink_2] and [rlink_2, rlink_3] => [rlink_1, rlink_2] and [rlink_3]
+            this make sure that we dont count a road link multiple time qhen asigning load!
         num_cores : int,
             parallelize.
         ----------
@@ -719,18 +725,25 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             self.links['geometry'] = crops(self.links,self.nodes)
         
         def remove_dup_in_road_link_list(links):
+            '''
+            ex: links 1 et 2 are [rlink_1, rlink_2] and [rlink_2, rlink_3] => [rlink_1, rlink_2] and [rlink_3]
+            this make sure that we dont count a road link multiple time qhen asigning load!
+            '''
             res={}
             for t in links['trip_id'].unique():
                 trip = links[links['trip_id']==t]
                 visited_links = set()
                 for i,ls in trip['road_link_list'].items():
-                    ls = [el for el in ls if el not in visited_links]
-                    visited_links.update(ls)
-                    res[i]=ls
+                    if type(ls) is not list:
+                        ls = []
+                    new_ls = [el for el in ls if el not in visited_links]
+                    visited_links.update(new_ls)
+                    res[i]=new_ls
             links['road_link_list'] = links.index.map(res)
             return links
         
-        self.links = remove_dup_in_road_link_list(self.links)
+        if remove_duplicated_links_per_trips:
+            self.links = remove_dup_in_road_link_list(self.links)
 
     @track_args
     def preparation_logit(

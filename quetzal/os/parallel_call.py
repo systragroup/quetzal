@@ -242,3 +242,153 @@ def parallel_call_subprocess(
     if not leave:
         shutil.rmtree('subprocess_io')
     return results
+
+
+
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import Process, Queue, Manager, Pipe
+import sys
+
+
+def parallel_executor(function, method='pool', num_workers:int=1, parallel_kwargs:dict={}, **kwargs):
+    '''
+    function: 
+        function to paralellize
+    method = 'pool' | 'queue' | 'manager' | 'pipe':
+        Pool, queue and pipe mostly the same performance.
+        Only Pipe works on AWS lambda. so if on Lambda, force method = pipe
+    num_workers:
+        number of threads.
+    parallel_kwargs: dict of arrays
+        kwargs in the function to be parallelize. This should be a List.
+        ex: dijkstra(indices=parallel_kwargs['indices'][i]) where i is in range(num_workers)
+    '''
+    on_lambda = bool(os.environ.get('AWS_EXECUTION_ENV'))
+
+    if on_lambda:
+        method = 'pipe'
+
+    if method == 'pool':
+        results = process_pool_executor(function=function, 
+                                        num_workers=num_workers, 
+                                        parallel_kwargs=parallel_kwargs, 
+                                        **kwargs)
+        
+    elif method == 'pipe':
+         results = process_pipe_executor(function=function, 
+                                        num_workers=num_workers, 
+                                        parallel_kwargs=parallel_kwargs, 
+                                        **kwargs)
+                        
+    elif method =='queue':
+        results = process_queue_executor(function=function,
+                                        num_workers=num_workers, 
+                                        parallel_kwargs=parallel_kwargs, 
+                                        **kwargs)
+
+    elif method == 'manager':
+        results = process_manager_executor(function=function, 
+                                            num_workers=num_workers, 
+                                            parallel_kwargs=parallel_kwargs, 
+                                            **kwargs)
+        
+    else:
+        print(method,'is not a valid choice')        
+        return 0
+        
+    return results
+
+
+def process_pool_executor(function, num_workers=1, parallel_kwargs={}, **kwargs):
+    results = []
+    with ProcessPoolExecutor(max_workers=num_workers) as executor:
+        for i in range(num_workers):
+            batch_kwargs = {key:item[i] for key,item in parallel_kwargs.items()} 
+            p = executor.submit(
+                function,
+                **batch_kwargs,
+                **kwargs
+            )
+            results.append(p)
+    results  = [res.result() for res in results]
+    return results
+
+def process_wrapper(function, process_kwargs, kwargs, queue, i):
+    result = function(**process_kwargs,**kwargs)
+    queue.put((i,result))
+
+
+def process_queue_executor(function, num_workers=1, parallel_kwargs={}, **kwargs):
+    # as the order in wich the Queue results is extract is not in the order it was created.
+    # we keep track of the order and assign the result in the correct index of results
+    queue = Queue()
+    processes = []
+    results = [None] * num_workers
+    for i in range(num_workers):
+        process_kwargs = {key:item[i] for key,item in parallel_kwargs.items()} 
+        process = Process(target=process_wrapper, args=(function, process_kwargs, kwargs, queue, i))
+        process.start()
+        processes.append(process)
+    for _ in processes:
+        res = queue.get()
+        results[res[0]]=res[1] 
+    for process in processes:
+        process.join()      
+
+
+    return results
+
+def process_wrapper_manager(function, process_kwargs, kwargs, result_list, i):
+    result = function(**process_kwargs,**kwargs)
+    result_list[i] = result
+
+
+def process_manager_executor(function, num_workers=1, parallel_kwargs={}, **kwargs):
+    # as the order in wich the Queue results is extract is not in the order it was created.
+    # we keep track of the order and assign the result in the correct index of results
+    processes = []
+    manager = Manager()
+    results = manager.list([None] * num_workers)
+    for i in range(num_workers):
+        process_kwargs = {key:item[i] for key,item in parallel_kwargs.items()} 
+        process = Process(target=process_wrapper_manager, args=(function, process_kwargs, kwargs, results, i))
+        process.start()
+        processes.append(process)
+    for process in processes:
+        process.join()
+    # Convert the manager list to a regular list for easier access
+    results = np.array(results, dtype="object")   
+    return results
+
+
+def process_wrapper_pipe(function, process_kwargs, kwargs, conn,i):
+    result = function(**process_kwargs,**kwargs)
+    conn.send((i,result))
+
+
+def process_pipe_executor(function, num_workers=1, parallel_kwargs={}, **kwargs):
+    # This one works on Lambda.
+    # as the order in wich the Queue results is extract is not in the order it was created.
+    # we keep track of the order and assign the result in the correct index of results
+    # https://aws.amazon.com/blogs/compute/parallel-processing-in-python-with-aws-lambda/
+    processes = []
+    parent_connections = []
+    child_connections = []
+    results = [None] * num_workers
+    for i in range(num_workers):
+        parent_conn, child_conn = Pipe()
+        parent_connections.append(parent_conn)
+        child_connections.append(child_conn)
+        process_kwargs = {key:item[i] for key,item in parallel_kwargs.items()} 
+        process = Process(target=process_wrapper_pipe, args=(function, process_kwargs, kwargs, child_conn,i))
+        process.start()
+        processes.append(process)
+    for i in range(num_workers):
+        res = parent_connections[i].recv()
+        results[res[0]]=res[1] 
+        child_connections[i].close()
+    for process in processes:
+        process.join()
+
+    # Convert the manager list to a regular list for easier access
+    return results

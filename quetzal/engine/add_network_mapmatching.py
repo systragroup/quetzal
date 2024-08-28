@@ -9,7 +9,7 @@ from shapely import get_coordinates
 from sklearn.neighbors import NearestNeighbors
 from quetzal.engine.pathfinder_utils import sparse_matrix
 from syspy.spatial.spatial import add_geometry_coordinates
-from multiprocessing import Process, Manager
+from quetzal.os.parallel_call import parallel_executor
 from typing import Tuple
 from numba import njit
 
@@ -339,27 +339,17 @@ def Parallel_Mapmatching(gps_tracks: pd.DataFrame,
     chunk_length =  round(len(trip_list)/ num_cores)
     # Split the list into four sub-lists
     chunks = [trip_list[j:j+chunk_length] for j in range(0, len(trip_list), chunk_length)]
+    chunk_gps_tracks = [gps_tracks[gps_tracks[by].isin(trips)] for trips in chunks]
 
-    # multi threading!
-    def process_wrapper(chunk, kwargs, result_list, index):
-        result = Multi_Mapmatching(chunk, **kwargs)
-        result_list[index] = result
-    manager = Manager()
-    result_list = manager.list([None] * len(chunks))
-    processes = []
-    pkwargs = {'road_links':road_links,'routing':routing,'n_neighbors':n_neighbors,'distance_max':distance_max,'by':by,**kwargs}
-    for i, trips in enumerate(chunks):
-        chunk_gps_tracks = gps_tracks[gps_tracks[by].isin(trips)]
-        process = Process(target=process_wrapper, args=(chunk_gps_tracks, pkwargs, result_list, i))
-        process.start()
-        processes.append(process)
-    for process in processes:
-        process.join()
-    # Convert the manager list to a regular list for easier access
-    result_list = np.array(result_list, dtype="object")
 
-    vals = pd.concat(result_list[:,0])
-    node_lists = pd.concat(result_list[:,1])
+    kwargs = {'road_links':road_links,'routing':routing,'n_neighbors':n_neighbors,'distance_max':distance_max,'by':by,**kwargs}
+    results = parallel_executor(Multi_Mapmatching,
+                                num_workers=len(chunks),
+                                parallel_kwargs={'gps_tracks': chunk_gps_tracks},
+                                **kwargs)
+
+    vals = pd.concat([res[0] for res in results])
+    node_lists = pd.concat([res[1] for res in results])
     unmatched_trip=[]
     return vals, node_lists, unmatched_trip
 
@@ -552,11 +542,11 @@ def Mapmatching(gps_track:list,
 
     # Dijktra on the road network from node = incices to every other nodes.
     # From b to a.
-    dist_matrix, predecessors = dijkstra(
+    dist_matrix = dijkstra(
         csgraph=links.mat,
         directed=True,
         indices=origin_sparse,
-        return_predecessors=True,
+        return_predecessors=False,
         limit=dijkstra_limit
     )
 
@@ -589,11 +579,11 @@ def Mapmatching(gps_track:list,
         origin_sparse2 = [links.node_index[x] for x in unfound_origin_nodes]
         # Dijktra on the road network from node = incices to every other nodes.
         # from b to a.
-        dist_matrix2, predecessors2 = dijkstra(
+        dist_matrix2 = dijkstra(
             csgraph=links.mat,
             directed=True,
             indices=origin_sparse2,
-            return_predecessors=True,
+            return_predecessors=False,
             limit=np.inf
         )
 
@@ -740,22 +730,23 @@ def Mapmatching(gps_track:list,
     # ======================================================
     node_list = []
     if routing:
-        predecessors = pd.DataFrame(predecessors)
-        predecessors.index = origin_sparse
-
-        # Si on a fait deux dijkstra
-        if len(unfound_origin_nodes) > 0:
-            predecessors2 = pd.DataFrame(predecessors2)
-            predecessors2.index = origin_sparse2
-
-            predecessors.loc[predecessors2.index] = predecessors2
-
         # predecessors = predecessors.apply(lambda x : index_node.get(x))
         df_path = pd.DataFrame(path[1:], columns=['road_id'])
         df_path['from_a'] = df_path['road_id'].apply(lambda x: links.node_index.get(links.dict_node_a.get(x)))
         df_path['from_b'] = df_path['road_id'].apply(lambda x: links.node_index.get(links.dict_node_b.get(x)))
         df_path['to_a'] = df_path['from_a'].shift(-1)
         df_path['to_b'] = df_path['from_b'].shift(-1)
+
+        routing_origins = df_path['from_b'].unique()
+        _, routing_predecessors = dijkstra(
+            csgraph=links.mat,
+            directed=True,
+            indices=routing_origins,
+            return_predecessors=True,
+            limit=np.inf
+        )
+        routing_predecessors = pd.DataFrame(routing_predecessors)
+        routing_predecessors.index = routing_origins
 
         node_mat = []
         for ori, des, from_a, to_a in df_path[['from_b','to_b','from_a','to_a']].values[:-1]:
@@ -764,10 +755,10 @@ def Mapmatching(gps_track:list,
             if ori == to_a:
                 node = to_a
             else:
-                node = predecessors.loc[ori, des]
+                node = routing_predecessors.loc[ori, des]
             while node != -9999:  # Ajoute les noeds b jusqua ce qu'on arrive au prochain point gps
                 node_list.append(node)
-                node = predecessors.loc[ori, node]
+                node = routing_predecessors.loc[ori, node]
             node_list.append(from_a)
             node_list = [index_node[x] for x in node_list[::-1]]  # reverse and swap index
             node_mat.append(node_list)
