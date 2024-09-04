@@ -15,6 +15,8 @@ def nested_list(volume_array, paths):
 
 
 def fast_assign(volume_array, paths):
+    paths = paths[volume_array>0]
+    volume_array = volume_array[volume_array>0]
     z = zip(volume_array, paths)
     d = {}
     for volume, path in list(z):
