@@ -111,7 +111,7 @@ def proportional_fitting(square, sum_axis_0=None, sum_axis_1=None, tolerance=1e-
     if log : print('cannot fit both axis. c = ',c)
     return temp
 
-def sample_od(od_indexed_series, bidimentional_sampling=True, fit_sums=True, sample_weight=1, sample_size=None, seed=0, **kwargs):
+def sample_od(od_indexed_series, bidimentional_sampling=False, fit_sums=True, sample_weight=1, sample_size=None, seed=0, **kwargs):
     square = od_indexed_series.unstack()
 
     if bidimentional_sampling :

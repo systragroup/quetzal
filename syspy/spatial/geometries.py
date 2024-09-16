@@ -46,7 +46,7 @@ def linestring_from_indexed_point_geometries(indexed, points):
         return None
 
 
-def line_list_to_polyline(geometries):
+def line_list_to_polyline(geometries:list) -> shapely.geometry.linestring.LineString:
     coord_sequence = []
     last = False
     for geometry in geometries:
@@ -57,6 +57,10 @@ def line_list_to_polyline(geometries):
         return shapely.geometry.linestring.LineString(coord_sequence)
     except ValueError:
         return None
+    
+
+
+
 
 
 def polyline_to_line_list(geometry, tolerance=0):
