@@ -1,9 +1,12 @@
-[[source]]
-url = "https://pypi.org/simple"
-verify_ssl = true
-name = "pypi"
+[tool.poetry]
+name = "quetzal"
+version = "1.0.0"
+description = "modeling library for transport planning"
+authors = ["Quentin Chasserieau <qchasserieau@systra.com"]
+package-mode = false
 
-[packages]
+[tool.poetry.dependencies]
+python = "^3.12"
 numpy = "<2.0"
 pandas = "<3.0"
 geopandas = "*"
@@ -26,11 +29,11 @@ s3fs = "*"
 rasterio = "*"
 ipywidgets = "*"
 openmatrix = "*"
-networkx = "*"
-
-[dev-packages]
 snakeviz = "*" 
 pip-chill = "*"
+networkx = "*"
 
-[requires]
-python_version = "3.12"
+
+
+
+

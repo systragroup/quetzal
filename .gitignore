@@ -2,15 +2,20 @@
 *.pyc
 doc/
 **.cache**
+**.ipynb_checkpoints
 quetzal/tests/data/out/
 tests/data/out/
 .eggs/
 *.egg-info/
 .venv/
 .idea/
+.python-version
+.vscode/
+
 build/
 *.env
 !docker/templates/.env
+
 # Local .terraform directories
 **/.terraform/*
 docker/infra/.terraform/*

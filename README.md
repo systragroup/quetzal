@@ -42,54 +42,60 @@ hull = zones.union_all().convex_hull
 KMeans(n_clusters=num_zones,random_state=0,n_init='auto')
 ```
 
-## Installation from sources
-It is preferred to first create and use a virtual environment.
-### For Linux
-One should choose between Virtualenv and Pipenv or use Anaconda 3.
+# Installation from sources
+## For Linux
+One should choose between 
+- Poetry (recommended)
+- Virtualenv 
+- Anaconda
 
-#### Pipenv
+### poetry
+1) May need to set the default (or local) python version in the project
 ```bash
-pipenv install
-pipenv shell
+pyenv local 3.12
+```
+2) install dependancies (this will create a new virtualenv)
+```bash
+poetry install
+```
+3) activate the env
+```bash
+poetry shell
+```
+4) add the env to ipykernel (to use in jupyter)
+```bash
 python -m ipykernel install --user --name=quetzal_env
-
 ```
 
-#### Virtualenv
-Virtual environment: `virtualenv .venv -p python3.8; source .venv/bin/activate` or any equivalent command.
+### Virtualenv
+Virtual environment: `virtualenv .venv -p python3.12; source .venv/bin/activate` or any equivalent command.
 
 ```bash
 pip install -e .
 ```
 
-
-
 #### Anaconda
-In order to use python notebook, Anaconda 3 + Python 3.8 must be installed.
+In order to use python notebook, Anaconda 3 + Python 3.12 must be installed.
 Then create + activate quetzal environment:
 ```bash
 conda init
-conda create -n quetzal_env -y python=3.8
+conda create -n quetzal_env -y python=3.12
 conda activate quetzal_env
-pip install -e . -r requirements.txt
+pip install -e . -r requirements_win.txt
 python -m ipykernel install --user --name=quetzal_env
 ```
 
-... Or use the `linus-install.sh` script.
 
-### For Windows
-`Anaconda 3 + Python 3.8` is supposed to be installed. You must edit the `Path`user environment variable, adding several folders where Anaconda is installed:
+
+## For Windows
+`Anaconda 3 + Python 3.12` is supposed to be installed. You must edit the `Path`user environment variable, adding several folders where Anaconda is installed:
 - `path-to-anaconda3\`
 - `path-to-anaconda3\Scripts`
 - `path-to-anaconda3\Library\bin`
 - `path-to-anaconda3\Library\usr\bin`
 
-#### PIP with Wheels (recommended)
-```bash
-(base) C:users\you\path\to\quetzal>windows-install-whl.bat
-```
-press enter to accept default environment name
-#### PIP and Anaconda 
+
+#### PIP and Anaconda (recommended)
 To create quetzal_env automatically and install quetzal 
 ```bash
 (base) C:users\you\path\to\quetzal> windows-install.bat
