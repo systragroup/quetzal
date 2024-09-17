@@ -134,7 +134,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 **od_volume_from_zones_kwargs
             )
 
-    def sample_volumes(self, bidimentional_sampling=True, fit_sums=True, sample_weight=1, sample_size=None, inplace=True,**kwargs):
+    def sample_volumes(self, bidimentional_sampling=False, fit_sums=True, sample_weight=1, sample_size=None, inplace=True,**kwargs):
         od_volumes = self.volumes.set_index(['origin', 'destination'])
 
         series = {}

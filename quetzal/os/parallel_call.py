@@ -76,7 +76,8 @@ def parallel_call_jobs(jobs, mode='w', leave=False, workers=1, sleep=1):
 
 
 def parallel_call_notebooks(
-    *notebook_arg_list_tuples,
+    notebook_list,
+    arg_list,
     stdout_path='out.txt',
     stderr_path='err.txt',
     workers=2,
@@ -86,24 +87,36 @@ def parallel_call_notebooks(
     freeze_support=True,
     return_jobs=False
 ):
-    start = time.time()
-    mode = 'w' if errout_suffix else 'a+'
-    jobs = []
-    outer_i = 0
-    for notebook, arg_list in notebook_arg_list_tuples:
-        os.system('jupyter nbconvert --to python %s' % notebook)
-        file = notebook.replace('.ipynb', '.py')
-        if freeze_support:
-            add_freeze_support(file)
 
-        for i in range(len(arg_list)):
-            arg = arg_list[i]
-            suffix = ''.join(arg) if errout_suffix else ''
-            suffix += '_' + file.split('/')[-1].split('.')[0]
-            stdout_file = stdout_path.replace('.txt', '_' + suffix + '.txt')
-            stderr_file = stderr_path.replace('.txt', '_' + suffix + '.txt')
-            jobs.append([outer_i, file, arg, stdout_file, stderr_file])
-            outer_i += 1
+    start = time.time()
+    jobs = []
+    files = []
+    for notebook in notebook_list:
+        file = notebook.replace('.ipynb', '.py')
+        files.append(file)
+        if not os.path.exists(file):
+            os.system('jupyter nbconvert --to python %s' % notebook)
+            if freeze_support:
+                add_freeze_support(file)
+        
+
+    mode = 'w' if errout_suffix else 'a+'
+
+    supported_characters = string.ascii_lowercase + string.ascii_uppercase + string.digits + '-_' 
+    for i in range(len(arg_list)):
+        arg = arg_list[i]
+        suffix = ''
+        if errout_suffix:
+            try:
+                temp = json.loads(arg)
+                suffix = '_'.join(temp.values())
+            except (json.JSONDecodeError, TypeError):
+                suffix = str(arg)
+        suffix += '_' + files[i].split('/')[-1].split('.')[0]
+        suffix = ''.join([s for s in suffix if s in supported_characters])
+        stdout_file = stdout_path.replace('.txt', '_' + suffix + '.txt')
+        stderr_file = stderr_path.replace('.txt', '_' + suffix + '.txt')
+        jobs.append([i, files[i], arg, stdout_file, stderr_file])
 
     parallel_call_jobs(jobs, mode=mode, leave=leave, workers=workers, sleep=sleep)
     end = time.time()
