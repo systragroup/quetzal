@@ -227,7 +227,7 @@ running an interactive shell to explore the docker container
  ``docker run -it --rm --entrypoint /bin/bash <docker_name>:<tag>``
 
  by default, you will be in `/var/task` which is where all your files (main.py for instance)
- the command `du -ah --max-depth=1 | sort -n` is usefull to see the size of each dir
+ the command `du -ah --max-depth=1 | sort -rh` is usefull to see the size of each dir
 
 # Knowned issue
 

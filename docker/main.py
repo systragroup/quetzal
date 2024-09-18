@@ -84,15 +84,17 @@ def handler(event, context):
     t0 = time.time()
     notebook = event['notebook_path']
     print(event)
-
     bucket_name = os.environ['BUCKET_NAME']
     # Move (and download) model data and inputs to ephemeral storage
+    t_clean = time.time()
     clean_folder()  # Clean ephemeral storage
-
+    print('clean: {} seconds'.format(time.time() - t_clean))
+    t_copy = time.time()
     try:
-        shutil.copytree('./inputs', '/tmp/inputs')
+        shutil.move('./inputs', '/tmp/inputs')
     except:
         print('cannot copy local docker inputs/ folder. its maybe missing on purpose')
+    print('copy docker files: {} seconds'.format(time.time() - t_copy))
    
     download_s3_folder(bucket_name, event['scenario_path_S3'])
     t1 = time.time()
