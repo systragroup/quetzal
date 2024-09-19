@@ -11,37 +11,6 @@ The official documentation is hosted on https://systragroup.github.io/quetzal
 ## Backward compatibility
 In order to improve the ergonomics, the code may be re-factored and a few method calls may be re-designed. As a consequence, the backward compatibility of the library is not guaranteed. Therefore, the version of quetzal used for a project should be specified in its requirements.
 
-## migration to 3.12
-* pandas append was remove: 
-```python
-# before
-sm.volumes = sm.volumes.append(vol)
-#now
-sm.volumes = pd.concat([sm.volumes, vol])
-#or
-sm.volumes = pd.concat([sm.volumes, pd.DataFrame(vol)])
-```
-filtering index with set was remove:
-```python
-# before
-sm.volumes = sm.volumes.loc[od_set]
-#now
-sm.volumes = sm.volumes.loc[list(od_set)]
-```
-
-* shapely
-```python
-# before
-hull = zones.unary_union.convex_hull
-# now
-hull = zones.union_all().convex_hull
-```
-* scikitlearn
-```python
-# add n_init='auto'
-KMeans(n_clusters=num_zones,random_state=0,n_init='auto')
-```
-
 # Installation from sources
 ## For Linux
 One should choose between 
@@ -114,3 +83,35 @@ Anaconda and Pip do not get along well, your Anaconda install may have been corr
 - Uninstall Anaconda
 - Delete your Python and Anaconda folders (users\you\Anaconda3, users\you\Appdata\Roaming\Python, ...etc)
 - Install Anaconda 
+
+
+## migration to 3.12
+* pandas append was remove: 
+```python
+# before
+sm.volumes = sm.volumes.append(vol)
+#now
+sm.volumes = pd.concat([sm.volumes, vol])
+#or
+sm.volumes = pd.concat([sm.volumes, pd.DataFrame(vol)])
+```
+filtering index with set was remove:
+```python
+# before
+sm.volumes = sm.volumes.loc[od_set]
+#now
+sm.volumes = sm.volumes.loc[list(od_set)]
+```
+
+* shapely
+```python
+# before
+hull = zones.unary_union.convex_hull
+# now
+hull = zones.union_all().convex_hull
+```
+* scikitlearn
+```python
+# add n_init='auto'
+KMeans(n_clusters=num_zones,random_state=0,n_init='auto')
+```
