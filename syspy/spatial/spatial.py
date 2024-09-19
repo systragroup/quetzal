@@ -200,7 +200,7 @@ def nearest(one, many, geometry=False, n_neighbors=1, to_crs=None):
         msg = 'index of one and many should not contain duplicates'
         print(msg)
         warnings.warn(msg)
-
+    n_neighbors = int(n_neighbors)
     df_many = add_geometry_coordinates(many.copy(), columns=['x_geometry', 'y_geometry'], to_crs=to_crs)
     df_one = add_geometry_coordinates(one.copy(), columns=['x_geometry', 'y_geometry'], to_crs=to_crs)
 
