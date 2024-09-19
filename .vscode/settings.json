@@ -14,5 +14,4 @@
         "--disable=W503"
     ],
     "python.linting.enabled": true,
-    "python.languageServer": "Jedi"
 }

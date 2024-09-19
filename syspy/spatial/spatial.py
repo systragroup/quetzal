@@ -21,7 +21,7 @@ from typing import Tuple
 from numba import jit, njit
 import numba as nb
 
-from pyproj import transform
+from pyproj import Transformer
 
 
 def bounds(df):
@@ -186,7 +186,8 @@ def add_geometry_coordinates(df, columns=['x_geometry', 'y_geometry'], to_crs=No
         if from_crs != to_crs:
             # pyproj takes [y,x] and return [x,y]. however. if from_crs == to_crs. it return [y,x].
             # so we do not apply this function if to_crs == from_crs.
-            df[columns[0]], df[columns[1]]  = transform(from_crs, to_crs, df[columns[1]], df[columns[0]])
+            transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
+            df[columns[0]], df[columns[1]]  = transformer.transform(df[columns[0]].values, df[columns[1]].values)
         
     return df
 
@@ -199,7 +200,7 @@ def nearest(one, many, geometry=False, n_neighbors=1, to_crs=None):
         msg = 'index of one and many should not contain duplicates'
         print(msg)
         warnings.warn(msg)
-
+    n_neighbors = int(n_neighbors)
     df_many = add_geometry_coordinates(many.copy(), columns=['x_geometry', 'y_geometry'], to_crs=to_crs)
     df_one = add_geometry_coordinates(one.copy(), columns=['x_geometry', 'y_geometry'], to_crs=to_crs)
 

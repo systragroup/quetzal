@@ -73,7 +73,7 @@ def compute_pattern_headways(feed, time_range, pattern_column='pattern_id'):
         ['arrival_time', 'departure_time']
     ].rename(columns={'arrival_time': 'start_time', 'departure_time': 'end_time'}).reset_index()
     temp_stop_times['headway_secs'] = 0
-    temp_frequencies = temp_frequencies.append(temp_stop_times)
+    temp_frequencies = pd.concat([temp_frequencies,temp_stop_times])
 
     time_range_sec = [hhmmss_to_seconds_since_midnight(x) for x in time_range]
 

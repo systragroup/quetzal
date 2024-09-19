@@ -1,0 +1,39 @@
+[tool.poetry]
+name = "quetzal"
+version = "1.0.0"
+description = "modeling library for transport planning"
+authors = ["Quentin Chasserieau <qchasserieau@systra.com"]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+numpy = "<2.0"
+pandas = "<3.0"
+geopandas = "*"
+gtfs-kit = "*"
+openpyxl = "*"
+numba = "*"
+boto3 = "*"
+fastapi = "*"
+uvicorn = "*"
+scipy = "*"
+geopy = "*"
+scikit-learn = "*"
+matplotlib = "*"
+notebook = "<7.0"
+setuptools = "*"
+tqdm = "*"
+seaborn = "*"
+xlrd = "*"
+s3fs = "*"
+rasterio = "*"
+ipywidgets = "*"
+openmatrix = "*"
+snakeviz = "*" 
+pip-chill = "*"
+networkx = "*"
+
+
+
+
+

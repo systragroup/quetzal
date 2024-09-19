@@ -1,5 +1,5 @@
 __author__ = 'qchasserieau'
-import collections
+from collections.abc import Iterable
 import itertools
 
 import pandas as pd
@@ -15,6 +15,8 @@ def nested_list(volume_array, paths):
 
 
 def fast_assign(volume_array, paths):
+    paths = paths[volume_array>0]
+    volume_array = volume_array[volume_array>0]
     z = zip(volume_array, paths)
     d = {}
     for volume, path in list(z):
@@ -42,7 +44,7 @@ def assign(volume_array, paths, checkpoints=None, checkpoints_how='all'):
     volumes = list(itertools.chain.from_iterable(nested_volumes))
     try:
         # volumes_array is an ndarray
-        assert isinstance(volumes[0], collections.Iterable)
+        assert isinstance(volumes[0], Iterable)
         sparse = pd.concat(
             (pd.DataFrame({'link': column_indices}),
              pd.DataFrame(volumes)),

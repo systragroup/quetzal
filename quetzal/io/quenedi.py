@@ -134,15 +134,15 @@ def compute_time_and_speed(links, dwell_from='departure'):
     return links
 
 
-def split_quenedi_rlinks(self, oneway='0'):
+def split_quenedi_rlinks(road_links, oneway='0'):
     """
     split road_links into two directions.
     attributes with _r suffix are applied to the reverse links.
     """
-    if 'oneway' not in self.road_links.columns:
+    if 'oneway' not in road_links.columns:
         print('no column oneway. do not split')
         return
-    links_r = self.road_links[self.road_links['oneway']==oneway].copy()
+    links_r = road_links[road_links['oneway']==oneway].copy()
     if len(links_r) == 0:
         print('all oneway, nothing to split')
         return
@@ -156,22 +156,42 @@ def split_quenedi_rlinks(self, oneway='0'):
     # reverse links (a=>b, b=>a)
     links_r = links_r.rename(columns={'a': 'b', 'b': 'a'})
     links_r['geometry'] = links_r['geometry'].apply(lambda g: reverse_geometry(g))
-    self.road_links = pd.concat([self.road_links, links_r])
+    road_links = pd.concat([road_links, links_r])
+    return road_links
 
 
-def to_geojson(gdf,tmp_path,new_dir,name,to_4326=True, engine='pyogrio'):
+def merge_quenedi_rlinks(road_links,new_cols=[]):
+    if 'oneway' not in road_links.columns:
+        print('no column oneway. do not merge')
+        return
+    #get reversed links
+    index_r = [idx for idx in road_links.index if idx.endswith('_r')]
+    if len(index_r) == 0:
+        print('all oneway, nothing to merge')
+        return
+    links_r = road_links.loc[index_r].copy()
+    # create new reversed column with new columns
+    for col in new_cols:
+        links_r[col + '_r'] = links_r[col]
+    # reindex with initial non _r index to merge
+    links_r.index = links_r.index.map(lambda x: x[:-2])
+    new_cols_r = [col+ '_r' for col in new_cols]
+    links_r = links_r[new_cols_r]
+    # drop added _r links, merge new columns to inital two way links.
+    road_links = road_links.drop(index_r, axis=0)
+    # drop column if they exist before merge. dont want duplicates
+    for col in new_cols_r:
+        if col in road_links.columns:
+            road_links = road_links.drop(columns=col)
+    
+    road_links = pd.merge(road_links, links_r, left_index=True, right_index=True, how='left')
+    return road_links
+
+
+def _to_geojson(gdf,tmp_path,new_dir,name,to_4326=True, engine='pyogrio'):
     if to_4326:
         gdf = gdf.to_crs(4326)
     p = tmp_path / os.path.join(new_dir, name + '.geojson')
-    print(os.path.join(new_dir, name + '.geojson'))
-    gdf.to_file(str(p),driver='GeoJSON',engine=engine)
-
-
-def to_geojson(gdf,tmp_path,new_dir,name,to_4326=True, engine='pyogrio'):
-    if to_4326:
-        gdf = gdf.to_crs(4326)
-    p = tmp_path / os.path.join(new_dir, name + '.geojson')
-    print( name + '.geojson')
     gdf.to_file(str(p),driver='GeoJSON',engine=engine)
 
 def to_zip(sm, path='test.zip', to_export=['pt','road'],inputs=[],outputs=[],to_4326=False, engine='pyogrio'):
@@ -197,14 +217,14 @@ def to_zip(sm, path='test.zip', to_export=['pt','road'],inputs=[],outputs=[],to_
         os.makedirs(new_dir)
         for name in ['links','nodes']:
             gdf = getattr(sm, name)
-            to_geojson(gdf,tmp_path,new_dir,name,to_4326,engine)
+            _to_geojson(gdf,tmp_path,new_dir,name,to_4326,engine)
         
     if 'road_links' in sm.__dict__.keys() and 'road' in to_export:
         new_dir = tmp_path / 'inputs/road'
         os.makedirs(new_dir)
         for name in ['road_links','road_nodes']:
             gdf = getattr(sm, name)
-            to_geojson(gdf,tmp_path,new_dir,name,to_4326,engine)
+            _to_geojson(gdf,tmp_path,new_dir,name,to_4326,engine)
 
     for name in inputs:
         if name not in sm.__dict__.keys():
@@ -214,7 +234,7 @@ def to_zip(sm, path='test.zip', to_export=['pt','road'],inputs=[],outputs=[],to_
             os.makedirs(new_dir)
         data = getattr(sm, name)
         if type(data) == gpd.GeoDataFrame:
-            to_geojson(data,tmp_path,new_dir,name,to_4326,engine)
+            _to_geojson(data,tmp_path,new_dir,name,to_4326,engine)
         elif type(data) == pd.DataFrame:
             p = tmp_path / os.path.join(new_dir, name + '.csv')
             print( name + '.csv')
@@ -228,7 +248,7 @@ def to_zip(sm, path='test.zip', to_export=['pt','road'],inputs=[],outputs=[],to_
             os.makedirs(new_dir)
         data = getattr(sm, name)
         if type(data) == gpd.GeoDataFrame:
-            to_geojson(data,tmp_path,new_dir,name,to_4326,engine)
+            _to_geojson(data,tmp_path,new_dir,name,to_4326,engine)
         elif type(data) == pd.DataFrame:
             p = tmp_path / os.path.join(new_dir, name + '.csv')
             print( name + '.csv')
@@ -239,21 +259,26 @@ def to_zip(sm, path='test.zip', to_export=['pt','road'],inputs=[],outputs=[],to_
     tmp_dir.cleanup()
 
 
-def read_geojson(file_name,list_columns=['road_link_list'],**kwargs):
+def read_geojson(filename,**kwargs):
     '''
-    read with geopandas and manualy add list properties from list_columns.
+    read geojson with gpd.read_file but add unreadable columns susch as List.
+    Set index if index in column else set index name as 'index'
     '''
-    def get_property_values(json_data,column='road_link_list',default = []):
-        ls = []
-        for features in json_data['features']:
-            properties = features['properties']
-            ls.append(properties.get(column, default))
-        return ls
-    gdf = gpd.read_file(file_name,**kwargs)
- 
-    with open(file_name) as f:
-        json_data = json.load(f)
-    for col in list_columns:
-        ls = get_property_values(json_data, col)
-        gdf[col] = ls
+    gdf = gpd.read_file(filename,**kwargs)
+    if 'index' in gdf.columns:
+        gdf.set_index('index', inplace=True)
+    else:
+        gdf.index.name = 'index'
+
+    with open(filename, 'r') as j:
+        json_data = json.loads(j.read())
+    json_prop = json_data['features'][0]['properties'].keys()
+    missing_columns = set(json_prop).difference(gdf.columns)
+    missing_columns.discard('index')# dont want to add index
+    for col in missing_columns:
+        d = {f['properties']['index']: f['properties'][col] for f in json_data['features']}
+        gdf[col] = gdf.index.map(d)
+
+    
+
     return gdf

@@ -5,12 +5,201 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy.sparse.csgraph import dijkstra
+from shapely import get_coordinates
 from sklearn.neighbors import NearestNeighbors
 from quetzal.engine.pathfinder_utils import sparse_matrix
 from syspy.spatial.spatial import add_geometry_coordinates
-from multiprocessing import Process, Manager
+from quetzal.os.parallel_call import parallel_executor
 from typing import Tuple
+from numba import njit
 
+@njit
+def get_points_along_line(p1,p2,distance=20):
+    direction = p2 - p1
+    # Calculate the magnitude of the direction vector
+    length = np.linalg.norm(direction)
+    # ge number of points to interp
+    points_count = int(length // distance) 
+    resp=np.empty((points_count,2))
+    # Normalize the direction vector to get the unit vector
+    unit_vector = direction / length
+    
+    # Compute the point at distance t meters along the vector
+    for i in range(points_count):
+        pt = p1 + distance*(i + 1) * unit_vector
+        resp[i]=pt
+
+    return resp
+
+def get_points_along_multiline(multiline,distance=10):
+    resp=multiline
+    num_pts = len(multiline)
+    for i in range(num_pts-1):
+        new_pts = get_points_along_line(multiline[i], multiline[i+1],distance)
+        resp = np.concatenate([resp,new_pts])
+    return resp
+
+@njit
+def _point_to_segment_distance(point, segment):
+    """
+    Calculate the distance between a point and a line segment.
+
+    :param point: Tuple representing the point (x0, y0)
+    :param segment: Tuple containing two points that define the segment ((x1, y1), (x2, y2))
+    :return: The shortest distance from the point to the segment
+    """
+    (x0, y0) = point
+    (x1, y1), (x2, y2) = segment
+    resp=np.zeros(0)
+    
+    # Vector from the first point of the segment to the given point
+    p1_to_p = np.array([x0 - x1, y0 - y1])
+    
+    # Vector along the segment
+    p1_to_p2 = np.array([x2 - x1, y2 - y1])
+    
+    # Squared length of the segment
+    segment_length_squared = p1_to_p2.dot(p1_to_p2)
+    
+    if segment_length_squared == 0:
+        # The segment is actually a point (x1, y1)
+        return np.linalg.norm(p1_to_p)
+    
+    # Projection of point onto the segment, normalized by the segment's length squared
+    t = p1_to_p.dot(p1_to_p2) / segment_length_squared
+    if t < 0:
+        # The projection falls before the segment's start point
+        nearest_point = np.array([x1, y1])
+    elif t > 1:
+        # The projection falls after the segment's end point
+        nearest_point = np.array([x2, y2])
+    else:
+        # The projection falls on the segment
+        nearest_point = np.array([x1, y1]) + t * p1_to_p2
+    
+    # Distance from the point to the nearest point on the segment
+    distance =  np.sqrt((x0 - nearest_point[0])**2 + (y0 - nearest_point[1])**2)
+    return distance
+    
+@njit
+def _point_to_multiLine_distance(point, line):
+    num_pts = len(line)
+    best=np.inf
+    for i in range(num_pts-1):
+        res = _point_to_segment_distance(point,[line[i], line[i+1]])
+        if res < best:
+            best = res
+    return best
+
+def point_to_line_distance(points:np.array, lines:np.array) -> np.array:
+    '''
+    gives the distance of a point to a line
+    points should be an array of pts and not a shapely Point :[[x, y],[x, y]]
+    lines should be an array of lines and not a shapely lines :[[[x1, y1], [x2, y2]], ...]
+
+    This new version is up to 16X faster than shapely distance function
+
+    transform geom with : 
+    points -> geom.coords[0] 
+    lines -> np.array(geom.coords)
+    '''
+    return [_point_to_multiLine_distance(p,l) for p, l in zip(points, lines)]
+
+def project(A, B, normalized=False):
+    return [a.project(b, normalized=normalized) for a, b in zip(A, B)]
+
+def nearest(one, links, radius=False):
+    try:
+        # Assert df_many.index.is_unique
+        assert one.index.is_unique
+    except AssertionError:
+        msg = 'Index of one and many should not contain duplicates'
+        print(msg)
+        warnings.warn(msg)
+
+    df_one = add_geometry_coordinates(one.copy())
+
+    y = df_one[['x_geometry', 'y_geometry']].values
+    if radius:
+        indices = links.r_nbrs.radius_neighbors(y, radius = links.radius_search, return_distance=False)
+    else:
+        indices = links.nbrs.kneighbors(y,n_neighbors=links.n_neighbors_centroid,return_distance=False)
+        
+    indices = pd.DataFrame(indices)
+    indices = pd.DataFrame(indices.stack(), columns=['index_nn']).reset_index().rename(
+        columns={'level_0': 'ix_one', 'level_1': 'rank'}
+    )
+    if radius:
+        indices = indices.explode('index_nn')
+    
+    indices['index_nn'] = indices['index_nn'].apply(lambda x: links.knn_dict.get(x))
+
+    return indices
+
+def emission_logprob(distance, SIGMA, p):
+    # c = 1 / (SIGMA * np.sqrt(2 * np.pi))
+    # return c*np.exp(-0.5*(distance/SIGMA)**2)
+    # return -np.log10(np.exp(-0.5*(distance/SIGMA)**2))
+    return 0.5 * (distance / SIGMA) ** p  # Drop constant with log. its the same for everyone.
+
+def transition_logprob(dijkstra_dist, gps_dist, BETA, diff):
+    c = 1 / BETA
+    delta = abs(dijkstra_dist - gps_dist)
+    # return c * np.exp(-c * delta)
+    if diff:
+        return c * delta
+    else:
+        return c * dijkstra_dist
+
+def turning_penalty_logprob(angle, BETA, ALPHA=50):
+    c = 1 / BETA
+    angle = (angle + 180) % 360 - 180
+    turning_penalty = ALPHA / (1 + np.exp(-0.09 * (abs(angle) - 90)))
+    # return c*np.exp(-c*delta)
+    return c * turning_penalty
+
+
+def get_candidat_links(gps_track,links,method):
+    
+    if method == 'knn':
+        candidat_links = nearest(gps_track, links,radius=False).drop(columns=['rank'])
+    
+    elif method == 'both':
+        candidat_links = nearest(gps_track, links,radius=True).drop(columns=['rank'])
+        candidat_links = candidat_links.dropna()
+        temp_candidat = nearest(gps_track, links,radius=False).drop(columns=['rank'])
+        candidat_links = pd.concat([candidat_links, temp_candidat]).sort_values('ix_one').reset_index(drop=True)
+        
+    elif method == 'radius':
+        candidat_links = nearest(gps_track, links,radius=True).drop(columns=['rank'])
+        unfound_points = candidat_links[candidat_links['index_nn'].isnull()]['ix_one'].values
+        candidat_links = candidat_links.dropna()
+    
+        if len(unfound_points)>0:
+            print(len(unfound_points), 'unfound with radius. use KNN for those')
+            index_dict = {i:k for  i,k in enumerate(unfound_points)}
+            temp_candidat = nearest(gps_track.loc[unfound_points], links,radius=False).drop(columns=['rank'])
+            temp_candidat['ix_one'] = temp_candidat['ix_one'].apply(lambda x: index_dict.get(x))
+            candidat_links = pd.concat([candidat_links,temp_candidat]).sort_values('ix_one').reset_index(drop=True)
+
+    return candidat_links
+
+
+def convert_timestamp(gps_track):
+    try:
+        gps_track['timestamp']
+    except KeyError:
+        raise Exception('must inclide timestamp in columns for the speed_limit=True flag')
+
+    # need pandas timestamp of ms. time in ms!!
+    # convert to ms timestamp
+    if type(gps_track['timestamp'][0]) == pd.Timestamp:
+        gps_track['timestamp'] = gps_track['timestamp'].apply(lambda x: int(x.timestamp() * 1000))
+    elif type(gps_track['timestamp'][0]) == str:
+        gps_track['timestamp'] = gps_track['timestamp'].apply(lambda x: pd.Timestamp(x)).apply(
+            lambda x: int(x.timestamp() * 1000))
+    else:  # it's float or int, must be ms tho.
+        pass
 
 class RoadLinks:
     '''
@@ -21,12 +210,15 @@ class RoadLinks:
     links (gpd.GeoDataFrame): links in a metre projection (not 4326 or 3857)
     gps_track (gpd.GeoDataFrame): [['index','geometry']] ordered list of geometry Points. only needed if links is None (to import the links from osmnx)
     n_neighbors_centroid (int) : number of neighbor using the links centroid. first quick pass to find all good candidat road.
-
+    radius_search (int) : radius (meters) to search neighbor. first quick pass to find all good candidat road.
+    on_centroid (bool) : if False. add points on links every search_radius * 2 meters. so we are sure to find close roads.
+                        else: use links centroid for the neighbor search.
+    
     returns
     ----------
     RoadLinks object for mapmatching
     '''
-    def __init__(self, links, n_neighbors_centroid=100):
+    def __init__(self, links, n_neighbors_centroid=10,radius_search=250,on_centroid=False):
 
         self.links = links
         assert self.links.crs != None, 'road_links crs must be set (crs in meter, NOT 3857)'
@@ -35,7 +227,9 @@ class RoadLinks:
 
         self.crs = links.crs
         self.n_neighbors_centroid = n_neighbors_centroid
-        
+        if len(links) < self.n_neighbors_centroid: self.n_neighbors_centroid = len(links)
+        self.radius_search = radius_search
+    
         try:
             self.links['length']
         except Exception:
@@ -46,7 +240,10 @@ class RoadLinks:
 
         self.get_sparse_matrix()
         self.get_dict()
-        self.fit_nearest_model()
+        if on_centroid:
+            self.fit_nearest_centroid()
+        else:
+            self.fit_nearest_model()
 
         
     def get_sparse_matrix(self):
@@ -61,17 +258,38 @@ class RoadLinks:
         self.dict_link = self.links.sort_values('length', ascending=True).drop_duplicates(['a', 'b'], keep='first').set_index(['a', 'b'], drop=False)[ 'index'].to_dict()
         self.length_dict = self.links['length'].to_dict()
         self.geom_dict = dict(self.links['geometry'])
+        self.geom_dict_arr = {key: get_coordinates(item) for key, item in self.geom_dict.items()}
+        if 'bearing' in self.links.columns:
+            self.bearing_dict = self.links['bearing'].to_dict()
+
 
     def fit_nearest_model(self):
         # Fit Nearest neighbors model
+        # add points along each links at every self.radius_search
+        # do the knn on those points. this will make sure that every links is found in the search radius,
+        # even very long links with centroid realy far away.
+        
+        dist = self.radius_search #* 1.41 could divide by 2 or srt2. as we seach in diameter of double de radius
+        interp_points_dict = {key:get_points_along_multiline(item,dist) for key,item in  self.geom_dict_arr.items()}
+
+        indexes=[]; points=[]
+        for key,item in interp_points_dict.items():
+            indexes+=[key]*len(item)
+            points.append(item)
+        points = np.concatenate(points, axis=0)
+        self.nbrs = NearestNeighbors(n_neighbors=self.n_neighbors_centroid, algorithm='ball_tree').fit(points)
+        self.r_nbrs = NearestNeighbors(radius=self.radius_search, algorithm='ball_tree').fit(points)
+        # we added points to links. this give us: knn_index:link_index
+        self.knn_dict = {i:j for i,j in enumerate(indexes)}
+
+    def fit_nearest_centroid(self):
+        # Fit Nearest neighbors model with links centroid
         links = add_geometry_coordinates(self.links, columns=['x_geometry', 'y_geometry'])
         x = links[['x_geometry', 'y_geometry']].values
-
-        if len(links) < self.n_neighbors_centroid: self.n_neighbors_centroid = len(links)
-
         self.nbrs = NearestNeighbors(n_neighbors=self.n_neighbors_centroid, algorithm='ball_tree').fit(x)
-
-
+        self.r_nbrs = NearestNeighbors(radius=self.radius_search, algorithm='ball_tree').fit(x)
+        # we added points to links. this give us: knn_index:link_index
+        self.knn_dict = {i:i for i in range(len(x))}
 
 def get_gps_tracks(links, nodes, by='trip_id', sequence='link_sequence'):
     '''
@@ -95,7 +313,7 @@ def get_gps_tracks(links, nodes, by='trip_id', sequence='link_sequence'):
     single_points[sequence] = -1
     single_points.index = 'node_a_' + single_points.index.map(str)
 
-    gps_tracks = gps_tracks.append(single_points)
+    gps_tracks = pd.concat([gps_tracks,single_points])
 
     # remove single links that a==b.
     gps_tracks = gps_tracks[gps_tracks['a'] != gps_tracks['b']]
@@ -121,31 +339,20 @@ def Parallel_Mapmatching(gps_tracks: pd.DataFrame,
     chunk_length =  round(len(trip_list)/ num_cores)
     # Split the list into four sub-lists
     chunks = [trip_list[j:j+chunk_length] for j in range(0, len(trip_list), chunk_length)]
+    chunk_gps_tracks = [gps_tracks[gps_tracks[by].isin(trips)] for trips in chunks]
 
-    # multi threading!
-    def process_wrapper(chunk, kwargs, result_list, index):
-        result = Multi_Mapmatching(chunk, **kwargs)
-        result_list[index] = result
-    manager = Manager()
-    result_list = manager.list([None] * len(chunks))
-    processes = []
-    pkwargs = {'road_links':road_links,'routing':routing,'n_neighbors':n_neighbors,'distance_max':distance_max,'by':by,**kwargs}
-    for i, trips in enumerate(chunks):
-        chunk_gps_tracks = gps_tracks[gps_tracks[by].isin(trips)]
-        process = Process(target=process_wrapper, args=(chunk_gps_tracks, pkwargs, result_list, i))
-        process.start()
-        processes.append(process)
-    for process in processes:
-        process.join()
-    # Convert the manager list to a regular list for easier access
-    result_list = np.array(result_list)
 
-    vals = pd.concat(result_list[:,0])
-    node_lists = pd.concat(result_list[:,1])
+    kwargs = {'road_links':road_links,'routing':routing,'n_neighbors':n_neighbors,'distance_max':distance_max,'by':by,**kwargs}
+    results = parallel_executor(Multi_Mapmatching,
+                                num_workers=len(chunks),
+                                parallel_kwargs={'gps_tracks': chunk_gps_tracks},
+                                **kwargs)
+
+    vals = pd.concat([res[0] for res in results])
+    node_lists = pd.concat([res[1] for res in results])
     unmatched_trip=[]
     return vals, node_lists, unmatched_trip
 
-    
 
 def Multi_Mapmatching(gps_tracks: pd.DataFrame,
                         road_links: RoadLinks,
@@ -197,8 +404,8 @@ def Multi_Mapmatching(gps_tracks: pd.DataFrame,
             # apply input index
             val.index = val.index.map(gps_index_dict)
             node_list.index = node_list.index.map(gps_index_dict)
-            vals = vals.append(val)
-            node_lists = node_lists.append(node_list)
+            vals = pd.concat([vals, val])
+            node_lists = pd.concat([node_lists, node_list])
 
     # add matched points on road
     
@@ -206,120 +413,87 @@ def Multi_Mapmatching(gps_tracks: pd.DataFrame,
     return vals, node_lists, unmatched_trip
 
 
-
-
-def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10, 
-                distance_max:float=1000, routing:bool=False, plot:bool=False,
-                SIGMA:float=4.07, BETA:float=3, POWER:float=2,DIFF=True,) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def Mapmatching(gps_track:list,
+                links:RoadLinks,
+                n_neighbors:int=10, 
+                distance_max:float=1000, 
+                dijkstra_limit = None,
+                routing:bool=False,
+                nearest_method:str='radius',
+                speed_limit:bool=False,
+                turn_penalty:bool=False,
+                plot:bool=False,
+                MAX_SPEED:int=500,
+                SIGMA:float=4.07,
+                BETA:float=3, 
+                POWER:float=2, 
+                DIFF=True) -> Tuple[pd.DataFrame, pd.DataFrame]:
     
 
     """
     gps_track: ordered list of geometry Point (in metre)
     links: RoadLinks object
-    distance_max: max radius to search candidat road for each gps point (default = 200m)
+    distance_max: max radius to search candidat road for each gps points
+    dijkstra_limit: first dijkstra limit. if None. will use half the STD of the gps points coords.
     routing: True return the complete routing from the first to the last point on the road network (default = False)
+    nearest_method: knn, radius or both.
+    speed_limit: add a penalty if speed is larger dans maxspeed.
+    turn_penalty: add a penalty depending on the road angle : must have 'bearing' in the road links
+    
     Hidden Markov Map Matching Through Noise and Sparseness
         Paul Newson and John Krumm 2009
 
     Weight : 1/2 * 1/SIGMA**2 * (proj dist)**2 + 1/BETA * abs(dijkstra_dist - as_the_crow_flies_dist)
     """
-
     
-    dijkstra_limit = 2000  # Limit on first dijkstra on road network.
-
-    def nearest(one, nbrs, geometry=False):
-        try:
-            # Assert df_many.index.is_unique
-            assert one.index.is_unique
-        except AssertionError:
-            msg = 'Index of one and many should not contain duplicates'
-            print(msg)
-            warnings.warn(msg)
-
-        df_one = add_geometry_coordinates(one.copy())
-
-        # x = df_many[['x_geometry','y_geometry']].values
-        y = df_one[['x_geometry', 'y_geometry']].values
-
-        distances, indices = nbrs.kneighbors(y)
-
-        indices = pd.DataFrame(indices)
-        distances = pd.DataFrame(distances)
-        indices = pd.DataFrame(indices.stack(), columns=['index_nn']).reset_index().rename(
-            columns={'level_0': 'ix_one', 'level_1': 'rank'}
-        )
-        return indices
-
-    # Unused
-    def routing_correction(length, x):
-        if x['road_a'] == x['road_b']:
-            return x['road_b_offset'] - x['road_a_offset']
-        else:
-            return x['dijkstra'] + length - x['road_a_offset'] + x['road_b_offset']
-
-    def emission_logprob(distance, SIGMA=SIGMA, p=POWER):
-        # c = 1 / (SIGMA * np.sqrt(2 * np.pi))
-        # return c*np.exp(-0.5*(distance/SIGMA)**2)
-        # return -np.log10(np.exp(-0.5*(distance/SIGMA)**2))
-        return 0.5 * (distance / SIGMA) ** p  # Drop constant with log. its the same for everyone.
-
-    def transition_logprob(dijkstra_dist, gps_dist, BETA=BETA,diff=DIFF):
-        c = 1 / BETA
-        delta = abs(dijkstra_dist - gps_dist)
-        # return c * np.exp(-c * delta)
-        if diff:
-            return c * delta
-        else:
-            return c * dijkstra_dist
-
-    # x=np.linspace(0,50,101)
-    # y=transition_prob(x,25)
-    # plt.plot(x,y)
-    # plt.xlabel('metre')
-    # plt.ylabel('probability')
-
-    # path_prob = emission_prob(100)+transition_prob(x,3)
-    # plt.plot(x,path_prob)
-
-    # process map
+    
+    if dijkstra_limit is None:
+        dijkstra_limit = add_geometry_coordinates(gps_track)[['x_geometry','y_geometry']].std().mean() / 2
 
     gps_dict = gps_track['geometry'].to_dict()
+    gps_dict_arr = {key: item.coords[0] for key, item in gps_dict.items()}
     # GPS point distance to next point.
     gps_dist_dict = gps_track['geometry'].distance(gps_track.shift(-1)).to_dict()
+   
 
+
+    if speed_limit:
+        convert_timestamp(gps_track)
+        timestamp_dict = (gps_track['timestamp'].shift(-1) - gps_track['timestamp']).to_dict()
+        # (dist/1000)/(time/1000/3600) # speed in kmh
 
     # ======================================================
     # Nearest roads and data preparation
     # ======================================================
-    candidat_links = nearest(gps_track, links.nbrs).drop(columns=['rank'])
 
-    def project(A, B, normalized=False):
-        return [a.project(b, normalized=normalized) for a, b in zip(A, B)]
+    
+    candidat_links = get_candidat_links(gps_track, links, method=nearest_method)
+   
 
-    def distance(A, B):
-        return [a.distance(b) for a, b in zip(A, B)]
 
-    candidat_links['road_geom'] = candidat_links['index_nn'].apply(lambda x: links.geom_dict.get(x))
-    candidat_links['gps_geom'] = candidat_links['ix_one'].apply(lambda x: gps_dict.get(x))
+    candidat_links['road_geom_arr'] = candidat_links['index_nn'].apply(lambda x: links.geom_dict_arr.get(x))
+    candidat_links['gps_geom_arr'] = candidat_links['ix_one'].apply(lambda x: gps_dict_arr.get(x))
 
     # Add gps distance to road.
-    candidat_links['distance'] = distance(candidat_links['gps_geom'], candidat_links['road_geom'])
+    candidat_links['distance'] = point_to_line_distance(candidat_links['gps_geom_arr'], candidat_links['road_geom_arr'])
 
     candidat_links.sort_values(['ix_one', 'distance'], inplace=True)
-    ranks = list(range(links.n_neighbors_centroid)) * len(gps_track)
+    len_list = candidat_links.groupby('ix_one')['index_nn'].agg(len).values
+    ranks = [i  for length in len_list for i in range(length)]
     candidat_links['actual_rank'] = ranks
     candidat_links = candidat_links.loc[candidat_links['actual_rank'] < n_neighbors]
     candidat_links = candidat_links[candidat_links['distance'] < distance_max]
     candidat_links = candidat_links.reset_index().drop(columns=['index'])
 
     # Add offset
-    # candidat_links['normalized_offset'] = project(candidat_links['road_geom'],candidat_links['gps_geom'],normalized=True)
+    candidat_links['road_geom'] = candidat_links['index_nn'].apply(lambda x: links.geom_dict.get(x))
+    candidat_links['gps_geom'] = candidat_links['ix_one'].apply(lambda x: gps_dict.get(x))
     candidat_links['offset'] = project(candidat_links['road_geom'], candidat_links['gps_geom'], normalized=False)
     dict_distance = candidat_links.set_index(['ix_one', 'index_nn'])['distance'].to_dict()
 
     # make tuple with road index and offset.
     candidat_links['index_nn'] = list(zip(candidat_links['index_nn'], candidat_links['offset']))
-    candidat_links = candidat_links.drop(columns=['road_geom', 'gps_geom', 'offset', 'distance', 'actual_rank'])
+    candidat_links = candidat_links.drop(columns=['road_geom', 'gps_geom', 'road_geom_arr', 'gps_geom_arr', 'offset', 'distance', 'actual_rank'])
 
     # add virtual nodes start and end.
     candidat_links.loc[len(candidat_links)] = [candidat_links['ix_one'].max() + 1, candidat_links['index_nn'].iloc[-1]]
@@ -368,11 +542,11 @@ def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10,
 
     # Dijktra on the road network from node = incices to every other nodes.
     # From b to a.
-    dist_matrix, predecessors = dijkstra(
+    dist_matrix = dijkstra(
         csgraph=links.mat,
         directed=True,
         indices=origin_sparse,
-        return_predecessors=True,
+        return_predecessors=False,
         limit=dijkstra_limit
     )
 
@@ -392,7 +566,7 @@ def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10,
     dist_matrix = dist_matrix.replace(np.inf, np.nan)
 
     # Applique la distance routing a candidat_link
-    temp_dist_matrix = dist_matrix.stack(dropna=True).reset_index().rename(
+    temp_dist_matrix = dist_matrix.stack().reset_index().rename(
         columns={'level_0': 'b', 'level_1': 'a', 0: 'dijkstra'}
     )
     candidat_links = candidat_links.merge(temp_dist_matrix, left_on=['node_b', 'node_a'], right_on=['b', 'a'],
@@ -405,11 +579,11 @@ def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10,
         origin_sparse2 = [links.node_index[x] for x in unfound_origin_nodes]
         # Dijktra on the road network from node = incices to every other nodes.
         # from b to a.
-        dist_matrix2, predecessors2 = dijkstra(
+        dist_matrix2 = dijkstra(
             csgraph=links.mat,
             directed=True,
             indices=origin_sparse2,
-            return_predecessors=True,
+            return_predecessors=False,
             limit=np.inf
         )
 
@@ -425,7 +599,7 @@ def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10,
         dist_matrix.loc[dist_matrix2.index] = dist_matrix2
 
         candidat_links = candidat_links.drop(columns='dijkstra')
-        temp_dist_matrix = dist_matrix.stack(dropna=True).reset_index().rename(
+        temp_dist_matrix = dist_matrix.stack().reset_index().rename(
             columns={'level_0': 'b', 'level_1': 'a', 0: 'dijkstra'}
         )
         candidat_links = candidat_links.merge(temp_dist_matrix, left_on=['node_b', 'node_a'], right_on=['b', 'a'],
@@ -435,8 +609,6 @@ def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10,
     # Calcul probabilité
     # ======================================================
 
-    # Apply offset difference to Dijkstra
-    # candidat_links['dijkstra'] = candidat_links.apply(lambda x: routing_correction(links.loc[x['road_a']]['length'],x),axis=1)
 
     candidat_links['length'] = candidat_links['road_a'].apply(lambda x: links.length_dict.get(x))
 
@@ -457,8 +629,32 @@ def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10,
     candidat_links['gps_distance'] = candidat_links['ix_one'].apply(lambda x: gps_dist_dict.get(x))  # .fillna(3)
 
     # path prob
-    candidat_links['path_prob'] = emission_logprob(candidat_links['distance_to_road']) + transition_logprob(
-        candidat_links['dijkstra'], candidat_links['gps_distance'])
+    candidat_links['path_prob'] = emission_logprob(candidat_links['distance_to_road'], SIGMA, POWER)
+    candidat_links['path_prob'] += transition_logprob(candidat_links['dijkstra'], candidat_links['gps_distance'], BETA, DIFF)
+
+    if (turn_penalty == True) and ('bearing_dict' in links.__dict__.keys()):
+        candidat_links['angle'] = candidat_links['road_a'].apply(lambda x: links.bearing_dict.get(x)) - candidat_links[
+            'road_b'].apply(lambda x: links.bearing_dict.get(x))
+        candidat_links['path_prob'] += turning_penalty_logprob(candidat_links['angle'], BETA)
+    
+
+    if speed_limit:
+        # (dist/1000)/(time/1000/3600) # speed in kmh
+        candidat_links['gps_time'] = candidat_links['ix_one'].apply(lambda x: timestamp_dict.get(x,0)) / 1000 / 3600
+        candidat_links['speed'] = (candidat_links['dijkstra'] / 1000) / (candidat_links['gps_time'])
+
+        # correction, on ne veut pas filtrer les chemins qui sont le meme link.
+        # si une route est en U par exemple, deux points peuvent se matche tres loins
+        # en routing sur la meme route et la vitesse devient > max.
+        candidat_links.loc[candidat_links['road_a']==candidat_links['road_b'],'speed'] = 0
+        # dont drop virtual nodes and observation at the same exact time (speed = inf)
+        candidat_links.loc[candidat_links['gps_time'] == 0, 'speed']=0
+
+        # add penality of 1 per km over the limit.
+        #candidat_links= candidat_links[candidat_links['speed']<MAX_SPEED]
+        candidat_links['path_prob'] += candidat_links['speed'].apply(lambda x: np.log10(max(x - MAX_SPEED,1)))
+
+
 
     # tous les liens avec les noeuds virtuels (start finish) ont une prob constante (1 par defaut).
     ind = candidat_links['ix_one'] == -1
@@ -534,37 +730,38 @@ def Mapmatching(gps_track:list, links:RoadLinks, n_neighbors:int=10,
     # ======================================================
     node_list = []
     if routing:
-        predecessors = pd.DataFrame(predecessors)
-        predecessors.index = origin_sparse
-
-        # Si on a fait deux dijkstra
-        if len(unfound_origin_nodes) > 0:
-            predecessors2 = pd.DataFrame(predecessors2)
-            predecessors2.index = origin_sparse2
-
-            predecessors.loc[predecessors2.index] = predecessors2
-
         # predecessors = predecessors.apply(lambda x : index_node.get(x))
         df_path = pd.DataFrame(path[1:], columns=['road_id'])
-        df_path['sparse_node_b'] = df_path['road_id'].apply(lambda x: links.node_index.get(links.dict_node_b.get(x)))
+        df_path['from_a'] = df_path['road_id'].apply(lambda x: links.node_index.get(links.dict_node_a.get(x)))
+        df_path['from_b'] = df_path['road_id'].apply(lambda x: links.node_index.get(links.dict_node_b.get(x)))
+        df_path['to_a'] = df_path['from_a'].shift(-1)
+        df_path['to_b'] = df_path['from_b'].shift(-1)
+
+        routing_origins = df_path['from_b'].unique()
+        _, routing_predecessors = dijkstra(
+            csgraph=links.mat,
+            directed=True,
+            indices=routing_origins,
+            return_predecessors=True,
+            limit=np.inf
+        )
+        routing_predecessors = pd.DataFrame(routing_predecessors)
+        routing_predecessors.index = routing_origins
 
         node_mat = []
-
-        for i in range(len(df_path) - 1):
-            node_list = []
-            node_list.append(int(df_path.iloc[-(1 + i)]['sparse_node_b']))  # premier noed (noed b)
-            node = predecessors.loc[df_path.iloc[-(1 + i + 1)]['sparse_node_b'], df_path.iloc[-(1 + i)]['sparse_node_b']]
+        for ori, des, from_a, to_a in df_path[['from_b','to_b','from_a','to_a']].values[:-1]:
+            node_list = [des] 
+            # this make sure we us the correct path. between 2 matched point (there could be a faster path incoherent)
+            if ori == to_a:
+                node = to_a
+            else:
+                node = routing_predecessors.loc[ori, des]
             while node != -9999:  # Ajoute les noeds b jusqua ce qu'on arrive au prochain point gps
                 node_list.append(node)
-                node = predecessors.loc[df_path.iloc[-(1 + i + 1)]['sparse_node_b'], node]
-
-            # if i==len(df_path)-2:
-            node_list.append(int(links.node_index[links.links.loc[df_path.iloc[-(1 + i + 1)]['road_id']]['a']]))  # ajoute le noeud a.
+                node = routing_predecessors.loc[ori, node]
+            node_list.append(from_a)
             node_list = [index_node[x] for x in node_list[::-1]]  # reverse and swap index
             node_mat.append(node_list)
-        # ajoute le noed a du premier point. puisque le Dijkstra a été calculé à partir des noeds b. le noed a du premier point
-        # gps doit être ajouté manuellement.
-        node_mat = node_mat[::-1]
         # transforme la liste de noeud en liste de route
         link_mat = []
         for node_list in node_mat:

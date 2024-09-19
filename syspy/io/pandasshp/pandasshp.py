@@ -12,7 +12,7 @@ Usage:
 """
 __all__ = ["read_shp", "write_shp", "match_vertices_and_edges"]
 
-import collections
+from collections.abc import Iterable
 import shutil
 import warnings
 
@@ -46,7 +46,7 @@ def convert_geometry(geometry, epsg1=None, epsg2=None, p1=None, p2=None):
         return type(geometry)([pyproj.transform(p1, p2, longlat[0], longlat[1]) for longlat in geometry.coords])
 
     except AttributeError:
-        if isinstance(geometry, collections.Iterable):
+        if isinstance(geometry, Iterable):
             collection = geometry
             print(type(collection))
             return type(collection)([convert_geometry(g, p1=p1, p2=p2) for g in collection])

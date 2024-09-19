@@ -233,7 +233,7 @@ class PlotModel(summarymodel.SummaryModel):
 
         if basemap_raster is not None:
             for ax in axes:
-                data_visualization.add_raster(ax, raster=basemap_raster)
+                data_visualization.add_raster(ax, raster=basemap_raster,adjust=None)
 
         if resize:
             ax = fig.get_axes()[0]

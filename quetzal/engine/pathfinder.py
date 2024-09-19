@@ -158,6 +158,7 @@ class PublicPathFinder:
         build_shortcuts=False,
         keep_matrix=False,
         verbose=False,
+        num_cores=1
     ):
 
         link_e = link_edge_array(self.links, boarding_time)
@@ -170,10 +171,11 @@ class PublicPathFinder:
         if build_shortcuts:
             keep = {o for o, d in od_set}.union({d for o, d in od_set})
             e, s = combine_edges(edges, keep=keep)
-            los = paths_from_edges(edges=e, od_set=od_set, cutoff=cutoff, log=True)
+            los = paths_from_edges(edges=e, od_set=od_set, cutoff=cutoff, log=True,num_cores=num_cores)
             los['path'] = [expand_path(p, shortcuts=s) for p in los['path']]
         else:
-            los = paths_from_edges(edges=edges, od_set=od_set, cutoff=cutoff, csgraph=self.csgraph, node_index=self.node_index, log=verbose)
+            # Get the Best path
+            los = paths_from_edges(edges=edges, od_set=od_set, cutoff=cutoff, csgraph=self.csgraph, node_index=self.node_index, log=verbose,num_cores=num_cores)
 
         los['pathfinder_session'] = 'best_path'
         los['reversed'] = False
@@ -183,7 +185,7 @@ class PublicPathFinder:
         self, column=None, prune=True,
         cutoff=np.inf, build_shortcuts=False,
         boarding_time=None, od_set=None, reuse_matrix=True,
-        log=False, keep_matrix=False
+        log=False, keep_matrix=False, num_cores=1
     ):
 
         def get_task(column, combination, od_set=None):
@@ -251,19 +253,19 @@ class PublicPathFinder:
                     assert not reuse_matrix, 'set reuse_matrix to false to if build_shortcuts is true'
                     keep = {o for o, d in od_set}.union({d for o, d in od_set})
                     e, s = combine_edges(edges, keep=keep)
-                    o_los = paths_from_edges(edges=e, od_set=o_od_set, cutoff=cutoff, log=log)
+                    o_los = paths_from_edges(edges=e, od_set=o_od_set, cutoff=cutoff, log=log, num_cores=num_cores)
                     o_los['path'] = [expand_path(p, shortcuts=s) for p in o_los['path']]
                 else:
-                    o_los = paths_from_edges(edges=edges, od_set=o_od_set, cutoff=cutoff, csgraph=pcsgraph, node_index=pnode_index, log=log)
+                    o_los = paths_from_edges(edges=edges, od_set=o_od_set, cutoff=cutoff, csgraph=pcsgraph, node_index=pnode_index, log=log, num_cores=num_cores)
                 o_los['reversed'] = False
                 
             # DLOS backward search
             if len(d_od_set):
                 if build_shortcuts:
-                    d_los = paths_from_edges(edges=e, od_set=d_od_set, cutoff=cutoff, log=log)
+                    d_los = paths_from_edges(edges=e, od_set=d_od_set, cutoff=cutoff, log=log, num_cores=num_cores)
                     d_los['path'] = [expand_path(p, shortcuts=s) for p in d_los['path']]
                 else:
-                    d_los = paths_from_edges(edges=edges, od_set=d_od_set, cutoff=cutoff, csgraph=pcsgraph, node_index=pnode_index, log=log)
+                    d_los = paths_from_edges(edges=edges, od_set=d_od_set, cutoff=cutoff, csgraph=pcsgraph, node_index=pnode_index, log=log, num_cores=num_cores)
                 d_los['reversed'] = True
                 # CONCAT
                 los = pd.concat([o_los, d_los])
@@ -289,6 +291,7 @@ class PublicPathFinder:
         od_set=None,
         boarding_time=None,
         verbose=True,
+        num_cores=1,
         **kwargs
     ):
         if od_set is None:
@@ -301,6 +304,7 @@ class PublicPathFinder:
             od_set=od_set,
             verbose=verbose,
             keep_matrix=True,
+            num_cores=num_cores,
             **kwargs
         )  # builds the graph
 
@@ -328,7 +332,7 @@ class PublicPathFinder:
         # FIND BROKEN ROUTES
         self.broken_route_paths = pd.DataFrame()
         if broken_routes:
-            self.find_broken_combination_paths(column='route_id', cutoff=cutoff, build_shortcuts=False, prune=False, reuse_matrix=True, keep_matrix=True, log=verbose)
+            self.find_broken_combination_paths(column='route_id', cutoff=cutoff, build_shortcuts=False, prune=False, reuse_matrix=True, keep_matrix=True, log=verbose, num_cores=num_cores)
             self.broken_route_paths = self.broken_combination_paths
             self.broken_route_paths['pathfinder_session'] = 'route_breaker' 
             self.broken_route_paths['broken_route'] = self.broken_route_paths['broken_' + route_column].apply(
@@ -338,7 +342,7 @@ class PublicPathFinder:
         # FIND BROKEN PATHS
         self.broken_mode_paths = pd.DataFrame()
         if broken_modes:
-            self.find_broken_combination_paths(column='route_type', cutoff=cutoff, build_shortcuts=False, prune=False, reuse_matrix=True, log=verbose, keep_matrix=True)
+            self.find_broken_combination_paths(column='route_type', cutoff=cutoff, build_shortcuts=False, prune=False, reuse_matrix=True, log=verbose, keep_matrix=True, num_cores=num_cores)
             self.broken_mode_paths = self.broken_combination_paths
             self.broken_mode_paths['pathfinder_session'] = 'mode_breaker'
             self.broken_mode_paths['broken_modes'] = self.broken_mode_paths['broken_' + mode_column].apply(set)

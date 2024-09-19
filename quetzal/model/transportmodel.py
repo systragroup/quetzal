@@ -134,7 +134,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 **od_volume_from_zones_kwargs
             )
 
-    def sample_volumes(self, bidimentional_sampling=True, fit_sums=True, sample_weight=1, sample_size=None, inplace=True,**kwargs):
+    def sample_volumes(self, bidimentional_sampling=False, fit_sums=True, sample_weight=1, sample_size=None, inplace=True,**kwargs):
         od_volumes = self.volumes.set_index(['origin', 'destination'])
 
         series = {}
@@ -941,25 +941,25 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 columns = [tuple([col, s, g]) for s in segments]
                 name = tuple([col, g])
                 self.loaded_links[name] = self.loaded_links[columns].T.sum()
-                self.loaded_links.drop(columns, 1, inplace=True)
+                self.loaded_links.drop(columns, axis=1, inplace=True)
 
                 self.loaded_nodes[name] = self.loaded_nodes[columns].T.sum()
-                self.loaded_nodes.drop(columns, 1, inplace=True)
+                self.loaded_nodes.drop(columns, axis=1, inplace=True)
 
             columns = [tuple([col, s]) for s in segments]
             self.loaded_links[col] = self.loaded_links[columns].T.sum()
-            self.loaded_links.drop(columns, 1, inplace=True)
+            self.loaded_links.drop(columns, axis=1, inplace=True)
 
             self.loaded_nodes[col] = self.loaded_nodes[columns].T.sum()
-            self.loaded_nodes.drop(columns, 1, inplace=True)
+            self.loaded_nodes.drop(columns, axis=1, inplace=True)
 
         if on_road_links:
             for group in groups:
                 self.road_links[('all', group)] = self.road_links[[(s, group) for s in segments]].T.sum()
-                self.road_links.drop([(s, group) for s in segments], 1, inplace=True)
+                self.road_links.drop([(s, group) for s in segments], axis=1, inplace=True)
 
             self.road_links['load'] = self.road_links[[s for s in segments]].T.sum()
-            self.road_links.drop([s for s in segments], 1, inplace=True)
+            self.road_links.drop([s for s in segments], axis=1, inplace=True)
 
     def step_car_assignment(self, volume_column=None):
         """Performs car assignment of the indicated volume column: compute the volumes on the road_links of the private transport network.

@@ -101,7 +101,7 @@ def build_footpaths(nodes, speed=3, max_length=None, clusters_distance=None, coo
     footpaths = pd.concat([graph, graph_r])
     footpaths['voronoi'] = 1
     try:
-        footpaths = footpaths.append(links)
+        footpaths = pd.concat([footpaths, links])
         if max_length:
             footpaths = footpaths.loc[footpaths['length'] <= max_length]
     except NameError:
