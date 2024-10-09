@@ -3,6 +3,12 @@ variable "user_role_name" {
   type          = string
 }
 
+variable "admin_role_name" {
+  description   = "admin role Name only create one time and policies from each workspace added."
+  type          = string
+  default       = "Cognito_quetzal_pool_admin"
+}
+
 variable "s3_policy_name" {
   description   = "s3 read put policy name to access this model S3 bucket (from the front with auth)"
   type          = string

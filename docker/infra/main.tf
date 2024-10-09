@@ -18,11 +18,12 @@ module "s3" {
     tags = local.quetzal_tags
 }
 
-# create ECR isntance with a dummy docker image
+# create ECR instance with a dummy docker image
 module "ecr" {
     source = "./modules/ecr"
     repo_name = var.quetzal_model_name
     tags = local.quetzal_tags     
+    os = var.os
 }
 
 # create CloudWatch group, lambda function, IAM role and policy for the lambda function. use dummy image.
@@ -54,5 +55,4 @@ module "user_role"{
     user_role_name = "Cognito_quetzal_pool_${var.quetzal_model_name}"
     s3_policy_name = "s3_read_put_${var.quetzal_model_name}"
     bucket_name = var.quetzal_model_name
-    
 }

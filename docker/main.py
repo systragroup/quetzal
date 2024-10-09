@@ -30,7 +30,7 @@ def download_s3_folder(bucket_name, s3_folder, local_dir='/tmp'):
         bucket.download_file(obj.key, target)
 
 
-def upload_s3_folder(bucket_name, folder, local_dir='/tmp', metadata={}):
+def upload_s3_folder(bucket_name, prefix, local_dir='/tmp', metadata={}):
     """
     Upload the contents of a folder directory to S3
     Args:
@@ -42,9 +42,21 @@ def upload_s3_folder(bucket_name, folder, local_dir='/tmp', metadata={}):
     for root, _, files in os.walk(local_dir):
         for file in files:
             local_path = os.path.join(root, file)
-            s3_path = os.path.join(folder, os.path.relpath(root, local_dir), file)
+            folder = ''
+            if root != local_dir: #if not. return '.' and the os.path.join send root files to ./
+                folder = os.path.relpath(root, local_dir)
+            s3_path = os.path.join(prefix, folder, file)
             bucket.upload_file(local_path, s3_path, ExtraArgs={'Metadata': metadata})
 
+def upload_logs_to_s3(bucket_name, prefix, name, body, metadata={}):
+    # to logs/log.txt
+    session = boto3.Session()
+    s3 = session.client('s3')
+    s3.put_object(Body=body,
+                Bucket=bucket_name,
+                Key=os.path.join(prefix, 'logs/', name),
+                CacheControl='no-cache',
+                Metadata=metadata)
 
 def clean_folder(folder='/tmp'):
     for filename in os.listdir(folder):
@@ -72,15 +84,17 @@ def handler(event, context):
     t0 = time.time()
     notebook = event['notebook_path']
     print(event)
-
     bucket_name = os.environ['BUCKET_NAME']
     # Move (and download) model data and inputs to ephemeral storage
+    t_clean = time.time()
     clean_folder()  # Clean ephemeral storage
-
+    print('clean: {} seconds'.format(time.time() - t_clean))
+    t_copy = time.time()
     try:
-        shutil.copytree('./inputs', '/tmp/inputs')
+        shutil.move('./inputs', '/tmp/inputs')
     except:
         print('cannot copy local docker inputs/ folder. its maybe missing on purpose')
+    print('copy docker files: {} seconds'.format(time.time() - t_copy))
    
     download_s3_folder(bucket_name, event['scenario_path_S3'])
     t1 = time.time()
@@ -89,10 +103,15 @@ def handler(event, context):
     arg = json.dumps(event['launcher_arg'])
     print(arg)
 
-    file = os.path.join('/tmp', os.path.basename(notebook).replace('.ipynb', '.py'))
-    os.system('jupyter nbconvert --to python %s --output %s' % (notebook, file))
+    pyfile = os.path.join('/tmp', os.path.basename(notebook).replace('.ipynb', '.py'))
+    if notebook.endswith('.ipynb'):
+        os.system('jupyter nbconvert --to python %s --output %s' % (notebook, pyfile))
+    else:
+        os.system('cp %s %s' % (notebook, pyfile))
     cwd = os.path.dirname(notebook)
-    command_list = ['python', file, arg]
+    if cwd == '':
+        cwd = '/'
+    command_list = ['python', pyfile, arg]
     my_env = os.environ.copy()
     my_env['PYTHONPATH'] = os.pathsep.join(sys.path)
 
@@ -103,15 +122,25 @@ def handler(event, context):
     process.wait(timeout=800)
 
     content = process.stdout.read().decode("utf-8")
+
+    logfile=os.path.basename(pyfile).replace('.py', '.txt')
+    upload_logs_to_s3(bucket_name, event['scenario_path_S3'], logfile, content, metadata=event.get('metadata', {}))
+    
     t3 = time.time()
     print('Notebook execution: {} seconds'.format(t3 - t2))
-
     print(content)
+
     if 'Error' in content and "end_of_notebook" not in content:
         raise RuntimeError(format_error(content))
-
-    os.remove(file)
+    
+    # upload files to S3 (all except inputs)
+    os.remove(pyfile)
     shutil.rmtree('/tmp/inputs')
+    try: # dont reupload logs.
+        shutil.rmtree('/tmp/logs')
+    except:
+        pass
+
     upload_s3_folder(bucket_name, event['scenario_path_S3'], metadata=event.get('metadata', {}))
     t4 = time.time()
     print('Upload to S3: {} seconds'.format(t4 - t3))
