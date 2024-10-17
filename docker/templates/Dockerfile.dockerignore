@@ -1,9 +1,0 @@
-**__pycache__**
-**/*.pyc
-**.cache**
-**/*.ipynb_checkpoints*
-**/*.DS_store*
-quetzal/.git
-quetzal/.venv
-quetzal/wheels-cp38-win_amd64
-quetzal/docker/infra
