@@ -1,8 +1,10 @@
 import numpy as np
 import pandas as pd
 from quetzal.engine.pathfinder_utils import sparse_matrix, build_index, parallel_dijkstra
-from quetzal.engine.msa_utils import get_zone_index, assign_volume, default_bpr, limited_bpr, free_flow, jam_time, find_phi, get_car_los, find_beta
+from quetzal.engine.msa_utils import get_zone_index, assign_volume, jam_time, find_phi, get_car_los, find_beta, get_derivative
+from quetzal.engine.vdf import default_bpr,free_flow
 import numba as nb
+
 
 
 
@@ -31,7 +33,7 @@ class RoadPathFinder:
         maxiters=10,
         tolerance=0.01,
         log=False,
-        vdf={'default_bpr': default_bpr,'limited_bpr':limited_bpr, 'free_flow': free_flow},
+        vdf={'default_bpr': default_bpr, 'free_flow': free_flow},
         volume_column='volume_car',
         method = 'bfw', 
         beta=None,
@@ -42,7 +44,7 @@ class RoadPathFinder:
         maxiters = 10 : number of iteration.
         tolerance = 0.01 : stop condition for RelGap. (in percent)
         log = False : log data on each iteration.
-        vdf = {'default_bpr': default_bpr,'limited_bpr':limited_bpr, 'free_flow': free_flow} : dict of function for the jam time.
+        vdf = {'default_bpr': default_bpr, 'free_flow': free_flow} : dict of function for the jam time.
         volume_column='volume_car' : column of self.volumes to use for volume
         method = bfw, fw, msa, aon
         od_set = None. od_set
@@ -119,10 +121,10 @@ class RoadPathFinder:
             df['auxiliary_flow'].fillna(0, inplace=True)
             if method == 'bfw': # if biconjugate: takes the 2 last direction : direction is flow-auxflow.
                 if i>=2:
-                    if not beta:
-                        df['derivative'] = jam_time(df,vdf,'flow',der=True,time_col=self.time_col)
+                    if not beta: #find beta
+                        df['derivative'] = get_derivative(df, vdf, h=0.001,flow_col='flow', time_col=self.time_col, )
                         b = find_beta(df,phi) #this is the previous phi (phi_-1)
-                    else :
+                    else : # beta was provided in function args (debugging)
                         assert sum(beta)==1 , 'beta must sum to 1.'
                         b = beta
                     df['auxiliary_flow'] = b[0]*df['auxiliary_flow'] + b[1]*df['s_k-1'] + b[2]*df['s_k-2']
@@ -173,16 +175,9 @@ class RoadPathFinder:
         # and initialize it's parameters
         zone_to_road = self.zone_to_road.copy()
         zone_to_road[self.time_col] = zone_to_road[access_time]
-        zone_to_road['length'] = np.nan
-        zone_to_road = zone_to_road[['a', 'b','length', 'direction', self.time_col]]
         zone_to_road.loc[zone_to_road['direction'] == 'access', self.time_col] += ntleg_penalty 
-        zone_to_road['capacity'] = np.nan
-        zone_to_road['vdf'] = 'free_flow'
-        zone_to_road['alpha'] = 0
-        zone_to_road['limit'] = 0
-        zone_to_road['beta'] = 0
-        zone_to_road['penalty'] = 0
-        zone_to_road['base_flow'] = 0
+        if 'vdf' not in zone_to_road.columns:
+            zone_to_road['vdf'] = 'free_flow'
         self.zone_to_road = zone_to_road
         # keep track of it (need to substract it in car_los)
         self.ntleg_penalty = ntleg_penalty
@@ -191,38 +186,20 @@ class RoadPathFinder:
 
 
     def init_df(self,aon=False):
-        #check if columns exist
         if not aon:
-            assert 'capacity' in self.road_links.columns, 'capacity not found in road_links columns. add a capacity for each link'
-
             if 'vdf' not in self.road_links.columns:
                 self.road_links['vdf'] = 'default_bpr'
                 print("vdf not found in road_links columns. Values set to 'default_bpr'")
 
-            if 'alpha' not in self.road_links.columns:
-                self.road_links['alpha'] = 0.15
-                print("alpha not found in road_links columns. Values set to 0.15")
-            if 'beta' not in self.road_links.columns:
-                self.road_links['beta'] = 4
-                print("beta not found in road_links columns. Values set to 4")
-
-            if 'limit' not in self.road_links.columns:
-                self.road_links['limit'] = 20
-                print("limit not found in road_links columns. Values set to 20")
-
-            if 'penalty' not in self.road_links.columns:
-                self.road_links['penalty'] = 0
-                print("penalty not found in road_links columns. Values set to 0")
-
+            # network precharged iwth base_flow
             if 'base_flow' not in self.road_links.columns:
                 self.road_links['base_flow'] = 0
             
-            columns = ['a', 'b','length', self.time_col, 'capacity', 'vdf', 'alpha', 'beta', 'limit','penalty','base_flow']
-            df = pd.concat([self.road_links[columns], self.zone_to_road[columns]]).set_index(['a', 'b'], drop=False)
+            df = pd.concat([self.road_links, self.zone_to_road]).set_index(['a', 'b'], drop=False)
             df['flow'] = 0
             df['auxiliary_flow'] = 0
-        else:
+            return df
+        else: # if aon
             columns = ['a', 'b', self.time_col]
             df = pd.concat([self.road_links[columns], self.zone_to_road[columns]]).set_index(['a', 'b'], drop=False)
-        
-        return df
+            return df

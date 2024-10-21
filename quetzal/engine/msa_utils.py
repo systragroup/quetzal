@@ -1,90 +1,31 @@
 from numba import jit
 import pandas as pd
 import numpy as np
-from quetzal.engine.pathfinder_utils import get_node_path, get_edge_path, get_path, sparse_matrix, parallel_dijkstra
+from quetzal.engine.pathfinder_utils import get_node_path, get_path, sparse_matrix, parallel_dijkstra
 import numba as nb
 
 
 
-@jit(nopython=True)
-def default_bpr(mat,der=False):
-    #columns in mat : 'alpha','beta','limit','flow','time','penalty','capacity'
-    #der return the first derivative (for the find beta...)
-    jam_time=[]
-    for i in range(mat.shape[0]):
-        alpha = mat[i,0]
-        beta = mat[i,1]
-        V = mat[i,3]
-        t0 = mat[i,4]
-        penalty = mat[i,5]
-        Q = mat[i,6]
-        V0 = mat[i,7]
-        V += V0
-        if der == False:
-            res =  t0 * (1 + alpha*np.power(V/Q, beta))
-            jam_time.append(res + penalty)     
-        else:
-            der = (t0*alpha*beta/(Q**beta)) *np.power(V,beta-1)
-            jam_time.append(der)
-    return jam_time
-
-@jit(nopython=True)
-def limited_bpr(mat,der=False):
-    #columns in mat : 'alpha','beta','limit','flow','time','penalty','capacity','base_flow'
-    #der return the first derivative (for the find beta...)
-    jam_time=[]
-    for i in range(mat.shape[0]):
-        alpha = mat[i,0]
-        beta = mat[i,1]
-        limit = mat[i,2]
-        V = mat[i,3]
-        t0 = mat[i,4]
-        penalty = mat[i,5]
-        Q = mat[i,6]
-        V0 = mat[i,7]
-        V += V0
-        res =  t0 * (1 + alpha*np.power(V/Q, beta))
-        if res > t0*limit: # we plateau the curve at limit.
-            if der == False:
-                jam_time.append(t0*limit + penalty)
-            else:
-                jam_time.append(0)
-                
-        else:
-            if der == False:
-                jam_time.append(res + penalty)     
-            else:
-                der = (t0*alpha*beta/(Q**beta)) *np.power(V,beta-1)
-                jam_time.append(der)
-    return jam_time
-
-@jit(nopython=True)
-def free_flow(mat,der=False):
-    #columns in mat : 'alpha','beta','limit','flow','time','penalty','capacity'
-    #der return the derivative (for the find beta...)
-    t0 = mat[:,4]
-    penalty = mat[:,5]
-    if der == False:
-        return t0+penalty
-    else:
-        return t0*0
 
 
-
-    
-
-
-def jam_time(links, vdf={'default_bpr': default_bpr},flow='flow',der=False,time_col='time'):
+def jam_time(links:pd.DataFrame, vdf,flow:str='flow',time_col:str='time') -> pd.Series:
     # vdf is a {function_name: function } to apply on links 
+    # 3 types of functions are accepted:
+    # 1) str that will be evaluated with pandas.eval
+    # 2) python function of the form func(df, flow_col, time_col).
+    # 3) Jit function with single input matrix ['alpha','beta','limit',flow_col ,time_col,'penalty','capacity','base_flow']]
     keys = set(links['vdf'])
     missing_vdf = keys - set(vdf.keys())
-    #todo : utiliser lancienne methode si les mVDF sont en python et non en numba.
+
     assert len(missing_vdf) == 0, 'you should provide methods for the following vdf keys' + str(missing_vdf)
     for key in keys:
-        if type(vdf[key]).__name__=='function': #normal python function.
-            links.loc[links['vdf']==key,'result'] = vdf[key](links.loc[links['vdf']==key], flow, der) 
+        if type(vdf[key])==str:
+            str_expression = vdf[key].replace('flow',flow).replace('time',time_col)
+            links.loc[links['vdf']==key,'result'] = links.loc[links['vdf']==key].eval(str_expression)
+        elif type(vdf[key]).__name__=='function': #normal python function.
+            links.loc[links['vdf']==key,'result'] = vdf[key](links.loc[links['vdf']==key], flow, time_col) 
         else: # numba function.
-            links.loc[links['vdf']==key,'result'] = vdf[key](links.loc[links['vdf']==key,['alpha','beta','limit',flow,time_col,'penalty','capacity','base_flow']].values, der) 
+            links.loc[links['vdf']==key,'result'] = vdf[key](links.loc[links['vdf']==key,['alpha','beta','limit',flow,time_col,'penalty','capacity','base_flow']].values) 
         
     return links['result']
 
@@ -237,3 +178,9 @@ def find_beta(df,phi_1):
     return b
 
 
+def get_derivative(df, vdf, flow_col='flow', h=0.001,**kwargs):
+    df['x1'] = df[flow_col] + h
+    df['x2'] = df[flow_col] - h
+    df['x1'] = jam_time(df,vdf,flow='x1',**kwargs)
+    df['x2'] = jam_time(df,vdf,flow='x2',**kwargs)
+    return (df['x1'] - df['x2'])/(2*h)
