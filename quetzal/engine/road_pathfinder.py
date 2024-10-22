@@ -136,7 +136,7 @@ class RoadPathFinder:
             if method == 'msa':
                 phi = 1 / (i + 2)
             else:
-                phi = find_phi(df, vdf, 0, 0.8, 10,time_col=self.time_col)
+                phi = find_phi(df.reset_index(drop=True), vdf, 0, 0.8, 10,time_col=self.time_col)
             #
            
             #  modelling transport eq 11.11. SUM currentFlow x currentCost - SUM AONFlow x currentCost / SUM currentFlow x currentCost

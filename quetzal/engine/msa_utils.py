@@ -37,12 +37,9 @@ def z_prime(links, vdf, phi, **kwargs):
     delta = (links['auxiliary_flow'] - links['flow']).values
     links['new_flow'] = delta*phi+links['flow']
     #z = (jam_time(links,vdf={'default_bpr': default_bpr_phi},flow='delta',phi=phi) - links['jam_time']) / (links['delta']*phi + links['former_flow'])
-    t_f = jam_time(links,vdf=vdf,flow='flow',**kwargs)
-    t_del = jam_time(links,vdf=vdf,flow='new_flow',**kwargs)
-    links['t_f'] = t_f
-    links['t_del'] = t_del
-    t_f = links['t_f'].values
-    t_del = links['t_del'].values
+    #t_f = jam_time(links,vdf=vdf,flow='flow',**kwargs)
+    t_del = jam_time(links,vdf=vdf,flow='new_flow',**kwargs).values
+    t_f = links['jam_time'].values
     z = t_f*delta*phi + (t_del-t_f)*delta*phi*0.5
 
     return np.ma.masked_invalid(z).sum()    
