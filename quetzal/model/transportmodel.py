@@ -223,11 +223,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             log data on each iteration (default False)
 
         vdf : dict, optional
-            dict of function for the jam time : {'default_bpr': default_bpr,'limited_bpr':limited_bpr, 'free_flow': free_flow} 
-
-        beta : list, optional, default None
-            give constant value for BFW betas. ex: [0.7,0.2,0.1].
-
+            dict of function for the jam time : {'default_bpr': default_bpr, 'free_flow': free_flow} 
 
         Builds
         ----------
