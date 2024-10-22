@@ -12,10 +12,21 @@ default_bpr = 'time * (1 + {alpha} * (flow/capacity)**{beta})'.format(alpha=0.15
 
 # Python functions
 
-def limited_bpr(df, flow_col, time_col):
-    expr = default_bpr.replace('flow',flow_col).replace('time',time_col)
-    res = df.eval(expr)
-    return res.clip(upper = df[time_col] * df['limit'])  
+def limit_factory(expression:str,limit:float=None):
+    # add a limit time*limit to an expression function. 
+    # if limit is None. use limit column. else: its a constant (df[time_col] * limit)
+    def wrapped(df, flow_col, time_col):
+        expr = expression.replace('flow',flow_col).replace('time',time_col)
+        res = df.eval(expr)
+        if limit == None:
+            return res.clip(upper = df[time_col] * df['limit']) 
+        else:
+            return res.clip(upper = df[time_col] * limit) 
+    return wrapped
+
+limited_bpr = limit_factory(default_bpr)
+
+
 
 # Numba functions
 

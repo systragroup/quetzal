@@ -55,7 +55,7 @@ def find_phi(links,vdf, phi=0, step=0.5, num_it=10, **kwargs):
             a=b
         else: 
             step=-step/2
-        if a+step<0:
+        if phi+step<0:
             step=-step
     return phi
 
