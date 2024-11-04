@@ -28,6 +28,7 @@ class Model(BaseModel):
     max_num_it: Optional[int] = 30
     num_random_od: Optional[int] = 1
     create_zone: Optional[bool] = True
+    api: str = 'google'
     hereApiKey: str = '' 
     
    
@@ -83,11 +84,22 @@ def handler(event, context):
     num_random_od = args.num_random_od
     create_zone = args.create_zone
     hereApiKey = args.hereApiKey
+    api = args.api
     num_cores = nb.config.NUMBA_NUM_THREADS
     print('num cores:',num_cores)
     
     print('read files')
     #links = db.read_geojson(uuid,'road_links.geojson')
+
+    if api=='google':
+        from dateutil import parser
+        import datetime
+        # Parse the datetime string
+        dt = parser.parse(date_time)
+        date_time = datetime.datetime(dt.year,dt.month,dt.day,dt.hour,dt.minute,dt.second) # Y/M/D
+        assert datetime.datetime.now() < date_time,  'for Google api. must  provide a datetime in the future.'
+        date_time = date_time.timestamp()
+
 
     links = gpd.read_file(f's3://{db.BUCKET}/{uuid}/road_links.geojson', driver='GeoJSON', engine='pyogrio')
     links.set_index('index',inplace=True)
@@ -132,7 +144,7 @@ def handler(event, context):
     except:
         mat = self.call_api_on_training_set(train_od,
                                             apiKey=hereApiKey,
-                                            api='here',
+                                            api=api,
                                             mode='car',
                                             time=date_time,
                                             verify=True,
@@ -175,8 +187,8 @@ def handler(event, context):
         img_data = BytesIO()
         f2.savefig(img_data, format='png')
         db.save_image(uuid,'4_HERE_speed_prediction_{idx}.png'.format(idx=i+1), img_data)
-
-    plot_model_calibration(self, uuid)
+    if train_size>=50:
+        plot_model_calibration(self, uuid)
     print('Saving on S3'), 
     self.road_links.to_file(f's3://{db.BUCKET}/{uuid}/road_links.geojson', driver='GeoJSON', engine='pyogrio')
     self.road_nodes.to_file(f's3://{db.BUCKET}/{uuid}/road_nodes.geojson', driver='GeoJSON', engine='pyogrio')
