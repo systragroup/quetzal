@@ -429,7 +429,7 @@ class IntegrityModel:
         self.road_links = self.road_links.loc[
             self.road_links['b'].isin(self.road_nodeset())
         ]
-        self.road_nodes = self.road_nodes.loc[self.road_link_nodeset()]
+        self.road_nodes = self.road_nodes.loc[list(self.road_link_nodeset())]
 
     def integrity_test_road_network(self, cutoff=10):
         self.integrity_test_isolated_roads()

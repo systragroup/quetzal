@@ -275,7 +275,7 @@ class PublicPathFinder:
             los['broken_column'] = column
             los['broken_' + column] = [combination for i in range(len(los))]
             to_concat.append(los.rename(columns={'length': 'gtime'}))
-        self.broken_combination_paths = pd.concat(to_concat)
+        self.broken_combination_paths = pd.concat(to_concat) if len(to_concat) else None
         if keep_matrix:
             self.csgraph = csgraph
             self.node_index = node_index
@@ -333,19 +333,21 @@ class PublicPathFinder:
         self.broken_route_paths = pd.DataFrame()
         if broken_routes:
             self.find_broken_combination_paths(column='route_id', cutoff=cutoff, build_shortcuts=False, prune=False, reuse_matrix=True, keep_matrix=True, log=verbose, num_cores=num_cores)
-            self.broken_route_paths = self.broken_combination_paths
-            self.broken_route_paths['pathfinder_session'] = 'route_breaker' 
-            self.broken_route_paths['broken_route'] = self.broken_route_paths['broken_' + route_column].apply(
-                lambda s: list(s)[0]
-            ) # we assume only one route is broken at a time
+            if self.broken_combination_paths is not None:
+                self.broken_route_paths = self.broken_combination_paths
+                self.broken_route_paths['pathfinder_session'] = 'route_breaker' 
+                self.broken_route_paths['broken_route'] = self.broken_route_paths['broken_' + route_column].apply(
+                    lambda s: list(s)[0]
+                ) # we assume only one route is broken at a time
 
         # FIND BROKEN PATHS
         self.broken_mode_paths = pd.DataFrame()
         if broken_modes:
             self.find_broken_combination_paths(column='route_type', cutoff=cutoff, build_shortcuts=False, prune=False, reuse_matrix=True, log=verbose, keep_matrix=True, num_cores=num_cores)
-            self.broken_mode_paths = self.broken_combination_paths
-            self.broken_mode_paths['pathfinder_session'] = 'mode_breaker'
-            self.broken_mode_paths['broken_modes'] = self.broken_mode_paths['broken_' + mode_column].apply(set)
+            if self.broken_combination_paths is not None:
+                self.broken_mode_paths = self.broken_combination_paths
+                self.broken_mode_paths['pathfinder_session'] = 'mode_breaker'
+                self.broken_mode_paths['broken_modes'] = self.broken_mode_paths['broken_' + mode_column].apply(set)
 
         self.paths = pd.concat([
             self.best_paths,
