@@ -1,0 +1,7 @@
+line-length = 160
+
+[format]
+quote-style = "single"
+indent-style = "tab"
+docstring-code-format = true
+skip-magic-trailing-comma = true
