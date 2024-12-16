@@ -2,7 +2,7 @@ import geopandas as gpd
 import networkx as nx
 import pandas as pd
 import shapely
-from shapely.ops import cascaded_union
+from shapely.ops import unary_union
 from syspy.spatial import polygons, spatial
 from syspy.syspy_utils import neighbors, pandas_utils, syscolors
 from tqdm import tqdm
@@ -141,7 +141,7 @@ def cluster_snail_number(zones, n_clusters=20, centre=None, buffer=10):
     df['index'] = zones.index
 
     if centre is None:
-        union = cascaded_union(df.geometry).buffer(buffer)
+        union = unary_union(df.geometry).buffer(buffer)
         centre = union.centroid
 
     # Snail clusterize
@@ -156,7 +156,7 @@ def cluster_snail_number(zones, n_clusters=20, centre=None, buffer=10):
     to_concat = []
     for cluster in set(df['cluster_snail']):
         temp_df = df.loc[df['cluster_snail'] == cluster]
-        temp_centre = cascaded_union(temp_df.geometry).centroid
+        temp_centre = unary_union(temp_df.geometry).centroid
         temp_snail = snail_number(temp_df, temp_centre)
         temp_df['snail'] = temp_snail
         to_concat.append(temp_df)

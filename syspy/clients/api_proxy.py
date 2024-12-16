@@ -347,12 +347,14 @@ def get_distance_matrix(origins, destinations=None, apiKey='', api='here', mode=
         try:
             x = requests.get(url, verify=False)
             resp = json.loads(x.text)
+            print(x.status_code, resp)
             if x.status_code != 200:
                 raise Exception(resp)
         except:
             sleep(5)
             x = requests.get(url, verify=False)
             resp = json.loads(x.text)
+            print(x.status_code, resp)
             if x.status_code != 200:
                 raise Exception(resp)
         mat = []

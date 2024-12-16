@@ -293,7 +293,7 @@ class RoadModel:
             destinations = self.zones_centroid[self.zones_centroid['node_index'].isin(destination_nodes)]
             origins = self.zones_centroid[self.zones_centroid['node_index'].isin(origin_nodes)]
             destinations = self.zones_centroid[self.zones_centroid['node_index'].isin(destination_nodes)]
-            batch_size = (15,15) if len(origins)>1 else (1,100)
+            batch_size = (10,10) if len(origins)>1 else (1,100)
             try:
                 res = multi_get_distance_matrix(
                     origins=origins,
