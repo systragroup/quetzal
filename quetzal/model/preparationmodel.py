@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from quetzal.engine import connectivity, engine, gps_tracks
+from quetzal.engine import connectivity, engine, gps_tracks, simplify
 from quetzal.engine.add_network import NetworkCaster
 from quetzal.engine.add_network_mapmatching import RoadLinks,get_gps_tracks,Multi_Mapmatching,Parallel_Mapmatching,duplicate_nodes
 from quetzal.model import cubemodel, model, integritymodel
@@ -1008,3 +1008,27 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         for c in aggregated.columns:
             self.road_links[c] = aggregated[c]
         self.track_links = concatenated.drop(['a', 'b'], axis=1)
+
+
+    def simplify_road_network(self, resolution=7, **kwargs):
+        """ Run a road network simplification algorithm that preserves road functionnalities.
+
+        Requires
+            ----------
+            self.road_links
+            self.road_nodes
+            self.epsg
+
+            Parameters
+            ----------
+            resolution : int, optional, default 7
+                resolution based on H3 cell size: https://h3geo.org/docs/core-library/restable/#average-area-in-km2
+            to_keep_indices : list, optional, default []
+                contain indices of road_links that must be kept (providing they do not create integrity error)
+                
+            Returns
+            ----------
+            (simplified road_nodes,  simplified road_links)
+        """
+        return simplify.simplify_road_network(self, resolution=7, **kwargs)
+    
