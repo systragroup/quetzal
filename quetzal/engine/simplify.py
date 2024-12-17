@@ -12,7 +12,7 @@ def polygon_to_h3_zones_gdf(polygon_4326, resolution):
     return zones.set_crs(epsg=4326)
 
 
-def simplify_road_network(sm, resolution=8, to_keep_indices=[], force=False):
+def simplify_road_network(sm, resolution=8, to_keep_indices=[], keep_reversed=True, force=False):
     rl_cols = sm.road_links.columns
     ## BUILD H3 ZONING
     # get latlong perimeter
@@ -48,10 +48,19 @@ def simplify_road_network(sm, resolution=8, to_keep_indices=[], force=False):
     sm.step_assignment(road=True)
 
     # Filter road_links
-    # to_keep_indices = 
     print("filter")
     keep_loc = sm.road_links.index.isin(to_keep_indices)
-    rl = sm.road_links.loc[(keep_loc)|(sm.road_links[("volume", "car")]>0)]
+    volume_loc = sm.road_links[("volume", "car")]>0
+    keep_loc = (keep_loc) | (volume_loc)
+    if keep_reversed:
+        ## force add reversed links for link to keep
+        reversed_loc = sm.road_links.loc[(keep_loc)|(sm.road_links[("volume", "car")]>0)].index
+        reversed_to_add_loc = []
+        for x in reversed_loc:
+            reversed_to_add_loc += [x.split("_r")[0], x.split("_r")[0] + "_r"]
+        keep_loc = (keep_loc) | (sm.road_links.index.isin(reversed_to_add_loc))
+
+    rl = sm.road_links.loc[keep_loc]
 
     # run integrity checks
     print("integrity checks")
