@@ -304,7 +304,8 @@ class PublicPathFinder:
         drop_duplicates=True,
         cutoff=np.inf,
         od_set=None,
-        verbose=True,
+        # boarding_time=None,
+        verbose=False,
         num_cores=1,
         **kwargs,
     ):
