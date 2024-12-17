@@ -290,7 +290,7 @@ class PublicPathFinder:
         cutoff=np.inf,
         od_set=None,
         boarding_time=None,
-        verbose=True,
+        verbose=False,
         num_cores=1,
         **kwargs
     ):
@@ -343,7 +343,7 @@ class PublicPathFinder:
         # FIND BROKEN PATHS
         self.broken_mode_paths = pd.DataFrame()
         if broken_modes:
-            self.find_broken_combination_paths(column='route_type', cutoff=cutoff, build_shortcuts=False, prune=False, reuse_matrix=True, log=verbose, keep_matrix=True, num_cores=num_cores)
+            self.find_broken_combination_paths(column=mode_column, cutoff=cutoff, build_shortcuts=False, prune=False, reuse_matrix=True, log=verbose, keep_matrix=True, num_cores=num_cores)
             if self.broken_combination_paths is not None:
                 self.broken_mode_paths = self.broken_combination_paths
                 self.broken_mode_paths['pathfinder_session'] = 'mode_breaker'
