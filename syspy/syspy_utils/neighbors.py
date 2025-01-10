@@ -534,7 +534,7 @@ def volumes_classified_neighborhood(
     width_df = loaded_links.set_index('link')
 
     # Compute offset dataframe, for each macro zone of origin
-    offset_df = width_df.drop('geometry', 1).cumsum(1) - 0.5 * width_df.drop('geometry', 1)
+    offset_df = width_df.drop('geometry', axis=1).cumsum(1) - 0.5 * width_df.drop('geometry', axis=1)
 
 #     Compute width and offset for a nice plotting, and export.
     for i_cat, color in tqdm(colors_df.items()):
