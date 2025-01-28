@@ -75,7 +75,7 @@ def shift_loadedlinks_alightings(load_df, load_columns=['load'], alighting_colum
     last.index += 1
 
     # Shift alightings
-    load_df = load_df.append(last).reset_index(drop=True)
+    load_df = pd.concat([load_df, last]).reset_index(drop=True)
     temp_a = load_df[alighting_columns].copy()
     temp_a.index += 1
     load_df[alighting_columns] = temp_a
@@ -223,17 +223,13 @@ def directional_loads_to_station_bidirection_load(
     load_bwd = load_bwd.replace(stations_to_parent_stations)
 
     # Format
-    stations = load_fwd[['a', 'link_sequence']]
+    stations = list(load_fwd[['a', 'link_sequence']].values)
     index_max = load_fwd['link_sequence'].max()
-    stations = stations.append(
-        pd.Series(
-            {
-                'a': load_fwd.loc[load_fwd['link_sequence'] == index_max, 'b'].values[0],
-                'link_sequence': index_max + 1
-            }
-        ),
-        ignore_index=True
+    stations.append(
+        [load_fwd.loc[load_fwd['link_sequence'] == index_max, 'b'].values[0], index_max + 1]
     )
+    stations = pd.DataFrame(stations, columns=["a", "link_sequence"])
+
     stations = clean_seq(stations, 'link_sequence')
 
     # Fwd load and boarding

@@ -472,9 +472,9 @@ def bandwidth(
     # Plot label
     if label_column is not None:
         df_label = create_label_dataframe(df, label_column)
-        if offset_direction == 'left':
-            df_label['label_angle'] += 180
-            df_label['label_offset'] *= -1
+        # if offset_direction == 'left':
+        df_label['label_angle'] += 180
+        df_label['label_offset'] *= -1
         df_label.apply(
             lambda x: plot.annotate(
                 x[label_column],

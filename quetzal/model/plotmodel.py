@@ -275,7 +275,7 @@ class PlotModel(summarymodel.SummaryModel):
         if stop_name_column is not None:
             df = df.merge(self.nodes[[stop_name_column]], left_on='a', right_index=True)
             df = df.merge(self.nodes[[stop_name_column]], left_on='b', right_index=True, suffixes=('_a', '_b'))
-            df = df.drop(['a', 'b'], 1).sort_values(['direction_id', 'link_sequence']).rename(
+            df = df.drop(['a', 'b'], axis=1).sort_values(['direction_id', 'link_sequence']).rename(
                 columns={
                     'stop_name_a': 'a',
                     'stop_name_b': 'b'
