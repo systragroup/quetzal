@@ -59,11 +59,12 @@ python -m ipykernel install --user --name=quetzal_env
 ## For Windows
 `Anaconda 3 + Python 3.12` is supposed to be installed
 #### PIP and Anaconda (recommended)
-To create quetzal_env automatically and install quetzal open an anaconda prompt
+To create quetzal_env automatically and install quetzal, open anaconda prompt and
+run windows-install batch file
 ```bash
 (base) C:users\you\path\to\quetzal> windows-install.bat
 ```
-press enter to accept default environment name
+press enter to accept default environment name or enter a custom name 
 #### If you are facing SSL issues
 ```bash
 (base) pip config set global.trusted-host "pypi.org files.pythonhosted.org"
