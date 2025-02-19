@@ -298,7 +298,7 @@ def pathfinder(
     stop_set = set(pseudo_connections['a']).union(set(pseudo_connections['b']))
     Ttrip_inf = {t: float('inf') for t in set(pseudo_connections['trip_id'])}
     columns = ['a', 'b', 'departure_time', 'arrival_time', 'csa_index', 'trip_id']
-    decreasing_departure_connections = pseudo_connections[columns].to_dict(orient='record')
+    decreasing_departure_connections = pseudo_connections[columns].to_dict(orient='records')
 
     pareto = []
 

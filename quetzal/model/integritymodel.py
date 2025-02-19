@@ -416,7 +416,7 @@ class IntegrityModel:
     def integrity_fix_nodeset_consistency(self):
         self.links = self.links.loc[self.links['a'].isin(self.nodeset())]
         self.links = self.links.loc[self.links['b'].isin(self.nodeset())]
-        self.nodes = self.nodes.loc[self.link_nodeset()]
+        self.nodes = self.nodes.loc[list(self.link_nodeset())]
         try:
             self.integrity_fix_road_nodeset_consistency()
         except KeyError:  # 'a'
