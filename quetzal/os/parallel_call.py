@@ -7,6 +7,9 @@ import uuid
 from subprocess import Popen
 import string
 
+import nbformat
+from nbconvert import PythonExporter
+
 
 def add_freeze_support(file):
     with open(file, 'r') as pyfile:
@@ -96,6 +99,8 @@ def parallel_call_notebooks(
         files.append(file)
         if not os.path.exists(file):
             os.system('jupyter nbconvert --to python %s' % notebook)
+        if not os.path.exists(file): # jupyter nb convert failed, for instance, jupyter is not recognized
+            convertNotebook(notebook, file)
             if freeze_support:
                 add_freeze_support(file)
         
@@ -123,6 +128,18 @@ def parallel_call_notebooks(
     print(int(end - start), 'seconds')
     if return_jobs: return jobs
 
+
+
+def convertNotebook(notebookPath, modulePath):
+
+  with open(notebookPath) as fh:
+    nb = nbformat.reads(fh.read(), nbformat.NO_CONVERT)
+
+  exporter = PythonExporter()
+  source, meta = exporter.from_notebook_node(nb)
+
+  with open(modulePath, 'w+') as fh:
+    fh.writelines(source)
 
 def parallel_call_notebook(
     notebook,
