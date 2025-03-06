@@ -635,6 +635,10 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
 				num_cores=num_cores,
 				**kwargs,
 			)
+		# we added a first node to to the mapmatching. we need to reshift the index
+		# a link is 2 node. if we have 5 links, there are 6 points in mapmatching.
+		matched_links = matched_links.shift(1)[1:]
+		links_mat = links_mat.shift(1)[1:]
 
 		matched_links['road_id_a'] = matched_links['road_id_a'].apply(lambda x: road_links.links_index_dict.get(x))
 		matched_links['road_id_b'] = matched_links['road_id_b'].apply(lambda x: road_links.links_index_dict.get(x))

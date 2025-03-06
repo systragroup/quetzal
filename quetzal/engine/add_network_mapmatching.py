@@ -347,15 +347,11 @@ def get_gps_tracks(links, nodes, by='trip_id', sequence='link_sequence'):
 
 
 def Parallel_Mapmatching(
-	gps_tracks: pd.DataFrame,
-	road_links: RoadLinks,
-	routing: bool = True,
-	n_neighbors: int = 10,
-	distance_max: float = 200,
-	by: str = 'trip_id',
-	num_cores: int = 1,
-	**kwargs,
+	gps_tracks: pd.DataFrame, road_links: RoadLinks, by: str = 'trip_id', num_cores: int = 1, **kwargs
 ) -> Tuple[pd.DataFrame, pd.DataFrame, list]:
+	"""
+	**kwargs : see Mapmatching args
+	"""
 	trip_list = gps_tracks[by].unique()
 	if num_cores > len(trip_list):
 		num_cores = max(len(trip_list), 1)
@@ -364,14 +360,7 @@ def Parallel_Mapmatching(
 	chunks = [trip_list[j : j + chunk_length] for j in range(0, len(trip_list), chunk_length)]
 	chunk_gps_tracks = [gps_tracks[gps_tracks[by].isin(trips)] for trips in chunks]
 
-	kwargs = {
-		'road_links': road_links,
-		'routing': routing,
-		'n_neighbors': n_neighbors,
-		'distance_max': distance_max,
-		'by': by,
-		**kwargs,
-	}
+	kwargs = {'road_links': road_links, 'by': by, **kwargs}
 	results = parallel_executor(
 		Multi_Mapmatching, num_workers=len(chunks), parallel_kwargs={'gps_tracks': chunk_gps_tracks}, **kwargs
 	)
@@ -383,19 +372,12 @@ def Parallel_Mapmatching(
 
 
 def Multi_Mapmatching(
-	gps_tracks: pd.DataFrame,
-	road_links: RoadLinks,
-	routing: bool = True,
-	n_neighbors: int = 10,
-	distance_max: float = 200,
-	by: str = 'trip_id',
-	**kwargs,
+	gps_tracks: pd.DataFrame, road_links: RoadLinks, by: str = 'trip_id', **kwargs
 ) -> Tuple[pd.DataFrame, pd.DataFrame, list]:
 	"""
 	gps_track: use get_gps_tracks
 	links: RoadLinks object
-	distance_max: max radius to search candidat road for each gps point (default = 200m)
-	routing: True return the complete routing from the first to the last point on the road network (default = False)
+	**kwargs : see Mapmatching args
 	Hidden Markov Map Matching Through Noise and Sparseness
 	    Paul Newson and John Krumm 2009
 	"""
@@ -412,17 +394,19 @@ def Multi_Mapmatching(
 		gps_track = gps_tracks[gps_tracks[by] == trip_id].drop(columns=by)
 		# format index. keep dict to reindex after the mapmatching
 		gps_track = gps_track.reset_index()
-		gps_track.index = gps_track.index - 1
 		gps_index_dict = gps_track['index'].to_dict()
-		gps_track.index = gps_track.index + 1
 		gps_track = gps_track.drop(columns=['index'])
 
 		if len(gps_track) < 2:  # cannot mapmatch less than 2 points.
 			unmatched_trip.append(trip_id)
 		else:
-			val, node_list = Mapmatching(
-				gps_track, road_links, routing=routing, n_neighbors=n_neighbors, distance_max=distance_max, **kwargs
-			)
+			res = Mapmatching(gps_track, road_links, **kwargs)
+			if isinstance(res, tuple):  # if return 2 values (routing=True)
+				val = res[0]
+				node_list = res[1]
+			else:
+				val = res
+				node_list = gpd.GeoDataFrame()
 
 			# add the by column to every data
 			val[by] = trip_id
@@ -432,8 +416,6 @@ def Multi_Mapmatching(
 			node_list.index = node_list.index.map(gps_index_dict)
 			vals = pd.concat([vals, val])
 			node_lists = pd.concat([node_lists, node_list])
-
-	# add matched points on road
 
 	print(f'{len(trip_id_list)} / {len(trip_id_list)}')
 	return vals, node_lists, unmatched_trip
@@ -719,19 +701,16 @@ def Mapmatching(
 	pseudo_predecessors.index = pseudo_predecessors.index.map(pseudo_index_node)
 	pseudo_predecessors[0] = pseudo_predecessors[0].apply(lambda x: pseudo_index_node.get(x))
 
-	path = []
 	last_value = last_node
+	path = [last_value]
 	for i in range(len(candidat_links['ix_one'].unique())):
 		last_value = pseudo_predecessors.loc[last_value][0]
 		path.append(last_value)
-	temp_path = path.copy()
-	temp_path.reverse()
-
-	path = [x[1] for x in path]
-
+	# path is a list of tuple (ix_one, road_id_b, road_b_offset). start at -1 and finish at 1 too many. (virtual nodes)
+	# (0, 2485, 217.73975081147978)
 	path.reverse()
 
-	val = pd.DataFrame(temp_path, columns=['index', 'road_id', 'offset']).set_index('index')[1:]
+	val = pd.DataFrame(path, columns=['index', 'road_id', 'offset']).set_index('index')[1:]
 	val['road_id_b'] = val['road_id'].shift(-1)
 	val['offset_b'] = val['offset'].shift(-1)
 	val = val[:-1]
@@ -751,7 +730,8 @@ def Mapmatching(
 	node_list = []
 	if routing:
 		# predecessors = predecessors.apply(lambda x : index_node.get(x))
-		df_path = pd.DataFrame(path[1:], columns=['road_id'])
+		road_id_path = [x[1] for x in path]
+		df_path = pd.DataFrame(road_id_path[1:], columns=['road_id'])
 		df_path['from_a'] = df_path['road_id'].apply(lambda x: links.node_index.get(links.dict_node_a.get(x)))
 		df_path['from_b'] = df_path['road_id'].apply(lambda x: links.node_index.get(links.dict_node_b.get(x)))
 		df_path['to_a'] = df_path['from_a'].shift(-1)
