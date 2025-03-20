@@ -78,7 +78,6 @@ def aon_roadpathfinder(df, volumes, od_set, time_col='time', ntleg_penalty=10e9,
     df['sparse_a'] = df['a'].apply(lambda x: index.get(x))
     df['sparse_b'] = df['b'].apply(lambda x: index.get(x))
     df = df.set_index(['sparse_a', 'sparse_b'])
-
     # Handle volumes and sparsify keys
     if od_set is not None:
         volumes = volumes.set_index(['origin', 'destination']).reindex(od_set).reset_index()
@@ -99,7 +98,6 @@ def msa_roadpathfinder(
     vdf={'default_bpr': default_bpr, 'free_flow': free_flow},
     volume_column='volume_car',
     method='bfw',
-    beta=None,
     num_cores=1,
     od_set=None,
     time_col='time',
@@ -113,13 +111,11 @@ def msa_roadpathfinder(
     volume_column='volume_car' : column of self.volumes to use for volume
     method = bfw, fw, msa, aon
     od_set = None. od_set
-    beta = None. give constant value foir BFW betas. ex: [0.7,0.2,0.1]
     num_cores = 1 : for parallelization.
     **kwargs: ntleg_penalty=1e9, access_time='time'  for zone to roads.
     """
     # preparation
     nb.set_num_threads(num_cores)
-
     # reindex links to sparse indexes (a,b)
     index = build_index(df[['a', 'b']].values)
     df['sparse_a'] = df['a'].apply(lambda x: index.get(x))
@@ -133,73 +129,69 @@ def msa_roadpathfinder(
     odv = volumes[['origin_sparse', 'destination_sparse', volume_column]].values
     volumes_sparse_keys = df.index.values
 
-    # first AON assignment
-    _, predecessors = shortest_path(df, time_col, index, zones, num_cores=num_cores)
-    ab_volumes = assign_volume(odv, predecessors, volumes_sparse_keys)
+    # initialization
+    df['jam_time'] = df[time_col]
+    df['flow'] = 0
+    relgap_list = []
 
-    df['auxiliary_flow'] = pd.Series(ab_volumes)
-    df['auxiliary_flow'].fillna(0, inplace=True)
-    df['flow'] += df['auxiliary_flow']  # do not do += in a cell where the variable is not created! bad
-    if maxiters == 0:  # no iteration.
-        df['jam_time'] = df[time_col]
-    else:
-        df['jam_time'] = jam_time(df, vdf, 'flow', time_col=time_col)
-        df['jam_time'].fillna(df[time_col], inplace=True)
-
-    rel_gap = []
-    phi = 1
-    if log:
-        print('iteration | Phi |  Rel Gap (%)')
-
-    for i in range(maxiters):
-        # CREATE EDGES AND SPARSE MATRIX
+    print('iteration | Phi |  Rel Gap (%)') if log else None
+    # note: first iteration i == 0 is AON to initialized.
+    for i in range(maxiters + 1):
+        # Routing and assignment
         _, predecessors = shortest_path(df, 'jam_time', index, zones, num_cores=num_cores)
         ab_volumes = assign_volume(odv, predecessors, volumes_sparse_keys)
         df['auxiliary_flow'] = pd.Series(ab_volumes)
         df['auxiliary_flow'].fillna(0, inplace=True)
-        if method == 'bfw':  # if biconjugate: takes the 2 last direction : direction is flow-auxflow.
-            if i >= 2:
-                if not beta:  # find beta
-                    df['derivative'] = get_derivative(df, vdf, h=0.001, flow_col='flow', time_col=time_col)
-                    b = find_beta(df, phi)  # this is the previous phi (phi_-1)
-                else:  # beta was provided in function args (debugging)
-                    assert sum(beta) == 1, 'beta must sum to 1.'
-                    b = beta
-                df['auxiliary_flow'] = b[0] * df['auxiliary_flow'] + b[1] * df['s_k-1'] + b[2] * df['s_k-2']
-
-            if i > 0:
-                df['s_k-2'] = df['s_k-1']
-            df['s_k-1'] = df['auxiliary_flow']
-
-        if method == 'msa':
+        #
+        # ffnd Phi, and BFW auxiliary flow modification
+        #
+        if i == 0:
+            phi = 1  # first iteration is AON
+        elif method == 'bfw':  # if biconjugate: takes the 2 last direction
+            df = get_bfw_auxiliary_flow(df, vdf, i, time_col, phi)
+            phi = find_phi(df, vdf, 0, 0.8, 10, time_col=time_col)
+        elif method == 'fw':
+            phi = find_phi(df, vdf, 0, 0.8, 10, time_col=time_col)
+        else:  # msa
             phi = 1 / (i + 2)
-        else:  # fw or bfw
-            phi = find_phi(df.reset_index(drop=True), vdf, 0, 0.8, 10, time_col=time_col)
-
-        # print Relgap
-        # modelling transport eq 11.11. SUM currentFlow x currentCost - SUM AONFlow x currentCost / SUM currentFlow x currentCost
-        a = np.sum((df['flow']) * df['jam_time'])
-        b = np.sum((df['auxiliary_flow']) * df['jam_time'])
-        rel_gap.append(100 * (a - b) / a)
-        if log:
-            print(i, round(phi, 4), round(rel_gap[-1], 3))
-
-        # conventional frank-wolfe
-        # df['flow'] + phi*(df['auxiliary_flow'] - df['flow'])  flow +step x direction
-        df['flow'] = (1 - phi) * df['flow'] + phi * df['auxiliary_flow']
+        #
+        # Get relGap. Skip first iteration (AON and relgap = -inf)
+        #
+        if i > 0:
+            relgap = get_relgap(df)
+            relgap_list.append(relgap)
+            print(i, round(phi, 4), round(relgap, 3)) if log else None
+        #
+        # Update flow and jam_time (frank-wolfe)
+        #
+        df['flow'] = (1 - phi) * df['flow'] + (phi * df['auxiliary_flow'])
         df['flow'].fillna(0, inplace=True)
-
         df['jam_time'] = jam_time(df, vdf, 'flow', time_col=time_col)
         df['jam_time'].fillna(df[time_col], inplace=True)
-        if rel_gap[-1] <= tolerance:
-            break
+        # skip first iteration (AON asignment) as relgap in -inf
+        if i > 0:
+            if relgap <= tolerance:
+                print('tolerance reached')
+                break
 
-    # finish.. format to quetzal object
-    # road_links['flow'] = road_links.set_index(['a', 'b']).index.map(df['flow'].to_dict().get)
-    # road_links['jam_time'] = road_links.set_index(['a', 'b']).index.map(df['jam_time'].to_dict().get)
-    # remove penalty from jam_time
-    # keep it.
-    # self.road_links['jam_time'] -= self.road_links['penalty']
     reversed_index = {v: k for k, v in index.items()}
     car_los = get_car_los(volumes, df, index, reversed_index, zones, ntleg_penalty, num_cores)
-    return df, car_los, rel_gap
+    return df, car_los, relgap_list
+
+
+def get_relgap(df) -> float:
+    # modelling transport eq 11.11. SUM currentFlow x currentCost - SUM AONFlow x currentCost / SUM currentFlow x currentCost
+    a = np.sum((df['flow']) * df['jam_time'])  # currentFlow x currentCost
+    b = np.sum((df['auxiliary_flow']) * df['jam_time'])  # AON_flow x currentCost
+    return 100 * (a - b) / a
+
+
+def get_bfw_auxiliary_flow(df, vdf, i, time_col, prev_phi) -> pd.DataFrame:
+    if i > 2:
+        df['derivative'] = get_derivative(df, vdf, h=0.001, flow_col='flow', time_col=time_col)
+        beta = find_beta(df, prev_phi)  # this is the previous phi (phi_-1)
+        df['auxiliary_flow'] = beta[0] * df['auxiliary_flow'] + beta[1] * df['s_k-1'] + beta[2] * df['s_k-2']
+    if i > 1:
+        df['s_k-2'] = df['s_k-1']
+    df['s_k-1'] = df['auxiliary_flow']
+    return df
