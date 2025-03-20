@@ -1,8 +1,28 @@
-from numba import jit
+from typing import Tuple
 import pandas as pd
 import numpy as np
-from quetzal.engine.pathfinder_utils import get_node_path, get_path, sparse_matrix, parallel_dijkstra
+from quetzal.engine.pathfinder_utils import get_node_path, get_path, parallel_dijkstra
 import numba as nb
+from scipy.sparse import csr_matrix
+
+
+def get_sparse_matrix(edges, index):
+    row, col, data = edges.T
+    nlen = len(index)
+    return csr_matrix((data, (row, col)), shape=(nlen, nlen))
+
+
+def shortest_path(
+    df: pd.DataFrame, weight_col: str, index: dict[str, int], origins: list[int], num_cores: int
+) -> Tuple[np.ndarray, np.ndarray]:
+    # from  df index(a,b) and weight col, return predecessor.
+    edges = df[weight_col].reset_index().values  # build the edges again, useless
+    sparse = get_sparse_matrix(edges, index=index)
+    # shortest path
+    weight_matrix, predecessors = parallel_dijkstra(
+        sparse, directed=True, indices=origins, return_predecessors=True, num_core=num_cores
+    )
+    return weight_matrix, predecessors
 
 
 def jam_time(links: pd.DataFrame, vdf, flow: str = 'flow', time_col: str = 'time') -> pd.Series:
@@ -59,8 +79,8 @@ def find_phi(links, vdf, phi=0, step=0.5, num_it=10, **kwargs):
     return phi
 
 
-def get_zone_index(df, v, index):
-    # INDEX
+def get_zone_index(df: pd.DataFrame, v: pd.DataFrame, index: dict[str, int]) -> Tuple[pd.DataFrame, list[int]]:
+    # return volumes with [origin_sparse, destination_sparse] anz zone_list (sparse zones)
     seta = set(df['a'])
     setb = set(df['b'])
     v = v.loc[v['origin'].isin(seta) & v['destination'].isin(setb)]
@@ -70,13 +90,13 @@ def get_zone_index(df, v, index):
     pole_list = sorted(list(sources))  # fix order
     source_list = [zone for zone in pole_list if zone in sources]
 
-    zones = [index[zone] for zone in source_list]
+    zones_list = [index[zone] for zone in source_list]
     zone_index = dict(zip(pole_list, range(len(pole_list))))
 
-    v['o'] = v['origin'].apply(zone_index.get)
-    v['d'] = v['destination'].apply(index.get)
+    v['origin_sparse'] = v['origin'].apply(zone_index.get)
+    v['destination_sparse'] = v['destination'].apply(index.get)
 
-    return v, zones
+    return v, zones_list
 
 
 """
@@ -99,7 +119,7 @@ def assign_volume(odv,predecessors,reversed_index):
 """
 
 
-@jit(nopython=True, locals={'predecessors': nb.int32[:, ::1]}, parallel=True)  # parallel=True
+@nb.jit(nopython=True, locals={'predecessors': nb.int32[:, ::1]}, parallel=True)  # parallel=True
 def fast_assign_volume(odv, predecessors, volumes):
     # this function use parallelization (or not).nb.set_num_threads(num_cores)
     # volumes is a numba dict with all the key initialized
@@ -114,7 +134,7 @@ def fast_assign_volume(odv, predecessors, volumes):
     return volumes
 
 
-def assign_volume(odv, predecessors, volumes_sparse_keys, reversed_index):
+def assign_volume(odv, predecessors, volumes_sparse_keys):
     # create a numba dict.
     numba_volumes = nb.typed.Dict.empty(key_type=nb.types.UniTuple(nb.types.int64, 2), value_type=nb.types.float64)
     for ind in volumes_sparse_keys:
@@ -122,20 +142,15 @@ def assign_volume(odv, predecessors, volumes_sparse_keys, reversed_index):
     # assign volumes from each od
     volumes = dict(fast_assign_volume(odv, predecessors, numba_volumes))
 
-    ab_volumes = {(reversed_index[k[0]], reversed_index[k[1]]): v for k, v in volumes.items()}
-    return ab_volumes
+    return volumes
 
 
 def get_car_los(v, df, index, reversed_index, zones, ntleg_penalty, num_cores=1):
-    car_los = v[['origin', 'destination', 'o', 'd']]
-    edges = df['jam_time'].reset_index().values  # build the edges again, useless
-    sparse, _ = sparse_matrix(edges, index=index)
-    dist_matrix, predecessors = parallel_dijkstra(
-        sparse, directed=True, indices=zones, return_predecessors=True, num_core=num_cores
-    )
-    odlist = list(zip(car_los['o'].values, car_los['d'].values))
-    time_dict = {(o, d): dist_matrix[o, d] - ntleg_penalty for o, d in odlist}  # time for each od
-    car_los['time'] = car_los.set_index(['o', 'd']).index.map(time_dict)
+    car_los = v[['origin', 'destination', 'origin_sparse', 'destination_sparse']]
+    time_matrix, predecessors = shortest_path(df, 'jam_time', index, zones, num_cores=num_cores)
+    odlist = list(zip(car_los['origin_sparse'].values, car_los['destination_sparse'].values))
+    time_dict = {(o, d): time_matrix[o, d] - ntleg_penalty for o, d in odlist}  # time for each od
+    car_los['time'] = car_los.set_index(['origin_sparse', 'destination_sparse']).index.map(time_dict)
 
     path_dict = {}
     for origin, destination in odlist:
@@ -145,10 +160,10 @@ def get_car_los(v, df, index, reversed_index, zones, ntleg_penalty, num_cores=1)
 
     car_los.loc[car_los['origin'] == car_los['destination'], 'time'] = 0.0
 
-    car_los['path'] = car_los.set_index(['o', 'd']).index.map(path_dict)
+    car_los['path'] = car_los.set_index(['origin_sparse', 'destination_sparse']).index.map(path_dict)
     car_los['gtime'] = car_los['time']
 
-    car_los = car_los.drop(columns=['o', 'd'])
+    car_los = car_los.drop(columns=['origin_sparse', 'destination_sparse'])
 
     return car_los
 

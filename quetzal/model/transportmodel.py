@@ -232,13 +232,14 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         roadpathfinder = RoadPathFinder(self, method, time_column, access_time, ntleg_penalty)
         network = roadpathfinder.network
+        volumes = roadpathfinder.volumes
         if method == 'aon':
-            self.car_los = aon_roadpathfinder(network, self.volumes, od_set, time_column, ntleg_penalty, num_cores)
+            self.car_los = aon_roadpathfinder(network, volumes, od_set, time_column, ntleg_penalty, num_cores)
 
         elif method in ['msa', 'fw', 'bfw']:
             df, car_los, rel_gap = msa_roadpathfinder(
                 network,
-                self.volumes,
+                volumes,
                 method=method,
                 maxiters=maxiters,
                 time_col=time_column,

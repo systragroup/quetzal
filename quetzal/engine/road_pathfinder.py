@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from quetzal.engine.pathfinder_utils import sparse_matrix, build_index, parallel_dijkstra
+from quetzal.engine.pathfinder_utils import build_index
 from quetzal.engine.msa_utils import (
     get_zone_index,
     assign_volume,
@@ -9,6 +9,7 @@ from quetzal.engine.msa_utils import (
     get_car_los,
     find_beta,
     get_derivative,
+    shortest_path,
 )
 from quetzal.engine.vdf import default_bpr, free_flow
 import numba as nb
@@ -62,30 +63,31 @@ def add_connector_to_roads(road_links, zone_to_road, time_col='time', aon=False)
             road_links['vdf'] = 'default_bpr'
             print("vdf not found in road_links columns. Values set to 'default_bpr'")
 
-        df = pd.concat([road_links, zone_to_road]).set_index(['a', 'b'], drop=False)
+        df = pd.concat([road_links, zone_to_road])
         df['flow'] = 0
         df['auxiliary_flow'] = 0
         return df
     else:  # if aon
         columns = ['a', 'b', time_col]
-        df = pd.concat([road_links[columns], zone_to_road[columns]]).set_index(['a', 'b'], drop=False)
+        df = pd.concat([road_links[columns], zone_to_road[columns]])
         return df
 
 
 def aon_roadpathfinder(df, volumes, od_set, time_col='time', ntleg_penalty=10e9, num_cores=1):
-    v = volumes
-    if od_set is not None:
-        v = v.set_index(['origin', 'destination']).reindex(od_set).reset_index()
+    index = build_index(df[['a', 'b']].values)
+    df['sparse_a'] = df['a'].apply(lambda x: index.get(x))
+    df['sparse_b'] = df['b'].apply(lambda x: index.get(x))
+    df = df.set_index(['sparse_a', 'sparse_b'])
 
-    # CREATE EDGES FOR SPARSE MATRIX
-    edges = df[time_col].reset_index().values  # to build the index once and for all
-    index = build_index(edges)
-    reversed_index = {v: k for k, v in index.items()}
-    # index V with sparse indexes, zones in sparse indexes
-    v, zones = get_zone_index(df, v, index)
+    # Handle volumes and sparsify keys
+    if od_set is not None:
+        volumes = volumes.set_index(['origin', 'destination']).reindex(od_set).reset_index()
+    volumes, zones = get_zone_index(df, volumes, index)
 
     df['jam_time'] = df[time_col]
-    return get_car_los(v, df, index, reversed_index, zones, ntleg_penalty, num_cores)
+
+    reversed_index = {v: k for k, v in index.items()}
+    return get_car_los(volumes, df, index, reversed_index, zones, ntleg_penalty, num_cores)
 
 
 def msa_roadpathfinder(
@@ -118,31 +120,22 @@ def msa_roadpathfinder(
     # preparation
     nb.set_num_threads(num_cores)
 
-    v = volumes
-    if od_set is not None:
-        v = v.set_index(['origin', 'destination']).reindex(od_set).reset_index()
-
-    # CREATE EDGES FOR SPARSE MATRIX
-    edges = df[time_col].reset_index().values  # to build the index once and for all
-    index = build_index(edges)
-    reversed_index = {v: k for k, v in index.items()}
-    # index V with sparse indexes, zones in sparse indexes
-    v, zones = get_zone_index(df, v, index)
-
-    sparse, _ = sparse_matrix(edges, index=index)
-
-    _, predecessors = parallel_dijkstra(
-        sparse, directed=True, indices=zones, return_predecessors=True, num_core=num_cores
-    )
-
+    # reindex links to sparse indexes (a,b)
+    index = build_index(df[['a', 'b']].values)
     df['sparse_a'] = df['a'].apply(lambda x: index.get(x))
     df['sparse_b'] = df['b'].apply(lambda x: index.get(x))
-    volumes_sparse_keys = list(zip(df['sparse_a'], df['sparse_b']))
+    df = df.set_index(['sparse_a', 'sparse_b'])
 
-    odv = v[['o', 'd', volume_column]].values
-    # BUILD PATHS FROM PREDECESSORS AND ASSIGN VOLUMES
-    # then convert index back to each links indexes
-    ab_volumes = assign_volume(odv, predecessors, volumes_sparse_keys, reversed_index)
+    # Handle volumes and sparsify keys
+    if od_set is not None:
+        volumes = volumes.set_index(['origin', 'destination']).reindex(od_set).reset_index()
+    volumes, zones = get_zone_index(df, volumes, index)
+    odv = volumes[['origin_sparse', 'destination_sparse', volume_column]].values
+    volumes_sparse_keys = df.index.values
+
+    # first AON assignment
+    _, predecessors = shortest_path(df, time_col, index, zones, num_cores=num_cores)
+    ab_volumes = assign_volume(odv, predecessors, volumes_sparse_keys)
 
     df['auxiliary_flow'] = pd.Series(ab_volumes)
     df['auxiliary_flow'].fillna(0, inplace=True)
@@ -160,16 +153,8 @@ def msa_roadpathfinder(
 
     for i in range(maxiters):
         # CREATE EDGES AND SPARSE MATRIX
-        edges = df['jam_time'].reset_index().values  # build the edges again, useless
-        sparse, _ = sparse_matrix(edges, index=index)
-        # shortest path
-        _, predecessors = parallel_dijkstra(
-            sparse, directed=True, indices=zones, return_predecessors=True, num_core=num_cores
-        )
-
-        # BUILD PATHS FROM PREDECESSORS AND ASSIGN VOLUMES
-        ab_volumes = assign_volume(odv, predecessors, volumes_sparse_keys, reversed_index)
-
+        _, predecessors = shortest_path(df, 'jam_time', index, zones, num_cores=num_cores)
+        ab_volumes = assign_volume(odv, predecessors, volumes_sparse_keys)
         df['auxiliary_flow'] = pd.Series(ab_volumes)
         df['auxiliary_flow'].fillna(0, inplace=True)
         if method == 'bfw':  # if biconjugate: takes the 2 last direction : direction is flow-auxflow.
@@ -188,18 +173,16 @@ def msa_roadpathfinder(
 
         if method == 'msa':
             phi = 1 / (i + 2)
-        else:
+        else:  # fw or bfw
             phi = find_phi(df.reset_index(drop=True), vdf, 0, 0.8, 10, time_col=time_col)
-        #
 
-        #  modelling transport eq 11.11. SUM currentFlow x currentCost - SUM AONFlow x currentCost / SUM currentFlow x currentCost
+        # print Relgap
+        # modelling transport eq 11.11. SUM currentFlow x currentCost - SUM AONFlow x currentCost / SUM currentFlow x currentCost
         a = np.sum((df['flow']) * df['jam_time'])
         b = np.sum((df['auxiliary_flow']) * df['jam_time'])
         rel_gap.append(100 * (a - b) / a)
-
         if log:
             print(i, round(phi, 4), round(rel_gap[-1], 3))
-        # Aux-flow direction a l'etape
 
         # conventional frank-wolfe
         # df['flow'] + phi*(df['auxiliary_flow'] - df['flow'])  flow +step x direction
@@ -217,6 +200,6 @@ def msa_roadpathfinder(
     # remove penalty from jam_time
     # keep it.
     # self.road_links['jam_time'] -= self.road_links['penalty']
-
-    car_los = get_car_los(v, df, index, reversed_index, zones, ntleg_penalty, num_cores)
+    reversed_index = {v: k for k, v in index.items()}
+    car_los = get_car_los(volumes, df, index, reversed_index, zones, ntleg_penalty, num_cores)
     return df, car_los, rel_gap
