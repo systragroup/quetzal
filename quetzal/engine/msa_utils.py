@@ -4,6 +4,7 @@ import numpy as np
 from quetzal.engine.pathfinder_utils import get_node_path, get_path, parallel_dijkstra
 import numba as nb
 from scipy.sparse import csr_matrix
+from scipy.optimize import minimize_scalar
 
 
 def get_sparse_matrix(edges, index):
@@ -61,19 +62,14 @@ def z_prime(links, vdf, phi, **kwargs):
     return np.ma.masked_invalid(z).sum()
 
 
-def find_phi(links, vdf, phi=0, step=0.5, num_it=10, **kwargs):
-    a = z_prime(links, vdf, phi, **kwargs)
-    for i in range(num_it):
-        b = z_prime(links, vdf, phi + step, **kwargs)
-        if b < a:
-            phi += step
-            step = step / 2
-            a = b
-        else:
-            step = -step / 2
-        if phi + step < 0:
-            step = -step
-    return phi
+def find_phi(links, vdf, maxiter=10, tol=1e-4, **kwargs):
+    return minimize_scalar(
+        lambda x: z_prime(links, vdf, x, **kwargs),
+        bounds=(0, 1),
+        method='Bounded',
+        tol=tol,
+        options={'maxiter': maxiter},
+    ).x
 
 
 def get_zone_index(links: pd.DataFrame, v: pd.DataFrame, index: dict[str, int]) -> Tuple[pd.DataFrame, list[int]]:
@@ -96,7 +92,7 @@ def get_zone_index(links: pd.DataFrame, v: pd.DataFrame, index: dict[str, int]) 
     return v, zones_list
 
 
-@nb.jit(nopython=True, locals={'predecessors': nb.int32[:, ::1]}, parallel=True)  # parallel=True
+@nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True, cache=True)  # parallel=True
 def assign_volume(odv, predecessors, volumes):
     # this function use parallelization (or not).nb.set_num_threads(num_cores)
     # volumes is a numba dict with all the key initialized
@@ -112,10 +108,10 @@ def assign_volume(odv, predecessors, volumes):
     return volumes
 
 
-def init_volume(volumes_sparse_keys):
+def init_ab_volumes(base_flow):
     numba_volumes = nb.typed.Dict.empty(key_type=nb.types.UniTuple(nb.types.int64, 2), value_type=nb.types.float64)
-    for ind in volumes_sparse_keys:
-        numba_volumes[ind] = 0
+    for key, value in base_flow.items():
+        numba_volumes[key] = value
     return numba_volumes
 
 

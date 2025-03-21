@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 from scipy.sparse import csr_matrix, csc_matrix
 from scipy.sparse.csgraph import dijkstra
-from numba import jit
 import numba as nb
 from quetzal.os.parallel_call import parallel_executor
 
@@ -68,7 +67,7 @@ def simple_routing(origin, destination, links, weight_col='time', dijkstra_limit
         return dist_matrix
 
 
-@jit(nopython=True, locals={'predecessors': nb.int32[:, ::1], 'i': nb.int32, 'j': nb.int32})
+@nb.njit(cache=True, locals={'predecessors': nb.int32[:, ::1], 'i': nb.int32, 'j': nb.int32})
 def get_path(predecessors, i, j):
     path = [j]
     k = j
@@ -79,7 +78,7 @@ def get_path(predecessors, i, j):
     return path[::-1][1:]
 
 
-@jit(nopython=True)
+@nb.njit(cache=True)
 def get_reversed_path(predecessors, i, j):
     path = [j]
     k = j
@@ -90,7 +89,7 @@ def get_reversed_path(predecessors, i, j):
     return path[:-1]
 
 
-@jit(nopython=True)
+@nb.njit(cache=True)
 def get_node_path(predecessors, i, j):
     # remove zones nodes (first and last one)
     return get_path(predecessors, i, j)[1:-1]

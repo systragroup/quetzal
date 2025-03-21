@@ -3,7 +3,7 @@ import pandas as pd
 from quetzal.engine.pathfinder_utils import build_index
 from quetzal.engine.msa_utils import (
     get_zone_index,
-    init_volume,
+    init_ab_volumes,
     assign_volume,
     jam_time,
     find_phi,
@@ -86,6 +86,9 @@ def concat_connectors_to_roads(road_links, zone_to_road, segments, time_col='tim
         links = pd.concat([road_links, zone_to_road])
         links['flow'] = 0
         links['auxiliary_flow'] = 0
+        if 'base_flow' not in links.columns:
+            links['base_flow'] = 0
+        links['base_flow'] = links['base_flow'].fillna(0)
     return links
 
 
@@ -145,8 +148,9 @@ def msa_roadpathfinder(
 
     #  sparsify volumes keys
     volumes, zones = get_zone_index(links, volumes, index)
-    volumes_sparse_keys = links.index.values
-
+    # init numba dict with (a, b, base_flow)
+    # in the volumes assignment, start with base_flow (ex: network preloaded with buses on road)
+    base_flow = init_ab_volumes(links['base_flow'].to_dict())
     # initialization
     links['jam_time'] = links[time_col]
     links['flow'] = 0
@@ -156,15 +160,13 @@ def msa_roadpathfinder(
     # note: first iteration i == 0 is AON to initialized.
     for i in range(maxiters + 1):
         # Routing and assignment
-        # TODO: could add base flow there in init_volumes?
-        ab_volumes = init_volume(volumes_sparse_keys)  # init numba dict with (a,b,0)
+        ab_volumes = base_flow.copy()  # init numba dict with (a,b,0)
         for seg in segments:
             filtered = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
             _, predecessors = shortest_path(filtered, 'jam_time', index, zones, num_cores=num_cores)
             odv = volumes[['origin_sparse', 'destination_sparse', seg]].values
             ab_volumes = assign_volume(odv, predecessors, ab_volumes)
-        links['auxiliary_flow'] = pd.Series(ab_volumes)
-        links['auxiliary_flow'].fillna(0, inplace=True)
+        links['auxiliary_flow'] = ab_volumes
         #
         # find Phi, and BFW auxiliary flow modification
         #
@@ -172,9 +174,9 @@ def msa_roadpathfinder(
             phi = 1  # first iteration is AON
         elif method == 'bfw':  # if biconjugate: takes the 2 last direction
             links = get_bfw_auxiliary_flow(links, vdf, i, time_col, phi)
-            phi = find_phi(links, vdf, 0, 0.8, 10, time_col=time_col)
+            phi = find_phi(links, vdf, maxiter=10, tol=1e-4, time_col=time_col)
         elif method == 'fw':
-            phi = find_phi(links, vdf, 0, 0.8, 10, time_col=time_col)
+            phi = find_phi(links, vdf, maxiter=10, tol=1e-4, time_col=time_col)
         else:  # msa
             phi = 1 / (i + 2)
         #
