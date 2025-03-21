@@ -13,10 +13,10 @@ def get_sparse_matrix(edges, index):
 
 
 def shortest_path(
-    df: pd.DataFrame, weight_col: str, index: dict[str, int], origins: list[int], num_cores: int
+    links: pd.DataFrame, weight_col: str, index: dict[str, int], origins: list[int], num_cores: int
 ) -> Tuple[np.ndarray, np.ndarray]:
     # from  df index(a,b) and weight col, return predecessor.
-    edges = df[weight_col].reset_index().values  # build the edges again, useless
+    edges = links[weight_col].reset_index().values  # build the edges again, useless
     sparse = get_sparse_matrix(edges, index=index)
     # shortest path
     weight_matrix, predecessors = parallel_dijkstra(
@@ -32,11 +32,8 @@ def jam_time(links: pd.DataFrame, vdf, flow: str = 'flow', time_col: str = 'time
     # 2) python function of the form func(df, flow_col, time_col).
     # 3) Jit function with single input matrix ['alpha','beta','limit',flow_col ,time_col,'penalty','capacity']]
     keys = set(links['vdf'])
-    missing_vdf = keys - set(vdf.keys())
-
-    assert len(missing_vdf) == 0, 'you should provide methods for the following vdf keys' + str(missing_vdf)
     for key in keys:
-        if type(vdf[key]) == str:
+        if isinstance(vdf[key], str):
             str_expression = vdf[key].replace('flow', flow).replace('time', time_col)
             links.loc[links['vdf'] == key, 'result'] = links.loc[links['vdf'] == key].eval(str_expression)
         elif type(vdf[key]).__name__ == 'function':  # normal python function.
@@ -79,10 +76,10 @@ def find_phi(links, vdf, phi=0, step=0.5, num_it=10, **kwargs):
     return phi
 
 
-def get_zone_index(df: pd.DataFrame, v: pd.DataFrame, index: dict[str, int]) -> Tuple[pd.DataFrame, list[int]]:
+def get_zone_index(links: pd.DataFrame, v: pd.DataFrame, index: dict[str, int]) -> Tuple[pd.DataFrame, list[int]]:
     # return volumes with [origin_sparse, destination_sparse] anz zone_list (sparse zones)
-    seta = set(df['a'])
-    setb = set(df['b'])
+    seta = set(links['a'])
+    setb = set(links['b'])
     v = v.loc[v['origin'].isin(seta) & v['destination'].isin(setb)]
 
     sources = set(v['origin']).union(v['destination'])
@@ -99,55 +96,32 @@ def get_zone_index(df: pd.DataFrame, v: pd.DataFrame, index: dict[str, int]) -> 
     return v, zones_list
 
 
-"""
-def assign_volume(odv,predecessors,reversed_index):
-    volumes={}
-    for origin, destination, volume in odv: 
-        path = get_edge_path(get_node_path(predecessors, origin, destination))
-        for key in path:
-            try:
-                volumes[key] += volume
-            except KeyError:
-                volumes[key] = volume
-    #return volumes            
-    # ab_volume is the volume assigned to each link indexed by the (a, b) tuple
-    ab_volumes = {
-        (reversed_index[k[0]], reversed_index[k[1]]) : v 
-        for k, v in volumes.items()
-    }
-    return ab_volumes
-"""
-
-
 @nb.jit(nopython=True, locals={'predecessors': nb.int32[:, ::1]}, parallel=True)  # parallel=True
-def fast_assign_volume(odv, predecessors, volumes):
+def assign_volume(odv, predecessors, volumes):
     # this function use parallelization (or not).nb.set_num_threads(num_cores)
     # volumes is a numba dict with all the key initialized
     for i in nb.prange(len(odv)):  # nb.prange(len(odv)):
         origin = odv[i, 0]
         destination = odv[i, 1]
         v = odv[i, 2]
-        path = get_node_path(predecessors, origin, destination)
-        path = list(zip(path[:-1], path[1:]))
-        for key in path:
-            volumes[key] += v
+        if v > 0:
+            path = get_node_path(predecessors, origin, destination)
+            path = list(zip(path[:-1], path[1:]))
+            for key in path:
+                volumes[key] += v
     return volumes
 
 
-def assign_volume(odv, predecessors, volumes_sparse_keys):
-    # create a numba dict.
+def init_volume(volumes_sparse_keys):
     numba_volumes = nb.typed.Dict.empty(key_type=nb.types.UniTuple(nb.types.int64, 2), value_type=nb.types.float64)
     for ind in volumes_sparse_keys:
         numba_volumes[ind] = 0
-    # assign volumes from each od
-    volumes = dict(fast_assign_volume(odv, predecessors, numba_volumes))
-
-    return volumes
+    return numba_volumes
 
 
-def get_car_los(v, df, index, reversed_index, zones, ntleg_penalty, num_cores=1):
-    car_los = v[['origin', 'destination', 'origin_sparse', 'destination_sparse']]
-    time_matrix, predecessors = shortest_path(df, 'jam_time', index, zones, num_cores=num_cores)
+def get_car_los(volumes, links, index, reversed_index, zones, ntleg_penalty, num_cores=1):
+    car_los = volumes[['origin', 'destination', 'origin_sparse', 'destination_sparse']]
+    time_matrix, predecessors = shortest_path(links, 'jam_time', index, zones, num_cores=num_cores)
     odlist = list(zip(car_los['origin_sparse'].values, car_los['destination_sparse'].values))
     time_dict = {(o, d): time_matrix[o, d] - ntleg_penalty for o, d in odlist}  # time for each od
     car_los['time'] = car_los.set_index(['origin_sparse', 'destination_sparse']).index.map(time_dict)
@@ -168,18 +142,18 @@ def get_car_los(v, df, index, reversed_index, zones, ntleg_penalty, num_cores=1)
     return car_los
 
 
-def find_beta(df, phi_1):
+def find_beta(links, phi_1):
     # The Stiff is Moving - Conjugate Direction Frank-Wolfe Methods with Applications to Traffic Assignment from Mitradjieva maria
 
     b = [0, 0, 0]
-    dk_1 = df['s_k-1'] - df['flow']
-    dk_2 = phi_1 * df['s_k-1'] + (1 - phi_1) * df['s_k-2'] - df['flow']
-    dk = df['auxiliary_flow'] - df['flow']
+    dk_1 = links['s_k-1'] - links['flow']
+    dk_2 = phi_1 * links['s_k-1'] + (1 - phi_1) * links['s_k-2'] - links['flow']
+    dk = links['auxiliary_flow'] - links['flow']
     # put a try here except mu=0 if we have a division by 0...
-    mu = -sum(dk_2 * df['derivative'] * dk) / sum(dk_2 * df['derivative'] * (df['s_k-2'] - df['s_k-1']))
+    mu = -sum(dk_2 * links['derivative'] * dk) / sum(dk_2 * links['derivative'] * (links['s_k-2'] - links['s_k-1']))
     mu = max(0, mu)  # beta_k >=0
     # same try here.
-    nu = -sum(dk_1 * df['derivative'] * dk) / sum(dk_1 * df['derivative'] * dk_1) + (mu * phi_1 / (1 - phi_1))
+    nu = -sum(dk_1 * links['derivative'] * dk) / sum(dk_1 * links['derivative'] * dk_1) + (mu * phi_1 / (1 - phi_1))
     nu = max(0, nu)
     b[0] = 1 / (1 + mu + nu)
     b[1] = nu * b[0]
@@ -187,9 +161,9 @@ def find_beta(df, phi_1):
     return b
 
 
-def get_derivative(df, vdf, flow_col='flow', h=0.001, **kwargs):
-    df['x1'] = df[flow_col] + h
-    df['x2'] = df[flow_col] - h
-    df['x1'] = jam_time(df, vdf, flow='x1', **kwargs)
-    df['x2'] = jam_time(df, vdf, flow='x2', **kwargs)
-    return (df['x1'] - df['x2']) / (2 * h)
+def get_derivative(links, vdf, flow_col='flow', h=0.001, **kwargs):
+    links['x1'] = links[flow_col] + h
+    links['x2'] = links[flow_col] - h
+    links['x1'] = jam_time(links, vdf, flow='x1', **kwargs)
+    links['x2'] = jam_time(links, vdf, flow='x2', **kwargs)
+    return (links['x1'] - links['x2']) / (2 * h)

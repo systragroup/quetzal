@@ -4,7 +4,7 @@ from quetzal.analysis import analysis
 from quetzal.engine import engine, nested_logit
 from quetzal.engine.park_and_ride_pathfinder import ParkRidePathFinder
 from quetzal.engine.pathfinder import PublicPathFinder
-from quetzal.engine.road_pathfinder import RoadPathFinder, aon_roadpathfinder, msa_roadpathfinder
+from quetzal.engine.road_pathfinder import init_network, init_volumes, aon_roadpathfinder, msa_roadpathfinder
 from quetzal.engine.sampling import sample_od
 from quetzal.model import model, optimalmodel, parkridemodel
 from syspy.assignment import raw as raw_assignment
@@ -151,12 +151,12 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
     def step_road_pathfinder(
         self,
         method='bfw',
-        maxiters=1,
-        path_analysis=True,
+        segments=[],
         time_column='time',
         access_time='time',
-        ntleg_penalty=10e9,
         od_set=None,
+        ntleg_penalty=10e9,
+        path_analysis=True,
         num_cores=1,
         **kwargs,
     ):
@@ -174,28 +174,18 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         method : ['bfw'|'fw'|'msa'|'aon'], optional
             Which method to use for pathfinder. Options are:
 
-            'bfw'   --(default)
+            'bfw'   -- Bi-conjugate Frank-Wolfe
 
-            'fw'    --
+            'fw'    -- Frank-Wolfe
 
-            'msa'   --
+            'msa'   -- Mean succesive average
 
             'aon'   -- all or nothing : shortest path pathfinder
 
-        maxiters : integer, optional, default 10
-            Maxiters=1 will perform 'shortest path' pathfinder
+        segments: list of segments in volumes to assign
 
         time_column: string, optional, defaut time
             name of the links free_flow time column in road_links
-
-        tolerance  : float, optional, default 0.01
-            stop condition for RelGap, in percent
-
-        volume_column : string, optional, default 'volume_car'
-            column of self.volumes to use for volume
-
-        ntleg_penalty : float, optional, default 1e9
-            ntleg penality for access time
 
         access_time : string, optional, default 'time'
             column for time in zone_to_road for access time
@@ -204,14 +194,16 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             set of od to use - may be used to reduce computation time
             for example, the od_set is the set of od for which there is a volume in self.volumes
 
+        ntleg_penalty : float, optional, default 1e9
+            ntleg penality for access time
+
+        path_analysis : bool, optional, false
+            perform self.analysis_car_los() at the end
+
         num_cores : integer, optional, default 1
             for parallelization
 
-        log :
-            log data on each iteration (default False)
-
-        vdf : dict, optional
-            dict of function for the jam time : {'default_bpr': default_bpr, 'free_flow': free_flow}
+        **kwargs :  see msa_roadpathfinder()
 
         Builds
         ----------
@@ -230,21 +222,19 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             method = 'aon'
             print(" 'all_or_nothing'=True is deprecated. use method = 'aon' instead")
 
-        roadpathfinder = RoadPathFinder(self, method, time_column, access_time, ntleg_penalty)
-        network = roadpathfinder.network
-        volumes = roadpathfinder.volumes
+        network = init_network(self, method, segments, time_column, access_time, ntleg_penalty)
+        volumes = init_volumes(self, od_set)
         if method == 'aon':
-            self.car_los = aon_roadpathfinder(network, volumes, od_set, time_column, ntleg_penalty, num_cores)
+            self.car_los = aon_roadpathfinder(network, volumes, time_column, ntleg_penalty, num_cores)
 
         elif method in ['msa', 'fw', 'bfw']:
             df, car_los, rel_gap = msa_roadpathfinder(
                 network,
                 volumes,
+                segments=segments,
                 method=method,
-                maxiters=maxiters,
                 time_col=time_column,
                 ntleg_penalty=ntleg_penalty,
-                od_set=od_set,
                 num_cores=num_cores,
                 **kwargs,
             )

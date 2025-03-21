@@ -3,6 +3,7 @@ import pandas as pd
 from quetzal.engine.pathfinder_utils import build_index
 from quetzal.engine.msa_utils import (
     get_zone_index,
+    init_volume,
     assign_volume,
     jam_time,
     find_phi,
@@ -15,159 +16,181 @@ from quetzal.engine.vdf import default_bpr, free_flow
 import numba as nb
 
 
-class RoadPathFinder:
-    def __init__(self, model, method='aon', time_col='time', access_time='time', ntleg_penalty=10e9):
-        # self.zones = model.zones.copy()
-        self.method = method
-        self.road_links = model.road_links.copy()
-        self.zone_to_road = model.zone_to_road.copy()
-        self.time_col = time_col
-        assert not self.road_links.set_index(['a', 'b']).index.has_duplicates, (
-            'there is duplicated road links (same a,b for a link)'
-        )
-        assert self.time_col in self.road_links.columns, f'time_column: {time_col} not found in road_links.'
-        try:
-            self.volumes = model.volumes.copy()
-        except AttributeError:
-            print('self.volumes does not exist. od generated with self.zones')
-            od_set = []
-            for o in model.zones.index.values:
-                for d in model.zones.index.values:
-                    od_set.append((o, d))
-            self.volumes = pd.DataFrame(od_set, columns=['origin', 'destination'])
-            self.volumes['volume'] = 0
-
-        assert len(self.volumes) > 0
-
-        self.zone_to_road = zone_to_road_preparation(self.zone_to_road, time_col, access_time, ntleg_penalty)
-        # create DataFrame with road_links and zone to road
-        self.network = add_connector_to_roads(self.road_links, self.zone_to_road, time_col, method == 'aon')
+def init_network(sm, method='aon', segments=['car'], time_col='time', access_time='time', ntleg_penalty=10e9):
+    #
+    #
+    road_links = sm.road_links.copy()
+    zone_to_road = sm.zone_to_road.copy()
+    assert not road_links.set_index(['a', 'b']).index.has_duplicates, (
+        'there is duplicated road links (same a,b for a link) please remove duplicated'
+    )
+    assert time_col in road_links.columns, f'time_column: {time_col} not found in road_links.'
+    aon = method == 'aon'
+    zone_to_road = zone_to_road_preparation(zone_to_road, segments, time_col, access_time, ntleg_penalty, aon)
+    # create DataFrame with road_links and zone to road
+    network = concat_connectors_to_roads(road_links, zone_to_road, segments, time_col, aon)
+    return network
 
 
-def zone_to_road_preparation(zone_to_road, time_col='time', access_time='time', ntleg_penalty=1e9):
+def init_volumes(sm, od_set=None):
+    # apply od_set to self.volumes
+    try:
+        volumes = sm.volumes.copy()
+        if od_set is not None:
+            volumes = volumes.set_index(['origin', 'destination']).reindex(od_set).reset_index()
+    except AttributeError:
+        print('self.volumes does not exist. od generated with self.zones, od_set')
+        if od_set is not None:
+            print('od_set ignored')
+        zones = sm.zones.index.values
+        od_set = []
+        for o in zones:
+            for d in zones:
+                od_set.append((o, d))
+        volumes = pd.DataFrame(od_set, columns=['origin', 'destination'])
+        volumes['volume'] = 0
+
+    assert len(volumes) > 0
+    return volumes
+
+
+def zone_to_road_preparation(zone_to_road, segments, time_col='time', access_time='time', ntleg_penalty=1e9, aon=False):
     # prepare zone_to_road_links to the same format as road_links
-    # and initialize it's parameters
     zone_to_road = zone_to_road.copy()
     zone_to_road[time_col] = zone_to_road[access_time]
     zone_to_road.loc[zone_to_road['direction'] == 'access', time_col] += ntleg_penalty
-    if 'vdf' not in zone_to_road.columns:
-        zone_to_road['vdf'] = 'free_flow'
-    zone_to_road = zone_to_road
-    return zone_to_road
-    # keep track of it (need to substract it in car_los)
-
-
-def add_connector_to_roads(road_links, zone_to_road, time_col='time', aon=False):
     if not aon:
-        if 'vdf' not in road_links.columns:
-            road_links['vdf'] = 'default_bpr'
-            print("vdf not found in road_links columns. Values set to 'default_bpr'")
+        if 'vdf' not in zone_to_road.columns:
+            print("vdf not found in zone_to_road columns. Values set to 'free_flow'")
+            zone_to_road['vdf'] = 'free_flow'
+        if 'segments' not in zone_to_road.columns:
+            print("segments not found in zone_to_road columns. set all segments allowed on each links'")
+            zone_to_road['segments'] = [set(segments) for _ in range(len(zone_to_road))]
 
-        df = pd.concat([road_links, zone_to_road])
-        df['flow'] = 0
-        df['auxiliary_flow'] = 0
-        return df
-    else:  # if aon
+    return zone_to_road
+
+
+def concat_connectors_to_roads(road_links, zone_to_road, segments, time_col='time', aon=False):
+    if aon:
         columns = ['a', 'b', time_col]
-        df = pd.concat([road_links[columns], zone_to_road[columns]])
-        return df
+        links = pd.concat([road_links[columns], zone_to_road[columns]])
+        return links
+    else:
+        if 'vdf' not in road_links.columns:
+            print("vdf not found in road_links columns. Values set to 'default_bpr'")
+            road_links['vdf'] = 'default_bpr'
+        if 'segments' not in road_links.columns:
+            print("segments not found in road_links columns. set all segments allowed on each links'")
+            road_links['segments'] = [set(segments) for _ in range(len(road_links))]
+
+        links = pd.concat([road_links, zone_to_road])
+        links['flow'] = 0
+        links['auxiliary_flow'] = 0
+    return links
 
 
-def aon_roadpathfinder(df, volumes, od_set, time_col='time', ntleg_penalty=10e9, num_cores=1):
-    index = build_index(df[['a', 'b']].values)
-    df['sparse_a'] = df['a'].apply(lambda x: index.get(x))
-    df['sparse_b'] = df['b'].apply(lambda x: index.get(x))
-    df = df.set_index(['sparse_a', 'sparse_b'])
-    # Handle volumes and sparsify keys
-    if od_set is not None:
-        volumes = volumes.set_index(['origin', 'destination']).reindex(od_set).reset_index()
-    volumes, zones = get_zone_index(df, volumes, index)
+def assert_vdf_on_links(links, vdf):
+    keys = set(links['vdf'])
+    missing_vdf = keys - set(vdf.keys())
+    assert len(missing_vdf) == 0, 'you should provide methods for the following vdf keys' + str(missing_vdf)
 
-    df['jam_time'] = df[time_col]
+
+def aon_roadpathfinder(links, volumes, time_col='time', ntleg_penalty=10e9, num_cores=1):
+    index = build_index(links[['a', 'b']].values)
+    links['sparse_a'] = links['a'].apply(lambda x: index.get(x))
+    links['sparse_b'] = links['b'].apply(lambda x: index.get(x))
+    links = links.set_index(['sparse_a', 'sparse_b'])
+
+    # sparsify volumes keys
+    volumes, zones = get_zone_index(links, volumes, index)
+
+    links['jam_time'] = links[time_col]
 
     reversed_index = {v: k for k, v in index.items()}
-    return get_car_los(volumes, df, index, reversed_index, zones, ntleg_penalty, num_cores)
+    return get_car_los(volumes, links, index, reversed_index, zones, ntleg_penalty, num_cores)
 
 
 def msa_roadpathfinder(
-    df,
+    links,
     volumes,
+    segments=['volume'],
+    vdf={'default_bpr': default_bpr, 'free_flow': free_flow},
+    method='bfw',
     maxiters=10,
     tolerance=0.01,
     log=False,
-    vdf={'default_bpr': default_bpr, 'free_flow': free_flow},
-    volume_column='volume_car',
-    method='bfw',
-    num_cores=1,
-    od_set=None,
     time_col='time',
     ntleg_penalty=10e9,
+    num_cores=1,
 ):
     """
+    links: road_network with zone_to_road
+    volumes: volumes to assign
+    segments: list of segments (in volumes) to assign
+    vdf = dict of function for the jam time.
+    method = bfw, fw, msa, aon
     maxiters = 10 : number of iteration.
     tolerance = 0.01 : stop condition for RelGap. (in percent)
     log = False : log data on each iteration.
-    vdf = {'default_bpr': default_bpr, 'free_flow': free_flow} : dict of function for the jam time.
-    volume_column='volume_car' : column of self.volumes to use for volume
-    method = bfw, fw, msa, aon
-    od_set = None. od_set
     num_cores = 1 : for parallelization.
-    **kwargs: ntleg_penalty=1e9, access_time='time'  for zone to roads.
     """
     # preparation
+    assert_vdf_on_links(links, vdf)
     nb.set_num_threads(num_cores)
     # reindex links to sparse indexes (a,b)
-    index = build_index(df[['a', 'b']].values)
-    df['sparse_a'] = df['a'].apply(lambda x: index.get(x))
-    df['sparse_b'] = df['b'].apply(lambda x: index.get(x))
-    df = df.set_index(['sparse_a', 'sparse_b'])
+    index = build_index(links[['a', 'b']].values)
+    links['sparse_a'] = links['a'].apply(lambda x: index.get(x))
+    links['sparse_b'] = links['b'].apply(lambda x: index.get(x))
+    links = links.set_index(['sparse_a', 'sparse_b'])
 
-    # Handle volumes and sparsify keys
-    if od_set is not None:
-        volumes = volumes.set_index(['origin', 'destination']).reindex(od_set).reset_index()
-    volumes, zones = get_zone_index(df, volumes, index)
-    odv = volumes[['origin_sparse', 'destination_sparse', volume_column]].values
-    volumes_sparse_keys = df.index.values
+    #  sparsify volumes keys
+    volumes, zones = get_zone_index(links, volumes, index)
+    volumes_sparse_keys = links.index.values
 
     # initialization
-    df['jam_time'] = df[time_col]
-    df['flow'] = 0
+    links['jam_time'] = links[time_col]
+    links['flow'] = 0
     relgap_list = []
 
-    print('iteration | Phi |  Rel Gap (%)') if log else None
+    print('it  |  Phi    |  Rel Gap (%)') if log else None
     # note: first iteration i == 0 is AON to initialized.
     for i in range(maxiters + 1):
         # Routing and assignment
-        _, predecessors = shortest_path(df, 'jam_time', index, zones, num_cores=num_cores)
-        ab_volumes = assign_volume(odv, predecessors, volumes_sparse_keys)
-        df['auxiliary_flow'] = pd.Series(ab_volumes)
-        df['auxiliary_flow'].fillna(0, inplace=True)
+        # TODO: could add base flow there in init_volumes?
+        ab_volumes = init_volume(volumes_sparse_keys)  # init numba dict with (a,b,0)
+        for seg in segments:
+            filtered = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
+            _, predecessors = shortest_path(filtered, 'jam_time', index, zones, num_cores=num_cores)
+            odv = volumes[['origin_sparse', 'destination_sparse', seg]].values
+            ab_volumes = assign_volume(odv, predecessors, ab_volumes)
+        links['auxiliary_flow'] = pd.Series(ab_volumes)
+        links['auxiliary_flow'].fillna(0, inplace=True)
         #
-        # ffnd Phi, and BFW auxiliary flow modification
+        # find Phi, and BFW auxiliary flow modification
         #
         if i == 0:
             phi = 1  # first iteration is AON
         elif method == 'bfw':  # if biconjugate: takes the 2 last direction
-            df = get_bfw_auxiliary_flow(df, vdf, i, time_col, phi)
-            phi = find_phi(df, vdf, 0, 0.8, 10, time_col=time_col)
+            links = get_bfw_auxiliary_flow(links, vdf, i, time_col, phi)
+            phi = find_phi(links, vdf, 0, 0.8, 10, time_col=time_col)
         elif method == 'fw':
-            phi = find_phi(df, vdf, 0, 0.8, 10, time_col=time_col)
+            phi = find_phi(links, vdf, 0, 0.8, 10, time_col=time_col)
         else:  # msa
             phi = 1 / (i + 2)
         #
         # Get relGap. Skip first iteration (AON and relgap = -inf)
         #
         if i > 0:
-            relgap = get_relgap(df)
+            relgap = get_relgap(links)
             relgap_list.append(relgap)
-            print(i, round(phi, 4), round(relgap, 3)) if log else None
+            print(f'{i:2}  |  {phi:.3f}  |  {relgap:.4f} ')
         #
         # Update flow and jam_time (frank-wolfe)
         #
-        df['flow'] = (1 - phi) * df['flow'] + (phi * df['auxiliary_flow'])
-        df['flow'].fillna(0, inplace=True)
-        df['jam_time'] = jam_time(df, vdf, 'flow', time_col=time_col)
-        df['jam_time'].fillna(df[time_col], inplace=True)
+        links['flow'] = (1 - phi) * links['flow'] + (phi * links['auxiliary_flow'])
+        links['flow'].fillna(0, inplace=True)
+        links['jam_time'] = jam_time(links, vdf, 'flow', time_col=time_col)
+        links['jam_time'].fillna(links[time_col], inplace=True)
         # skip first iteration (AON asignment) as relgap in -inf
         if i > 0:
             if relgap <= tolerance:
@@ -175,23 +198,24 @@ def msa_roadpathfinder(
                 break
 
     reversed_index = {v: k for k, v in index.items()}
-    car_los = get_car_los(volumes, df, index, reversed_index, zones, ntleg_penalty, num_cores)
-    return df, car_los, relgap_list
+    car_los = get_car_los(volumes, links, index, reversed_index, zones, ntleg_penalty, num_cores)
+    links = links.set_index(['a', 'b'])  # go back to original indexes
+    return links, car_los, relgap_list
 
 
-def get_relgap(df) -> float:
+def get_relgap(links) -> float:
     # modelling transport eq 11.11. SUM currentFlow x currentCost - SUM AONFlow x currentCost / SUM currentFlow x currentCost
-    a = np.sum((df['flow']) * df['jam_time'])  # currentFlow x currentCost
-    b = np.sum((df['auxiliary_flow']) * df['jam_time'])  # AON_flow x currentCost
+    a = np.sum((links['flow']) * links['jam_time'])  # currentFlow x currentCost
+    b = np.sum((links['auxiliary_flow']) * links['jam_time'])  # AON_flow x currentCost
     return 100 * (a - b) / a
 
 
-def get_bfw_auxiliary_flow(df, vdf, i, time_col, prev_phi) -> pd.DataFrame:
+def get_bfw_auxiliary_flow(links, vdf, i, time_col, prev_phi) -> pd.DataFrame:
     if i > 2:
-        df['derivative'] = get_derivative(df, vdf, h=0.001, flow_col='flow', time_col=time_col)
-        beta = find_beta(df, prev_phi)  # this is the previous phi (phi_-1)
-        df['auxiliary_flow'] = beta[0] * df['auxiliary_flow'] + beta[1] * df['s_k-1'] + beta[2] * df['s_k-2']
+        links['derivative'] = get_derivative(links, vdf, h=0.001, flow_col='flow', time_col=time_col)
+        b = find_beta(links, prev_phi)  # this is the previous phi (phi_-1)
+        links['auxiliary_flow'] = b[0] * links['auxiliary_flow'] + b[1] * links['s_k-1'] + b[2] * links['s_k-2']
     if i > 1:
-        df['s_k-2'] = df['s_k-1']
-    df['s_k-1'] = df['auxiliary_flow']
-    return df
+        links['s_k-2'] = links['s_k-1']
+    links['s_k-1'] = links['auxiliary_flow']
+    return links
