@@ -215,12 +215,16 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             for each OD pair results of pathfinder with/without capacity restriction
 
         """
-
+        # deprecation
         method = method.lower()
         if 'all_or_nothing' in kwargs:
             kwargs.pop('all_or_nothing', None)
             method = 'aon'
-            print(" 'all_or_nothing'=True is deprecated. use method = 'aon' instead")
+            print("all_or_nothing=True is deprecated. use method = 'aon' instead")
+        if 'volume_column' in kwargs:
+            volume_column = kwargs.pop('volume_column')
+            segments = [volume_column]
+            print("volume_column is depreacated, use segments instead (ex: segments=['car'])")
 
         network = init_network(self, method, segments, time_column, access_time, ntleg_penalty)
         volumes = init_volumes(self, od_set)
