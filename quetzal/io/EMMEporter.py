@@ -7,6 +7,9 @@ def shorter_links(links,board = 'pickup_type' ,alight ='drop_off_type',original_
     '''
     script to shorten the links of Emme that are keeping on the node to have Quetzal links with only alighting or boardings
     if original_links == True, we keep the emme links in liste in the new table'
+    Geometric_node_columns is the field that permit to filter geometric nodes that have buged pickup_type using other columns
+    you will need to pass a list of two columns, first boarding then alighting
+
     '''
     crs = links.crs
     links = links.copy()
@@ -24,7 +27,7 @@ def shorter_links(links,board = 'pickup_type' ,alight ='drop_off_type',original_
     links['stop'] = True
     links['next_pickup'] = links[board].shift(-1).fillna(0).astype(int)
     links['prev_drop_off'] = links[alight].shift(+1).fillna(0).astype(int)
-    links['stop'] = True
+    
     links.loc[(links[alight] != 0) & (links['next_pickup'] != 0), 'stop'] = False
     links.loc[(links[board] != 0) & (links['prev_drop_off'] != 0), 'stop'] = False
     links['cumsum'] = links['stop'].cumsum()
