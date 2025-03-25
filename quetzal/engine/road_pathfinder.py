@@ -172,13 +172,14 @@ def msa_roadpathfinder(
         #
         # find Phi, and BFW auxiliary flow modification
         #
-        max_phi = 1 / i**0.5  # limit search space
         if i == 0:
             phi = 1  # first iteration is AON
         elif method == 'bfw':  # if biconjugate: takes the 2 last direction
             links = get_bfw_auxiliary_flow(links, vdf, i, time_col, phi)
+            max_phi = 1 / i**0.5  # limit search space
             phi = find_phi(links, vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
         elif method == 'fw':
+            max_phi = 1 / i**0.5  # limit search space
             phi = find_phi(links, vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
         else:  # msa
             phi = 1 / (i + 2)
