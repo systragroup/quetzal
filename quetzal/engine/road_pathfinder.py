@@ -152,8 +152,10 @@ def msa_roadpathfinder(
     # in the volumes assignment, start with base_flow (ex: network preloaded with buses on road)
     base_flow = init_ab_volumes(links['base_flow'].to_dict())
     # initialization
-    links['jam_time'] = links[time_col]
     links['flow'] = 0
+    links['jam_time'] = jam_time(links, vdf, 'flow', time_col=time_col)
+    links['jam_time'].fillna(links[time_col], inplace=True)
+
     relgap_list = []
 
     print('it  |  Phi    |  Rel Gap (%)') if log else None
@@ -170,27 +172,29 @@ def msa_roadpathfinder(
         #
         # find Phi, and BFW auxiliary flow modification
         #
+        max_phi = 1 / i**0.5  # limit search space
         if i == 0:
             phi = 1  # first iteration is AON
         elif method == 'bfw':  # if biconjugate: takes the 2 last direction
             links = get_bfw_auxiliary_flow(links, vdf, i, time_col, phi)
-            phi = find_phi(links, vdf, maxiter=10, tol=1e-4, time_col=time_col)
+            phi = find_phi(links, vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
         elif method == 'fw':
-            phi = find_phi(links, vdf, maxiter=10, tol=1e-4, time_col=time_col)
+            phi = find_phi(links, vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
         else:  # msa
             phi = 1 / (i + 2)
+        #
+        # Update flow and jam_time (frank-wolfe)
+        #
+        links['flow'] = (1 - phi) * links['flow'] + (phi * links['auxiliary_flow'])
+        links['flow'].fillna(0, inplace=True)
         #
         # Get relGap. Skip first iteration (AON and relgap = -inf)
         #
         if i > 0:
             relgap = get_relgap(links)
             relgap_list.append(relgap)
-            print(f'{i:2}  |  {phi:.3f}  |  {relgap:.4f} ')
-        #
-        # Update flow and jam_time (frank-wolfe)
-        #
-        links['flow'] = (1 - phi) * links['flow'] + (phi * links['auxiliary_flow'])
-        links['flow'].fillna(0, inplace=True)
+            print(f'{i:2}  |  {phi:.3f}  |  {relgap:.4f} ') if log else None
+
         links['jam_time'] = jam_time(links, vdf, 'flow', time_col=time_col)
         links['jam_time'].fillna(links[time_col], inplace=True)
         # skip first iteration (AON asignment) as relgap in -inf

@@ -48,24 +48,23 @@ def jam_time(links: pd.DataFrame, vdf, flow: str = 'flow', time_col: str = 'time
 
 
 def z_prime(links, vdf, phi, **kwargs):
-    # min sum(on links) integral from 0 to formerflow + φΔ of Time(f) df
-    # approx constant + jam_time(FormerFlow) x φΔ + 1/2 (jam_time(Formerflow + φΔ) - jam_time(FormerFlow) ) x φΔ
-    # Δ = links['aux_flow'] - links['former_flow']
+    # min sum(on links) integral from 0 to flow + φΔ of Cost(f) df
+    # using a single trapez (ok if phi small), which is the case after <10 iteration.
+    # This give not perfect phi to begin with, but thats ok.
+    # approx  ( Cost(flow) + Cost(flow + φΔ)  ) x φΔ /2
+    # Δ = links['auxiliary_flow'] - links['flow']
     delta = (links['auxiliary_flow'] - links['flow']).values
     links['new_flow'] = delta * phi + links['flow']
-    # z = (jam_time(links,vdf={'default_bpr': default_bpr_phi},flow='delta',phi=phi) - links['jam_time']) / (links['delta']*phi + links['former_flow'])
-    # t_f = jam_time(links,vdf=vdf,flow='flow',**kwargs)
-    t_del = jam_time(links, vdf=vdf, flow='new_flow', **kwargs).values
-    t_f = links['jam_time'].values
-    z = t_f * delta * phi + (t_del - t_f) * delta * phi * 0.5
-
+    cost_del = jam_time(links, vdf=vdf, flow='new_flow', **kwargs).values
+    cost_flow = links['jam_time'].values
+    z = delta * phi * (cost_flow + cost_del) * 0.5
     return np.ma.masked_invalid(z).sum()
 
 
-def find_phi(links, vdf, maxiter=10, tol=1e-4, **kwargs):
+def find_phi(links, vdf, maxiter=10, tol=1e-4, bounds=(0, 1), **kwargs):
     return minimize_scalar(
         lambda x: z_prime(links, vdf, x, **kwargs),
-        bounds=(0, 1),
+        bounds=bounds,
         method='Bounded',
         tol=tol,
         options={'maxiter': maxiter},
