@@ -157,6 +157,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         od_set=None,
         ntleg_penalty=10e9,
         path_analysis=True,
+        track_links_list=[],
         num_cores=1,
         **kwargs,
     ):
@@ -201,7 +202,10 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             perform self.analysis_car_los() at the end
 
         num_cores : integer, optional, default 1
-            for parallelization
+            for parallelizatio
+            n
+        track_links_list :list[string] optional default: []
+            list of links index to track.
 
         **kwargs :  see msa_roadpathfinder()
 
@@ -232,7 +236,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             self.car_los = aon_roadpathfinder(network, volumes, time_column, ntleg_penalty, num_cores)
 
         elif method in ['msa', 'fw', 'bfw']:
-            df, car_los, rel_gap = msa_roadpathfinder(
+            links, car_los, rel_gap = msa_roadpathfinder(
                 network,
                 volumes,
                 segments=segments,
@@ -240,17 +244,22 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 time_col=time_column,
                 ntleg_penalty=ntleg_penalty,
                 num_cores=num_cores,
+                track_links_list=track_links_list,
                 **kwargs,
             )
 
             self.car_los = car_los
             if method != 'aon':  # do not overwrite road_links if its all-or-nothing
-                volume_dict = df['flow'].to_dict()
-                time_dict = df['jam_time'].to_dict()
+                volume_dict = links['flow'].to_dict()
+                time_dict = links['jam_time'].to_dict()
                 self.road_links['flow'] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
                 self.road_links['jam_time'] = self.road_links.set_index(['a', 'b']).index.map(time_dict.get)
                 self.road_links['jam_speed'] = self.road_links['length'] / self.road_links['jam_time'] * 3.6
                 self.relgap = rel_gap
+                for idx in track_links_list:
+                    volume_dict = links[f'flow_{idx}'].to_dict()
+                    self.road_links[f'flow_{idx}'] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
+
         else:
             print(method, ' not supported. use msa, fw, bfw or aon')
 

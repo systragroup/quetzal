@@ -10,6 +10,8 @@ from quetzal.engine.msa_utils import (
     get_car_los,
     find_beta,
     get_derivative,
+    init_track_volumes,
+    assign_tracked_volume,
     shortest_path,
 )
 from quetzal.engine.vdf import default_bpr, free_flow
@@ -124,6 +126,7 @@ def msa_roadpathfinder(
     log=False,
     time_col='time',
     ntleg_penalty=10e9,
+    track_links_list=[],
     num_cores=1,
 ):
     """
@@ -135,16 +138,20 @@ def msa_roadpathfinder(
     maxiters = 10 : number of iteration.
     tolerance = 0.01 : stop condition for RelGap. (in percent)
     log = False : log data on each iteration.
+    time_col='freeflow time column'. replace 'time' in vdf
+    track_links_list=[] list of link index to track flow at each iteration
     num_cores = 1 : for parallelization.
     """
     # preparation
-    assert_vdf_on_links(links, vdf)
     nb.set_num_threads(num_cores)
+    track_links = len(track_links_list) > 0
+    assert_vdf_on_links(links, vdf)
+
     # reindex links to sparse indexes (a,b)
     index = build_index(links[['a', 'b']].values)
     links['sparse_a'] = links['a'].apply(lambda x: index.get(x))
     links['sparse_b'] = links['b'].apply(lambda x: index.get(x))
-    links = links.set_index(['sparse_a', 'sparse_b'])
+    links = links.reset_index().set_index(['sparse_a', 'sparse_b'])
 
     #  sparsify volumes keys
     volumes, zones = get_zone_index(links, volumes, index)
@@ -156,18 +163,34 @@ def msa_roadpathfinder(
     links['jam_time'] = jam_time(links, vdf, 'flow', time_col=time_col)
     links['jam_time'].fillna(links[time_col], inplace=True)
 
-    relgap_list = []
+    if track_links:
+        tmp_dict = links[links['index'].isin(track_links_list)]['index'].to_dict()
+        track_links_index_dict = {v: k for k, v in tmp_dict.items()}
+        track_links_list = [*map(track_links_index_dict.get, track_links_list)]
+        for idx in track_links_list:
+            links[f'flow_{idx}'] = 0
 
+    relgap_list = []
     print('it  |  Phi    |  Rel Gap (%)') if log else None
     # note: first iteration i == 0 is AON to initialized.
     for i in range(maxiters + 1):
+        #
         # Routing and assignment
+        #
         ab_volumes = base_flow.copy()  # init numba dict with (a,b,0)
+        if track_links:
+            tracked_volumes = init_track_volumes(base_flow, track_links_list)
+
         for seg in segments:
             filtered = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
             _, predecessors = shortest_path(filtered, 'jam_time', index, zones, num_cores=num_cores)
             odv = volumes[['origin_sparse', 'destination_sparse', seg]].values
+
             ab_volumes = assign_volume(odv, predecessors, ab_volumes)
+            if track_links:
+                for idx in track_links_list:
+                    tracked_volumes[idx] = assign_tracked_volume(odv, predecessors, tracked_volumes[idx], idx)
+
         links['auxiliary_flow'] = ab_volumes
         #
         # find Phi, and BFW auxiliary flow modification
@@ -188,6 +211,9 @@ def msa_roadpathfinder(
         #
         links['flow'] = (1 - phi) * links['flow'] + (phi * links['auxiliary_flow'])
         links['flow'].fillna(0, inplace=True)
+        if track_links:
+            for idx in track_links_list:
+                links[f'flow_{idx}'] = (1 - phi) * links[f'flow_{idx}'] + (phi * pd.Series(tracked_volumes[idx]))
         #
         # Get relGap. Skip first iteration (AON and relgap = -inf)
         #
@@ -196,6 +222,9 @@ def msa_roadpathfinder(
             relgap_list.append(relgap)
             print(f'{i:2}  |  {phi:.3f}  |  {relgap:.4f} ') if log else None
 
+        #
+        # Update Time on links
+        #
         links['jam_time'] = jam_time(links, vdf, 'flow', time_col=time_col)
         links['jam_time'].fillna(links[time_col], inplace=True)
         # skip first iteration (AON asignment) as relgap in -inf
@@ -207,6 +236,11 @@ def msa_roadpathfinder(
     reversed_index = {v: k for k, v in index.items()}
     car_los = get_car_los(volumes, links, index, reversed_index, zones, ntleg_penalty, num_cores)
     links = links.set_index(['a', 'b'])  # go back to original indexes
+
+    if track_links:  # rename with original indexes
+        rename_dict = {f'flow_{v}': f'flow_{k}' for k, v in track_links_index_dict.items()}
+        links = links.rename(columns=rename_dict)
+
     return links, car_los, relgap_list
 
 
