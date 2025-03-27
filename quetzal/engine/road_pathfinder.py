@@ -144,7 +144,7 @@ def msa_roadpathfinder(
     """
     # preparation
     nb.set_num_threads(num_cores)
-    track_links = len(track_links_list) > 0
+
     assert_vdf_on_links(links, vdf)
 
     # reindex links to sparse indexes (a,b)
@@ -162,10 +162,11 @@ def msa_roadpathfinder(
     links['flow'] = 0
     links['jam_time'] = jam_time(links, vdf, 'flow', time_col=time_col)
     links['jam_time'].fillna(links[time_col], inplace=True)
-
+    # init track links aux_flow dict and flow in links
+    track_links = len(track_links_list) > 0
     if track_links:
-        tmp_dict = links[links['index'].isin(track_links_list)]['index'].to_dict()
-        track_links_index_dict = {v: k for k, v in tmp_dict.items()}
+        _tmp_dict = links[links['index'].isin(track_links_list)]['index'].to_dict()
+        track_links_index_dict = {v: k for k, v in _tmp_dict.items()}
         track_links_list = [*map(track_links_index_dict.get, track_links_list)]
         for idx in track_links_list:
             links[f'flow_{idx}'] = 0
@@ -232,7 +233,9 @@ def msa_roadpathfinder(
             if relgap <= tolerance:
                 print('tolerance reached')
                 break
-
+    #
+    # Finish: reindex back and get car_los
+    #
     reversed_index = {v: k for k, v in index.items()}
     car_los = get_car_los(volumes, links, index, reversed_index, zones, ntleg_penalty, num_cores)
     links = links.set_index(['a', 'b'])  # go back to original indexes
