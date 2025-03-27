@@ -2,37 +2,37 @@ import numpy as np
 import pandas as pd
 from scipy.sparse import csr_matrix, csc_matrix
 from scipy.sparse.csgraph import dijkstra
-from tqdm import tqdm
-from numba import jit
 import numba as nb
 from quetzal.os.parallel_call import parallel_executor
 
-  
+
 # Wrapper to split the indices (destination) into parallel batchs and compute the shortest path on each batchs.
-def parallel_dijkstra(csgraph,indices=None,return_predecessors=True, num_core=1,**kwargs):
-    '''
+def parallel_dijkstra(csgraph, indices=None, return_predecessors=True, num_core=1, **kwargs):
+    """
     num_core = 1 : number of threads.
-    '''
+    """
     if num_core == 1:
-        return  dijkstra(csgraph=csgraph, indices=indices, return_predecessors=return_predecessors,**kwargs)
+        return dijkstra(csgraph=csgraph, indices=indices, return_predecessors=return_predecessors, **kwargs)
 
-    batch = round(len(indices)/num_core)
-    indices_mat = [indices[i*batch:(1+i)*batch] for i in range(num_core-1)]
-    indices_mat.append(indices[(num_core-1)*batch:])
+    batch = round(len(indices) / num_core)
+    indices_mat = [indices[i * batch : (1 + i) * batch] for i in range(num_core - 1)]
+    indices_mat.append(indices[(num_core - 1) * batch :])
 
-    results = parallel_executor(dijkstra,
-                                num_workers=num_core,
-                                parallel_kwargs={'indices':indices_mat},
-                                csgraph=csgraph,
-                                return_predecessors=return_predecessors,
-                                **kwargs)
+    results = parallel_executor(
+        dijkstra,
+        num_workers=num_core,
+        parallel_kwargs={'indices': indices_mat},
+        csgraph=csgraph,
+        return_predecessors=return_predecessors,
+        **kwargs,
+    )
 
-    if return_predecessors == True: # result is a tuple
-        dist_matrix = np.concatenate([res[0] for res in results],axis=0)
-        predecessors = np.concatenate([res[1] for res in results],axis=0).astype(np.int32)
+    if return_predecessors == True:  # result is a tuple
+        dist_matrix = np.concatenate([res[0] for res in results], axis=0)
+        predecessors = np.concatenate([res[1] for res in results], axis=0).astype(np.int32)
         return dist_matrix, predecessors
     else:
-        dist_matrix = np.concatenate(results,axis=0)
+        dist_matrix = np.concatenate(results, axis=0)
         return dist_matrix
 
 
@@ -43,24 +43,16 @@ def simple_routing(origin, destination, links, weight_col='time', dijkstra_limit
     index_node = {v: k for k, v in node_index.items()}
     # liste des origines pour le dijkstra
     origin_sparse = [node_index[x] for x in origin]
-    
+
     # dijktra on the road network from node = incices to every other nodes.
     # from b to a.
     if return_predecessors:
         dist_matrix, predecessors = dijkstra(
-            csgraph=mat,
-            directed=True,
-            indices=origin_sparse,
-            return_predecessors=True,
-            limit=dijkstra_limit
+            csgraph=mat, directed=True, indices=origin_sparse, return_predecessors=True, limit=dijkstra_limit
         )
     else:
         dist_matrix = dijkstra(
-            csgraph=mat,
-            directed=True,
-            indices=origin_sparse,
-            return_predecessors=False,
-            limit=dijkstra_limit
+            csgraph=mat, directed=True, indices=origin_sparse, return_predecessors=False, limit=dijkstra_limit
         )
 
     dist_matrix = pd.DataFrame(dist_matrix)
@@ -75,7 +67,7 @@ def simple_routing(origin, destination, links, weight_col='time', dijkstra_limit
         return dist_matrix
 
 
-@jit(nopython=True,locals={'predecessors':nb.int32[:,::1],'i':nb.int32,'j':nb.int32})
+@nb.njit(cache=True, locals={'predecessors': nb.int32[:, ::1], 'i': nb.int32, 'j': nb.int32})
 def get_path(predecessors, i, j):
     path = [j]
     k = j
@@ -85,7 +77,8 @@ def get_path(predecessors, i, j):
         path.append(p)
     return path[::-1][1:]
 
-@jit(nopython=True)
+
+@nb.njit(cache=True)
 def get_reversed_path(predecessors, i, j):
     path = [j]
     k = j
@@ -94,14 +87,17 @@ def get_reversed_path(predecessors, i, j):
         k = p = predecessors[i, k]
         path.append(p)
     return path[:-1]
-    
-@jit(nopython=True)
+
+
+@nb.njit(cache=True)
 def get_node_path(predecessors, i, j):
-    #remove zones nodes (first and last one)
+    # remove zones nodes (first and last one)
     return get_path(predecessors, i, j)[1:-1]
+
 
 def get_edge_path(p):
     return list(zip(p[:-1], p[1:]))
+
 
 def get_first_and_last(path, link_dict):
     s = set()
@@ -120,9 +116,11 @@ def get_first_and_last(path, link_dict):
         except KeyError:
             pass
     return s
-        
+
+
 def get_all(path, link_dict):
     return {link_dict.get(link) for link in path} - {None}
+
 
 def path_and_duration_from_graph(
     nx_graph,
@@ -133,12 +131,11 @@ def path_and_duration_from_graph(
     reverse=False,
     ntlegs_penalty=1e9,
     cutoff=np.inf,
-    **kwargs
+    **kwargs,
 ):
     sources = pole_set if sources is None else sources
     source_los = sparse_los_from_nx_graph(
-        nx_graph, pole_set, sources=sources,
-        cutoff=cutoff + ntlegs_penalty, od_set=od_set, **kwargs
+        nx_graph, pole_set, sources=sources, cutoff=cutoff + ntlegs_penalty, od_set=od_set, **kwargs
     )
     source_los['reversed'] = False
 
@@ -153,8 +150,13 @@ def path_and_duration_from_graph(
             reversed_od_set = None
 
         target_los = sparse_los_from_nx_graph(
-            reversed_nx_graph, pole_set, sources=sources,
-            cutoff=cutoff + ntlegs_penalty, od_set=reversed_od_set, **kwargs)
+            reversed_nx_graph,
+            pole_set,
+            sources=sources,
+            cutoff=cutoff + ntlegs_penalty,
+            od_set=reversed_od_set,
+            **kwargs,
+        )
         target_los['reversed'] = True
         target_los['path'] = target_los['path'].apply(lambda x: list(reversed(x)))
         target_los[['origin', 'destination']] = target_los[['destination', 'origin']]
@@ -165,6 +167,7 @@ def path_and_duration_from_graph(
     los = los.loc[[t in od_set for t in tuples]]
     return los
 
+
 def split_od_set(od_set, maxiter=10000):
     df = pd.DataFrame(od_set)
     o = d = 'init'
@@ -174,46 +177,44 @@ def split_od_set(od_set, maxiter=10000):
     i = 0
     while len(df) and i < maxiter:
         i += 1
-        
-        vco = df[0].value_counts() 
+
+        vco = df[0].value_counts()
         vcd = df[1].value_counts()
-        
+
         firsto = list(vco.loc[vco >= vcd.max()].index)
         firstd = list(vcd.loc[vcd > vco.max()].index)
         if len(firsto):
             df = df.loc[~df[0].isin(firsto)]
-            o_set = o_set.union(firsto) 
+            o_set = o_set.union(firsto)
         if len(firstd):
             df = df.loc[~df[1].isin(firstd)]
-            d_set = d_set.union(firstd) 
-  
+            d_set = d_set.union(firstd)
+
     o_od_set = {(o, d) for o, d in od_set if o in o_set}
     d_od_set = {(o, d) for o, d in od_set if d in d_set}
 
-    assert o_od_set.union(d_od_set)==od_set
-    return o_od_set, d_od_set-o_od_set
+    assert o_od_set.union(d_od_set) == od_set
+    return o_od_set, d_od_set - o_od_set
+
 
 def efficient_od_sets(od_set, factor=1, verbose=False):
     o_od_set, d_od_set = split_od_set(od_set)
     no = len({o for o, d in o_od_set})
     nd = len({d for o, d in d_od_set})
     minod = min(len({o for o, d in od_set}), len({d for o, d in od_set}))
-    if no + nd < minod*factor:
+    if no + nd < minod * factor:
         if verbose:
-            print(no, '+', nd, '=', no + nd, '<',factor, '*', minod, 'splitting od_set')
+            print(no, '+', nd, '=', no + nd, '<', factor, '*', minod, 'splitting od_set')
         return o_od_set, d_od_set
     if verbose:
-        print(no, '+', nd, '=', no + nd, '>=',factor, '*', minod, 'keeping od_set')
-    
+        print(no, '+', nd, '=', no + nd, '>=', factor, '*', minod, 'keeping od_set')
+
     return od_set, set()
 
-def sparse_los_from_nx_graph(
-    nx_graph,
-    pole_set,
-    sources=None,
-    cutoff=np.inf,
-    od_set=None,
-):
+
+def sparse_los_from_nx_graph(nx_graph, pole_set, sources=None, cutoff=np.inf, od_set=None):
+    import networkx as nx
+
     sources = pole_set if sources is None else sources
     if od_set is not None:
         sources = {o for o, d in od_set if o in sources}
@@ -232,11 +233,7 @@ def sparse_los_from_nx_graph(
     sparse = nx.to_scipy_sparse_matrix(nx_graph)
     graph = csr_matrix(sparse)
     dist_matrix, predecessors = dijkstra(
-        csgraph=graph,
-        directed=True,
-        indices=zones,
-        return_predecessors=True,
-        limit=cutoff
+        csgraph=graph, directed=True, indices=zones, return_predecessors=True, limit=cutoff
     )
 
     # LOS LAYOUT
@@ -258,19 +255,18 @@ def sparse_los_from_nx_graph(
 
     # BUILD PATH FROM PREDECESSORS
     od_list = los[['origin', 'destination']].values.tolist()
-    paths = [
-        [nodes[i] for i in get_path(predecessors, source_index[o], node_index[d])]
-        for o, d in od_list
-    ]
+    paths = [[nodes[i] for i in get_path(predecessors, source_index[o], node_index[d])] for o, d in od_list]
 
     los['path'] = paths
     return los
+
 
 # buildindex
 def build_index(edges):
     nodelist = {e[0] for e in edges}.union({e[1] for e in edges})
     nlen = len(nodelist)
     return dict(zip(nodelist, range(nlen)))
+
 
 # build matrix
 def sparse_matrix(edges, index=None):
@@ -280,7 +276,6 @@ def sparse_matrix(edges, index=None):
     coefficients = zip(*((index[u], index[v], w) for u, v, w in edges))
     row, col, data = coefficients
     return csr_matrix((data, (row, col)), shape=(nlen, nlen)), index
-
 
 
 def _link_edges(links, boarding_time=None, alighting_time=None):
@@ -316,14 +311,13 @@ def _link_edges(links, boarding_time=None, alighting_time=None):
     transit_edges = transit[['index_x', 'index_y', 'time']]
     return boarding_edges, alighting_edges, transit_edges
 
+
 def link_edges(links, boarding_time=None, alighting_time=None):
     boarding_e, alighting_e, transit_e = _link_edges(
-        links=links, 
-        boarding_time=boarding_time, 
-        alighting_time=alighting_time
+        links=links, boarding_time=boarding_time, alighting_time=alighting_time
     )
     boarding_edges = boarding_e.values.tolist()
-    alighting_edges =  alighting_e.values.tolist()
+    alighting_edges = alighting_e.values.tolist()
     transit_edges = transit_e.values.tolist()
 
     return boarding_edges + transit_edges + alighting_edges
@@ -331,15 +325,14 @@ def link_edges(links, boarding_time=None, alighting_time=None):
 
 def link_edge_array(links, boarding_time=None, alighting_time=None):
     boarding_e, alighting_e, transit_e = _link_edges(
-        links=links, 
-        boarding_time=boarding_time, 
-        alighting_time=alighting_time
+        links=links, boarding_time=boarding_time, alighting_time=alighting_time
     )
     boarding_edges = boarding_e.values
-    alighting_edges =  alighting_e.values
+    alighting_edges = alighting_e.values
     transit_edges = transit_e.values
 
-    return np.concatenate([boarding_edges,transit_edges,alighting_edges])
+    return np.concatenate([boarding_edges, transit_edges, alighting_edges])
+
 
 def sparse_matrix_with_access_penalty(edges, sources=set(), penalty=1e9):
     nodelist = {e[0] for e in edges}.union({e[1] for e in edges})
@@ -354,45 +347,50 @@ def sparse_matrix_with_access_penalty(edges, sources=set(), penalty=1e9):
     row, col, data = coefficients
     return csr_matrix((data, (row, col)), shape=(nlen, nlen)), index
 
+
 from copy import deepcopy
+
+
 def index_access_pruned_matrix(matrix, index, pruned):
-    """ 
+    """
     copy a matrix and returns a matrix with infitine costs for a given row
-    the index is a dict name:ix 
+    the index is a dict name:ix
     pruned is a list of names to remove
     """
     pmatrix = deepcopy(matrix)
-    for vertex in pruned : 
+    for vertex in pruned:
         i = index[vertex]
         for j in pmatrix[i].indices:
-            pmatrix[i,j] = np.inf
+            pmatrix[i, j] = np.inf
     return pmatrix, index
 
+
 def pruned_matrix(matrix, index, pruned):
-    """ 
+    """
     copy a matrix and returns a matrix with infitine costs for a given row
-    the index is a dict name:ix 
+    the index is a dict name:ix
     pruned is a list of names to remove
     """
     pruned_ix = {index[p] for p in pruned}
     kept_index = sorted(list(set(index.values()) - set(pruned_ix)))
 
     # REINDEX
-    rank = 0 # {former_ix : new_ix}
+    rank = 0  # {former_ix : new_ix}
     reindex = {}
     for i in kept_index:
         reindex[i] = rank
-        rank += 1 
-        
-    pindex = {} # {name : new_ix}
+        rank += 1
+
+    pindex = {}  # {name : new_ix}
     for k, v in index.items():
-        try: 
+        try:
             pindex[k] = reindex[v]
         except KeyError:
             pass
-        
+
     pmatrix = csr_matrix(csc_matrix(matrix[kept_index, :])[:, kept_index])
     return pmatrix, pindex
+
 
 def paths_from_edges(
     edges,
@@ -403,44 +401,40 @@ def paths_from_edges(
     penalty=1e9,
     log=False,
     # edges can be transmitted as a CSR matrix
-    csgraph=None, # CSR matrix
-    node_index=None, # {name such as 'link_123': matrix index}
-    num_cores=1
+    csgraph=None,  # CSR matrix
+    node_index=None,  # {name such as 'link_123': matrix index}
+    num_cores=1,
 ):
-
     reverse = False
     if od_set:
         o_set = {o for o, d in od_set}
         d_set = {d for o, d in od_set}
         if sources is not None:
             sources = [s for s in sources if s in o_set]
-        else :
+        else:
             sources = list(o_set)
         if targets is not None:
             targets = [t for t in targets if t in d_set]
         else:
             targets = list(d_set)
-        
-    
-    if len(sources) > len(targets) :
+
+    if len(sources) > len(targets):
         reverse = True
         if log:
             print(len(sources), 'sources', len(targets), 'targets', 'transposed search')
         sources, targets = targets, sources
-        if csgraph is None or node_index is None :
+        if csgraph is None or node_index is None:
             edges = [(b, a, w) for a, b, w in edges]
-    elif log :
+    elif log:
         print(len(sources), 'sources', len(targets), 'targets', 'direct search')
-        
+
     st = set(sources).union(targets)
-    if csgraph is None or node_index is None :
-        csgraph, node_index = sparse_matrix_with_access_penalty(
-            edges, sources=st, penalty=penalty
-        )
-        
+    if csgraph is None or node_index is None:
+        csgraph, node_index = sparse_matrix_with_access_penalty(edges, sources=st, penalty=penalty)
+
     if reverse:
-        csgraph=csgraph.transpose()
-    
+        csgraph = csgraph.transpose()
+
     # INDEX
     source_indices = [node_index[s] for s in sources]
     target_indices = [node_index[t] for t in targets]
@@ -452,8 +446,8 @@ def paths_from_edges(
         directed=True,
         indices=source_indices,
         return_predecessors=True,
-        limit=cutoff+penalty,
-        num_core=num_cores
+        limit=cutoff + penalty,
+        num_core=num_cores,
     )
 
     dist_matrix = dist_matrix.T[target_indices].T
@@ -477,15 +471,8 @@ def paths_from_edges(
     odl = stack.reset_index()
     od_list = odl[['origin', 'destination']].values
     path = get_reversed_path if reverse else get_path
-    
-    
-    paths = [
-        [
-            index_node[i] for i in
-            path(predecessors, source_index[o], node_index[d])
-        ]
-        for o, d in od_list
-    ]
+
+    paths = [[index_node[i] for i in path(predecessors, source_index[o], node_index[d])] for o, d in od_list]
     odl['path'] = paths
 
     if reverse:
@@ -493,15 +480,7 @@ def paths_from_edges(
     return odl
 
 
-def adjacency_matrix(
-    links,
-    ntlegs,
-    footpaths,
-    ntlegs_penalty=1e9,
-    boarding_time=None,
-    alighting_time=None,
-    **kwargs
-):
+def adjacency_matrix(links, ntlegs, footpaths, ntlegs_penalty=1e9, boarding_time=None, alighting_time=None, **kwargs):
     ntlegs = ntlegs.copy()
 
     # ntlegs and footpaths
@@ -521,7 +500,7 @@ def los_from_graph(
     sources=None,
     cutoff=np.inf,
     od_set=None,
-    ntlegs_penalty=1e9
+    ntlegs_penalty=1e9,
 ):
     sources = pole_set if sources is None else sources
     if od_set is not None:
@@ -536,11 +515,7 @@ def los_from_graph(
 
     # SPARSE GRAPH
     dist_matrix, predecessors = dijkstra(
-        csgraph=csgraph,
-        directed=True,
-        indices=zones,
-        return_predecessors=True,
-        limit=cutoff + ntlegs_penalty
+        csgraph=csgraph, directed=True, indices=zones, return_predecessors=True, limit=cutoff + ntlegs_penalty
     )
 
     # LOS LAYOUT
@@ -573,23 +548,13 @@ def los_from_graph(
 
     # BUILD PATH FROM PREDECESSORS
     od_list = los[['origin', 'destination']].values.tolist()
-    paths = [
-        [indexed_nodes[i] for i in get_path(predecessors, source_index[o], node_index[d])]
-        for o, d in od_list
-    ]
+    paths = [[indexed_nodes[i] for i in get_path(predecessors, source_index[o], node_index[d])] for o, d in od_list]
 
     los['path'] = paths
     return los
 
 
-def paths_from_graph(
-    csgraph,
-    node_index,
-    sources,
-    targets,
-    od_set=None,
-    cutoff=np.inf
-):
+def paths_from_graph(csgraph, node_index, sources, targets, od_set=None, cutoff=np.inf):
     reverse = False
     if od_set:
         o_set = {o for o, d in od_set}
@@ -609,11 +574,7 @@ def paths_from_graph(
 
     # DIKSTRA
     dist_matrix, predecessors = dijkstra(
-        csgraph=csgraph,
-        directed=True,
-        indices=source_indices,
-        return_predecessors=True,
-        limit=cutoff
+        csgraph=csgraph, directed=True, indices=source_indices, return_predecessors=True, limit=cutoff
     )
 
     dist_matrix = dist_matrix.T[target_indices].T
@@ -635,13 +596,7 @@ def paths_from_graph(
     odl = stack.reset_index()
     od_list = odl[['origin', 'destination']].values
     path = get_reversed_path if reverse else get_path
-    paths = [
-        [
-            index_node[i] for i in
-            path(predecessors, source_index[o], node_index[d])
-        ]
-        for o, d in od_list
-    ]
+    paths = [[index_node[i] for i in path(predecessors, source_index[o], node_index[d])] for o, d in od_list]
     odl['path'] = paths
 
     if reverse:
