@@ -67,7 +67,7 @@ def simple_routing(origin, destination, links, weight_col='time', dijkstra_limit
         return dist_matrix
 
 
-@nb.njit(cache=True, locals={'predecessors': nb.int32[:, ::1], 'i': nb.int32, 'j': nb.int32})
+@nb.njit(locals={'predecessors': nb.int32[:, ::1], 'i': nb.int32, 'j': nb.int32})
 def get_path(predecessors, i, j):
     path = [j]
     k = j
@@ -78,7 +78,7 @@ def get_path(predecessors, i, j):
     return path[::-1][1:]
 
 
-@nb.njit(cache=True)
+@nb.njit()
 def get_reversed_path(predecessors, i, j):
     path = [j]
     k = j
@@ -89,7 +89,7 @@ def get_reversed_path(predecessors, i, j):
     return path[:-1]
 
 
-@nb.njit(cache=True)
+@nb.njit()
 def get_node_path(predecessors, i, j):
     # remove zones nodes (first and last one)
     return get_path(predecessors, i, j)[1:-1]
