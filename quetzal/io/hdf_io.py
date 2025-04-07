@@ -2,6 +2,8 @@ import importlib
 import pickle
 import uuid
 import zlib
+import zstd
+import os
 
 import pandas as pd
 from tqdm import tqdm
@@ -44,7 +46,7 @@ def write_hdf_to_buffer(frames, level=4, complevel=None):
 def to_zippedpickle(frame, filepath, pickle_protocol_level=4, complevel=-1):
     with pickle_protocol(pickle_protocol_level):
         buffer = pickle.dumps(frame)
-        smallbuffer = zlib.compress(buffer, level=complevel)
+        smallbuffer = zstd.ZSTD_compress(buffer, complevel)
         with open(filepath, 'wb') as file:
             file.write(smallbuffer)
 
@@ -78,3 +80,13 @@ def zip_to_frame(filepath):
         driver_core_image=bigbyte,
     ) as store:
         return store['frame']
+
+
+def get_folder_size(folder):
+    # return MB
+    total_size = sum(
+        os.path.getsize(os.path.join(dirpath, filename))
+        for dirpath, _, filenames in os.walk(folder)
+        for filename in filenames
+    )
+    return total_size / (1024 * 1024)  # Convert bytes to MB

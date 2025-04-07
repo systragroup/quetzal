@@ -6,7 +6,7 @@ import shutil
 import sys
 import uuid
 import zlib
-from concurrent.futures import ProcessPoolExecutor
+import zstd
 from copy import deepcopy
 from functools import wraps
 
@@ -199,7 +199,7 @@ class Model(IntegrityModel):
             self.read_zip(zip_database, omitted_attributes=omitted_attributes, only_attributes=only_attributes)
         elif zippedpickles_folder:
             self.read_zippedpickles(
-                zippedpickles_folder, omitted_attributes=omitted_attributes, only_attributes=only_attributes
+                zippedpickles_folder, omitted_attributes=omitted_attributes, only_attributes=only_attributes, **kwargs
             )
 
         self.debug = True
@@ -294,30 +294,39 @@ class Model(IntegrityModel):
         self.__setattr__(attr, pd.concat(to_concat))
 
     def to_zippedpickles(
-        self, folder, omitted_attributes=(), only_attributes=None, max_workers=1, complevel=-1, remove_first=True
+        self,
+        folder,
+        omitted_attributes=(),
+        only_attributes=None,
+        complevel=6,
+        remove_first=True,
+        return_size=False,
+        **kwargs,
     ):
+        """
+        folder (string): folder name
+        omitted_attributes (list): list of attributes not to export
+        only_attributes (string) optioal: only attribute to export
+        complevel (int): 1 (fastest) to 20 (slowest). default: 6
+        return_size (bool): return folder size in MB after compression
+        remove_first (bool): delete folder before exporting.
+        """
+
         if remove_first:
             shutil.rmtree(folder, ignore_errors=True)
         os.makedirs(folder, exist_ok=True)
-        if max_workers == 1:
-            iterator = tqdm(self.__dict__.items())
-            for key, value in iterator:
-                iterator.desc = key
-                if key in omitted_attributes:
-                    continue
-                if only_attributes is not None and key not in only_attributes:
-                    continue
-                hdf_io.to_zippedpickle(value, '%s/%s.zippedpickle' % (folder, key), complevel=complevel)
-        else:
-            with ProcessPoolExecutor(max_workers=max_workers) as executor:
-                for key, value in self.__dict__.items():
-                    if key in omitted_attributes:
-                        continue
-                    if only_attributes is not None and key not in only_attributes:
-                        continue
-                    executor.submit(
-                        hdf_io.to_zippedpickle, value, r'%s/%s.zippedpickle' % (folder, key), complevel=complevel
-                    )
+        iterator = tqdm(self.__dict__.items())
+        for key, value in iterator:
+            iterator.desc = key
+            if key in omitted_attributes:
+                continue
+            if only_attributes is not None and key not in only_attributes:
+                continue
+            hdf_io.to_zippedpickle(value, '%s/%s.zippedpickle' % (folder, key), complevel=complevel)
+        if return_size:
+            size = hdf_io.get_folder_size(folder)
+            print(f'{size:.2f} MB')
+            return size
 
     def read_zippedpickles(self, folder, omitted_attributes=(), only_attributes=None):
         files = list_dir(folder)
@@ -332,7 +341,12 @@ class Model(IntegrityModel):
             iterator.desc = key
             with get_file(folder, key) as file:
                 buffer = file.read()
-                bigbuffer = zlib.decompress(buffer)
+                try:
+                    bigbuffer = zstd.decompress(buffer)
+                except Exception:
+                    print('error reading using zstd, trying with zlib')
+                    bigbuffer = zlib.decompress(buffer)
+
                 self.__setattr__(key, pickle.loads(bigbuffer))
 
     def read_hdf(self, filepath, omitted_attributes=(), only_attributes=None):
