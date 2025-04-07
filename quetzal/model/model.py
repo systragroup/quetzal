@@ -15,9 +15,7 @@ import pandas as pd
 from quetzal.io import hdf_io
 from quetzal.model.integritymodel import IntegrityModel
 from shapely.geometry import Point
-from syspy.io.geojson_utils import set_geojson_crs
-from syspy.syspy_utils.data_visualization import (add_basemap, add_north,
-                                                  add_raster, add_scalebar)
+from syspy.syspy_utils.data_visualization import add_basemap, add_north, add_raster, add_scalebar
 from tqdm import tqdm
 
 
@@ -26,36 +24,36 @@ def read_hdf(filepath):
     m.read_hdf(filepath)
     return m
 
+
 def list_dir(folder):
     if folder.startswith('s3://'):
         import s3fs
+
         s3 = s3fs.S3FileSystem()
         prefix = folder.split('s3://')[1]
         files = s3.ls(prefix)
         return [f.split('/')[-1] for f in files]
     else:
         return os.listdir(folder)
-    
-def get_file(folder,key):
+
+
+def get_file(folder, key):
     filname = '%s/%s.zippedpickle' % (folder, key)
-    if folder.startswith('s3://'):   
+    if folder.startswith('s3://'):
         import s3fs
+
         s3 = s3fs.S3FileSystem()
         return s3.open(filname, 'rb')
     else:
-         return open(filname, 'rb')
- 
+        return open(filname, 'rb')
+
 
 def log(text, debug=False):
     if debug:
         print(text)
 
 
-def authorized_column(
-    df,
-    column,
-    authorized_types=(str, int, float)
-):
+def authorized_column(df, column, authorized_types=(str, int, float)):
     type_set = set(df[column].dropna().apply(type))
     delta = type_set - set(authorized_types)
     return delta == set()
@@ -90,6 +88,7 @@ def track_args(method):
             self.parameters[name]['args'] = args
             self.parameters[name]['kwargs'] = kwargs
         return method(self, *args, **kwargs)
+
     return decorated
 
 
@@ -101,7 +100,7 @@ def merge_links_and_nodes(
     suffixes=['_left', '_right'],
     join_nodes='inner',
     join_links='inner',
-    reindex=True
+    reindex=True,
 ):
     left_links = left_links.copy()
     right_links = right_links.copy()
@@ -131,23 +130,14 @@ def merge_links_and_nodes(
 
         links['a'] = links['a'].apply(reindex_function).astype(str)
         links['b'] = links['b'].apply(reindex_function).astype(str)
-        nodes.index = pd.Series(nodes.index).apply(
-            reindex_function).astype(str)
+        nodes.index = pd.Series(nodes.index).apply(reindex_function).astype(str)
     return links, nodes
 
 
-def merge(
-    left,
-    right,
-    suffixes=['_left', '_right'],
-    how='inner',
-    reindex=True,
-    clear=True
-):
+def merge(left, right, suffixes=['_left', '_right'], how='inner', reindex=True, clear=True):
     assert left.epsg == right.epsg
     # we want to return an object with the same class as left
-    model = left.__class__(
-        epsg=left.epsg, coordinates_unit=left.coordinates_unit) if clear else left.copy()
+    model = left.__class__(epsg=left.epsg, coordinates_unit=left.coordinates_unit) if clear else left.copy()
 
     model.links, model.nodes = merge_links_and_nodes(
         left_links=left.links,
@@ -157,20 +147,20 @@ def merge(
         suffixes=suffixes,
         join_nodes=how,
         join_links=how,
-        reindex=reindex
+        reindex=reindex,
     )
     return model
 
 
 def obj_size_fmt(num):
     if num < 10**3:
-        return "{:.2f}{}".format(num, "B")
-    elif ((num >= 10**3) & (num < 10**6)):
-        return "{:.2f}{}".format(num / (1.024 * 10**3), "KB")
-    elif ((num >= 10**6) & (num < 10**9)):
-        return "{:.2f}{}".format(num / (1.024 * 10**6), "MB")
+        return '{:.2f}{}'.format(num, 'B')
+    elif (num >= 10**3) & (num < 10**6):
+        return '{:.2f}{}'.format(num / (1.024 * 10**3), 'KB')
+    elif (num >= 10**6) & (num < 10**9):
+        return '{:.2f}{}'.format(num / (1.024 * 10**6), 'MB')
     else:
-        return "{:.2f}{}".format(num / (1.024 * 10**9), "GB")
+        return '{:.2f}{}'.format(num / (1.024 * 10**9), 'GB')
 
 
 class Model(IntegrityModel):
@@ -184,7 +174,7 @@ class Model(IntegrityModel):
         omitted_attributes=(),
         only_attributes=None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialization function, either from a json folder or a json_database representation.
@@ -198,29 +188,18 @@ class Model(IntegrityModel):
         super().__init__(*args, **kwargs)
 
         if json_database and json_folder:
-            raise Exception(
-                'Only one argument should be given to the init function.')
+            raise Exception('Only one argument should be given to the init function.')
         elif json_database:
             self.read_json_database(json_database)
         elif json_folder:
             self.read_json(json_folder)
         elif hdf_database:
-            self.read_hdf(
-                hdf_database,
-                omitted_attributes=omitted_attributes,
-                only_attributes=only_attributes
-            )
+            self.read_hdf(hdf_database, omitted_attributes=omitted_attributes, only_attributes=only_attributes)
         elif zip_database:
-            self.read_zip(
-                zip_database,
-                omitted_attributes=omitted_attributes,
-                only_attributes=only_attributes
-            )
+            self.read_zip(zip_database, omitted_attributes=omitted_attributes, only_attributes=only_attributes)
         elif zippedpickles_folder:
             self.read_zippedpickles(
-                zippedpickles_folder,
-                omitted_attributes=omitted_attributes,
-                only_attributes=only_attributes
+                zippedpickles_folder, omitted_attributes=omitted_attributes, only_attributes=only_attributes
             )
 
         self.debug = True
@@ -243,15 +222,20 @@ class Model(IntegrityModel):
         return memory_usage_by_variable
 
     def plot(
-        self, attribute, ticks=False,
-        basemap_url=None, zoom=12,
-        title=None, fontsize=24,
+        self,
+        attribute,
+        ticks=False,
+        basemap_url=None,
+        zoom=12,
+        title=None,
+        fontsize=24,
         fname=None,
         basemap_raster=None,
         keep_ax_limits=True,
         north_arrow=None,
         scalebar=None,
-        *args, **kwargs
+        *args,
+        **kwargs,
     ):
         gdf = gpd.GeoDataFrame(self.__dict__[attribute])
         if self.epsg != 3857 and basemap_url is not None:
@@ -296,19 +280,13 @@ class Model(IntegrityModel):
             chunk_size = length // nchunks + 1
             pd.Series(range(length)) // chunk_size
             for i in range(nchunks):
-                self.__setattr__(
-                    '%s_%s' % (attr, str(i)),
-                    pool.iloc[i * chunk_size: (i + 1) * chunk_size]
-                )
+                self.__setattr__('%s_%s' % (attr, str(i)), pool.iloc[i * chunk_size : (i + 1) * chunk_size])
 
     def merge_attribute(self, attr, keys=None):
         # attr = pt_los
         # merge several attributes self.pt_los_1, self.pt_los_2 etc in self.pt_los
         if keys is None:
-            keys = [
-                s.split(attr + '_')[1] for s in self.__dict__.keys()
-                if s.startswith(attr + '_')
-            ]
+            keys = [s.split(attr + '_')[1] for s in self.__dict__.keys() if s.startswith(attr + '_')]
         to_concat = []
         for key in keys:
             to_concat.append(self.__getattribute__(attr + '_' + key))
@@ -316,13 +294,7 @@ class Model(IntegrityModel):
         self.__setattr__(attr, pd.concat(to_concat))
 
     def to_zippedpickles(
-        self,
-        folder,
-        omitted_attributes=(),
-        only_attributes=None,
-        max_workers=1,
-        complevel=-1,
-        remove_first=True
+        self, folder, omitted_attributes=(), only_attributes=None, max_workers=1, complevel=-1, remove_first=True
     ):
         if remove_first:
             shutil.rmtree(folder, ignore_errors=True)
@@ -335,10 +307,7 @@ class Model(IntegrityModel):
                     continue
                 if only_attributes is not None and key not in only_attributes:
                     continue
-                hdf_io.to_zippedpickle(
-                    value, '%s/%s.zippedpickle' % (folder, key),
-                    complevel=complevel
-                )
+                hdf_io.to_zippedpickle(value, '%s/%s.zippedpickle' % (folder, key), complevel=complevel)
         else:
             with ProcessPoolExecutor(max_workers=max_workers) as executor:
                 for key, value in self.__dict__.items():
@@ -347,19 +316,12 @@ class Model(IntegrityModel):
                     if only_attributes is not None and key not in only_attributes:
                         continue
                     executor.submit(
-                        hdf_io.to_zippedpickle,
-                        value,
-                        r'%s/%s.zippedpickle' % (folder, key),
-                        complevel=complevel
+                        hdf_io.to_zippedpickle, value, r'%s/%s.zippedpickle' % (folder, key), complevel=complevel
                     )
 
     def read_zippedpickles(self, folder, omitted_attributes=(), only_attributes=None):
         files = list_dir(folder)
-        keys = [
-            file.split('.zippedpickle')[0]
-            for file in files
-            if '.zippedpickle' in file
-        ]
+        keys = [file.split('.zippedpickle')[0] for file in files if '.zippedpickle' in file]
         iterator = tqdm(keys)
         for key in iterator:
             if key in omitted_attributes:
@@ -368,7 +330,7 @@ class Model(IntegrityModel):
                 continue
 
             iterator.desc = key
-            with get_file(folder,key) as file:
+            with get_file(folder, key) as file:
                 buffer = file.read()
                 bigbuffer = zlib.decompress(buffer)
                 self.__setattr__(key, pickle.loads(bigbuffer))
@@ -408,11 +370,11 @@ class Model(IntegrityModel):
 
         # build a store from the buffer
         with pd.HDFStore(
-            "quetzal-%s.h5" % str(uuid.uuid4()),
-            mode="r",
-            driver="H5FD_CORE",
+            'quetzal-%s.h5' % str(uuid.uuid4()),
+            mode='r',
+            driver='H5FD_CORE',
             driver_core_backing_store=0,
-            driver_core_image=bigbyte
+            driver_core_image=bigbyte,
         ) as store:
             iterator = tqdm(store.keys())
             for key in iterator:
@@ -441,10 +403,7 @@ class Model(IntegrityModel):
 
     def to_excel(self, filepath, prefix='stack'):
         length = len(prefix)
-        stacks = {
-            name[length + 1:]: attr for name, attr in self.__dict__.items()
-            if name[:length] == prefix
-        }
+        stacks = {name[length + 1 :]: attr for name, attr in self.__dict__.items() if name[:length] == prefix}
         with pd.ExcelWriter(filepath) as writer:
             for name, stack in stacks.items():
                 stack.reset_index().to_excel(writer, sheet_name=name, index=False)
@@ -511,8 +470,7 @@ class Model(IntegrityModel):
                 df['geometry'] = df['geometry'].astype(object)
                 df.to_hdf(filepath, key=key, mode='a')
             elif isinstance(attribute, gpd.GeoSeries):
-                pd.Series(attribute).astype(object).to_hdf(
-                    filepath, key=key, mode='a')
+                pd.Series(attribute).astype(object).to_hdf(filepath, key=key, mode='a')
             elif isinstance(attribute, (pd.DataFrame, pd.Series)):
                 df = attribute
                 try:
@@ -543,7 +501,9 @@ class Model(IntegrityModel):
         shutil.rmtree(tempdir)
 
     @track_args
-    def to_json(self, folder, omitted_attributes=(), only_attributes=None, verbose=False, encoding='utf-8', use_fiona=True):
+    def to_json(
+        self, folder, omitted_attributes=(), only_attributes=None, verbose=False, encoding='utf-8', use_fiona=True
+    ):
         """
         export the full model to a hdf database
         """
@@ -574,22 +534,17 @@ class Model(IntegrityModel):
                     pass
 
             if isinstance(attribute, (pd.DataFrame, pd.Series)):
-
                 msg = 'datframe attributes must have unique index:' + key
                 assert attribute.index.is_unique, msg
                 attribute = pd.DataFrame(attribute)  # copy and type conversion
                 attribute.drop('index', axis=1, errors='ignore', inplace=True)
                 attribute.index.name = 'index'
                 attribute = attribute.reset_index()  # loss of index name
-                attribute.rename(columns={x: str(x)
-                                          for x in attribute.columns}, inplace=True)
+                attribute.rename(columns={x: str(x) for x in attribute.columns}, inplace=True)
 
                 df = attribute
-                geojson_columns = [
-                    c for c in df.columns if authorized_column(df, c) or c in ('index', 'geometry')
-                ]
-                json_columns = [
-                    c for c in df.columns if c not in geojson_columns]
+                geojson_columns = [c for c in df.columns if authorized_column(df, c) or c in ('index', 'geometry')]
+                json_columns = [c for c in df.columns if c not in geojson_columns]
                 try:
                     if use_fiona:
                         gpd.GeoDataFrame(attribute[geojson_columns]).to_file(
@@ -598,30 +553,28 @@ class Model(IntegrityModel):
                     else:
                         gdf = gpd.GeoDataFrame(attribute[geojson_columns])
                         geojson = gdf.to_json()
-                        crs_json = json.dumps({"crs": { "type": "name", "properties": 
-                                                      { "name": "EPSG:{e}".format(e=gdf.crs.to_epsg())}}})[1:-1]
+                        crs_json = json.dumps(
+                            {'crs': {'type': 'name', 'properties': {'name': 'EPSG:{e}'.format(e=gdf.crs.to_epsg())}}}
+                        )[1:-1]
                         splitted = geojson.split(',', 1)
-                        geojson = splitted[0]+','+crs_json+','+splitted[1]
+                        geojson = splitted[0] + ',' + crs_json + ',' + splitted[1]
                         with open(geojson_file, 'w') as outfile:
                             outfile.write(geojson)
 
                     if len(json_columns):
-                        attribute[json_columns + ['index']
-                                  ].to_json(root_name + '_quetzaldata.json')
+                        attribute[json_columns + ['index']].to_json(root_name + '_quetzaldata.json')
                 # "['geometry'] not in index"
-                except (AttributeError, KeyError, ) as e:
+                except (AttributeError, KeyError) as e:
                     if verbose:
                         print(e)
-                    df = pd.DataFrame(attribute).drop(
-                        'geometry', axis=1, errors='ignore')
+                    df = pd.DataFrame(attribute).drop('geometry', axis=1, errors='ignore')
                     df.to_json(root_name + '.json')
                 except ValueError as e:
                     if verbose:
                         print(e)
                     # Geometry column cannot contain mutiple geometry types when writing to file.
                     print('could not save geometry from table ' + key)
-                    df = pd.DataFrame(attribute).drop(
-                        'geometry', axis=1, errors='ignore')
+                    df = pd.DataFrame(attribute).drop('geometry', axis=1, errors='ignore')
                     df.to_json(root_name + '.json')
             else:
                 try:
@@ -639,19 +592,15 @@ class Model(IntegrityModel):
 
     def read_json(self, folder, encoding='utf-8'):
         files = os.listdir(folder)
-        geojson_attributes = [file.split('.geojson')[0]
-                              for file in files if '.geojson' in file]
-        json_attributes = [file.split('.json')[0]
-                           for file in files if '.json' in file]
+        geojson_attributes = [file.split('.geojson')[0] for file in files if '.geojson' in file]
+        json_attributes = [file.split('.json')[0] for file in files if '.json' in file]
 
         for key in json_attributes:
-
             value = pd.read_json('%s/%s.json' % (folder, key))
             value.set_index('index', inplace=True)
             self.__setattr__(key, value)
 
         for key in geojson_attributes:
-
             value = gpd.read_file('%s/%s.geojson' % (folder, key), encoding=encoding)
             value.set_index('index', inplace=True)
             self.__setattr__(key, pd.DataFrame(value))
@@ -670,8 +619,7 @@ class Model(IntegrityModel):
             if '_quetzaldata' in key:
                 key_to_set = key.split('_quetzaldata')[0]
                 left = self.__getattribute__(key_to_set)
-                merged = pd.merge(
-                    left, data, left_index=True, right_index=True)
+                merged = pd.merge(left, data, left_index=True, right_index=True)
                 self.__setattr__(key_to_set, merged)
                 to_delete.append(key)
         for key in to_delete:
@@ -700,11 +648,7 @@ class Model(IntegrityModel):
         iterator = tqdm(self.__dict__.items(), desc='to_json_database')
 
         # Create json_database object
-        json_database = {
-            'geojson': {},
-            'pd_json': {},
-            'json': {}
-        }
+        json_database = {'geojson': {}, 'pd_json': {}, 'json': {}}
 
         attributeerrors = []
         for key, attribute in iterator:
@@ -722,8 +666,7 @@ class Model(IntegrityModel):
                     json_database['geojson'].update({key: geojson_to_store})
 
                 except KeyError:
-                    df = pd.DataFrame(attribute).drop(
-                        'geometry', axis=1, errors='ignore')
+                    df = pd.DataFrame(attribute).drop('geometry', axis=1, errors='ignore')
                     json_to_store = df.to_json()
                     json_database['pd_json'].update({key: json_to_store})
 
@@ -736,7 +679,7 @@ class Model(IntegrityModel):
 
             for key in attributeerrors:
                 print('could not save attribute: ' + key)
-        return (json.dumps(json_database))
+        return json.dumps(json_database)
 
     def read_json_database(self, json_database):
         """
@@ -778,9 +721,7 @@ class Model(IntegrityModel):
     def change_epsg(self, epsg, coordinates_unit):
         projected_model = self.copy()
         iterator = tqdm(
-            projected_model.__dict__.items(),
-            desc='Reprojecting model from epsg {} to epsg {}'.format(
-                self.epsg, epsg)
+            projected_model.__dict__.items(), desc='Reprojecting model from epsg {} to epsg {}'.format(self.epsg, epsg)
         )
         failed = []
 

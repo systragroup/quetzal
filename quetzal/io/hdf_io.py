@@ -2,7 +2,6 @@ import importlib
 import pickle
 import uuid
 import zlib
-from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
 from tqdm import tqdm
@@ -29,9 +28,9 @@ def pickle_protocol(level):
 def write_hdf_to_buffer(frames, level=4, complevel=None):
     with pickle_protocol(level):
         with pd.HDFStore(
-            "quetzal-%s.h5" % str(uuid.uuid4()),
-            mode="a",
-            driver="H5FD_CORE",
+            'quetzal-%s.h5' % str(uuid.uuid4()),
+            mode='a',
+            driver='H5FD_CORE',
             driver_core_backing_store=0,
             complevel=complevel,
         ) as out:
@@ -53,9 +52,9 @@ def to_zippedpickle(frame, filepath, pickle_protocol_level=4, complevel=-1):
 def frame_to_zip(frame, filepath, level=4, complevel=None):
     with pickle_protocol(level):
         with pd.HDFStore(
-            "quetzal-%s.h5" % str(uuid.uuid4()),
-            mode="a",
-            driver="H5FD_CORE",
+            'quetzal-%s.h5' % str(uuid.uuid4()),
+            mode='a',
+            driver='H5FD_CORE',
             driver_core_backing_store=0,
             complevel=complevel,
         ) as out:
@@ -72,10 +71,10 @@ def zip_to_frame(filepath):
         bigbyte = zlib.decompress(data)
 
     with pd.HDFStore(
-        "quetzal-%s.h5" % str(uuid.uuid4()),
-        mode="r",
-        driver="H5FD_CORE",
+        'quetzal-%s.h5' % str(uuid.uuid4()),
+        mode='r',
+        driver='H5FD_CORE',
         driver_core_backing_store=0,
-        driver_core_image=bigbyte
+        driver_core_image=bigbyte,
     ) as store:
         return store['frame']
