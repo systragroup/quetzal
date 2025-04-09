@@ -344,7 +344,7 @@ class Model(IntegrityModel):
                 try:
                     bigbuffer = zstd.decompress(buffer)
                 except Exception:
-                    print('error reading using zstd, trying with zlib')
+                    # error reading using zstd, trying with zlib
                     bigbuffer = zlib.decompress(buffer)
 
                 self.__setattr__(key, pickle.loads(bigbuffer))
