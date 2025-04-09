@@ -2,7 +2,8 @@ import importlib
 import pickle
 import uuid
 import zlib
-from concurrent.futures import ThreadPoolExecutor
+import zstd
+import os
 
 import pandas as pd
 from tqdm import tqdm
@@ -29,9 +30,9 @@ def pickle_protocol(level):
 def write_hdf_to_buffer(frames, level=4, complevel=None):
     with pickle_protocol(level):
         with pd.HDFStore(
-            "quetzal-%s.h5" % str(uuid.uuid4()),
-            mode="a",
-            driver="H5FD_CORE",
+            'quetzal-%s.h5' % str(uuid.uuid4()),
+            mode='a',
+            driver='H5FD_CORE',
             driver_core_backing_store=0,
             complevel=complevel,
         ) as out:
@@ -45,7 +46,7 @@ def write_hdf_to_buffer(frames, level=4, complevel=None):
 def to_zippedpickle(frame, filepath, pickle_protocol_level=4, complevel=-1):
     with pickle_protocol(pickle_protocol_level):
         buffer = pickle.dumps(frame)
-        smallbuffer = zlib.compress(buffer, level=complevel)
+        smallbuffer = zstd.ZSTD_compress(buffer, complevel)
         with open(filepath, 'wb') as file:
             file.write(smallbuffer)
 
@@ -53,9 +54,9 @@ def to_zippedpickle(frame, filepath, pickle_protocol_level=4, complevel=-1):
 def frame_to_zip(frame, filepath, level=4, complevel=None):
     with pickle_protocol(level):
         with pd.HDFStore(
-            "quetzal-%s.h5" % str(uuid.uuid4()),
-            mode="a",
-            driver="H5FD_CORE",
+            'quetzal-%s.h5' % str(uuid.uuid4()),
+            mode='a',
+            driver='H5FD_CORE',
             driver_core_backing_store=0,
             complevel=complevel,
         ) as out:
@@ -72,10 +73,20 @@ def zip_to_frame(filepath):
         bigbyte = zlib.decompress(data)
 
     with pd.HDFStore(
-        "quetzal-%s.h5" % str(uuid.uuid4()),
-        mode="r",
-        driver="H5FD_CORE",
+        'quetzal-%s.h5' % str(uuid.uuid4()),
+        mode='r',
+        driver='H5FD_CORE',
         driver_core_backing_store=0,
-        driver_core_image=bigbyte
+        driver_core_image=bigbyte,
     ) as store:
         return store['frame']
+
+
+def get_folder_size(folder):
+    # return MB
+    total_size = sum(
+        os.path.getsize(os.path.join(dirpath, filename))
+        for dirpath, _, filenames in os.walk(folder)
+        for filename in filenames
+    )
+    return total_size / (1024 * 1024)  # Convert bytes to MB
