@@ -238,7 +238,7 @@ class RoadModel:
         train_od = [[[a], b] for a, b in zip(list(train_od.index), list(train_od['destination']))]
         return train_od
 
-    def get_training_set(self, train_size=1000, seed=42, max_length=15, max_destinations=20):
+    def get_training_set(self, train_size=1000, seed=42, max_length=10, max_destinations=10):
         """
         train_size: number of OD to call (10 000  = 100 ori x 100 des)
         """
@@ -283,7 +283,7 @@ class RoadModel:
             destinations = self.zones_centroid[self.zones_centroid['node_index'].isin(destination_nodes)]
             origins = self.zones_centroid[self.zones_centroid['node_index'].isin(origin_nodes)]
             destinations = self.zones_centroid[self.zones_centroid['node_index'].isin(destination_nodes)]
-            batch_size = (15, 15) if len(origins) > 1 else (1, 100)
+            batch_size = (10, 10) if len(origins) > 1 else (1, 100)
             try:
                 res = multi_get_distance_matrix(
                     origins=origins,
