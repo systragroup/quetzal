@@ -6,7 +6,7 @@ import shutil
 import sys
 import uuid
 import zlib
-import zstd
+import zstandard
 from copy import deepcopy
 from functools import wraps
 
@@ -342,7 +342,8 @@ class Model(IntegrityModel):
             with get_file(folder, key) as file:
                 buffer = file.read()
                 try:
-                    bigbuffer = zstd.decompress(buffer)
+                    decompressor = zstandard.ZstdDecompressor()
+                    bigbuffer = decompressor.decompress(buffer)
                 except Exception:
                     # error reading using zstd, trying with zlib
                     bigbuffer = zlib.decompress(buffer)

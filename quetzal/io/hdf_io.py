@@ -2,7 +2,7 @@ import importlib
 import pickle
 import uuid
 import zlib
-import zstd
+import zstandard
 import os
 
 import pandas as pd
@@ -46,7 +46,7 @@ def write_hdf_to_buffer(frames, level=4, complevel=None):
 def to_zippedpickle(frame, filepath, pickle_protocol_level=4, complevel=-1):
     with pickle_protocol(pickle_protocol_level):
         buffer = pickle.dumps(frame)
-        smallbuffer = zstd.ZSTD_compress(buffer, complevel)
+        smallbuffer = zstandard.ZstdCompressor(level=complevel).compress(buffer)
         with open(filepath, 'wb') as file:
             file.write(smallbuffer)
 
