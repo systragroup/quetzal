@@ -3,6 +3,7 @@ import pandas as pd
 from scipy.sparse import csr_matrix, csc_matrix
 from scipy.sparse.csgraph import dijkstra
 import numba as nb
+from copy import deepcopy
 from quetzal.os.parallel_call import parallel_executor
 
 
@@ -263,7 +264,7 @@ def sparse_los_from_nx_graph(nx_graph, pole_set, sources=None, cutoff=np.inf, od
 
 # buildindex
 def build_index(edges):
-    nodelist = {e[0] for e in edges}.union({e[1] for e in edges})
+    nodelist = sorted({e[0] for e in edges}.union({e[1] for e in edges}))
     nlen = len(nodelist)
     return dict(zip(nodelist, range(nlen)))
 
@@ -276,6 +277,15 @@ def sparse_matrix(edges, index=None):
     coefficients = zip(*((index[u], index[v], w) for u, v, w in edges))
     row, col, data = coefficients
     return csr_matrix((data, (row, col)), shape=(nlen, nlen)), index
+
+
+def sparse_matrix_with_access_penalty(edges, sources=set(), penalty=1e9):
+    penalty_edges = []
+    for u, v, w in edges:
+        if u in sources:
+            w += penalty
+        penalty_edges.append((u, v, w))
+    return sparse_matrix(penalty_edges)
 
 
 def _link_edges(links, boarding_time=None, alighting_time=None):
@@ -332,23 +342,6 @@ def link_edge_array(links, boarding_time=None, alighting_time=None):
     transit_edges = transit_e.values
 
     return np.concatenate([boarding_edges, transit_edges, alighting_edges])
-
-
-def sparse_matrix_with_access_penalty(edges, sources=set(), penalty=1e9):
-    nodelist = {e[0] for e in edges}.union({e[1] for e in edges})
-    nlen = len(nodelist)
-    index = dict(zip(nodelist, range(nlen)))
-    penalty_edges = []
-    for u, v, w in edges:
-        if u in sources:
-            w += penalty
-        penalty_edges.append((u, v, w))
-    coefficients = zip(*((index[u], index[v], w) for u, v, w in penalty_edges))
-    row, col, data = coefficients
-    return csr_matrix((data, (row, col)), shape=(nlen, nlen)), index
-
-
-from copy import deepcopy
 
 
 def index_access_pruned_matrix(matrix, index, pruned):

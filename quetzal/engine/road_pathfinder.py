@@ -15,7 +15,6 @@ from quetzal.engine.msa_utils import (
     shortest_path,
 )
 from quetzal.engine.vdf import default_bpr, free_flow
-import numba as nb
 
 
 def init_network(sm, method='aon', segments=['car'], time_col='time', access_time='time', ntleg_penalty=10e9):
@@ -143,7 +142,6 @@ def msa_roadpathfinder(
     num_cores = 1 : for parallelization.
     """
     # preparation
-    nb.set_num_threads(num_cores)
 
     assert_vdf_on_links(links, vdf)
 
@@ -221,7 +219,7 @@ def msa_roadpathfinder(
         if i > 0:
             relgap = get_relgap(links)
             relgap_list.append(relgap)
-            print(f'{i:2}  |  {phi:.3f}  |  {relgap:.4f} ') if log else None
+            print(f'{i:2}  |  {phi:.3f}  |  {relgap:.8f} ') if log else None
 
         #
         # Update Time on links

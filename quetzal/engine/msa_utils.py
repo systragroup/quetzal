@@ -114,11 +114,10 @@ def find_phi(links, vdf, maxiter=10, tol=1e-4, bounds=(0, 1), **kwargs):
     ).x
 
 
-@nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)  # parallel=True
+@nb.njit(locals={'predecessors': nb.int32[:, ::1]})  # parallel=> not thread safe. do not!
 def assign_volume(odv, predecessors, volumes):
-    # this function use parallelization (or not).nb.set_num_threads(num_cores)
     # volumes is a numba dict with all the key initialized
-    for i in nb.prange(len(odv)):  # nb.prange(len(odv)):
+    for i in range(len(odv)):  # nb.prange(len(odv)):
         origin = odv[i, 0]
         destination = odv[i, 1]
         v = odv[i, 2]
@@ -130,11 +129,10 @@ def assign_volume(odv, predecessors, volumes):
     return volumes
 
 
-@nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)  # parallel=True
+@nb.njit(locals={'predecessors': nb.int32[:, ::1]})  # parallel=> not thread safe. do not!
 def assign_tracked_volume(odv, predecessors, volumes, track_index):
-    # this function use parallelization (or not).nb.set_num_threads(num_cores)
     # volumes is a numba dict with all the key initialized
-    for i in nb.prange(len(odv)):  # nb.prange(len(odv)):
+    for i in range(len(odv)):  # nb.prange(len(odv)):
         origin = odv[i, 0]
         destination = odv[i, 1]
         v = odv[i, 2]
