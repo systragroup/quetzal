@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import geopandas as gpd
+from quetzal.model.stepmodel import StepModel
 from quetzal.io.gtfs_reader.frequencies import hhmmss_to_seconds_since_midnight, seconds_since_midnight_to_hhmmss
 from syspy.spatial.geometries import reverse_geometry
 from pathlib import Path
@@ -59,30 +60,21 @@ def quetzal_to_quenedi_schedule(links, group='route_id'):
     """
     crs = links.crs
     # Build Footprints (list of stops representing the path of the trip)
-    grouped = links.sort_values(['trip_id', 'link_sequence']).groupby('trip_id').agg(
-        {'a': lambda x: list(x),
-         'b': lambda x: list(x)})
+    grouped = (
+        links.sort_values(['trip_id', 'link_sequence'])
+        .groupby('trip_id')
+        .agg({'a': lambda x: list(x), 'b': lambda x: list(x)})
+    )
     trip_nodes = grouped['a'] + grouped['b'].apply(lambda x: [x[-1]])
     footprints = trip_nodes.map(str)
     footprints.name = 'footprint'
 
     # Define a pattern_id for each trip
-    patterns = pd.concat([
-        links.groupby('trip_id')['route_id'].first(),
-        footprints],
-        axis=1)
-    pattern_n = patterns.drop_duplicates().set_index(['footprint', group]).groupby(
-        group,
-        as_index=False
-    ).cumcount()
+    patterns = pd.concat([links.groupby('trip_id')['route_id'].first(), footprints], axis=1)
+    pattern_n = patterns.drop_duplicates().set_index(['footprint', group]).groupby(group, as_index=False).cumcount()
     pattern_n.name = 'pattern_num'
-    patterns = patterns.reset_index().merge(
-        pattern_n,
-        on=['footprint', group]
-    )
-    patterns['pattern_id'] = patterns[['route_id', 'pattern_num']].apply(
-        lambda x: '_'.join(x.map(str)), 1
-    )
+    patterns = patterns.reset_index().merge(pattern_n, on=['footprint', group])
+    patterns['pattern_id'] = patterns[['route_id', 'pattern_num']].apply(lambda x: '_'.join(x.map(str)), 1)
     links = links.merge(patterns[['trip_id', 'pattern_id']], on='trip_id')
 
     # Convert time format
@@ -93,7 +85,11 @@ def quetzal_to_quenedi_schedule(links, group='route_id'):
     agg = {c: 'first' for c in links.columns}
     agg['departure_time'] = lambda x: list(x)
     agg['arrival_time'] = lambda x: list(x)
-    links = links.sort_values(['trip_id', 'link_sequence']).groupby(['pattern_id', 'link_sequence'], as_index=False).agg(agg)
+    links = (
+        links.sort_values(['trip_id', 'link_sequence'])
+        .groupby(['pattern_id', 'link_sequence'], as_index=False)
+        .agg(agg)
+    )
 
     links.rename(columns={'departure_time': 'departures', 'arrival_time': 'arrivals'}, inplace=True)
 
@@ -142,7 +138,7 @@ def split_quenedi_rlinks(road_links, oneway='0'):
     if 'oneway' not in road_links.columns:
         print('no column oneway. do not split')
         return
-    links_r = road_links[road_links['oneway']==oneway].copy()
+    links_r = road_links[road_links['oneway'] == oneway].copy()
     if len(links_r) == 0:
         print('all oneway, nothing to split')
         return
@@ -151,7 +147,7 @@ def split_quenedi_rlinks(road_links, oneway='0'):
     cols = [col[:-2] for col in r_cols]
     for col, r_col in zip(cols, r_cols):
         links_r[col] = links_r[r_col]
-    # reindex with _r 
+    # reindex with _r
     links_r.index = links_r.index.astype(str) + '_r'
     # reverse links (a=>b, b=>a)
     links_r = links_r.rename(columns={'a': 'b', 'b': 'a'})
@@ -160,11 +156,11 @@ def split_quenedi_rlinks(road_links, oneway='0'):
     return road_links
 
 
-def merge_quenedi_rlinks(road_links,new_cols=[]):
+def merge_quenedi_rlinks(road_links, new_cols=[]):
     if 'oneway' not in road_links.columns:
         print('no column oneway. do not merge')
         return
-    #get reversed links
+    # get reversed links
     index_r = [idx for idx in road_links.index if idx.endswith('_r')]
     if len(index_r) == 0:
         print('all oneway, nothing to merge')
@@ -175,7 +171,7 @@ def merge_quenedi_rlinks(road_links,new_cols=[]):
         links_r[col + '_r'] = links_r[col]
     # reindex with initial non _r index to merge
     links_r.index = links_r.index.map(lambda x: x[:-2])
-    new_cols_r = [col+ '_r' for col in new_cols]
+    new_cols_r = [col + '_r' for col in new_cols]
     links_r = links_r[new_cols_r]
     # drop added _r links, merge new columns to inital two way links.
     road_links = road_links.drop(index_r, axis=0)
@@ -183,21 +179,22 @@ def merge_quenedi_rlinks(road_links,new_cols=[]):
     for col in new_cols_r:
         if col in road_links.columns:
             road_links = road_links.drop(columns=col)
-    
+
     road_links = pd.merge(road_links, links_r, left_index=True, right_index=True, how='left')
     return road_links
 
 
-def _to_geojson(gdf,tmp_path,new_dir,name,to_4326=True, engine='pyogrio'):
+def _to_geojson(gdf, tmp_path, new_dir, name, to_4326=True, engine='pyogrio'):
     if to_4326:
         gdf = gdf.to_crs(4326)
     p = tmp_path / os.path.join(new_dir, name + '.geojson')
-    gdf.to_file(str(p),driver='GeoJSON',engine=engine)
+    gdf.to_file(str(p), driver='GeoJSON', engine=engine)
 
-def to_zip(sm, path='test.zip', to_export=['pt','road'],inputs=[],outputs=[],to_4326=False, engine='pyogrio'):
+
+def to_zip(sm, path='test.zip', to_export=['pt', 'road'], inputs=[], outputs=[], to_4326=False, engine='pyogrio'):
     """
     Export model to zip file (readable in quenedi)
-    sm: Quetzal stepmodel 
+    sm: Quetzal stepmodel
     path: str. path to the zip fil
     to_export: list of str ['pt','road']. only ['pt'] to export only links and nodes.
     inputs: list of str. names of the input sm attributes to export
@@ -207,7 +204,7 @@ def to_zip(sm, path='test.zip', to_export=['pt','road'],inputs=[],outputs=[],to_
     """
     if not path.endswith('.zip'):
         path = path + '.zip'
-    
+
     path = Path(path)
     # Write to temporary directory before zipping
     tmp_dir = tempfile.TemporaryDirectory()
@@ -215,16 +212,16 @@ def to_zip(sm, path='test.zip', to_export=['pt','road'],inputs=[],outputs=[],to_
     if 'links' in sm.__dict__.keys() and 'pt' in to_export:
         new_dir = tmp_path / 'inputs/pt'
         os.makedirs(new_dir)
-        for name in ['links','nodes']:
+        for name in ['links', 'nodes']:
             gdf = getattr(sm, name)
-            _to_geojson(gdf,tmp_path,new_dir,name,to_4326,engine)
-        
+            _to_geojson(gdf, tmp_path, new_dir, name, to_4326, engine)
+
     if 'road_links' in sm.__dict__.keys() and 'road' in to_export:
         new_dir = tmp_path / 'inputs/road'
         os.makedirs(new_dir)
-        for name in ['road_links','road_nodes']:
+        for name in ['road_links', 'road_nodes']:
             gdf = getattr(sm, name)
-            _to_geojson(gdf,tmp_path,new_dir,name,to_4326,engine)
+            _to_geojson(gdf, tmp_path, new_dir, name, to_4326, engine)
 
     for name in inputs:
         if name not in sm.__dict__.keys():
@@ -234,12 +231,12 @@ def to_zip(sm, path='test.zip', to_export=['pt','road'],inputs=[],outputs=[],to_
             os.makedirs(new_dir)
         data = getattr(sm, name)
         if type(data) == gpd.GeoDataFrame:
-            _to_geojson(data,tmp_path,new_dir,name,to_4326,engine)
+            _to_geojson(data, tmp_path, new_dir, name, to_4326, engine)
         elif type(data) == pd.DataFrame:
             p = tmp_path / os.path.join(new_dir, name + '.csv')
-            print( name + '.csv')
+            print(name + '.csv')
             data.to_csv(str(p))
-            
+
     for name in outputs:
         if name not in sm.__dict__.keys():
             continue
@@ -248,23 +245,23 @@ def to_zip(sm, path='test.zip', to_export=['pt','road'],inputs=[],outputs=[],to_
             os.makedirs(new_dir)
         data = getattr(sm, name)
         if type(data) == gpd.GeoDataFrame:
-            _to_geojson(data,tmp_path,new_dir,name,to_4326,engine)
+            _to_geojson(data, tmp_path, new_dir, name, to_4326, engine)
         elif type(data) == pd.DataFrame:
             p = tmp_path / os.path.join(new_dir, name + '.csv')
-            print( name + '.csv')
+            print(name + '.csv')
             data.to_csv(str(p))
 
     basename = str(path.parent / path.stem)
-    shutil.make_archive(basename, format="zip", root_dir=tmp_dir.name)
+    shutil.make_archive(basename, format='zip', root_dir=tmp_dir.name)
     tmp_dir.cleanup()
 
 
-def read_geojson(filename,**kwargs):
-    '''
+def read_geojson(filename, **kwargs):
+    """
     read geojson with gpd.read_file but add unreadable columns susch as List.
     Set index if index in column else set index name as 'index'
-    '''
-    gdf = gpd.read_file(filename,**kwargs)
+    """
+    gdf = gpd.read_file(filename, **kwargs)
     if 'index' in gdf.columns:
         gdf.set_index('index', inplace=True)
     else:
@@ -274,11 +271,55 @@ def read_geojson(filename,**kwargs):
         json_data = json.loads(j.read())
     json_prop = json_data['features'][0]['properties'].keys()
     missing_columns = set(json_prop).difference(gdf.columns)
-    missing_columns.discard('index')# dont want to add index
+    missing_columns.discard('index')  # dont want to add index
     for col in missing_columns:
         d = {f['properties']['index']: f['properties'][col] for f in json_data['features']}
         gdf[col] = gdf.index.map(d)
 
-    
-
     return gdf
+
+
+#
+# variant time period.
+#
+
+
+def read_parameters(params_dict, period=None):
+    df = pd.DataFrame.from_dict(params_dict, orient='index')
+    if period is not None:
+        period_cols = [col for col in df.columns if col.endswith(f'#{period}')]
+        name_dict = {col: col.split('#')[0] for col in period_cols}
+        # apply period to param ex: 'max_length' =  max_length#AM'
+        for col_period, col in name_dict.items():
+            if col in df.columns:
+                df[col] = df[col_period].combine_first(df[col])
+    return df.stack()
+
+
+def restrict_df_to_variant(
+    df: pd.DataFrame | gpd.GeoDataFrame, variant: str, log=True
+) -> pd.DataFrame | gpd.GeoDataFrame:
+    variant_cols = [col for col in df.columns if col.endswith(f'#{variant}')]
+    name_dict = {col: col.split('#')[0] for col in variant_cols}
+    df = df.rename(columns=name_dict)
+    to_drop = [col for col in df.columns if '#' in col]
+    df = df.drop(columns=to_drop)
+    if log:
+        print('keep and rename: ', name_dict)
+        print('drops: ', to_drop)
+    return df
+
+
+def restrict_to_variant(self: StepModel, variant: str, log=True):
+    """
+    for each DataFrame and GeoDataFrame :
+     - keep columns that ends with f'#{variant}'
+     - rename those columns to remove the f'#{variant}' (ex: speed#AM => speed)
+     - Delete all other columns with # (the others variants ex: speed#PM)
+    return Nnoe (modify self)
+    """
+    for attribute, val in self.__dict__.items():
+        if type(val) in [gpd.GeoDataFrame, pd.DataFrame]:
+            if log:
+                print(attribute)
+            self.__dict__[attribute] = restrict_df_to_variant(val, variant, log)

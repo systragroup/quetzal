@@ -1,7 +1,7 @@
-line-length = 160
+line-length = 120
 
 [format]
 quote-style = "single"
-indent-style = "tab"
+indent-style = "space"
 docstring-code-format = true
 skip-magic-trailing-comma = true

@@ -29,10 +29,10 @@ s3fs = "*"
 rasterio = "*"
 ipywidgets = "*"
 openmatrix = "*"
-snakeviz = "*" 
 pip-chill = "*"
 networkx = "*"
 ruff = "^0.7.4"
+zstandard = "^0.23.0"
 
 
 
