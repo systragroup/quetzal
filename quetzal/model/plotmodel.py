@@ -12,6 +12,7 @@ from shapely import geometry
 from syspy.syspy_utils import data_visualization
 from syspy.syspy_utils.data_visualization import trim_axs
 from tqdm import tqdm
+import subprocess
 
 
 styles = {
@@ -420,6 +421,124 @@ class PlotModel(summarymodel.SummaryModel):
             assert line_od_vol.index.duplicated().sum() == 0
 
         return export_utils.arc_diagram_from_dataframe(line_od_vol)
+    
+
+    def data_loom_plot(self, filtering={'agency_id': None, 'route_type': None, 'route_id': None}, utm_epsg=2154):
+
+        sm_map = self.copy()
+        for col, l_val in filtering.items():
+            if l_val is not None:
+                sm_map.links = sm_map.links[sm_map.links[col].isin(l_val)]
+
+        # Passage en système métrique pour clusterisation des arrêts
+        sm_map.links = sm_map.links.to_crs(utm_epsg)
+        sm_map.nodes = sm_map.nodes.to_crs(utm_epsg)
+        nodes = sm_map.nodes.copy()     # save copy to add stop names as station labels
+
+        nodeset = set(sm_map.links["a"].values).union(set(sm_map.links["b"].values))
+        sm_map.nodes = sm_map.nodes.loc[list(nodeset)]
+
+        sm_map.preparation_clusterize_nodes(distance_threshold=20)
+        sm_map.nodes = gpd.GeoDataFrame(sm_map.nodes, crs=utm_epsg)
+        sm_map.nodes["id"] = sm_map.nodes.index
+
+        def add_stop_name(nodes):
+
+            sm_map.nodes = sm_map.nodes.reset_index()
+            sm_map.nodes['cluster'] = sm_map.nodes['cluster'].astype(int)
+            sm_map.nodes = sm_map.nodes.merge(sm_map.node_parenthood.reset_index()[['index', 'cluster']], on='cluster', how='left')
+
+            sm_map.nodes = sm_map.nodes.merge(nodes[['stop_name']], left_on='index', right_on=nodes.index, how='left')
+
+            sm_map.nodes = sm_map.nodes.drop(columns='index')
+
+            def unique_stop_name(df):
+                def select_row(group):
+                    stop_names = group['stop_name']
+                    if stop_names.isnull().all() or stop_names.notnull().all():
+                        return group.iloc[0]
+                    else:
+                        return group[stop_names.notnull()].sample(n=1).iloc[0]
+
+                return df.groupby('id').apply(select_row).reset_index(drop=True)
+            
+            return unique_stop_name(sm_map.nodes)
+        
+        sm_map.nodes = add_stop_name(nodes=nodes)
+
+        # Retransformation en (lat, lon) parce que loom ne fonctionne pas sinon
+        sm_map = sm_map.change_epsg(epsg=4326, coordinates_unit="degree")
+
+        # Création du dataframe admissible par loom à partir des inputs links et nodes de sm
+        sm_map.links['route_color'] = sm_map.links['route_color'].apply(lambda x: x.lower())
+        gdata = sm_map.links[["a", "b", "route_id", "route_color", "route_short_name", "geometry"]].rename(
+            columns={"a": "from", "b": "to", "route_id": "id", "route_color": "color", "route_short_name": "label"})
+        gdata["lines"] = gdata[["color", "id", "label"]].apply(dict, 1)
+        gdata["ab"] = gdata[["from", "to"]].apply(lambda x: str(set(x)), 1)
+
+        line_data = gdata.groupby(["ab"],as_index=False).agg({"from": "first", "to": "first", "geometry": "first", "lines": list})
+        
+        node_data = sm_map.nodes[["id", "cluster", "stop_name", "geometry"]]
+        node_data["station_id"] = node_data["id"].map(int).map(str)
+        node_data['station_label'] = node_data.apply(lambda row: row['stop_name'] if row['stop_name']!=None else row["cluster"].map(int).map(str), axis=1)
+        node_data = node_data.drop(columns='stop_name')
+        node_data["deg"] = 2
+
+        data = pd.concat([node_data, line_data])
+        data["excluded_conn"] = None
+        data = data.drop(["cluster", "ab"], axis=1, errors="ignore")
+
+        return data
+    
+    def plot_subway_map(self, filtering={'agency_id': None, 'route_type': None, 'route_id': None}, utm_epsg=2154,
+                    plot_type='octilinear',
+                    plot_kwgs={'-l': True,
+                               '--line-width': 200,
+                               '--outline-width': 20,
+                               '--line-spacing': 20,
+                               '--line-label-textsize': 2000,
+                               '--station-label-textsize': 1200
+                               }
+                    ):
+
+        """
+        Draws a schematic view of the TC network using loom.
+        Requires loom docker installation to run tool with subprocess.
+        Takes a StepModel object as input with existing links and nodes edited in Quetzal Network Editor.
+
+        :param filtering: choose which part of the TC network to draw, various filter levels
+        :param utm_epsg: metric coordinate system at the model network location
+        :param plot_type: graph style expected in the end - choose in ['realistic', 'octilinear', 'orthoradial']
+        :param plot_kwgs: input args to adapt to the network size (the more compact the TC network, the lower the values should be)
+            default parameters settled for a regional network (150 km x 50 km)
+            :param -l: write lines and stations labels
+        """
+
+        data = PlotModel.data_loom_plot(self, filtering=filtering, utm_epsg=utm_epsg)
+        
+        # Steps 1 and 2 : define json graph
+        topo = subprocess.run("docker run -i loom topo", input=data.to_json(na="drop").encode(), capture_output=True)
+        loom = subprocess.run("docker run -i loom loom --ilp-num-threads 16 -m hillc", input=topo.stdout, capture_output=True)
+        
+        graph_style = ' '.join(f"{key} {value}" if not isinstance(value, bool) else key for key, value in plot_kwgs.items())
+
+        if plot_type == 'realistic':
+            transit = subprocess.run("docker run -i loom transitmap " + graph_style, input=loom.stdout, capture_output=True)
+            return loom.stdout.decode(), transit.stdout.decode()
+
+        elif plot_type == 'octilinear':
+            octo = subprocess.run("docker run -i loom octi", input=loom.stdout, capture_output=True)
+            transit = subprocess.run("docker run -i loom transitmap " + graph_style, input=octo.stdout, capture_output=True)
+            return loom.stdout.decode(), transit.stdout.decode()
+            
+        elif plot_type == 'orthoradial':
+            ortho = subprocess.run("docker run -i loom octi -b orthoradial", input=loom.stdout, capture_output=True)
+            transit = subprocess.run("docker run -i loom transitmap " + graph_style, input=ortho.stdout, capture_output=True)
+            return loom.stdout.decode(), transit.stdout.decode()
+
+        else:
+            print("plot_type not available, choose within ['realistic', 'octilinear', 'orthoradial']")
+            return   
 
 
 def _both_directions_graph_possible(df):
