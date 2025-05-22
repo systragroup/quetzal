@@ -14,6 +14,14 @@ from quetzal.engine.msa_utils import (
     assign_tracked_volume,
     shortest_path,
 )
+from quetzal.engine.msa_utils import (
+    fix_zone_to_road,
+    init_numba_volumes,
+    assign_volume_on_links,
+    assign_tracked_volume_on_links,
+    links_to_extended_links,
+    extended_path_to_nodes,
+)
 from quetzal.engine.vdf import default_bpr, free_flow
 
 
@@ -58,8 +66,7 @@ def init_volumes(sm, od_set=None):
 def zone_to_road_preparation(zone_to_road, segments, time_col='time', access_time='time', ntleg_penalty=1e9, aon=False):
     # prepare zone_to_road_links to the same format as road_links
     zone_to_road = zone_to_road.copy()
-    zone_to_road[time_col] = zone_to_road[access_time]
-    zone_to_road.loc[zone_to_road['direction'] == 'access', time_col] += ntleg_penalty
+    zone_to_road[time_col] = zone_to_road[access_time] + ntleg_penalty
     if not aon:
         if 'vdf' not in zone_to_road.columns:
             print("vdf not found in zone_to_road columns. Values set to 'free_flow'")
@@ -111,7 +118,7 @@ def aon_roadpathfinder(links, volumes, time_col='time', ntleg_penalty=10e9, num_
     links['jam_time'] = links[time_col]
 
     reversed_index = {v: k for k, v in index.items()}
-    return get_car_los(volumes, links, index, reversed_index, zones, ntleg_penalty, num_cores)
+    return get_car_los(volumes, links, index, reversed_index, zones, 2 * ntleg_penalty, num_cores)
 
 
 def msa_roadpathfinder(
@@ -235,7 +242,7 @@ def msa_roadpathfinder(
     # Finish: reindex back and get car_los
     #
     reversed_index = {v: k for k, v in index.items()}
-    car_los = get_car_los(volumes, links, index, reversed_index, zones, ntleg_penalty, num_cores)
+    car_los = get_car_los(volumes, links, index, reversed_index, zones, 0, num_cores)
     links = links.set_index(['a', 'b'])  # go back to original indexes
 
     if track_links:  # rename with original indexes
@@ -261,3 +268,156 @@ def get_bfw_auxiliary_flow(links, vdf, i, time_col, prev_phi) -> pd.DataFrame:
         links['s_k-2'] = links['s_k-1']
     links['s_k-1'] = links['auxiliary_flow']
     return links
+
+
+def extended_roadpathfinder(
+    links,
+    volumes,
+    zones,
+    segments=['volume'],
+    vdf={'default_bpr': default_bpr, 'free_flow': free_flow},
+    method='bfw',
+    maxiters=10,
+    tolerance=0.01,
+    log=False,
+    time_col='time',
+    ntleg_penalty=10e9,
+    track_links_list=[],
+    num_cores=1,
+):
+    """
+    links: road_network with zone_to_road
+    volumes: volumes to assign
+    segments: list of segments (in volumes) to assign
+    vdf = dict of function for the jam time.
+    method = bfw, fw, msa, aon
+    maxiters = 10 : number of iteration.
+    tolerance = 0.01 : stop condition for RelGap. (in percent)
+    log = False : log data on each iteration.
+    time_col='freeflow time column'. replace 'time' in vdf
+    track_links_list=[] list of link index to track flow at each iteration
+    num_cores = 1 : for parallelization.
+    """
+    assert_vdf_on_links(links, vdf)
+
+    # preparation
+    extended_links = links_to_extended_links(links, False)
+    extended_links = fix_zone_to_road(extended_links, zones)
+    extended_links = extended_links.rename(columns={'from_link': 'a', 'to_link': 'b'})
+    extended_links = extended_links[['a', 'b', 'from_node', 'mid_node', 'to_node', 'time', 'segments']]
+
+    # reindex links to sparse indexes
+    index = build_index(extended_links[['a', 'b']].values)
+    extended_links['sparse_a'] = extended_links['a'].apply(lambda x: index.get(x))
+    extended_links['sparse_b'] = extended_links['b'].apply(lambda x: index.get(x))
+    extended_links['sparse_index'] = extended_links['sparse_a']  # original link_a to add cost.
+    extended_links = extended_links.reset_index().set_index(['sparse_a', 'sparse_b'])
+
+    # add sparse index to links
+    links['sparse_index'] = links.index.map(index)
+    # remove zone to road here. dont need them anymore.
+    links = links[~links['sparse_index'].isnull()]
+    links = links.reset_index().set_index('sparse_index')  # keep index as column
+    links.index = links.index.astype(int)
+
+    #  sparsify volumes keys
+    volumes, zones = get_zone_index(extended_links, volumes, index)
+
+    # init numba dict with (links, base_flow)
+    # in the volumes assignment, start with base_flow (ex: network preloaded with buses on road)
+    base_flow = init_numba_volumes(links['base_flow'].to_dict())
+
+    # initialization of flow and time
+    links['flow'] = 0
+    links['jam_time'] = jam_time(links, vdf, 'flow', time_col=time_col)
+    links['jam_time'].fillna(links[time_col], inplace=True)
+    # init track links aux_flow dict and flow in links
+    track_links = len(track_links_list) > 0
+    if track_links:
+        track_links_list = [*map(index.get, track_links_list)]
+        for idx in track_links_list:
+            links[f'flow_{idx}'] = 0
+
+    relgap_list = []
+    print('it  |  Phi    |  Rel Gap (%)') if log else None
+    # note: first iteration i == 0 is AON to initialized.
+    for i in range(maxiters + 1):
+        jam_time_dict = links['jam_time'].to_dict()
+        extended_links['cost'] = extended_links['sparse_index'].apply(lambda x: jam_time_dict.get(x, ntleg_penalty))
+        #
+        # Routing and assignment
+        #
+        links_volumes = base_flow.copy()  # init numba dict with (a,b,0)
+        if track_links:
+            tracked_volumes = {link_index: base_flow.copy() for link_index in track_links_list}
+
+        for seg in segments:
+            filtered = extended_links[
+                extended_links['segments'].apply(lambda x: seg in x)
+            ]  # filter links to allowed segment
+            _, predecessors = shortest_path(filtered, 'cost', index, zones, num_cores=num_cores)
+            odv = volumes[['origin_sparse', 'destination_sparse', seg]].values
+
+            links_volumes = assign_volume_on_links(odv, predecessors, links_volumes)
+            if track_links:
+                for idx in track_links_list:
+                    tracked_volumes[idx] = assign_tracked_volume_on_links(odv, predecessors, tracked_volumes[idx], idx)
+
+        links['auxiliary_flow'] = links_volumes
+        #
+        # find Phi, and BFW auxiliary flow modification
+        #
+        if i == 0:
+            phi = 1  # first iteration is AON
+        elif method == 'bfw':  # if biconjugate: takes the 2 last direction
+            links = get_bfw_auxiliary_flow(links, vdf, i, time_col, phi)
+            max_phi = 1 / i**0.5  # limit search space
+            phi = find_phi(links, vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
+        elif method == 'fw':
+            max_phi = 1 / i**0.5  # limit search space
+            phi = find_phi(links, vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
+        else:  # msa
+            phi = 1 / (i + 2)
+        #
+        # Update flow and jam_time (frank-wolfe)
+        #
+        links['flow'] = (1 - phi) * links['flow'] + (phi * links['auxiliary_flow'])
+        links['flow'].fillna(0, inplace=True)
+        if track_links:
+            for idx in track_links_list:
+                links[f'flow_{idx}'] = (1 - phi) * links[f'flow_{idx}'] + (phi * pd.Series(tracked_volumes[idx]))
+        #
+        # Get relGap. Skip first iteration (AON and relgap = -inf)
+        #
+        if i > 0:
+            relgap = get_relgap(links)
+            relgap_list.append(relgap)
+            print(f'{i:2}  |  {phi:.3f}  |  {relgap:.8f} ') if log else None
+
+        #
+        # Update Time on links
+        #
+        links['jam_time'] = jam_time(links, vdf, 'flow', time_col=time_col)
+        links['jam_time'].fillna(links[time_col], inplace=True)
+        # skip first iteration (AON asignment) as relgap in -inf
+        if i > 0:
+            if relgap <= tolerance:
+                print('tolerance reached')
+                break
+    #
+    # Finish: reindex back and get car_los
+    #
+    jam_time_dict = links['jam_time'].to_dict()
+    extended_links['jam_time'] = extended_links['sparse_index'].apply(lambda x: jam_time_dict.get(x, ntleg_penalty))
+    reversed_index = {v: k for k, v in index.items()}
+    car_los = get_car_los(volumes, extended_links, index, reversed_index, zones, ntleg_penalty, num_cores)
+    links = links.set_index(['a', 'b'])  # go back to original indexes
+    # change path of links to path of nodes
+    links_to_nodes_dict = {v: k for k, v in links['index'].to_dict().items()}
+    car_los['path'] = car_los['path'].apply(lambda ls: extended_path_to_nodes(ls, links_to_nodes_dict))
+
+    if track_links:  # rename with original indexes
+        rename_dict = {f'flow_{idx}': f'flow_{reversed_index.get(idx)}' for idx in track_links_list}
+        links = links.rename(columns=rename_dict)
+
+    return links, car_los, relgap_list

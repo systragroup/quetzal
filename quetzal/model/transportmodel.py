@@ -4,7 +4,13 @@ from quetzal.analysis import analysis
 from quetzal.engine import engine, nested_logit
 from quetzal.engine.park_and_ride_pathfinder import ParkRidePathFinder
 from quetzal.engine.pathfinder import PublicPathFinder
-from quetzal.engine.road_pathfinder import init_network, init_volumes, aon_roadpathfinder, msa_roadpathfinder
+from quetzal.engine.road_pathfinder import (
+    init_network,
+    init_volumes,
+    aon_roadpathfinder,
+    msa_roadpathfinder,
+    extended_roadpathfinder,
+)
 from quetzal.engine.sampling import sample_od
 from quetzal.model import model, optimalmodel, parkridemodel
 from syspy.assignment import raw as raw_assignment
@@ -158,6 +164,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         ntleg_penalty=10e9,
         path_analysis=True,
         track_links_list=[],
+        extended=False,
         num_cores=1,
         **kwargs,
     ):
@@ -206,6 +213,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             n
         track_links_list :list[string] optional default: []
             list of links index to track.
+        extended : bool, optional, default False
+            add turnning penalities
 
         **kwargs :  see msa_roadpathfinder()
 
@@ -236,17 +245,31 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             self.car_los = aon_roadpathfinder(network, volumes, time_column, ntleg_penalty, num_cores)
 
         elif method in ['msa', 'fw', 'bfw']:
-            links, car_los, rel_gap = msa_roadpathfinder(
-                network,
-                volumes,
-                segments=segments,
-                method=method,
-                time_col=time_column,
-                ntleg_penalty=ntleg_penalty,
-                num_cores=num_cores,
-                track_links_list=track_links_list,
-                **kwargs,
-            )
+            if extended:
+                links, car_los, rel_gap = extended_roadpathfinder(
+                    network,
+                    volumes,
+                    zones=self.zones,
+                    segments=segments,
+                    method=method,
+                    time_col=time_column,
+                    ntleg_penalty=ntleg_penalty,
+                    num_cores=num_cores,
+                    track_links_list=track_links_list,
+                    **kwargs,
+                )
+            else:
+                links, car_los, rel_gap = msa_roadpathfinder(
+                    network,
+                    volumes,
+                    segments=segments,
+                    method=method,
+                    time_col=time_column,
+                    ntleg_penalty=ntleg_penalty,
+                    num_cores=num_cores,
+                    track_links_list=track_links_list,
+                    **kwargs,
+                )
 
             self.car_los = car_los
             if method != 'aon':  # do not overwrite road_links if its all-or-nothing

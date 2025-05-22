@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from quetzal.engine.pathfinder_utils import get_node_path, get_path, parallel_dijkstra
 import numba as nb
+import geopandas as gpd
 from scipy.sparse import csr_matrix
 from scipy.optimize import minimize_scalar
 
@@ -184,3 +185,98 @@ def get_derivative(links, vdf, flow_col='flow', h=0.001, **kwargs):
     links['x1'] = jam_time(links, vdf, flow='x1', **kwargs)
     links['x2'] = jam_time(links, vdf, flow='x2', **kwargs)
     return (links['x1'] - links['x2']) / (2 * h)
+
+
+def _reorder_columns(df, first=['from_link', 'to_link', 'from_node', 'mid_node', 'to_node']):
+    all_cols = df.columns.tolist()
+    remaining_cols = [col for col in all_cols if col not in first]
+    return df[first + remaining_cols]
+
+
+def links_to_extended_links(links_with_zone_to_road: gpd.GeoDataFrame, u_turns=False):
+    df = links_with_zone_to_road.reset_index()
+    df1 = df.rename(columns={'index': 'from_link', 'a': 'a1', 'b': 'b1'})
+    df2 = df[['index', 'a', 'b']].rename(columns={'index': 'to_link', 'a': 'a2', 'b': 'b2'})
+
+    extended_links = pd.merge(df1, df2, left_on='b1', right_on='a2')
+    if not u_turns:  # remove U turn
+        extended_links = extended_links[extended_links['a1'] != extended_links['b2']].reset_index(drop=True)
+
+    # rename, reorder, clean
+    extended_links = extended_links.rename(columns={'a1': 'from_node', 'b2': 'to_node', 'a2': 'mid_node'}).drop(
+        columns=['b1']
+    )
+    extended_links.index.name = 'index'
+    extended_links.index = 'ex_link_' + extended_links.index.astype(str)
+    extended_links = _reorder_columns(extended_links)
+    return extended_links
+
+
+def extended_path_to_nodes(path: List[str], links_to_nodes_dict: Dict[str, Tuple[str, str]]) -> List[str]:
+    """
+    Convert a path of links to a path of nodes, removing duplicate nodes from overlaps.
+    First and last elements are zones. The rest are link IDs.
+    Example: ['zone1', 'link1', 'link2', 'zone2'] => ['zone1', 'node1', 'node2', 'node3', 'zone2']
+    """
+    if len(path) <= 2:
+        return path  # just zone-to-zone, no links
+
+    nodes = []
+    for i, link_id in enumerate(path[1:-1]):
+        tup = links_to_nodes_dict.get(link_id)
+        if i == 0:
+            nodes.extend(tup)  # include both on first
+        else:
+            nodes.append(tup[1])  # only append the new one
+
+    return [path[0]] + nodes + [path[-1]]
+
+
+def fix_zone_to_road(extended_links: gpd.GeoDataFrame, zones: gpd.geodataframe) -> gpd.GeoDataFrame:
+    links = extended_links.copy()
+    zones_list = zones.index
+    cond = links['from_node'].isin(zones_list)
+    links.loc[cond, 'from_link'] = links.loc[cond, 'from_node']
+
+    cond = links['to_node'].isin(zones_list)
+    links.loc[cond, 'to_link'] = links.loc[cond, 'to_node']
+    links = links[~links['mid_node'].isin(zones_list)]
+    return links
+
+
+@nb.njit(locals={'predecessors': nb.int32[:, ::1]})  # parallel=> not thread safe. do not!
+def assign_volume_on_links(odv, predecessors, volumes):
+    # volumes is a numba dict with all the key initialized
+    for i in range(len(odv)):  # nb.prange(len(odv)):
+        origin = odv[i, 0]
+        destination = odv[i, 1]
+        v = odv[i, 2]
+        if v > 0:
+            # our nodes are alreadt links in the original Graph
+            path = get_node_path(predecessors, origin, destination)
+            for key in path:
+                volumes[key] += v
+    return volumes
+
+
+def init_numba_volumes(base_flow: Dict[int, float]) -> Dict[int, float]:
+    numba_volumes = nb.typed.Dict.empty(key_type=nb.types.int64, value_type=nb.types.float64)
+    for key, value in base_flow.items():
+        numba_volumes[key] = value
+    return numba_volumes
+
+
+@nb.njit(locals={'predecessors': nb.int32[:, ::1]})  # parallel=> not thread safe. do not!
+def assign_tracked_volume_on_links(odv, predecessors, volumes, track_index):
+    # volumes is a numba dict with all the key initialized
+    for i in range(len(odv)):  # nb.prange(len(odv)):
+        origin = odv[i, 0]
+        destination = odv[i, 1]
+        v = odv[i, 2]
+        if v > 0:
+            # our nodes are alreadt links in the original Graph
+            path = get_node_path(predecessors, origin, destination)
+            if track_index in path:
+                for key in path:
+                    volumes[key] += v
+    return volumes
