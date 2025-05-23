@@ -164,6 +164,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         access_time: str = 'time',
         od_set: Optional[Dict] = None,
         track_links_list: List[str] = [],
+        turn_penalties: Dict[str, List[str]] = {},
         extended: bool = False,
         ntleg_penalty: float = 10e9,
         num_cores: int = 1,
@@ -221,6 +222,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             tolerance=0.01,
             log=False,
 
+            turn_penality for extended.
+
         Builds
         ----------
         self.car_los :
@@ -264,6 +267,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 time_col=time_column,
                 ntleg_penalty=ntleg_penalty,
                 track_links_list=track_links_list,
+                turn_penalties=turn_penalties,
                 num_cores=num_cores,
                 **kwargs,
             )

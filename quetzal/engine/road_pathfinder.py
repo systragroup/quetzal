@@ -316,7 +316,9 @@ def extended_roadpathfinder(
     log=False,
     time_col='time',
     ntleg_penalty=10e9,
+    turn_penalty=10e3,
     track_links_list=[],
+    turn_penalties={},
     num_cores=1,
 ):
     """
@@ -346,6 +348,12 @@ def extended_roadpathfinder(
     extended_links['sparse_b'] = extended_links['b'].apply(lambda x: index.get(x))
     extended_links['sparse_index'] = extended_links['sparse_a']  # original link_a to add cost.
     extended_links = extended_links.reset_index().set_index(['sparse_a', 'sparse_b'])
+
+    # turn penalties to sparse index tuple dict {(0,1): turn_penalty}
+    turn_penalties = {
+        (index.get(k), index.get(v)): turn_penalty for k, values in turn_penalties.items() for v in values
+    }
+    extended_links['turn_penalty'] = extended_links.index.map(turn_penalties).fillna(0)
 
     # add sparse index to links
     links['sparse_index'] = links.index.map(index)
@@ -378,6 +386,7 @@ def extended_roadpathfinder(
     for i in range(maxiters + 1):
         jam_time_dict = links['jam_time'].to_dict()
         extended_links['cost'] = extended_links['sparse_index'].apply(lambda x: jam_time_dict.get(x, ntleg_penalty))
+        extended_links['cost'] += extended_links['turn_penalty']
         #
         # Routing and assignment
         #
@@ -443,6 +452,7 @@ def extended_roadpathfinder(
     #
     jam_time_dict = links['jam_time'].to_dict()
     extended_links['cost'] = extended_links['sparse_index'].apply(lambda x: jam_time_dict.get(x, ntleg_penalty))
+    extended_links['cost'] += extended_links['turn_penalty']
     car_los = get_car_los(volumes, extended_links, index, zones, 'cost', num_cores)
     links = links.set_index(['a', 'b'])  # go back to original indexes
     # change path of links to path of nodes
