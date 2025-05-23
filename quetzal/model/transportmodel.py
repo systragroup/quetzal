@@ -164,8 +164,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         access_time: str = 'time',
         od_set: Optional[Dict] = None,
         track_links_list: List[str] = [],
-        turn_penalties: Dict[str, List[str]] = {},
-        extended: bool = False,
+        turn_penalties: Optional[Dict[str, List[str]]] = None,
         ntleg_penalty: float = 10e9,
         num_cores: int = 1,
         **kwargs,
@@ -206,14 +205,16 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         ntleg_penalty : float, optional, default 1e9
             ntleg penality for access time
+        turn_penalties : dict, optional, default None
+            dictionary of turn penalties for the road links
+            ex: {'rlink_0', ['rlink_4']}
+
 
         num_cores : integer, optional, default 1
             for parallelizatio
             n
         track_links_list :list[string] optional default: []
             list of links index to track.
-        extended : bool, optional, default False
-            add turnning penalities
 
         **kwargs :  see msa_roadpathfinder()
             vdf={'default_bpr': default_bpr, 'free_flow': free_flow},
@@ -257,7 +258,18 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             return
 
         # elif method in ['msa', 'fw', 'bfw']:
-        if extended:
+        if turn_penalties is None:
+            links, car_los, rel_gap = msa_roadpathfinder(
+                network,
+                volumes,
+                segments=segments,
+                method=method,
+                time_col=time_column,
+                track_links_list=track_links_list,
+                num_cores=num_cores,
+                **kwargs,
+            )
+        else:
             links, car_los, rel_gap = extended_roadpathfinder(
                 network,
                 volumes,
@@ -268,17 +280,6 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 ntleg_penalty=ntleg_penalty,
                 track_links_list=track_links_list,
                 turn_penalties=turn_penalties,
-                num_cores=num_cores,
-                **kwargs,
-            )
-        else:
-            links, car_los, rel_gap = msa_roadpathfinder(
-                network,
-                volumes,
-                segments=segments,
-                method=method,
-                time_col=time_column,
-                track_links_list=track_links_list,
                 num_cores=num_cores,
                 **kwargs,
             )
