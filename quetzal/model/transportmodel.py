@@ -290,7 +290,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         self.road_links['jam_speed'] = self.road_links['length'] / self.road_links['jam_time'] * 3.6
         self.relgap = rel_gap
         for idx in track_links_list:
-            volume_dict = links[f'flow_{idx}'].to_dict()
+            volume_dict = links[idx].to_dict()
             self.road_links[f'flow_{idx}'] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
 
         car_los = get_car_los_time(car_los, self.road_links, self.zone_to_road, 'jam_time', 'time')

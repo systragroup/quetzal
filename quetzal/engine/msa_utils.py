@@ -247,6 +247,13 @@ def init_numba_volumes(base_flow: Dict[int, float]) -> Dict[int, float]:
     return numba_volumes
 
 
+@nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)  # parallel=> not thread safe. do not!
+def assign_tracked_volumes_on_links_parallel(odv, predecessors, volumes_list, key_list):
+    for i in nb.prange(len(key_list)):
+        assign_tracked_volume_on_links(odv, predecessors, volumes_list[i], key_list[i])
+    return volumes_list
+
+
 @nb.njit(locals={'predecessors': nb.int32[:, ::1]})  # parallel=> not thread safe. do not!
 def assign_tracked_volume_on_links(odv, predecessors, volumes, track_index):
     # volumes is a numba dict with all the key initialized
