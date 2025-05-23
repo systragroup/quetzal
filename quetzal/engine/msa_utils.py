@@ -1,7 +1,7 @@
 from typing import List, Tuple, Dict
 import pandas as pd
 import numpy as np
-from quetzal.engine.pathfinder_utils import get_node_path, get_path, parallel_dijkstra
+from quetzal.engine.pathfinder_utils import get_node_path, parallel_dijkstra
 import numba as nb
 import geopandas as gpd
 from scipy.sparse import csr_matrix
@@ -26,29 +26,6 @@ def get_zone_index(links: pd.DataFrame, v: pd.DataFrame, index: dict[str, int]) 
     v['destination_sparse'] = v['destination'].apply(index.get)
 
     return v, zones_list
-
-
-def get_car_los(volumes, links, index, reversed_index, zones, ntleg_penalty, num_cores=1):
-    car_los = volumes[['origin', 'destination', 'origin_sparse', 'destination_sparse']]
-    time_matrix, predecessors = shortest_path(links, 'jam_time', index, zones, num_cores=num_cores)
-    odlist = list(zip(car_los['origin_sparse'].values, car_los['destination_sparse'].values))
-    time_dict = {(o, d): time_matrix[o, d] - ntleg_penalty for o, d in odlist}  # time for each od
-    car_los['time'] = car_los.set_index(['origin_sparse', 'destination_sparse']).index.map(time_dict)
-
-    path_dict = {}
-    for origin, destination in odlist:
-        path = get_path(predecessors, origin, destination)
-        path = [*map(reversed_index.get, path)]
-        path_dict[(origin, destination)] = path
-
-    car_los.loc[car_los['origin'] == car_los['destination'], 'time'] = 0.0
-
-    car_los['path'] = car_los.set_index(['origin_sparse', 'destination_sparse']).index.map(path_dict)
-    car_los['gtime'] = car_los['time']
-
-    car_los = car_los.drop(columns=['origin_sparse', 'destination_sparse'])
-
-    return car_los
 
 
 def get_sparse_matrix(edges, index):
@@ -235,12 +212,16 @@ def extended_path_to_nodes(path: List[str], links_to_nodes_dict: Dict[str, Tuple
 def fix_zone_to_road(extended_links: gpd.GeoDataFrame, zones: gpd.geodataframe) -> gpd.GeoDataFrame:
     links = extended_links.copy()
     zones_list = zones.index
+
     cond = links['from_node'].isin(zones_list)
     links.loc[cond, 'from_link'] = links.loc[cond, 'from_node']
 
     cond = links['to_node'].isin(zones_list)
     links.loc[cond, 'to_link'] = links.loc[cond, 'to_node']
     links = links[~links['mid_node'].isin(zones_list)]
+    # remove zone to zone links.
+    links = links[~(links['from_node'].isin(zones_list) & links['to_node'].isin(zones_list))]
+
     return links
 
 

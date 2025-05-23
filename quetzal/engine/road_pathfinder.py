@@ -1,13 +1,12 @@
 import numpy as np
 import pandas as pd
-from quetzal.engine.pathfinder_utils import build_index
+from quetzal.engine.pathfinder_utils import build_index, get_path
 from quetzal.engine.msa_utils import (
     get_zone_index,
     init_ab_volumes,
     assign_volume,
     jam_time,
     find_phi,
-    get_car_los,
     find_beta,
     get_derivative,
     init_track_volumes,
@@ -106,7 +105,47 @@ def assert_vdf_on_links(links, vdf):
     assert len(missing_vdf) == 0, 'you should provide methods for the following vdf keys' + str(missing_vdf)
 
 
-def aon_roadpathfinder(links, volumes, time_col='time', ntleg_penalty=10e9, num_cores=1):
+def get_car_los(volumes, links, index, zones, weight_col, num_cores=1):
+    """get the car los for the given volumes and extended links"""
+    reversed_index = {v: k for k, v in index.items()}
+    car_los = volumes[['origin', 'destination', 'origin_sparse', 'destination_sparse']]
+    _, predecessors = shortest_path(links, weight_col, index, zones, num_cores=num_cores)
+    odlist = list(zip(car_los['origin_sparse'].values, car_los['destination_sparse'].values))
+
+    path_dict = {}
+    for origin, destination in odlist:
+        path = get_path(predecessors, origin, destination)
+        path = [*map(reversed_index.get, path)]
+        path_dict[(origin, destination)] = path
+
+    car_los['path'] = car_los.set_index(['origin_sparse', 'destination_sparse']).index.map(path_dict)
+    car_los = car_los.drop(columns=['origin_sparse', 'destination_sparse'])
+
+    return car_los
+
+
+def get_car_los_time(car_los, links, zone_to_road, time_col='jam_time', access_time='time'):
+    """
+    Calculate the time for each path in car_los with on the road_links and zone_to_road.
+    params:
+        time_col: time column in road_links
+        access_time: time column in zone_to_road
+    return:
+         car_los with [time, gtime, edge_path] columns
+    """
+    car_los['edge_path'] = car_los['path'].apply(lambda ls: list(zip(ls, ls[1:])))
+
+    time_dict = {}
+    time_dict.update(links.set_index(['a', 'b'])[time_col].to_dict())
+    time_dict.update(zone_to_road.set_index(['a', 'b'])[access_time].to_dict())
+    car_los['time'] = car_los['edge_path'].apply(lambda ls: sum([*map(time_dict.get, ls)]))
+
+    car_los.loc[car_los['origin'] == car_los['destination'], 'time'] = 0.0
+    car_los['gtime'] = car_los['time']
+    return car_los
+
+
+def aon_roadpathfinder(links, volumes, time_col='time', num_cores=1):
     index = build_index(links[['a', 'b']].values)
     links['sparse_a'] = links['a'].apply(lambda x: index.get(x))
     links['sparse_b'] = links['b'].apply(lambda x: index.get(x))
@@ -115,10 +154,7 @@ def aon_roadpathfinder(links, volumes, time_col='time', ntleg_penalty=10e9, num_
     # sparsify volumes keys
     volumes, zones = get_zone_index(links, volumes, index)
 
-    links['jam_time'] = links[time_col]
-
-    reversed_index = {v: k for k, v in index.items()}
-    return get_car_los(volumes, links, index, reversed_index, zones, 2 * ntleg_penalty, num_cores)
+    return get_car_los(volumes, links, index, zones, time_col, num_cores)
 
 
 def msa_roadpathfinder(
@@ -131,7 +167,6 @@ def msa_roadpathfinder(
     tolerance=0.01,
     log=False,
     time_col='time',
-    ntleg_penalty=10e9,
     track_links_list=[],
     num_cores=1,
 ):
@@ -241,8 +276,7 @@ def msa_roadpathfinder(
     #
     # Finish: reindex back and get car_los
     #
-    reversed_index = {v: k for k, v in index.items()}
-    car_los = get_car_los(volumes, links, index, reversed_index, zones, 0, num_cores)
+    car_los = get_car_los(volumes, links, index, zones, 'jam_time', num_cores)
     links = links.set_index(['a', 'b'])  # go back to original indexes
 
     if track_links:  # rename with original indexes
@@ -408,14 +442,14 @@ def extended_roadpathfinder(
     # Finish: reindex back and get car_los
     #
     jam_time_dict = links['jam_time'].to_dict()
-    extended_links['jam_time'] = extended_links['sparse_index'].apply(lambda x: jam_time_dict.get(x, ntleg_penalty))
-    reversed_index = {v: k for k, v in index.items()}
-    car_los = get_car_los(volumes, extended_links, index, reversed_index, zones, ntleg_penalty, num_cores)
+    extended_links['cost'] = extended_links['sparse_index'].apply(lambda x: jam_time_dict.get(x, ntleg_penalty))
+    car_los = get_car_los(volumes, extended_links, index, zones, 'cost', num_cores)
     links = links.set_index(['a', 'b'])  # go back to original indexes
     # change path of links to path of nodes
     links_to_nodes_dict = {v: k for k, v in links['index'].to_dict().items()}
     car_los['path'] = car_los['path'].apply(lambda ls: extended_path_to_nodes(ls, links_to_nodes_dict))
 
+    reversed_index = {v: k for k, v in index.items()}
     if track_links:  # rename with original indexes
         rename_dict = {f'flow_{idx}': f'flow_{reversed_index.get(idx)}' for idx in track_links_list}
         links = links.rename(columns=rename_dict)
