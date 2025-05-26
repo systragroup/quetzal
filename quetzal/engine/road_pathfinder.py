@@ -1,5 +1,7 @@
 import numpy as np
+import geopandas as gpd
 import pandas as pd
+
 from quetzal.engine.pathfinder_utils import build_index, get_path
 from quetzal.engine.msa_utils import (
     get_zone_index,
@@ -7,26 +9,24 @@ from quetzal.engine.msa_utils import (
     assign_volume,
     jam_time,
     find_phi,
-    find_beta,
-    get_derivative,
+    get_bfw_auxiliary_flow,
     init_track_volumes,
     assign_tracked_volume,
     assign_tracked_volumes_on_links_parallel,
     shortest_path,
-)
-from quetzal.engine.msa_utils import (
-    fix_zone_to_road,
     init_numba_volumes,
     assign_volume_on_links,
-    links_to_extended_links,
-    extended_path_to_nodes,
+    get_relgap,
 )
+from typing import List, Dict, Tuple
 from quetzal.engine.vdf import default_bpr, free_flow
 
 
 def init_network(sm, method='aon', segments=['car'], time_col='time', access_time='time', ntleg_penalty=10e9):
-    #
-    #
+    """
+    Initialize the road network for the pathfinder.
+    return links and zone_to_road concat with the correct columns
+    """
     road_links = sm.road_links.copy()
     zone_to_road = sm.zone_to_road.copy()
     assert not road_links.set_index(['a', 'b']).index.has_duplicates, (
@@ -106,7 +106,7 @@ def assert_vdf_on_links(links, vdf):
 
 
 def get_car_los(volumes, links, index, zones, weight_col, num_cores=1):
-    """get the car los for the given volumes and extended links"""
+    """get the car los paths for the given volumes and links"""
     reversed_index = {v: k for k, v in index.items()}
     car_los = volumes[['origin', 'destination', 'origin_sparse', 'destination_sparse']]
     _, predecessors = shortest_path(links, weight_col, index, zones, num_cores=num_cores)
@@ -143,6 +143,73 @@ def get_car_los_time(car_los, links, zone_to_road, time_col='jam_time', access_t
     car_los.loc[car_los['origin'] == car_los['destination'], 'time'] = 0.0
     car_los['gtime'] = car_los['time']
     return car_los
+
+
+def links_to_extended_links(links_with_zone_to_road: gpd.GeoDataFrame, u_turns=False):
+    df = links_with_zone_to_road.reset_index()
+    df1 = df.rename(columns={'index': 'from_link', 'a': 'a1', 'b': 'b1'})
+    df2 = df[['index', 'a', 'b']].rename(columns={'index': 'to_link', 'a': 'a2', 'b': 'b2'})
+
+    extended_links = pd.merge(df1, df2, left_on='b1', right_on='a2')
+    if not u_turns:  # remove U turn
+        extended_links = extended_links[extended_links['a1'] != extended_links['b2']].reset_index(drop=True)
+
+    # rename, reorder, clean
+    extended_links = extended_links.rename(columns={'a1': 'from_node', 'b2': 'to_node', 'a2': 'mid_node'}).drop(
+        columns=['b1']
+    )
+    extended_links.index.name = 'index'
+    extended_links.index = 'ex_link_' + extended_links.index.astype(str)
+
+    def _reorder_columns(df, first=['from_link', 'to_link', 'from_node', 'mid_node', 'to_node']):
+        all_cols = df.columns.tolist()
+        remaining_cols = [col for col in all_cols if col not in first]
+        return df[first + remaining_cols]
+
+    extended_links = _reorder_columns(extended_links)
+    return extended_links
+
+
+def extended_path_to_nodes(path: List[str], links_to_nodes_dict: Dict[str, Tuple[str, str]]) -> List[str]:
+    """
+    Convert a path of links to a path of nodes, removing duplicate nodes from overlaps.
+    First and last elements are zones. The rest are link IDs.
+    Example: ['zone1', 'link1', 'link2', 'zone2'] => ['zone1', 'node1', 'node2', 'node3', 'zone2']
+    """
+    if len(path) <= 2:
+        return path  # just zone-to-zone, no links
+
+    nodes = []
+    for i, link_id in enumerate(path[1:-1]):
+        tup = links_to_nodes_dict.get(link_id)
+        if i == 0:
+            nodes.extend(tup)  # include both on first
+        else:
+            nodes.append(tup[1])  # only append the new one
+
+    return [path[0]] + nodes + [path[-1]]
+
+
+def fix_zone_to_road(extended_links: gpd.GeoDataFrame, zones: gpd.geodataframe) -> gpd.GeoDataFrame:
+    """
+    change zone_to_road extended links to only the zone index.
+    Usefull to do routing on zones when the graph is on links.
+    Also, remove links that go through zones and zone-to-zone links.
+    """
+    links = extended_links.copy()
+    zones_list = zones.index
+    # rename zone-to-link
+    cond = links['from_node'].isin(zones_list)
+    links.loc[cond, 'from_link'] = links.loc[cond, 'from_node']
+    # rename link-to-zone
+    cond = links['to_node'].isin(zones_list)
+    links.loc[cond, 'to_link'] = links.loc[cond, 'to_node']
+    # remove links that go through zones.
+    links = links[~links['mid_node'].isin(zones_list)]
+    # remove zone to zone links.
+    links = links[~(links['from_node'].isin(zones_list) & links['to_node'].isin(zones_list))]
+
+    return links
 
 
 def aon_roadpathfinder(links, volumes, time_col='time', num_cores=1):
@@ -287,24 +354,6 @@ def msa_roadpathfinder(
     return links, car_los, relgap_list
 
 
-def get_relgap(links) -> float:
-    # modelling transport eq 11.11. SUM currentFlow x currentCost - SUM AONFlow x currentCost / SUM currentFlow x currentCost
-    a = np.sum((links['flow']) * links['jam_time'])  # currentFlow x currentCost
-    b = np.sum((links['auxiliary_flow']) * links['jam_time'])  # AON_flow x currentCost
-    return 100 * (a - b) / a
-
-
-def get_bfw_auxiliary_flow(links, vdf, i, time_col, prev_phi) -> pd.DataFrame:
-    if i > 2:
-        links['derivative'] = get_derivative(links, vdf, h=0.001, flow_col='flow', time_col=time_col)
-        b = find_beta(links, prev_phi)  # this is the previous phi (phi_-1)
-        links['auxiliary_flow'] = b[0] * links['auxiliary_flow'] + b[1] * links['s_k-1'] + b[2] * links['s_k-2']
-    if i > 1:
-        links['s_k-2'] = links['s_k-1']
-    links['s_k-1'] = links['auxiliary_flow']
-    return links
-
-
 def extended_roadpathfinder(
     links,
     volumes,
@@ -325,6 +374,7 @@ def extended_roadpathfinder(
     """
     links: road_network with zone_to_road
     volumes: volumes to assign
+    zones: zones of the step model.
     segments: list of segments (in volumes) to assign
     vdf = dict of function for the jam time.
     method = bfw, fw, msa, aon
