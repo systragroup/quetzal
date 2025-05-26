@@ -22,7 +22,9 @@ from typing import List, Dict, Tuple
 from quetzal.engine.vdf import default_bpr, free_flow
 
 
-def init_network(sm, method='aon', segments=['car'], time_col='time', access_time='time', ntleg_penalty=10e9):
+def init_network(
+    sm, method='aon', segments=['car'], time_col='time', access_time='time', ntleg_penalty=10e9, log=False
+):
     """
     Initialize the road network for the pathfinder.
     return links and zone_to_road concat with the correct columns
@@ -34,9 +36,9 @@ def init_network(sm, method='aon', segments=['car'], time_col='time', access_tim
     )
     assert time_col in road_links.columns, f'time_column: {time_col} not found in road_links.'
     aon = method == 'aon'
-    zone_to_road = zone_to_road_preparation(zone_to_road, segments, time_col, access_time, ntleg_penalty, aon)
+    zone_to_road = zone_to_road_preparation(zone_to_road, segments, time_col, access_time, ntleg_penalty, aon, log)
     # create DataFrame with road_links and zone to road
-    network = concat_connectors_to_roads(road_links, zone_to_road, segments, time_col, aon)
+    network = concat_connectors_to_roads(road_links, zone_to_road, segments, time_col, aon, log)
     return network
 
 
@@ -62,32 +64,34 @@ def init_volumes(sm, od_set=None):
     return volumes
 
 
-def zone_to_road_preparation(zone_to_road, segments, time_col='time', access_time='time', ntleg_penalty=1e9, aon=False):
+def zone_to_road_preparation(
+    zone_to_road, segments, time_col='time', access_time='time', ntleg_penalty=1e9, aon=False, log=False
+):
     # prepare zone_to_road_links to the same format as road_links
     zone_to_road = zone_to_road.copy()
     zone_to_road[time_col] = zone_to_road[access_time] + ntleg_penalty
     if not aon:
         if 'vdf' not in zone_to_road.columns:
-            print("vdf not found in zone_to_road columns. Values set to 'free_flow'")
+            print("vdf not found in zone_to_road columns. Values set to 'free_flow'") if log else None
             zone_to_road['vdf'] = 'free_flow'
         if 'segments' not in zone_to_road.columns:
-            print("segments not found in zone_to_road columns. set all segments allowed on each links'")
+            print("segments not found in zone_to_road columns. set all segments allow'") if log else None
             zone_to_road['segments'] = [set(segments) for _ in range(len(zone_to_road))]
 
     return zone_to_road
 
 
-def concat_connectors_to_roads(road_links, zone_to_road, segments, time_col='time', aon=False):
+def concat_connectors_to_roads(road_links, zone_to_road, segments, time_col='time', aon=False, log=False):
     if aon:
         columns = ['a', 'b', time_col]
         links = pd.concat([road_links[columns], zone_to_road[columns]])
         return links
     else:
         if 'vdf' not in road_links.columns:
-            print("vdf not found in road_links columns. Values set to 'default_bpr'")
+            print("vdf not found in road_links columns. Values set to 'default_bpr'") if log else None
             road_links['vdf'] = 'default_bpr'
         if 'segments' not in road_links.columns:
-            print("segments not found in road_links columns. set all segments allowed on each links'")
+            print("segments not found in road_links columns. set all segments allowed on each links'") if log else None
             road_links['segments'] = [set(segments) for _ in range(len(road_links))]
 
         links = pd.concat([road_links, zone_to_road])
@@ -242,7 +246,7 @@ def msa_roadpathfinder(
     volumes: volumes to assign
     segments: list of segments (in volumes) to assign
     vdf = dict of function for the jam time.
-    method = bfw, fw, msa, aon
+    method = bfw, fw, msa
     maxiters = 10 : number of iteration.
     tolerance = 0.01 : stop condition for RelGap. (in percent)
     log = False : log data on each iteration.
@@ -278,6 +282,7 @@ def msa_roadpathfinder(
         tracked_df = pd.DataFrame(index=links.index)
         tracked_df[[str(idx) for idx in track_links_list]] = 0
 
+    relgap = np.inf
     relgap_list = []
     print('it  |  Phi    |  Rel Gap (%)') if log else None
     # note: first iteration i == 0 is AON to initialized.
@@ -336,10 +341,9 @@ def msa_roadpathfinder(
         links['jam_time'] = jam_time(links, vdf, 'flow', time_col=time_col)
         links['jam_time'].fillna(links[time_col], inplace=True)
         # skip first iteration (AON asignment) as relgap in -inf
-        if i > 0:
-            if relgap <= tolerance:
-                print('tolerance reached')
-                break
+        if relgap <= tolerance:
+            print('tolerance reached') if log else None
+            break
     #
     # Finish: reindex back and get car_los
     #
@@ -365,7 +369,7 @@ def extended_roadpathfinder(
     tolerance=0.01,
     log=False,
     time_col='time',
-    ntleg_penalty=10e9,
+    zone_penalty=10e9,
     turn_penalty=10e3,
     track_links_list=[],
     turn_penalties={},
@@ -382,7 +386,10 @@ def extended_roadpathfinder(
     tolerance = 0.01 : stop condition for RelGap. (in percent)
     log = False : log data on each iteration.
     time_col='freeflow time column'. replace 'time' in vdf
+    zone_penalty = 10e9 : penalty for zone to road links.
+    turn_penalty = 10e3 : penalty for turn links.
     track_links_list=[] list of link index to track flow at each iteration
+    turn_penalties: dict of turn penalties {from_link: [to_link]}
     num_cores = 1 : for parallelization.
     """
     assert_vdf_on_links(links, vdf)
@@ -426,7 +433,7 @@ def extended_roadpathfinder(
     links['jam_time'].fillna(links[time_col], inplace=True)
     # init cost on extended Links
     jam_time_dict = links['jam_time'].to_dict()
-    extended_links['cost'] = extended_links['sparse_index'].apply(lambda x: jam_time_dict.get(x, ntleg_penalty))
+    extended_links['cost'] = extended_links['sparse_index'].apply(lambda x: jam_time_dict.get(x, zone_penalty))
     extended_links['cost'] += extended_links['turn_penalty']
 
     # init track links aux_flow dict and flow in links
@@ -446,6 +453,7 @@ def extended_roadpathfinder(
         links_volumes = base_flow.copy()
         if track_links:
             tracked_volumes = [base_flow.copy() for _ in track_links_list]
+            # tracked_volumes = init_extended_track_volumes(base_flow, track_links_list)
         # loop ons segments
         for seg in segments:
             # filter links to allowed segment
@@ -494,11 +502,11 @@ def extended_roadpathfinder(
         links['jam_time'] = jam_time(links, vdf, 'flow', time_col=time_col)
         links['jam_time'].fillna(links[time_col], inplace=True)
         jam_time_dict = links['jam_time'].to_dict()
-        extended_links['cost'] = extended_links['sparse_index'].apply(lambda x: jam_time_dict.get(x, ntleg_penalty))
+        extended_links['cost'] = extended_links['sparse_index'].apply(lambda x: jam_time_dict.get(x, zone_penalty))
         extended_links['cost'] += extended_links['turn_penalty']
         # skip first iteration (AON asignment) as relgap in -inf
         if relgap <= tolerance:
-            print('tolerance reached')
+            print('tolerance reached') if log else None
             break
     #
     # Finish: reindex back and get car_los

@@ -143,6 +143,13 @@ def init_track_volumes(base_flow: Dict[Tuple, float], link_list: List[Tuple]) ->
     return {tup: numba_volumes.copy() for tup in link_list}
 
 
+def init_extended_track_volumes(base_flow: Dict[int, float], track_links_list: List[int]) -> List[Dict[int, float]]:
+    numba_volumes = base_flow.copy()
+    for key in numba_volumes.keys():
+        numba_volumes[key] = 0
+    return [numba_volumes.copy() for _ in track_links_list]
+
+
 def find_beta(links, phi_1):
     # The Stiff is Moving - Conjugate Direction Frank-Wolfe Methods with Applications to Traffic Assignment from Mitradjieva maria
 

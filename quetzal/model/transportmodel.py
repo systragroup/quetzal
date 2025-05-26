@@ -277,7 +277,6 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 segments=segments,
                 method=method,
                 time_col=time_column,
-                ntleg_penalty=ntleg_penalty,
                 track_links_list=track_links_list,
                 turn_penalties=turn_penalties,
                 num_cores=num_cores,
