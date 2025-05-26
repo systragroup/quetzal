@@ -155,15 +155,14 @@ class TestRoadPathfinder(unittest.TestCase):
 
     def test_msa_pathfinder(self):
         for method in ['bfw', 'msa', 'fw']:
-            links, car_los, relgap = self._get_msa_roadpathfinder()
+            links, car_los, relgap = self._get_msa_roadpathfinder(method=method)
             expected_path_1 = ['z1', 'a', 'b', 'd', 'e', 'z2']
             self.assertEqual(car_los['path'][0], expected_path_1)
 
             expected_path_2 = ['z2', 'c', 'b', 'a', 'z1']
             self.assertEqual(car_los['path'][1], expected_path_2)
 
-    def _get_extended_roadpathfinder(self, track_links_list=[]):
-        method = 'bfw'
+    def _get_extended_roadpathfinder(self, method='bfw', track_links_list=[]):
         maxiters = 10
         tolerance = 0.01
         segments = ['car']
@@ -191,7 +190,7 @@ class TestRoadPathfinder(unittest.TestCase):
 
     def test_extended_pathfinder(self):
         for method in ['bfw', 'msa', 'fw']:
-            links, car_los, relgap = self._get_extended_roadpathfinder()
+            links, car_los, relgap = self._get_extended_roadpathfinder(method=method)
             expected_path_1 = ['z1', 'a', 'b', 'd', 'e', 'z2']
             self.assertEqual(car_los['path'][0], expected_path_1)
 
