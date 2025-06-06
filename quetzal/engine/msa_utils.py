@@ -7,24 +7,15 @@ from scipy.sparse import csr_matrix
 from scipy.optimize import minimize_scalar
 
 
-def get_zone_index(links: pd.DataFrame, v: pd.DataFrame, index: dict[str, int]) -> Tuple[pd.DataFrame, list[int]]:
-    # return volumes with [origin_sparse, destination_sparse] anz zone_list (sparse zones)
-    seta = set(links['a'])
-    setb = set(links['b'])
-    v = v.loc[v['origin'].isin(seta) & v['destination'].isin(setb)]
+def get_sparse_volumes(volumes: pd.DataFrame, index: dict[str, int]):
+    sources = set(volumes['origin'])
+    sources = sorted(list(sources))  # fix order
+    origins = [*map(index.get, sources)]
+    zone_index = dict(zip(sources, range(len(sources))))
 
-    sources = set(v['origin']).union(v['destination'])
-
-    pole_list = sorted(list(sources))  # fix order
-    source_list = [zone for zone in pole_list if zone in sources]
-
-    zones_list = [index[zone] for zone in source_list]
-    zone_index = dict(zip(pole_list, range(len(pole_list))))
-
-    v['origin_sparse'] = v['origin'].apply(zone_index.get)
-    v['destination_sparse'] = v['destination'].apply(index.get)
-
-    return v, zones_list
+    volumes['origin_sparse'] = volumes['origin'].apply(zone_index.get)
+    volumes['destination_sparse'] = volumes['destination'].apply(index.get)
+    return volumes, origins
 
 
 def get_sparse_matrix(edges, index):

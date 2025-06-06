@@ -4,7 +4,6 @@ import pandas as pd
 
 from quetzal.engine.pathfinder_utils import build_index, get_path
 from quetzal.engine.msa_utils import (
-    get_zone_index,
     get_derivative,
     init_ab_volumes,
     assign_volume,
@@ -17,6 +16,7 @@ from quetzal.engine.msa_utils import (
     init_numba_volumes,
     assign_volume_on_links,
     get_relgap,
+    get_sparse_volumes,
 )
 from typing import List, Dict, Tuple
 from quetzal.engine.vdf import default_bpr, free_flow
@@ -226,11 +226,10 @@ def aon_roadpathfinder(links, volumes, time_col='time', num_cores=1):
     links['sparse_a'] = links['a'].apply(lambda x: index.get(x))
     links['sparse_b'] = links['b'].apply(lambda x: index.get(x))
     links = links.set_index(['sparse_a', 'sparse_b'])
-
     # sparsify volumes keys
-    volumes, zones = get_zone_index(links, volumes, index)
+    volumes, origins = get_sparse_volumes(volumes, index)
 
-    return get_car_los(volumes, links, index, zones, time_col, num_cores)
+    return get_car_los(volumes, links, index, origins, time_col, num_cores)
 
 
 def msa_roadpathfinder(
@@ -269,8 +268,6 @@ def msa_roadpathfinder(
     links['sparse_b'] = links['b'].apply(lambda x: index.get(x))
     links = links.reset_index().set_index(['sparse_a', 'sparse_b'])
 
-    #  sparsify volumes keys
-    volumes, zones = get_zone_index(links, volumes, index)
     # init numba dict with (a, b, base_flow)
     # in the volumes assignment, start with base_flow (ex: network preloaded with buses on road)
     ab_volumes = init_ab_volumes(links.index)
@@ -299,15 +296,17 @@ def msa_roadpathfinder(
             tracked_volumes = {tup: ab_volumes.copy() for tup in track_links_list}
 
         for seg in segments:
-            filtered = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
-            _, predecessors = shortest_path(filtered, 'jam_time', index, zones, num_cores=num_cores)
-            odv = volumes[['origin_sparse', 'destination_sparse', seg]].values
+            segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
+            odv = segment_volumes[['origin_sparse', 'destination_sparse', seg]].values
+
+            segment_links = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
+            _, predecessors = shortest_path(segment_links, 'jam_time', index, origins, num_cores=num_cores)
+
             links[(seg, 'auxiliary_flow')] = assign_volume(odv, predecessors, ab_volumes.copy())
 
             if track_links:
                 for idx in track_links_list:
                     tracked_volumes[idx] = assign_tracked_volume(odv, predecessors, tracked_volumes[idx], idx)
-
         flow_cols = [(seg, 'auxiliary_flow') for seg in segments] + ['base_flow']
         links['auxiliary_flow'] = links[flow_cols].sum(axis=1)
         #
@@ -360,8 +359,9 @@ def msa_roadpathfinder(
     car_los = pd.DataFrame()
     for seg in segments:
         # filter links to allowed segment
-        filtered = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
-        temp_los = get_car_los(volumes, filtered, index, zones, 'jam_time', num_cores)
+        segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
+        segment_links = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
+        temp_los = get_car_los(segment_volumes, segment_links, index, origins, 'jam_time', num_cores)
         temp_los['segment'] = seg
         car_los = pd.concat([car_los, temp_los], ignore_index=True)
 
@@ -443,9 +443,6 @@ def extended_roadpathfinder(
     links = links.reset_index().set_index('sparse_index')  # keep index as column
     links.index = links.index.astype(int)
 
-    #  sparsify volumes keys
-    volumes, zones = get_zone_index(extended_links, volumes, index)
-
     # init numba dict with (links, 0)
     ab_volumes = init_numba_volumes(links.index)
 
@@ -474,12 +471,14 @@ def extended_roadpathfinder(
         #
         for seg in segments:
             # filter links to allowed segment
-            filtered = extended_links[extended_links['segments'].apply(lambda x: seg in x)]
-            _, pred = shortest_path(filtered, 'cost', index, zones, num_cores=num_cores)
-            odv = volumes[['origin_sparse', 'destination_sparse', seg]].values
+            segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
+            odv = segment_volumes[['origin_sparse', 'destination_sparse', seg]].values
+
+            segment_links = extended_links[extended_links['segments'].apply(lambda x: seg in x)]
+            _, pred = shortest_path(segment_links, 'cost', index, origins, num_cores=num_cores)
+
             # assign volume
             links[(seg, 'auxiliary_flow')] = assign_volume_on_links(odv, pred, ab_volumes.copy())
-
             if track_links:
                 tracked_volumes = [ab_volumes.copy() for _ in track_links_list]
                 tracked_volumes = assign_tracked_volumes_on_links_parallel(odv, pred, tracked_volumes, track_links_list)
@@ -547,12 +546,12 @@ def extended_roadpathfinder(
     #
     # Finish: reindex back and get car_los
     #
-
     car_los = pd.DataFrame()
     for seg in segments:
         # filter links to allowed segment
-        filtered = extended_links[extended_links['segments'].apply(lambda x: seg in x)]
-        temp_los = get_car_los(volumes, filtered, index, zones, 'cost', num_cores)
+        segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
+        segment_links = extended_links[extended_links['segments'].apply(lambda x: seg in x)]
+        temp_los = get_car_los(segment_volumes, segment_links, index, origins, 'cost', num_cores)
         temp_los['segment'] = seg
         car_los = pd.concat([car_los, temp_los], ignore_index=True)
 
