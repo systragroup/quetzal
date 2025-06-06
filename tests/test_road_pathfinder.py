@@ -162,6 +162,19 @@ class TestRoadPathfinder(unittest.TestCase):
             expected_path_2 = ['z2', 'c', 'b', 'a', 'z1']
             self.assertEqual(car_los['path'][1], expected_path_2)
 
+    def test_msa_pathfinder_track_link(self):
+        index_dict = self.sm.road_links.reset_index().set_index(['a', 'b'])['index'].to_dict()
+
+        link = index_dict.get(('b', 'd'))
+        assert self.sm.road_links.loc[link, 'a'] == 'b'
+        assert self.sm.road_links.loc[link, 'b'] == 'd'
+        track_links_list = [link]
+        links, car_los, relgap = self._get_msa_roadpathfinder(track_links_list=track_links_list)
+        # expected_path = ['z1', 'a', 'b', 'd', 'e', 'z2']
+        expected_link_path = [*map(index_dict.get, [('a', 'b'), ('b', 'd'), ('d', 'e')])]
+        found_path = links[links[link] == 150]['index'].tolist()
+        self.assertEqual(expected_link_path, found_path)
+
     def _get_extended_roadpathfinder(self, method='bfw', track_links_list=[]):
         maxiters = 10
         tolerance = 0.01

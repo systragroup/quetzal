@@ -129,18 +129,11 @@ def assign_tracked_volume(odv, predecessors, volumes, track_index):
     return volumes
 
 
-def init_ab_volumes(base_flow: Dict[Tuple, float]) -> Dict[Tuple, float]:
+def init_ab_volumes(indexes: List[Tuple]) -> Dict[Tuple, float]:
     numba_volumes = nb.typed.Dict.empty(key_type=nb.types.UniTuple(nb.types.int64, 2), value_type=nb.types.float64)
-    for key, value in base_flow.items():
-        numba_volumes[key] = value
-    return numba_volumes
-
-
-def init_track_volumes(base_flow: Dict[Tuple, float], link_list: List[Tuple]) -> Dict[Tuple, Dict[Tuple, float]]:
-    numba_volumes = nb.typed.Dict.empty(key_type=nb.types.UniTuple(nb.types.int64, 2), value_type=nb.types.float64)
-    for key in base_flow.keys():
+    for key in indexes:
         numba_volumes[key] = 0
-    return {tup: numba_volumes.copy() for tup in link_list}
+    return numba_volumes
 
 
 def init_extended_track_volumes(base_flow: Dict[int, float], track_links_list: List[int]) -> List[Dict[int, float]]:
@@ -150,18 +143,24 @@ def init_extended_track_volumes(base_flow: Dict[int, float], track_links_list: L
     return [numba_volumes.copy() for _ in track_links_list]
 
 
-def find_beta(links, phi_1):
+def find_beta(links, phi_1, segments):
     # The Stiff is Moving - Conjugate Direction Frank-Wolfe Methods with Applications to Traffic Assignment from Mitradjieva maria
-
     b = [0, 0, 0]
-    dk_1 = links['s_k-1'] - links['flow']
-    dk_2 = phi_1 * links['s_k-1'] + (1 - phi_1) * links['s_k-2'] - links['flow']
-    dk = links['auxiliary_flow'] - links['flow']
+
+    s_k_1 = links[[(seg, 's_k-1') for seg in segments]].sum(axis=1)
+    s_k_2 = links[[(seg, 's_k-2') for seg in segments]].sum(axis=1)
+    aux = links[[(seg, 'auxiliary_flow') for seg in segments]].sum(axis=1)
+    flow = links['flow']
+    derivative = links['derivative']
+
+    dk_1 = s_k_1 - flow
+    dk_2 = phi_1 * s_k_1 + (1 - phi_1) * s_k_2 - flow
+    dk = aux - flow
     # put a try here except mu=0 if we have a division by 0...
-    mu = -sum(dk_2 * links['derivative'] * dk) / sum(dk_2 * links['derivative'] * (links['s_k-2'] - links['s_k-1']))
+    mu = -sum(dk_2 * derivative * dk) / sum(dk_2 * derivative * (s_k_2 - s_k_1))
     mu = max(0, mu)  # beta_k >=0
     # same try here.
-    nu = -sum(dk_1 * links['derivative'] * dk) / sum(dk_1 * links['derivative'] * dk_1) + (mu * phi_1 / (1 - phi_1))
+    nu = -sum(dk_1 * derivative * dk) / sum(dk_1 * derivative * dk_1) + (mu * phi_1 / (1 - phi_1))
     nu = max(0, nu)
     b[0] = 1 / (1 + mu + nu)
     b[1] = nu * b[0]
@@ -169,14 +168,18 @@ def find_beta(links, phi_1):
     return b
 
 
-def get_bfw_auxiliary_flow(links, vdf, i, time_col, prev_phi) -> pd.DataFrame:
+def get_bfw_auxiliary_flow(links, i, prev_phi, segments) -> pd.DataFrame:
     if i > 2:
-        links['derivative'] = get_derivative(links, vdf, h=0.001, flow_col='flow', time_col=time_col)
-        b = find_beta(links, prev_phi)  # this is the previous phi (phi_-1)
-        links['auxiliary_flow'] = b[0] * links['auxiliary_flow'] + b[1] * links['s_k-1'] + b[2] * links['s_k-2']
-    if i > 1:
-        links['s_k-2'] = links['s_k-1']
-    links['s_k-1'] = links['auxiliary_flow']
+        b = find_beta(links, prev_phi, segments)  # this is the previous phi (phi_-1)
+        for seg in segments:  # track per segments
+            col = (seg, 'auxiliary_flow')
+            links[col] = b[0] * links[col] + b[1] * links[(seg, 's_k-1')] + b[2] * links[(seg, 's_k-2')]
+
+    for seg in segments:
+        if i > 1:
+            links[(seg, 's_k-2')] = links[(seg, 's_k-1')]
+        links[(seg, 's_k-1')] = links[(seg, 'auxiliary_flow')]
+
     return links
 
 
@@ -203,10 +206,10 @@ def assign_volume_on_links(odv, predecessors, volumes):
     return volumes
 
 
-def init_numba_volumes(base_flow: Dict[int, float]) -> Dict[int, float]:
+def init_numba_volumes(indexes: List[int]) -> Dict[int, float]:
     numba_volumes = nb.typed.Dict.empty(key_type=nb.types.int64, value_type=nb.types.float64)
-    for key, value in base_flow.items():
-        numba_volumes[key] = value
+    for key in indexes:
+        numba_volumes[key] = 0
     return numba_volumes
 
 

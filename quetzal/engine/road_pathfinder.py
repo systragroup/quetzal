@@ -5,12 +5,12 @@ import pandas as pd
 from quetzal.engine.pathfinder_utils import build_index, get_path
 from quetzal.engine.msa_utils import (
     get_zone_index,
+    get_derivative,
     init_ab_volumes,
     assign_volume,
     jam_time,
     find_phi,
     get_bfw_auxiliary_flow,
-    init_track_volumes,
     assign_tracked_volume,
     assign_tracked_volumes_on_links_parallel,
     shortest_path,
@@ -95,8 +95,13 @@ def concat_connectors_to_roads(road_links, zone_to_road, segments, time_col='tim
             road_links['segments'] = [set(segments) for _ in range(len(road_links))]
 
         links = pd.concat([road_links, zone_to_road])
+
         links['flow'] = 0
         links['auxiliary_flow'] = 0
+        for seg in segments:
+            links[(seg, 'flow')] = 0
+            links[(seg, 'auxiliary_flow')] = 0
+
         if 'base_flow' not in links.columns:
             links['base_flow'] = 0
         links['base_flow'] = links['base_flow'].fillna(0)
@@ -268,9 +273,8 @@ def msa_roadpathfinder(
     volumes, zones = get_zone_index(links, volumes, index)
     # init numba dict with (a, b, base_flow)
     # in the volumes assignment, start with base_flow (ex: network preloaded with buses on road)
-    base_flow = init_ab_volumes(links['base_flow'].to_dict())
+    ab_volumes = init_ab_volumes(links.index)
     # initialization
-    links['flow'] = 0
     links['jam_time'] = jam_time(links, vdf, 'flow', time_col=time_col)
     links['jam_time'].fillna(links[time_col], inplace=True)
     # init track links aux_flow dict and flow in links
@@ -290,28 +294,30 @@ def msa_roadpathfinder(
         #
         # Routing and assignment
         #
-        ab_volumes = base_flow.copy()  # init numba dict with (a,b,0)
         if track_links:
-            tracked_volumes = init_track_volumes(base_flow, track_links_list)
+            tracked_volumes = {tup: ab_volumes.copy() for tup in track_links_list}
 
         for seg in segments:
             filtered = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
             _, predecessors = shortest_path(filtered, 'jam_time', index, zones, num_cores=num_cores)
             odv = volumes[['origin_sparse', 'destination_sparse', seg]].values
+            links[(seg, 'auxiliary_flow')] = assign_volume(odv, predecessors, ab_volumes.copy())
 
-            ab_volumes = assign_volume(odv, predecessors, ab_volumes)
             if track_links:
                 for idx in track_links_list:
                     tracked_volumes[idx] = assign_tracked_volume(odv, predecessors, tracked_volumes[idx], idx)
 
-        links['auxiliary_flow'] = ab_volumes
+        flow_cols = [(seg, 'auxiliary_flow') for seg in segments] + ['base_flow']
+        links['auxiliary_flow'] = links[flow_cols].sum(axis=1)
         #
         # find Phi, and BFW auxiliary flow modification
         #
         if i == 0:
             phi = 1  # first iteration is AON
         elif method == 'bfw':  # if biconjugate: takes the 2 last direction
-            links = get_bfw_auxiliary_flow(links, vdf, i, time_col, phi)
+            links['derivative'] = get_derivative(links, vdf, h=0.001, flow_col='flow', time_col=time_col)
+            links = get_bfw_auxiliary_flow(links, i, phi, segments)
+            links['auxiliary_flow'] = links[flow_cols].sum(axis=1)
             max_phi = 1 / i**0.5  # limit search space
             phi = find_phi(links, vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
         elif method == 'fw':
@@ -322,8 +328,11 @@ def msa_roadpathfinder(
         #
         # Update flow and jam_time (frank-wolfe)
         #
-        links['flow'] = (1 - phi) * links['flow'] + (phi * links['auxiliary_flow'])
-        links['flow'].fillna(0, inplace=True)
+        for seg in segments:  # track per segments
+            links[(seg, 'flow')] = (1 - phi) * links[(seg, 'flow')] + (phi * links[(seg, 'auxiliary_flow')])
+        flow_cols = [(seg, 'flow') for seg in segments] + ['base_flow']
+        links['flow'] = links[flow_cols].sum(axis=1)
+
         if track_links:
             for idx in track_links_list:
                 tracked_df[str(idx)] = (1 - phi) * tracked_df[str(idx)] + (phi * pd.Series(tracked_volumes[idx]))
@@ -347,7 +356,13 @@ def msa_roadpathfinder(
     #
     # Finish: reindex back and get car_los
     #
-    car_los = get_car_los(volumes, links, index, zones, 'jam_time', num_cores)
+    car_los = pd.DataFrame()
+    for seg in segments:
+        # filter links to allowed segment
+        filtered = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
+        temp_los = get_car_los(volumes, filtered, index, zones, 'jam_time', num_cores)
+        temp_los['segment'] = seg
+        car_los = pd.concat([car_los, temp_los], ignore_index=True)
 
     if track_links:  # rename with original indexes
         rename_dict = {str(v): k for k, v in track_links_index_dict.items()}
@@ -424,11 +439,9 @@ def extended_roadpathfinder(
     volumes, zones = get_zone_index(extended_links, volumes, index)
 
     # init numba dict with (links, base_flow)
-    # in the volumes assignment, start with base_flow (ex: network preloaded with buses on road)
-    base_flow = init_numba_volumes(links['base_flow'].to_dict())
+    ab_volumes = init_numba_volumes(links.index)
 
-    # initialization of flow and time
-    links['flow'] = 0
+    # initialization time
     links['jam_time'] = jam_time(links, vdf, 'flow', time_col=time_col)
     links['jam_time'].fillna(links[time_col], inplace=True)
     # init cost on extended Links
@@ -450,9 +463,8 @@ def extended_roadpathfinder(
         # Routing and assignment
         #
         # init numba dict with (a,b,0)
-        links_volumes = base_flow.copy()
         if track_links:
-            tracked_volumes = [base_flow.copy() for _ in track_links_list]
+            tracked_volumes = [ab_volumes.copy() for _ in track_links_list]
             # tracked_volumes = init_extended_track_volumes(base_flow, track_links_list)
         # loop ons segments
         for seg in segments:
@@ -461,18 +473,22 @@ def extended_roadpathfinder(
             _, pred = shortest_path(filtered, 'cost', index, zones, num_cores=num_cores)
             odv = volumes[['origin_sparse', 'destination_sparse', seg]].values
             # assign volume
-            links_volumes = assign_volume_on_links(odv, pred, links_volumes)
+            links[(seg, 'auxiliary_flow')] = assign_volume_on_links(odv, pred, ab_volumes.copy())
+
             if track_links:
                 tracked_volumes = assign_tracked_volumes_on_links_parallel(odv, pred, tracked_volumes, track_links_list)
 
-        links['auxiliary_flow'] = links_volumes
+        auxiliary_flow_cols = [(seg, 'auxiliary_flow') for seg in segments] + ['base_flow']
+        links['auxiliary_flow'] = links[auxiliary_flow_cols].sum(axis=1)  # for phi and relgap
         #
         # find Phi, and BFW auxiliary flow modification
         #
         if i == 0:
             phi = 1  # first iteration is AON
         elif method == 'bfw':  # if biconjugate: takes the 2 last direction
-            links = get_bfw_auxiliary_flow(links, vdf, i, time_col, phi)
+            links['derivative'] = get_derivative(links, vdf, h=0.001, flow_col='flow', time_col=time_col)
+            links = get_bfw_auxiliary_flow(links, i, phi, segments)
+            links['auxiliary_flow'] = links[auxiliary_flow_cols].sum(axis=1)
             max_phi = 1 / i**0.5  # limit search space
             phi = find_phi(links, vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
         elif method == 'fw':
@@ -483,8 +499,12 @@ def extended_roadpathfinder(
         #
         # Update flow and jam_time (frank-wolfe)
         #
-        links['flow'] = (1 - phi) * links['flow'] + (phi * links['auxiliary_flow'])
-        links['flow'].fillna(0, inplace=True)
+
+        for seg in segments:  # track per segments
+            links[(seg, 'flow')] = (1 - phi) * links[(seg, 'flow')] + (phi * links[(seg, 'auxiliary_flow')])
+        flow_cols = [(seg, 'flow') for seg in segments] + ['base_flow']
+        links['flow'] = links[flow_cols].sum(axis=1)
+
         if track_links:
             for idx, aux_flow in zip(track_links_list, tracked_volumes):
                 tracked_df[idx] = (1 - phi) * tracked_df[idx] + (phi * pd.Series(aux_flow))
@@ -512,7 +532,13 @@ def extended_roadpathfinder(
     # Finish: reindex back and get car_los
     #
 
-    car_los = get_car_los(volumes, extended_links, index, zones, 'cost', num_cores)
+    car_los = pd.DataFrame()
+    for seg in segments:
+        # filter links to allowed segment
+        filtered = extended_links[extended_links['segments'].apply(lambda x: seg in x)]
+        temp_los = get_car_los(volumes, filtered, index, zones, 'cost', num_cores)
+        temp_los['segment'] = seg
+        car_los = pd.concat([car_los, temp_los], ignore_index=True)
 
     if track_links:  # put tracked flow as columns in links
         reversed_index = {v: k for k, v in index.items()}
