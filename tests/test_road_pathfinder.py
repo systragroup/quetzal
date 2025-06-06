@@ -25,7 +25,7 @@ zone_to_road = pd.DataFrame(
         'b': ['a', 'z1', 'z2', 'e', 'c'],
         'time': [100, 100, 100, 100, 100],
         'length': [10, 10, 10, 10, 10],
-        'direction': ['access', 'access', 'eggress', 'eggress', 'access'],
+        #'direction': ['access', 'access', 'eggress', 'eggress', 'access'],
     }
 )
 zone_to_road.index = 'zr_' + zone_to_road.index.astype(str)
@@ -64,7 +64,7 @@ class TestRoadPathfinder(unittest.TestCase):
 
     def test_init_network(self):
         method = 'bfw'
-        segments = []
+        segments = ['car']
         time_column = 'time'
         access_time = 'time'
         ntleg_penalty = 100
@@ -73,7 +73,17 @@ class TestRoadPathfinder(unittest.TestCase):
         expected_len = len(self.sm.road_links) + len(self.sm.zone_to_road)
         self.assertEqual(len(network), expected_len)
 
-        expected_columns = ['a', 'b', 'vdf', 'segments', 'direction', 'flow', 'auxiliary_flow', 'base_flow']
+        expected_columns = [
+            'a',
+            'b',
+            'vdf',
+            'segments',
+            'flow',
+            'auxiliary_flow',
+            'base_flow',
+            ('car', 'flow'),
+            ('car', 'auxiliary_flow'),
+        ]
         for col in expected_columns:
             self.assertIn(col, network.columns)
 

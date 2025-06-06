@@ -213,7 +213,7 @@ def init_numba_volumes(indexes: List[int]) -> Dict[int, float]:
     return numba_volumes
 
 
-@nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)  # parallel=> not thread safe. do not!
+@nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)
 def assign_tracked_volumes_on_links_parallel(odv, predecessors, volumes_list, key_list):
     for i in nb.prange(len(key_list)):
         assign_tracked_volume_on_links(odv, predecessors, volumes_list[i], key_list[i])

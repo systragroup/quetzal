@@ -280,6 +280,7 @@ def msa_roadpathfinder(
     # init track links aux_flow dict and flow in links
     track_links = len(track_links_list) > 0
     if track_links:
+        print('tracked volumes may be inconsistent when using bfw') if method == 'bfw' else None
         _tmp_dict = links[links['index'].isin(track_links_list)]['index'].to_dict()
         track_links_index_dict = {v: k for k, v in _tmp_dict.items()}
         track_links_list = [*map(track_links_index_dict.get, track_links_list)]
@@ -370,6 +371,13 @@ def msa_roadpathfinder(
         links = pd.merge(links, tracked_df, left_index=True, right_index=True, how='left')
     links = links.set_index(['a', 'b'])  # go back to original indexes
 
+    # drop columns
+    to_drop = ['x1', 'x2', 'result', 'new_flow', 'derivative', 'auxiliary_flow']
+    to_drop += [(seg, 's_k-1') for seg in segments]
+    to_drop += [(seg, 's_k-2') for seg in segments]
+    to_drop += [(seg, 'auxiliary_flow') for seg in segments]
+    links = links.drop(columns=to_drop, errors='ignore')
+
     return links, car_los, relgap_list
 
 
@@ -408,8 +416,10 @@ def extended_roadpathfinder(
     num_cores = 1 : for parallelization.
     """
     assert_vdf_on_links(links, vdf)
-
+    #
     # preparation
+    #
+
     extended_links = links_to_extended_links(links, False)
     extended_links = fix_zone_to_road(extended_links, zones)
     extended_links = extended_links.rename(columns={'from_link': 'a', 'to_link': 'b'})
@@ -423,9 +433,7 @@ def extended_roadpathfinder(
     extended_links = extended_links.reset_index().set_index(['sparse_a', 'sparse_b'])
 
     # turn penalties to sparse index tuple dict {(0,1): turn_penalty}
-    turn_penalties = {
-        (index.get(k), index.get(v)): turn_penalty for k, values in turn_penalties.items() for v in values
-    }
+    turn_penalties = {(index[k], index[v]): turn_penalty for k, values in turn_penalties.items() for v in values}
     extended_links['turn_penalty'] = extended_links.index.map(turn_penalties).fillna(0)
 
     # add sparse index to links
@@ -438,7 +446,7 @@ def extended_roadpathfinder(
     #  sparsify volumes keys
     volumes, zones = get_zone_index(extended_links, volumes, index)
 
-    # init numba dict with (links, base_flow)
+    # init numba dict with (links, 0)
     ab_volumes = init_numba_volumes(links.index)
 
     # initialization time
@@ -452,8 +460,10 @@ def extended_roadpathfinder(
     # init track links aux_flow dict and flow in links
     track_links = len(track_links_list) > 0
     if track_links:
+        print('tracked volumes may be inconsistent when using bfw') if method == 'bfw' else None
         track_links_list = [*map(index.get, track_links_list)]
         tracked_df = pd.DataFrame(index=links.index, columns=track_links_list).fillna(0)
+
     relgap = np.inf
     relgap_list = []
     print('it  |  Phi    |  Rel Gap (%)') if log else None
@@ -462,11 +472,6 @@ def extended_roadpathfinder(
         #
         # Routing and assignment
         #
-        # init numba dict with (a,b,0)
-        if track_links:
-            tracked_volumes = [ab_volumes.copy() for _ in track_links_list]
-            # tracked_volumes = init_extended_track_volumes(base_flow, track_links_list)
-        # loop ons segments
         for seg in segments:
             # filter links to allowed segment
             filtered = extended_links[extended_links['segments'].apply(lambda x: seg in x)]
@@ -476,13 +481,18 @@ def extended_roadpathfinder(
             links[(seg, 'auxiliary_flow')] = assign_volume_on_links(odv, pred, ab_volumes.copy())
 
             if track_links:
+                tracked_volumes = [ab_volumes.copy() for _ in track_links_list]
                 tracked_volumes = assign_tracked_volumes_on_links_parallel(odv, pred, tracked_volumes, track_links_list)
+                for idx, vols in zip(track_links_list, tracked_volumes):
+                    tracked_df[(idx, seg, 'aux_flow')] = vols
 
         auxiliary_flow_cols = [(seg, 'auxiliary_flow') for seg in segments] + ['base_flow']
         links['auxiliary_flow'] = links[auxiliary_flow_cols].sum(axis=1)  # for phi and relgap
+
         #
         # find Phi, and BFW auxiliary flow modification
         #
+
         if i == 0:
             phi = 1  # first iteration is AON
         elif method == 'bfw':  # if biconjugate: takes the 2 last direction
@@ -496,21 +506,25 @@ def extended_roadpathfinder(
             phi = find_phi(links, vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
         else:  # msa
             phi = 1 / (i + 2)
+
         #
-        # Update flow and jam_time (frank-wolfe)
+        # Update flow on links
         #
 
         for seg in segments:  # track per segments
             links[(seg, 'flow')] = (1 - phi) * links[(seg, 'flow')] + (phi * links[(seg, 'auxiliary_flow')])
+
         flow_cols = [(seg, 'flow') for seg in segments] + ['base_flow']
         links['flow'] = links[flow_cols].sum(axis=1)
 
         if track_links:
-            for idx, aux_flow in zip(track_links_list, tracked_volumes):
-                tracked_df[idx] = (1 - phi) * tracked_df[idx] + (phi * pd.Series(aux_flow))
+            for idx in track_links_list:
+                aux_flow = tracked_df[[(idx, seg, 'aux_flow') for seg in segments]].sum(axis=1)
+                tracked_df[idx] = (1 - phi) * tracked_df[idx] + (phi * aux_flow)
         #
         # Get relGap. Skip first iteration (AON and relgap = -inf)
         #
+
         if i > 0:
             relgap = get_relgap(links)
             relgap_list.append(relgap)
@@ -519,11 +533,13 @@ def extended_roadpathfinder(
         #
         # Update Time on links
         #
+
         links['jam_time'] = jam_time(links, vdf, 'flow', time_col=time_col)
         links['jam_time'].fillna(links[time_col], inplace=True)
         jam_time_dict = links['jam_time'].to_dict()
         extended_links['cost'] = extended_links['sparse_index'].apply(lambda x: jam_time_dict.get(x, zone_penalty))
         extended_links['cost'] += extended_links['turn_penalty']
+
         # skip first iteration (AON asignment) as relgap in -inf
         if relgap <= tolerance:
             print('tolerance reached') if log else None
@@ -542,12 +558,21 @@ def extended_roadpathfinder(
 
     if track_links:  # put tracked flow as columns in links
         reversed_index = {v: k for k, v in index.items()}
+        tracked_df = tracked_df[track_links_list]  # drop aux_flow columns
         tracked_df = tracked_df.rename(columns=reversed_index)
         links = pd.merge(links, tracked_df, left_index=True, right_index=True, how='left')
 
-    links = links.set_index(['a', 'b'])  # go back to original indexes
+    # go back to original indexes
+    links = links.set_index(['a', 'b'])
     # change path of links to path of nodes
     links_to_nodes_dict = {v: k for k, v in links['index'].to_dict().items()}
     car_los['path'] = car_los['path'].apply(lambda ls: extended_path_to_nodes(ls, links_to_nodes_dict))
+
+    # drop columns
+    to_drop = ['x1', 'x2', 'result', 'new_flow', 'derivative', 'auxiliary_flow']
+    to_drop += [(seg, 's_k-1') for seg in segments]
+    to_drop += [(seg, 's_k-2') for seg in segments]
+    to_drop += [(seg, 'auxiliary_flow') for seg in segments]
+    links = links.drop(columns=to_drop, errors='ignore')
 
     return links, car_los, relgap_list
