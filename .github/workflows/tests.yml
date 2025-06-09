@@ -3,7 +3,7 @@ name: Test on Push (Linux & Windows)
 on:
   push:
     branches:
-      - test  # or your default branch
+      - master  # or your default branch
   pull_request:
 
 jobs:
