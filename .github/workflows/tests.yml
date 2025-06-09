@@ -3,8 +3,14 @@ name: Test on Push (Linux & Windows)
 on:
   push:
     branches:
-      - master  # or your default branch
+      - test  # or your default branch
   pull_request:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to run the workflow on'
+        required: true
+        default: 'dev'
 
 jobs:
   test:
@@ -23,15 +29,18 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install Poetry
+        if: runner.os == 'Windows'
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
         shell: bash
 
       - name: Add Poetry to PATH
+        if: runner.os == 'Windows'
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
         shell: bash
 
       - name: Install dependencies
+        if: runner.os == 'Windows'
         run: poetry install
 
       - name: Run tests
