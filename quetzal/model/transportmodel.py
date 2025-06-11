@@ -283,18 +283,23 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 **kwargs,
             )
 
-        volume_dict = links['flow'].to_dict()
         time_dict = links['jam_time'].to_dict()
-        self.road_links['flow'] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
         self.road_links['jam_time'] = self.road_links.set_index(['a', 'b']).index.map(time_dict.get)
         self.road_links['jam_speed'] = self.road_links['length'] / self.road_links['jam_time'] * 3.6
-        self.relgap = rel_gap
+
+        volume_dict = links['flow'].to_dict()
+        self.road_links['flow'] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
+        for seg in segments:
+            volume_dict = links[(seg, 'flow')].to_dict()
+            self.road_links[(seg, 'flow')] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
+
         for idx in track_links_list:
             volume_dict = links[idx].to_dict()
             self.road_links[f'flow_{idx}'] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
 
         car_los = get_car_los_time(car_los, self.road_links, self.zone_to_road, 'jam_time', 'time')
         self.car_los = car_los
+        self.relgap = rel_gap
 
     @track_args
     def step_pr_pathfinder(self, force=False, path_analysis=True, **kwargs):
