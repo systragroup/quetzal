@@ -56,7 +56,6 @@ class TestRoadPathfinder(unittest.TestCase):
         rlinks['capacity'] = 50
         rlinks['vdf'] = 'free_flow'
         sm.road_links = rlinks
-
         sm.zone_to_road = zone_to_road
         sm.zones = zones
         sm.volumes = volumes
@@ -104,6 +103,14 @@ class TestRoadPathfinder(unittest.TestCase):
     def test_init_volumes(self):
         volumes = init_volumes(self.sm)
         pd.testing.assert_frame_equal(volumes, self.sm.volumes, check_dtype=False)
+
+    def test_init_volumes_should_raise_exception_if_zone_to_road_have_not_all_zones(self):
+        sm = self.sm.copy()
+        volumes = pd.DataFrame({'origin': ['z1', 'z4'], 'destination': ['z2', 'z1'], 'car': [150, 100]})
+        volumes.index.name = 'index'
+        sm.volumes = volumes
+        with self.assertRaises(ValueError) as context:
+            init_volumes(sm)
 
     def test_init_volumes_return_volumes_if_no_volumes(self):
         sm = self.sm.copy()

@@ -47,7 +47,7 @@ def init_volumes(sm, od_set=None):
     try:
         volumes = sm.volumes.copy()
         if od_set is not None:
-            volumes = volumes.set_index(['origin', 'destination']).reindex(od_set).reset_index()
+            volumes = volumes[volumes.set_index(['origin', 'destination']).index.isin(od_set)]
     except AttributeError:
         print('self.volumes does not exist. od generated with self.zones, od_set')
         if od_set is not None:
@@ -61,7 +61,21 @@ def init_volumes(sm, od_set=None):
         volumes['volume'] = 0
 
     assert len(volumes) > 0
+    test_zone_to_road(volumes, sm.zone_to_road)
+
     return volumes
+
+
+def test_zone_to_road(volumes, zone_to_road):
+    zone_to_road_set = set(zone_to_road['a']).union(set(zone_to_road['b']))
+    volumes_set = set(volumes['origin']).union(set(volumes['destination']))
+    # check if all zones in volumes_set are in zone_to_road_set
+    if not volumes_set.issubset(zone_to_road_set):
+        # print elements that are not in zone_to_road_set
+        missing_zones = volumes_set - zone_to_road_set
+        raise ValueError(
+            'Some zones in volumes are not in zone_to_road. add to zones_to_road or drop in volumes.', missing_zones
+        )
 
 
 def zone_to_road_preparation(
@@ -85,6 +99,7 @@ def concat_connectors_to_roads(road_links, zone_to_road, segments, time_col='tim
     if aon:
         columns = ['a', 'b', time_col]
         links = pd.concat([road_links[columns], zone_to_road[columns]])
+        links.index = links.index.astype(str)
         return links
     else:
         if 'vdf' not in road_links.columns:
@@ -95,6 +110,7 @@ def concat_connectors_to_roads(road_links, zone_to_road, segments, time_col='tim
             road_links['segments'] = [set(segments) for _ in range(len(road_links))]
 
         links = pd.concat([road_links, zone_to_road])
+        links.index = links.index.astype(str)
 
         links['flow'] = 0
         links['auxiliary_flow'] = 0
@@ -199,24 +215,24 @@ def extended_path_to_nodes(path: List[str], links_to_nodes_dict: Dict[str, Tuple
     return [path[0]] + nodes + [path[-1]]
 
 
-def fix_zone_to_road(extended_links: gpd.GeoDataFrame, zones: gpd.geodataframe) -> gpd.GeoDataFrame:
+def fix_zone_to_road(extended_links: gpd.GeoDataFrame, volumes: gpd.geodataframe) -> gpd.GeoDataFrame:
     """
     change zone_to_road extended links to only the zone index.
     Usefull to do routing on zones when the graph is on links.
     Also, remove links that go through zones and zone-to-zone links.
     """
     links = extended_links.copy()
-    zones_list = zones.index
+    zones_set = set(volumes['origin']).union(set(volumes['destination']))
     # rename zone-to-link
-    cond = links['from_node'].isin(zones_list)
+    cond = links['from_node'].isin(zones_set)
     links.loc[cond, 'from_link'] = links.loc[cond, 'from_node']
     # rename link-to-zone
-    cond = links['to_node'].isin(zones_list)
+    cond = links['to_node'].isin(zones_set)
     links.loc[cond, 'to_link'] = links.loc[cond, 'to_node']
     # remove links that go through zones.
-    links = links[~links['mid_node'].isin(zones_list)]
+    links = links[~links['mid_node'].isin(zones_set)]
     # remove zone to zone links.
-    links = links[~(links['from_node'].isin(zones_list) & links['to_node'].isin(zones_list))]
+    links = links[~(links['from_node'].isin(zones_set) & links['to_node'].isin(zones_set))]
 
     return links
 
@@ -421,7 +437,7 @@ def extended_roadpathfinder(
     #
 
     extended_links = links_to_extended_links(links, False)
-    extended_links = fix_zone_to_road(extended_links, zones)
+    extended_links = fix_zone_to_road(extended_links, volumes)
     extended_links = extended_links.rename(columns={'from_link': 'a', 'to_link': 'b'})
     extended_links = extended_links[['a', 'b', 'from_node', 'mid_node', 'to_node', 'time', 'segments']]
 
