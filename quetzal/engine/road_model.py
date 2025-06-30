@@ -5,14 +5,33 @@ import numpy as np
 from time import sleep
 import copy
 from shapely.ops import transform
-
+from typing import Tuple
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsRegressor
 from syspy.spatial.spatial import nearest
 from quetzal.engine.pathfinder_utils import get_path, parallel_dijkstra, simple_routing, build_index, sparse_matrix
-from quetzal.engine.msa_utils import get_zone_index
 from quetzal.engine.sampling import get_average_block_length, get_od_blocks
 from syspy.clients.api_proxy import multi_get_distance_matrix
+
+
+def get_zone_index(links: pd.DataFrame, v: pd.DataFrame, index: dict[str, int]) -> Tuple[pd.DataFrame, list[int]]:
+    # return volumes with [origin_sparse, destination_sparse] anz zone_list (sparse zones)
+    seta = set(links['a'])
+    setb = set(links['b'])
+    v = v.loc[v['origin'].isin(seta) & v['destination'].isin(setb)]
+
+    sources = set(v['origin']).union(v['destination'])
+
+    pole_list = sorted(list(sources))  # fix order
+    source_list = [zone for zone in pole_list if zone in sources]
+
+    zones_list = [index[zone] for zone in source_list]
+    zone_index = dict(zip(pole_list, range(len(pole_list))))
+
+    v['origin_sparse'] = v['origin'].apply(zone_index.get)
+    v['destination_sparse'] = v['destination'].apply(index.get)
+
+    return v, zones_list
 
 
 class RoadModel:

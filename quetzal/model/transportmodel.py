@@ -1,10 +1,18 @@
 import numpy as np
 import pandas as pd
+from typing import Dict, List, Literal, Optional
 from quetzal.analysis import analysis
 from quetzal.engine import engine, nested_logit
 from quetzal.engine.park_and_ride_pathfinder import ParkRidePathFinder
 from quetzal.engine.pathfinder import PublicPathFinder
-from quetzal.engine.road_pathfinder import init_network, init_volumes, aon_roadpathfinder, msa_roadpathfinder
+from quetzal.engine.road_pathfinder import (
+    init_network,
+    init_volumes,
+    aon_roadpathfinder,
+    msa_roadpathfinder,
+    expanded_roadpathfinder,
+    get_car_los_time,
+)
 from quetzal.engine.sampling import sample_od
 from quetzal.model import model, optimalmodel, parkridemodel
 from syspy.assignment import raw as raw_assignment
@@ -150,17 +158,17 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
     @track_args
     def step_road_pathfinder(
         self,
-        method='bfw',
-        segments=[],
-        time_column='time',
-        access_time='time',
-        od_set=None,
-        ntleg_penalty=10e9,
-        path_analysis=True,
-        track_links_list=[],
-        num_cores=1,
+        method: Literal['bfw', 'fw', 'msa', 'aon'] = 'bfw',
+        segments: List[str] = [],
+        time_column: str = 'time',
+        access_time: str = 'time',
+        od_set: Optional[Dict] = None,
+        track_links_list: List[str] = [],
+        turn_penalties: Optional[Dict[str, List[str]]] = None,
+        ntleg_penalty: float = 10e9,
+        num_cores: int = 1,
         **kwargs,
-    ):
+    ) -> None:
         """Performs road assignment with or without capacity constraint, depending on the method used
 
         Requires
@@ -197,9 +205,10 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         ntleg_penalty : float, optional, default 1e9
             ntleg penality for access time
+        turn_penalties : dict, optional, default None
+            dictionary of turn penalties for the road links
+            ex: {'rlink_0', ['rlink_4']}
 
-        path_analysis : bool, optional, false
-            perform self.analysis_car_los() at the end
 
         num_cores : integer, optional, default 1
             for parallelizatio
@@ -208,6 +217,13 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             list of links index to track.
 
         **kwargs :  see msa_roadpathfinder()
+            vdf={'default_bpr': default_bpr, 'free_flow': free_flow},
+            method='bfw',
+            maxiters=10,
+            tolerance=0.01,
+            log=False,
+
+            turn_penality for expanded.
 
         Builds
         ----------
@@ -229,44 +245,61 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             volume_column = kwargs.pop('volume_column')
             segments = [volume_column]
             print("volume_column is depreacated, use segments instead (ex: segments=['car'])")
+        if method not in ['msa', 'fw', 'bfw', 'aon']:
+            print(method, ' not supported. use msa, fw, bfw or aon')
+            return
 
         network = init_network(self, method, segments, time_column, access_time, ntleg_penalty)
         volumes = init_volumes(self, od_set)
-        if method == 'aon':
-            self.car_los = aon_roadpathfinder(network, volumes, time_column, ntleg_penalty, num_cores)
 
-        elif method in ['msa', 'fw', 'bfw']:
+        if method == 'aon':
+            self.car_los = aon_roadpathfinder(network, volumes, time_column, num_cores)
+            self.car_los = get_car_los_time(self.car_los, self.road_links, self.zone_to_road, 'time', 'time')
+            return
+
+        # elif method in ['msa', 'fw', 'bfw']:
+        if turn_penalties is None:
             links, car_los, rel_gap = msa_roadpathfinder(
                 network,
                 volumes,
                 segments=segments,
                 method=method,
                 time_col=time_column,
-                ntleg_penalty=ntleg_penalty,
-                num_cores=num_cores,
                 track_links_list=track_links_list,
+                num_cores=num_cores,
+                **kwargs,
+            )
+        else:
+            links, car_los, rel_gap = expanded_roadpathfinder(
+                network,
+                volumes,
+                zones=self.zones,
+                segments=segments,
+                method=method,
+                time_col=time_column,
+                track_links_list=track_links_list,
+                turn_penalties=turn_penalties,
+                num_cores=num_cores,
                 **kwargs,
             )
 
-            self.car_los = car_los
-            if method != 'aon':  # do not overwrite road_links if its all-or-nothing
-                volume_dict = links['flow'].to_dict()
-                time_dict = links['jam_time'].to_dict()
-                self.road_links['flow'] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
-                self.road_links['jam_time'] = self.road_links.set_index(['a', 'b']).index.map(time_dict.get)
-                self.road_links['jam_speed'] = self.road_links['length'] / self.road_links['jam_time'] * 3.6
-                self.relgap = rel_gap
-                for idx in track_links_list:
-                    volume_dict = links[f'flow_{idx}'].to_dict()
-                    self.road_links[f'flow_{idx}'] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
+        time_dict = links['jam_time'].to_dict()
+        self.road_links['jam_time'] = self.road_links.set_index(['a', 'b']).index.map(time_dict.get)
+        self.road_links['jam_speed'] = self.road_links['length'] / self.road_links['jam_time'] * 3.6
 
-        else:
-            print(method, ' not supported. use msa, fw, bfw or aon')
+        volume_dict = links['flow'].to_dict()
+        self.road_links['flow'] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
+        for seg in segments:
+            volume_dict = links[(seg, 'flow')].to_dict()
+            self.road_links[(seg, 'flow')] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
 
-        self.car_los['origin'] == self.car_los['destination']
+        for idx in track_links_list:
+            volume_dict = links[idx].to_dict()
+            self.road_links[f'flow_{idx}'] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
 
-        if path_analysis:
-            self.analysis_car_los()
+        car_los = get_car_los_time(car_los, self.road_links, self.zone_to_road, 'jam_time', 'time')
+        self.car_los = car_los
+        self.relgap = rel_gap
 
     @track_args
     def step_pr_pathfinder(self, force=False, path_analysis=True, **kwargs):

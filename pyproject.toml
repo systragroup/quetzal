@@ -7,14 +7,13 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.12"
-numpy = "<2.0"
+numpy = "<2.3"
 pandas = "<3.0"
 geopandas = "*"
 gtfs-kit = "*"
 openpyxl = "*"
 numba = "*"
 boto3 = "*"
-fastapi = "*"
 uvicorn = "*"
 scipy = "*"
 geopy = "*"
@@ -33,6 +32,8 @@ pip-chill = "*"
 networkx = "*"
 ruff = "^0.7.4"
 zstandard = "^0.23.0"
+pyinstrument = "^5.0.1"
+pydantic = "^2.11.5"
 
 
 
