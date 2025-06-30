@@ -1,6 +1,6 @@
 import unittest
 
-from quetzal.engine.road_pathfinder import init_network, init_volumes, msa_roadpathfinder, extended_roadpathfinder
+from quetzal.engine.road_pathfinder import init_network, init_volumes, msa_roadpathfinder, expanded_roadpathfinder
 import pandas as pd
 from quetzal.model import stepmodel
 
@@ -100,7 +100,7 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
         expected_flow = links.loc[link, 'flow'] - links.loc[link, 'base_flow']
         self.assertAlmostEqual(expected_flow.values[0], links.loc[link, link].values[0][0], places=3)
 
-    def test_extended_pathfinder_car_los_SHOULD_contain_all_segments(self):
+    def test_expanded_pathfinder_car_los_SHOULD_contain_all_segments(self):
         segments = ['car', 'truck']
         links, car_los, relgap = self._get_msa_roadpathfinder(segments=segments, method='bfw')
 
@@ -110,7 +110,7 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
         for seg in segments:
             self.assertIn(seg, car_los['segment'].unique())
 
-    def _get_extended_roadpathfinder(self, method='bfw', track_links_list=[], segments=['car']):
+    def _get_expanded_roadpathfinder(self, method='bfw', track_links_list=[], segments=['car']):
         maxiters = 10
         tolerance = 0.1
         time_column = 'time'
@@ -118,7 +118,7 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
         ntleg_penalty = 100
         network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
         volumes = init_volumes(self.sm)
-        links, car_los, relgap_list = extended_roadpathfinder(
+        links, car_los, relgap_list = expanded_roadpathfinder(
             network,
             volumes,
             self.sm.zones,
@@ -135,11 +135,11 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
         )
         return links, car_los, relgap_list
 
-    def test_extended_pathfinder_flow_SHOULD_be_the_sum_of_segments(self):
+    def test_expanded_pathfinder_flow_SHOULD_be_the_sum_of_segments(self):
         self.sm.road_links['segments'] = [set(['car', 'truck']) for _ in range(len(self.sm.road_links))]
         segments = ['car', 'truck']
         self.sm.road_links.loc['rlink_4', 'segments'] = set(['car'])
-        links, car_los, relgap = self._get_extended_roadpathfinder(segments=segments, method='bfw')
+        links, car_los, relgap = self._get_expanded_roadpathfinder(segments=segments, method='bfw')
 
         flow_agg = links['flow'].values
         cols = [(seg, 'flow') for seg in segments] + ['base_flow']
@@ -147,21 +147,21 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
         for a, b in zip(flow_agg, flow_segmented):
             self.assertAlmostEqual(a, b, places=3)
 
-    def test_extended_pathfinder_with_fw_SHOULD_track_links_volumes(self):
+    def test_expanded_pathfinder_with_fw_SHOULD_track_links_volumes(self):
         self.sm.road_links['segments'] = [set(['car', 'truck']) for _ in range(len(self.sm.road_links))]
         segments = ['car', 'truck']
         self.sm.road_links.loc['rlink_4', 'segments'] = set(['car'])
         link = ['rlink_2']
-        links, car_los, relgap = self._get_extended_roadpathfinder(
+        links, car_los, relgap = self._get_expanded_roadpathfinder(
             segments=segments, method='fw', track_links_list=link
         )
         links = links.set_index('index')
         expected_flow = links.loc[link, 'flow'] - links.loc[link, 'base_flow']
         self.assertAlmostEqual(expected_flow.values[0], links.loc[link, link].values[0][0], places=3)
 
-    def test_extended_pathfinder_car_los_SHOULD_contain_all_segments(self):
+    def test_expanded_pathfinder_car_los_SHOULD_contain_all_segments(self):
         segments = ['car', 'truck']
-        links, car_los, relgap = self._get_extended_roadpathfinder(segments=segments, method='bfw')
+        links, car_los, relgap = self._get_expanded_roadpathfinder(segments=segments, method='bfw')
 
         expected_columns = ['origin', 'destination', 'path', 'segment']
         for col in expected_columns:

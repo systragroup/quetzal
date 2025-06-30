@@ -1,6 +1,6 @@
 import unittest
 
-from quetzal.engine.road_pathfinder import init_network, init_volumes, msa_roadpathfinder, extended_roadpathfinder
+from quetzal.engine.road_pathfinder import init_network, init_volumes, msa_roadpathfinder, expanded_roadpathfinder
 import pandas as pd
 from quetzal.model import stepmodel
 
@@ -98,14 +98,14 @@ class TestFrankWolfe(unittest.TestCase):
         self.assertAlmostEqual(links.loc[('a', 'm1'), 'jam_time'], links.loc[('a', 'm3'), 'jam_time'], places=0)
         self.sm.road_links['base_flow'] = 0
 
-    def _get_extended_roadpathfinder(self, maxiters=10, method='bfw'):
+    def _get_expanded_roadpathfinder(self, maxiters=10, method='bfw'):
         tolerance = 10e-6
         segments = ['car']
         time_column = 'time'
         access_time = 'time'
         network = init_network(self.sm, method, segments, time_column, access_time)
         volumes = init_volumes(self.sm)
-        links, car_los, relgap_list = extended_roadpathfinder(
+        links, car_los, relgap_list = expanded_roadpathfinder(
             network,
             volumes,
             zones=self.sm.zones,
@@ -120,27 +120,27 @@ class TestFrankWolfe(unittest.TestCase):
         )
         return links, car_los, relgap_list
 
-    def _test_extended_pathfinder_with_method(self, method):
-        links, car_los, relgap = self._get_extended_roadpathfinder(method=method)
+    def _test_expanded_pathfinder_with_method(self, method):
+        links, car_los, relgap = self._get_expanded_roadpathfinder(method=method)
         expected_flows = {('a', 'm1'): 358.329, ('a', 'm2'): 464.514, ('a', 'm3'): 177.157}
         expected_jam_time = 25.456
         for key, expected_flow in expected_flows.items():
             self.assertAlmostEqual(links.loc[key, 'flow'], expected_flow, places=0)
             self.assertAlmostEqual(links.loc[key, 'jam_time'], expected_jam_time, places=1)
 
-    def test_bfw_extended_pathfinder(self):
-        self._test_extended_pathfinder_with_method(method='bfw')
+    def test_bfw_expanded_pathfinder(self):
+        self._test_expanded_pathfinder_with_method(method='bfw')
 
-    def test_fw_extended_pathfinder(self):
-        self._test_extended_pathfinder_with_method(method='fw')
+    def test_fw_expanded_pathfinder(self):
+        self._test_expanded_pathfinder_with_method(method='fw')
 
     @unittest.skip('msa will fail affectation cause its not good')
-    def test_msa_extended_pathfinder(self):
+    def test_msa_expanded_pathfinder(self):
         self._test_msa_pathfinder_with_method(method='msa')
 
-    def test_extended_pathfinder_base_flow(self):
+    def test_expanded_pathfinder_base_flow(self):
         self.sm.road_links['base_flow'] = 100
-        links, car_los, relgap = self._get_extended_roadpathfinder(method='bfw')
+        links, car_los, relgap = self._get_expanded_roadpathfinder(method='bfw')
         expected_flows = {('a', 'm1'): 358.329, ('a', 'm2'): 464.514, ('a', 'm3'): 177.157}
         for key, expected_flow in expected_flows.items():
             self.assertNotAlmostEqual(links.loc[key, 'flow'], expected_flow, places=0)

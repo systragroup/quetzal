@@ -170,32 +170,32 @@ def get_car_los_time(car_los, links, zone_to_road, time_col='jam_time', access_t
     return car_los
 
 
-def links_to_extended_links(links_with_zone_to_road: gpd.GeoDataFrame, u_turns=False):
+def links_to_expanded_links(links_with_zone_to_road: gpd.GeoDataFrame, u_turns=False):
     df = links_with_zone_to_road.reset_index()
     df1 = df.rename(columns={'index': 'from_link', 'a': 'a1', 'b': 'b1'})
     df2 = df[['index', 'a', 'b']].rename(columns={'index': 'to_link', 'a': 'a2', 'b': 'b2'})
 
-    extended_links = pd.merge(df1, df2, left_on='b1', right_on='a2')
+    expanded_links = pd.merge(df1, df2, left_on='b1', right_on='a2')
     if not u_turns:  # remove U turn
-        extended_links = extended_links[extended_links['a1'] != extended_links['b2']].reset_index(drop=True)
+        expanded_links = expanded_links[expanded_links['a1'] != expanded_links['b2']].reset_index(drop=True)
 
     # rename, reorder, clean
-    extended_links = extended_links.rename(columns={'a1': 'from_node', 'b2': 'to_node', 'a2': 'mid_node'}).drop(
+    expanded_links = expanded_links.rename(columns={'a1': 'from_node', 'b2': 'to_node', 'a2': 'mid_node'}).drop(
         columns=['b1']
     )
-    extended_links.index.name = 'index'
-    extended_links.index = 'ex_link_' + extended_links.index.astype(str)
+    expanded_links.index.name = 'index'
+    expanded_links.index = 'ex_link_' + expanded_links.index.astype(str)
 
     def _reorder_columns(df, first=['from_link', 'to_link', 'from_node', 'mid_node', 'to_node']):
         all_cols = df.columns.tolist()
         remaining_cols = [col for col in all_cols if col not in first]
         return df[first + remaining_cols]
 
-    extended_links = _reorder_columns(extended_links)
-    return extended_links
+    expanded_links = _reorder_columns(expanded_links)
+    return expanded_links
 
 
-def extended_path_to_nodes(path: List[str], links_to_nodes_dict: Dict[str, Tuple[str, str]]) -> List[str]:
+def expanded_path_to_nodes(path: List[str], links_to_nodes_dict: Dict[str, Tuple[str, str]]) -> List[str]:
     """
     Convert a path of links to a path of nodes, removing duplicate nodes from overlaps.
     First and last elements are zones. The rest are link IDs.
@@ -215,13 +215,13 @@ def extended_path_to_nodes(path: List[str], links_to_nodes_dict: Dict[str, Tuple
     return [path[0]] + nodes + [path[-1]]
 
 
-def fix_zone_to_road(extended_links: gpd.GeoDataFrame, volumes: gpd.geodataframe) -> gpd.GeoDataFrame:
+def fix_zone_to_road(expanded_links: gpd.GeoDataFrame, volumes: gpd.geodataframe) -> gpd.GeoDataFrame:
     """
-    change zone_to_road extended links to only the zone index.
+    change zone_to_road expanded links to only the zone index.
     Usefull to do routing on zones when the graph is on links.
     Also, remove links that go through zones and zone-to-zone links.
     """
-    links = extended_links.copy()
+    links = expanded_links.copy()
     zones_set = set(volumes['origin']).union(set(volumes['destination']))
     # rename zone-to-link
     cond = links['from_node'].isin(zones_set)
@@ -397,7 +397,7 @@ def msa_roadpathfinder(
     return links, car_los, relgap_list
 
 
-def extended_roadpathfinder(
+def expanded_roadpathfinder(
     links,
     volumes,
     zones,
@@ -436,21 +436,21 @@ def extended_roadpathfinder(
     # preparation
     #
 
-    extended_links = links_to_extended_links(links, False)
-    extended_links = fix_zone_to_road(extended_links, volumes)
-    extended_links = extended_links.rename(columns={'from_link': 'a', 'to_link': 'b'})
-    extended_links = extended_links[['a', 'b', 'from_node', 'mid_node', 'to_node', 'time', 'segments']]
+    expanded_links = links_to_expanded_links(links, False)
+    expanded_links = fix_zone_to_road(expanded_links, volumes)
+    expanded_links = expanded_links.rename(columns={'from_link': 'a', 'to_link': 'b'})
+    expanded_links = expanded_links[['a', 'b', 'from_node', 'mid_node', 'to_node', 'time', 'segments']]
 
     # reindex links to sparse indexes
-    index = build_index(extended_links[['a', 'b']].values)
-    extended_links['sparse_a'] = extended_links['a'].apply(lambda x: index.get(x))
-    extended_links['sparse_b'] = extended_links['b'].apply(lambda x: index.get(x))
-    extended_links['sparse_index'] = extended_links['sparse_a']  # original link_a to add cost.
-    extended_links = extended_links.reset_index().set_index(['sparse_a', 'sparse_b'])
+    index = build_index(expanded_links[['a', 'b']].values)
+    expanded_links['sparse_a'] = expanded_links['a'].apply(lambda x: index.get(x))
+    expanded_links['sparse_b'] = expanded_links['b'].apply(lambda x: index.get(x))
+    expanded_links['sparse_index'] = expanded_links['sparse_a']  # original link_a to add cost.
+    expanded_links = expanded_links.reset_index().set_index(['sparse_a', 'sparse_b'])
 
     # turn penalties to sparse index tuple dict {(0,1): turn_penalty}
     turn_penalties = {(index[k], index[v]): turn_penalty for k, values in turn_penalties.items() for v in values}
-    extended_links['turn_penalty'] = extended_links.index.map(turn_penalties).fillna(0)
+    expanded_links['turn_penalty'] = expanded_links.index.map(turn_penalties).fillna(0)
 
     # add sparse index to links
     links['sparse_index'] = links.index.map(index)
@@ -465,10 +465,10 @@ def extended_roadpathfinder(
     # initialization time
     links['jam_time'] = jam_time(links, vdf, 'flow', time_col=time_col)
     links['jam_time'].fillna(links[time_col], inplace=True)
-    # init cost on extended Links
+    # init cost on expanded Links
     jam_time_dict = links['jam_time'].to_dict()
-    extended_links['cost'] = extended_links['sparse_index'].apply(lambda x: jam_time_dict.get(x, zone_penalty))
-    extended_links['cost'] += extended_links['turn_penalty']
+    expanded_links['cost'] = expanded_links['sparse_index'].apply(lambda x: jam_time_dict.get(x, zone_penalty))
+    expanded_links['cost'] += expanded_links['turn_penalty']
 
     # init track links aux_flow dict and flow in links
     track_links = len(track_links_list) > 0
@@ -490,7 +490,7 @@ def extended_roadpathfinder(
             segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
             odv = segment_volumes[['origin_sparse', 'destination_sparse', seg]].values
 
-            segment_links = extended_links[extended_links['segments'].apply(lambda x: seg in x)]
+            segment_links = expanded_links[expanded_links['segments'].apply(lambda x: seg in x)]
             _, pred = shortest_path(segment_links, 'cost', index, origins, num_cores=num_cores)
 
             # assign volume
@@ -552,8 +552,8 @@ def extended_roadpathfinder(
         links['jam_time'] = jam_time(links, vdf, 'flow', time_col=time_col)
         links['jam_time'].fillna(links[time_col], inplace=True)
         jam_time_dict = links['jam_time'].to_dict()
-        extended_links['cost'] = extended_links['sparse_index'].apply(lambda x: jam_time_dict.get(x, zone_penalty))
-        extended_links['cost'] += extended_links['turn_penalty']
+        expanded_links['cost'] = expanded_links['sparse_index'].apply(lambda x: jam_time_dict.get(x, zone_penalty))
+        expanded_links['cost'] += expanded_links['turn_penalty']
 
         # skip first iteration (AON asignment) as relgap in -inf
         if relgap <= tolerance:
@@ -566,7 +566,7 @@ def extended_roadpathfinder(
     for seg in segments:
         # filter links to allowed segment
         segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
-        segment_links = extended_links[extended_links['segments'].apply(lambda x: seg in x)]
+        segment_links = expanded_links[expanded_links['segments'].apply(lambda x: seg in x)]
         temp_los = get_car_los(segment_volumes, segment_links, index, origins, 'cost', num_cores)
         temp_los['segment'] = seg
         car_los = pd.concat([car_los, temp_los], ignore_index=True)
@@ -581,7 +581,7 @@ def extended_roadpathfinder(
     links = links.set_index(['a', 'b'])
     # change path of links to path of nodes
     links_to_nodes_dict = {v: k for k, v in links['index'].to_dict().items()}
-    car_los['path'] = car_los['path'].apply(lambda ls: extended_path_to_nodes(ls, links_to_nodes_dict))
+    car_los['path'] = car_los['path'].apply(lambda ls: expanded_path_to_nodes(ls, links_to_nodes_dict))
 
     # drop columns
     to_drop = ['x1', 'x2', 'result', 'new_flow', 'derivative', 'auxiliary_flow']

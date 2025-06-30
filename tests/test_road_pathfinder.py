@@ -5,7 +5,7 @@ from quetzal.engine.road_pathfinder import (
     init_volumes,
     aon_roadpathfinder,
     get_car_los_time,
-    extended_roadpathfinder,
+    expanded_roadpathfinder,
     msa_roadpathfinder,
 )
 import pandas as pd
@@ -192,7 +192,7 @@ class TestRoadPathfinder(unittest.TestCase):
         found_path = links[links[link] == 150]['index'].tolist()
         self.assertEqual(expected_link_path, found_path)
 
-    def _get_extended_roadpathfinder(self, method='bfw', track_links_list=[]):
+    def _get_expanded_roadpathfinder(self, method='bfw', track_links_list=[]):
         maxiters = 10
         tolerance = 0.01
         segments = ['car']
@@ -201,7 +201,7 @@ class TestRoadPathfinder(unittest.TestCase):
         ntleg_penalty = 100
         network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
         volumes = init_volumes(self.sm)
-        links, car_los, relgap_list = extended_roadpathfinder(
+        links, car_los, relgap_list = expanded_roadpathfinder(
             network,
             volumes,
             self.sm.zones,
@@ -218,23 +218,23 @@ class TestRoadPathfinder(unittest.TestCase):
         )
         return links, car_los, relgap_list
 
-    def test_extended_pathfinder(self):
+    def test_expanded_pathfinder(self):
         for method in ['bfw', 'msa', 'fw']:
-            links, car_los, relgap = self._get_extended_roadpathfinder(method=method)
+            links, car_los, relgap = self._get_expanded_roadpathfinder(method=method)
             expected_path_1 = ['z1', 'a', 'b', 'd', 'e', 'z2']
             self.assertEqual(car_los['path'][0], expected_path_1)
 
             expected_path_2 = ['z2', 'c', 'b', 'a', 'z1']
             self.assertEqual(car_los['path'][1], expected_path_2)
 
-    def test_extended_pathfinder_track_link(self):
+    def test_expanded_pathfinder_track_link(self):
         index_dict = self.sm.road_links.reset_index().set_index(['a', 'b'])['index'].to_dict()
 
         link = index_dict.get(('b', 'd'))
         assert self.sm.road_links.loc[link, 'a'] == 'b'
         assert self.sm.road_links.loc[link, 'b'] == 'd'
         track_links_list = [link]
-        links, car_los, relgap = self._get_extended_roadpathfinder(track_links_list=track_links_list)
+        links, car_los, relgap = self._get_expanded_roadpathfinder(track_links_list=track_links_list)
         # expected_path = ['z1', 'a', 'b', 'd', 'e', 'z2']
         expected_link_path = [*map(index_dict.get, [('a', 'b'), ('b', 'd'), ('d', 'e')])]
         found_path = links[links[link] == 150]['index'].tolist()
@@ -252,7 +252,7 @@ class TestRoadPathfinder(unittest.TestCase):
         turn_penalties = {'rlink_0': ['rlink_4']}
         network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
         volumes = init_volumes(self.sm)
-        links, car_los, relgap_list = extended_roadpathfinder(
+        links, car_los, relgap_list = expanded_roadpathfinder(
             network,
             volumes,
             self.sm.zones,

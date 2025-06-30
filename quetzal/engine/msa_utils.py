@@ -127,7 +127,7 @@ def init_ab_volumes(indexes: List[Tuple]) -> Dict[Tuple, float]:
     return numba_volumes
 
 
-def init_extended_track_volumes(base_flow: Dict[int, float], track_links_list: List[int]) -> List[Dict[int, float]]:
+def init_expanded_track_volumes(base_flow: Dict[int, float], track_links_list: List[int]) -> List[Dict[int, float]]:
     numba_volumes = base_flow.copy()
     for key in numba_volumes.keys():
         numba_volumes[key] = 0

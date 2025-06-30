@@ -10,7 +10,7 @@ from quetzal.engine.road_pathfinder import (
     init_volumes,
     aon_roadpathfinder,
     msa_roadpathfinder,
-    extended_roadpathfinder,
+    expanded_roadpathfinder,
     get_car_los_time,
 )
 from quetzal.engine.sampling import sample_od
@@ -223,7 +223,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             tolerance=0.01,
             log=False,
 
-            turn_penality for extended.
+            turn_penality for expanded.
 
         Builds
         ----------
@@ -270,7 +270,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 **kwargs,
             )
         else:
-            links, car_los, rel_gap = extended_roadpathfinder(
+            links, car_los, rel_gap = expanded_roadpathfinder(
                 network,
                 volumes,
                 zones=self.zones,
