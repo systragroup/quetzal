@@ -31,13 +31,7 @@ def convert_to_frequencies(feed, time_range, pattern_column='pattern_id', drop_u
     pattern_headways = compute_pattern_headways(feed, time_range, pattern_column)
 
     # One trip per pattern
-    to_replace_all = feed.trips.set_index('trip_id')[pattern_column].to_dict()
-    feed.trips = feed.trips.groupby(pattern_column, as_index=False).first()
-    to_replace_first = feed.trips.set_index('trip_id')[pattern_column].to_dict()
-    feed.trips['trip_id'] = feed.trips['trip_id'].replace(to_replace_first)
-
-    # Replace stop times
-    feed.stop_times['trip_id'] = feed.stop_times['trip_id'].replace(to_replace_first)
+    feed = pattern_to_trip(feed, pattern_column=pattern_column)
 
     # Replace frequencies
     frequencies = pattern_headways.reset_index().rename(columns={pattern_column: 'trip_id'})
@@ -47,6 +41,20 @@ def convert_to_frequencies(feed, time_range, pattern_column='pattern_id', drop_u
     # Clean
     feed = feed.restrict_to_trips(feed.trips.trip_id, drop_unused=drop_unused)
     # feed = feed.clean()
+    return feed
+
+
+def pattern_to_trip(feed, pattern_column='pattern_id'):
+    # replace trip_id in trips by a single pattern_id
+    # replace trip_id in stop_times with the new trip_id (pattern_id)
+
+    # One trip per pattern
+    feed.trips = feed.trips.groupby(pattern_column, as_index=False).first()
+    to_replace_first = feed.trips.set_index('trip_id')[pattern_column].to_dict()
+    feed.trips['trip_id'] = feed.trips['trip_id'].replace(to_replace_first)
+
+    # Replace stop times
+    feed.stop_times['trip_id'] = feed.stop_times['trip_id'].replace(to_replace_first)
     return feed
 
 
@@ -67,13 +75,15 @@ def compute_pattern_headways(feed, time_range, pattern_column='pattern_id'):
     # remove all trips that are already defined in frequencies
     temp_stop_times = temp_stop_times[~temp_stop_times['trip_id'].isin(temp_frequencies.trip_id)]
 
-    temp_stop_times = temp_stop_times.sort_values(
-        ['trip_id', 'stop_sequence']
-    ).groupby('trip_id').first()[
-        ['arrival_time', 'departure_time']
-    ].rename(columns={'arrival_time': 'start_time', 'departure_time': 'end_time'}).reset_index()
+    temp_stop_times = (
+        temp_stop_times.sort_values(['trip_id', 'stop_sequence'])
+        .groupby('trip_id')
+        .first()[['arrival_time', 'departure_time']]
+        .rename(columns={'arrival_time': 'start_time', 'departure_time': 'end_time'})
+        .reset_index()
+    )
     temp_stop_times['headway_secs'] = 0
-    temp_frequencies = pd.concat([temp_frequencies,temp_stop_times])
+    temp_frequencies = pd.concat([temp_frequencies, temp_stop_times])
 
     time_range_sec = [hhmmss_to_seconds_since_midnight(x) for x in time_range]
 
@@ -86,7 +96,7 @@ def compute_pattern_headways(feed, time_range, pattern_column='pattern_id'):
     return pattern_headways[['headway_secs']]
 
 
-class GTFS_frequencies_utils():
+class GTFS_frequencies_utils:
     """
     Example:
     >>> frequencies = pd.read_csv(gtfs_path + 'frequencies.txt')
@@ -96,6 +106,7 @@ class GTFS_frequencies_utils():
     --> return 300
 
     """
+
     def __init__(self, frequencies, trips):
         self.frequencies = frequencies
         self.frequencies['start_time_sec'] = self.frequencies['start_time'].apply(hhmmss_to_seconds_since_midnight)
@@ -128,9 +139,7 @@ class GTFS_frequencies_utils():
             service_ids = list(self.trips['service_id'].unique())
 
         # Get headways aggregate for the whole period, discretize with list of times
-        aggregated_headways = self.aggregate_headways_with_time(
-            trip_ids, time_range, service_ids
-        )
+        aggregated_headways = self.aggregate_headways_with_time(trip_ids, time_range, service_ids)
         # print(aggregated_headways)
         return average_headway_over_time(aggregated_headways, time_range[0], time_range[1])
 
@@ -181,10 +190,12 @@ class GTFS_frequencies_utils():
         # print('intersecting_null_timetables', intersecting_null_timetables)
 
         # Time range separation
-        time_list = list(intersecting_timetables['start_time_sec'].values) +\
-            list(intersecting_timetables['end_time_sec'].values) +\
-            list(intersecting_null_timetables['start_time_sec'].values) +\
-            list(intersecting_null_timetables['end_time_sec'].values)
+        time_list = (
+            list(intersecting_timetables['start_time_sec'].values)
+            + list(intersecting_timetables['end_time_sec'].values)
+            + list(intersecting_null_timetables['start_time_sec'].values)
+            + list(intersecting_null_timetables['end_time_sec'].values)
+        )
         time_list = list(set(time_list))
         time_list = [a for a in time_list if a > time_range[0] and a < time_range[1]]
         intervals = sorted([time_range[0]] + time_list + [time_range[1]])
@@ -203,16 +214,12 @@ class GTFS_frequencies_utils():
             headways_to_include = []
             # Taking into account not null or 0 headways
             intersecting_timetables.apply(
-                lambda x: append_headway_if_included(
-                    x, headways_to_include, [intervals[i], intervals[i + 1]]
-                ), 1
+                lambda x: append_headway_if_included(x, headways_to_include, [intervals[i], intervals[i + 1]]), 1
             )
             # Taking into account NULL or 0 headways
             # In this case, it means one vehicle starts a trip at start_time
             intersecting_null_timetables.apply(
-                lambda x: append_null_headway_if_included(
-                    x, headways_to_include, [intervals[i], intervals[i + 1]]
-                ), 1
+                lambda x: append_null_headway_if_included(x, headways_to_include, [intervals[i], intervals[i + 1]]), 1
             )
             result[intervals[i]] = compute_avg_headway(headways_to_include)
         return result
@@ -220,12 +227,12 @@ class GTFS_frequencies_utils():
 
 def hhmmss_to_seconds_since_midnight(time_int):
     """
-        Convert  HH:MM:SS into seconds since midnight.
-        For example "01:02:03" returns 3723. The leading zero of the hours may be
-        omitted. HH may be more than 23 if the time is on the following day.
-        :param time_int: HH:MM:SS string. HH may be more than 23 if the time is on the following day.
-        :return: int number of seconds since midnight
-        """
+    Convert  HH:MM:SS into seconds since midnight.
+    For example "01:02:03" returns 3723. The leading zero of the hours may be
+    omitted. HH may be more than 23 if the time is on the following day.
+    :param time_int: HH:MM:SS string. HH may be more than 23 if the time is on the following day.
+    :return: int number of seconds since midnight
+    """
     time_int = int(''.join(time_int.split(':')))
     hour = time_int // 10000
     minute = (time_int - hour * 10000) // 100
@@ -235,14 +242,14 @@ def hhmmss_to_seconds_since_midnight(time_int):
 
 def seconds_since_midnight_to_hhmmss(time_int):
     """
-        Convert  seconds since midnight into HH:MM:SS.
-        For example 3723 returns "01:02:03". Numbers higher than 86400 (24:00:00) will return
-        HH over 24 to represent the following day.
-        :param time_int: int.
-        :return: HH:MM:SS string
-        """
-    time = (time_int / 60)
-    return "{:02d}:{:02d}:{:02d}".format(floor(time / 60), int(time % 60), round(time % 1 * 60))
+    Convert  seconds since midnight into HH:MM:SS.
+    For example 3723 returns "01:02:03". Numbers higher than 86400 (24:00:00) will return
+    HH over 24 to represent the following day.
+    :param time_int: int.
+    :return: HH:MM:SS string
+    """
+    time = time_int / 60
+    return '{:02d}:{:02d}:{:02d}'.format(floor(time / 60), int(time % 60), round(time % 1 * 60))
 
 
 def compute_avg_headway(headways):
@@ -282,8 +289,7 @@ def average_headway_over_time(aggregated_headways, start_time, end_time):
             therefore ((36000-21600)*1800 + (72000-36000)*0)/(72000-21600)
     """
     # Create reduced time intervals
-    new_intervals = [time for time in aggregated_headways.keys()
-                     if time > start_time and time < end_time]
+    new_intervals = [time for time in aggregated_headways.keys() if time > start_time and time < end_time]
     new_intervals = new_intervals + [start_time, end_time]
     new_intervals = sorted(set(new_intervals))
     # Create a reduced headway aggregate over the given time range
@@ -297,26 +303,21 @@ def average_headway_over_time(aggregated_headways, start_time, end_time):
             keys = sorted(list(aggregated_headways.keys()))
             headway_found = False
             for i in range(len(keys) - 1):
-                if time > keys[i]\
-                        and time < keys[i + 1]:
-                    reduced_aggregated_headways[
-                        time] = aggregated_headways[keys[i]]
+                if time > keys[i] and time < keys[i + 1]:
+                    reduced_aggregated_headways[time] = aggregated_headways[keys[i]]
                     headway_found = True
                     break
             if not headway_found:
-                reduced_aggregated_headways[
-                    time] = aggregated_headways[keys[-1]]
+                reduced_aggregated_headways[time] = aggregated_headways[keys[-1]]
 
     # dict sort
-    reduced_aggregated_headways = collections.OrderedDict(
-        sorted(reduced_aggregated_headways.items()))
+    reduced_aggregated_headways = collections.OrderedDict(sorted(reduced_aggregated_headways.items()))
     # Now we compute the average value
     nb_trips = 0
     keys = list(reduced_aggregated_headways.keys())
     for i in range(len(reduced_aggregated_headways) - 1):
         if reduced_aggregated_headways[keys[i]]:
-            nb_trips += (keys[i + 1] - keys[i]) / \
-                reduced_aggregated_headways[keys[i]]
+            nb_trips += (keys[i + 1] - keys[i]) / reduced_aggregated_headways[keys[i]]
     if nb_trips > 0:
         averaged_headway = (end_time - start_time) / nb_trips
     else:

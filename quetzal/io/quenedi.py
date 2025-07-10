@@ -301,6 +301,7 @@ def restrict_df_to_variant(
 ) -> pd.DataFrame | gpd.GeoDataFrame:
     variant_cols = [col for col in df.columns if col.endswith(f'#{variant}')]
     name_dict = {col: col.split('#')[0] for col in variant_cols}
+    df = df.drop(columns=name_dict.values(), errors='ignore')  # remove non variant base value if exist
     df = df.rename(columns=name_dict)
     to_drop = [col for col in df.columns if '#' in col]
     df = df.drop(columns=to_drop)
