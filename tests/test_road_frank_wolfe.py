@@ -12,7 +12,9 @@ zones.index.name = 'index'
 volumes = pd.DataFrame({'origin': ['p'], 'destination': ['q'], 'car': [1000]})
 volumes.index.name = 'index'
 
-zone_to_road = pd.DataFrame({'a': ['p', 'b'], 'b': ['a', 'q'], 'time': [10, 10], 'length': [10, 10]})
+zone_to_road = pd.DataFrame(
+    {'a': ['p', 'b'], 'b': ['a', 'q'], 'time': [10, 10], 'length': [10, 10], 'direction': ['access', 'eggress']}
+)
 zone_to_road.index = 'zr_' + zone_to_road.index.astype(str)
 zone_to_road.index.name = 'index'
 

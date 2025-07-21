@@ -18,6 +18,7 @@ zone_to_road = pd.DataFrame(
         'b': ['a', 'z1', 'z2', 'e', 'c'],
         'time': [100, 100, 100, 100, 100],
         'length': [10, 10, 10, 10, 10],
+        'direction': ['access', 'eggress', 'eggress', 'access', 'access'],
     }
 )
 zone_to_road.index = 'zr_' + zone_to_road.index.astype(str)

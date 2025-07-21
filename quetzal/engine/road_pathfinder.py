@@ -36,6 +36,8 @@ def init_network(
     )
     assert time_col in road_links.columns, f'time_column: {time_col} not found in road_links.'
     aon = method == 'aon'
+
+    test_zone_to_road_network(road_links, zone_to_road)
     zone_to_road = zone_to_road_preparation(zone_to_road, segments, time_col, access_time, ntleg_penalty, aon, log)
     # create DataFrame with road_links and zone to road
     network = concat_connectors_to_roads(road_links, zone_to_road, segments, time_col, aon, log)
@@ -61,12 +63,31 @@ def init_volumes(sm, od_set=None):
         volumes['volume'] = 0
 
     assert len(volumes) > 0
-    test_zone_to_road(volumes, sm.zone_to_road)
+    test_zone_to_road_volumes(volumes, sm.zone_to_road)
 
     return volumes
 
 
-def test_zone_to_road(volumes, zone_to_road):
+def test_zone_to_road_network(road_links, zone_to_road):
+    """
+    test that all nodes in zone_to_road are in the road_links
+    """
+    assert 'direction' in zone_to_road, 'need direction with {access | eggress} in zone_to_road'
+
+    access_nodes = set(zone_to_road[zone_to_road['direction'] == 'access']['b'])
+    eggress_nodes = set(zone_to_road[zone_to_road['direction'] == 'eggress']['a'])
+
+    nodes_set = set(road_links['a']).union(set(road_links['b']))
+
+    if not access_nodes.issubset(nodes_set):
+        missing_nodes = access_nodes - nodes_set
+        raise ValueError('access: Some road_nodes in zone_to_road are missing in road_links', missing_nodes)
+    if not eggress_nodes.issubset(nodes_set):
+        missing_nodes = eggress_nodes - nodes_set
+        raise ValueError('eggress: Some road_nodes in zone_to_road are missing in road_links', missing_nodes)
+
+
+def test_zone_to_road_volumes(volumes, zone_to_road):
     zone_to_road_set = set(zone_to_road['a']).union(set(zone_to_road['b']))
     volumes_set = set(volumes['origin']).union(set(volumes['destination']))
     # check if all zones in volumes_set are in zone_to_road_set

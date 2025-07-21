@@ -25,7 +25,7 @@ zone_to_road = pd.DataFrame(
         'b': ['a', 'z1', 'z2', 'e', 'c'],
         'time': [100, 100, 100, 100, 100],
         'length': [10, 10, 10, 10, 10],
-        #'direction': ['access', 'access', 'eggress', 'eggress', 'access'],
+        'direction': ['access', 'eggress', 'eggress', 'access', 'access'],
     }
 )
 zone_to_road.index = 'zr_' + zone_to_road.index.astype(str)
@@ -173,6 +173,15 @@ class TestRoadPathfinder(unittest.TestCase):
     def test_msa_pathfinder(self):
         for method in ['bfw', 'msa', 'fw']:
             links, car_los, relgap = self._get_msa_roadpathfinder(method=method)
+            expected_path_1 = ['z1', 'a', 'b', 'd', 'e', 'z2']
+            self.assertEqual(car_los['path'][0], expected_path_1)
+
+            expected_path_2 = ['z2', 'c', 'b', 'a', 'z1']
+            self.assertEqual(car_los['path'][1], expected_path_2)
+
+    def test_msa_pathfinder_0(self):
+        for method in ['bfw', 'msa', 'fw']:
+            links, car_los, relgap = self._get_msa_roadpathfinder(method=method, maxiters=0)
             expected_path_1 = ['z1', 'a', 'b', 'd', 'e', 'z2']
             self.assertEqual(car_los['path'][0], expected_path_1)
 
