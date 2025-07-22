@@ -1,9 +1,9 @@
 
 
 
-declare AWS_ECR_REPO_NAME=quetzal-gtfs-api
-declare AWS_LAMBDA_FUNCTION_NAME=quetzal-gtfs-api
-declare FOLDER_NAME=GTFS_importer
+declare AWS_ECR_REPO_NAME=quetzal-matrixroadcaster-api-dev
+declare AWS_LAMBDA_FUNCTION_NAME=quetzal-matrixroadcaster-api-dev
+declare FOLDER_NAME=ML_MatrixRoadCaster
 declare QUETZAL_ROOT=../..
 
 
