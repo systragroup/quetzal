@@ -5,9 +5,8 @@ from tqdm import tqdm
 
 from quetzal.engine import engine
 from quetzal.engine.graph_utils import combine_edges, expand_path
-from quetzal.engine.pathfinder_utils import los_from_graph, adjacency_matrix
 from quetzal.engine.pathfinder_utils import paths_from_edges, link_edge_array, sparse_matrix_with_access_penalty
-from quetzal.engine.pathfinder_utils import get_first_and_last, get_all, pruned_matrix,efficient_od_sets
+from quetzal.engine.pathfinder_utils import get_first_and_last, get_all, pruned_matrix, efficient_od_sets
 
 
 class PublicPathFinder:
@@ -25,14 +24,14 @@ class PublicPathFinder:
                 to_concat.append(model.footpaths)
             except AttributeError:
                 pass
-            self.footpaths = pd.concat([df[['a','b', 'time']] for df in to_concat])
+            self.footpaths = pd.concat([df[['a', 'b', 'time']] for df in to_concat])
 
             to_concat = [model.zone_to_road]
             try:
                 to_concat.append(model.zone_to_transit)
             except AttributeError:
                 pass
-            self.ntlegs = pd.concat([df[['a','b', 'time']] for df in to_concat])
+            self.ntlegs = pd.concat([df[['a', 'b', 'time']] for df in to_concat])
 
         else:
             self.footpaths = model.footpaths.copy()
@@ -42,9 +41,7 @@ class PublicPathFinder:
             self.centroids = model.centroids.copy()
         except AttributeError:
             self.centroids = self.zones.copy()
-            self.centroids['geometry'] = self.centroids['geometry'].apply(
-                lambda g: g.centroid
-            )
+            self.centroids['geometry'] = self.centroids['geometry'].apply(lambda g: g.centroid)
 
     def first_link(self, path):
         for n in path:
@@ -55,14 +52,11 @@ class PublicPathFinder:
         for n in reversed(path):
             if n in self.links.index:
                 return n
-            
+
     def build_best_paths_sets(self, column='route_id', first_and_last_only=False):
         link_dict = self.links[column].to_dict()
         getter = get_first_and_last if first_and_last_only else get_all
-        self.best_paths[column + '_set'] = [
-            getter(path, link_dict) 
-            for path in self.best_paths['path']
-        ]
+        self.best_paths[column + '_set'] = [getter(path, link_dict) for path in self.best_paths['path']]
 
     def build_route_id_sets(self, first_and_last_only=False):
         self.build_best_paths_sets(column='route_id', first_and_last_only=first_and_last_only)
@@ -70,41 +64,38 @@ class PublicPathFinder:
     def build_route_type_sets(self, first_and_last_only=False):
         self.build_best_paths_sets(column='route_type', first_and_last_only=first_and_last_only)
 
-
     def build_od_sets(self, split_factor=0, verbose=False, drop_empty_sets=True):
         self.combinations = {
-            column: {frozenset(broken) for broken in combinations} 
-            for column, combinations in self.combinations.items()
+            column: {frozenset(broken) for broken in combinations} for column, combinations in self.combinations.items()
         }
         self.od_sets = dict()
         self.splitted_od_sets = dict()
         for column, combinations in self.combinations.items():
-
             od_set = {
                 combination: {
                     (o, d)
-                    for o, d, s in self.best_paths[['origin', 'destination', column + '_set']].values 
+                    for o, d, s in self.best_paths[['origin', 'destination', column + '_set']].values
                     if s.intersection(combination)
-                } for combination in self.combinations[column]
+                }
+                for combination in self.combinations[column]
             }
 
             if drop_empty_sets:
-                # Drop combinations if OD set is empty 
+                # Drop combinations if OD set is empty
                 relevant_combinations = []
-                for combination in combinations :
+                for combination in combinations:
                     if len(od_set[combination]) > 0:
                         relevant_combinations.append(combination)
                 self.combinations[column] = relevant_combinations
-                od_set = {k:v for k,v in od_set.items() if len(v)}
+                od_set = {k: v for k, v in od_set.items() if len(v)}
 
             self.od_sets[column] = od_set
             self.splitted_od_sets[column] = {k: (v, set()) for k, v in od_set.items()}
 
             self.splitted_od_sets[column] = {
-                c : efficient_od_sets(od_set, factor=split_factor, verbose=verbose) 
+                c: efficient_od_sets(od_set, factor=split_factor, verbose=verbose)
                 for c, od_set in self.od_sets[column].items()
             }
-
 
     def build_route_zones(self, route_column):
         """
@@ -119,8 +110,7 @@ class PublicPathFinder:
         right = self.links[[route_column]]
 
         merged = pd.merge(los, right, left_on='first_link', right_index=True)
-        merged = pd.merge(merged, right, left_on='last_link', right_index=True,
-            suffixes = ['_first', '_last'])
+        merged = pd.merge(merged, right, left_on='last_link', right_index=True, suffixes=['_first', '_last'])
 
         first = merged[['origin', route_column + '_first']]
         first.columns = ['zone', 'route']
@@ -142,11 +132,7 @@ class PublicPathFinder:
         boolean_array = list(itertools.product((True, False), repeat=len(mode_list)))
         mode_combinations = []
         for booleans in boolean_array:
-            combination = {
-                mode_list[i]
-                for i in range(len(mode_list))
-                if booleans[i]
-            }
+            combination = {mode_list[i] for i in range(len(mode_list)) if booleans[i]}
             mode_combinations.append(combination)
         self.mode_combinations = mode_combinations
 
@@ -158,9 +144,8 @@ class PublicPathFinder:
         build_shortcuts=False,
         keep_matrix=False,
         verbose=False,
-        num_cores=1
+        num_cores=1,
     ):
-
         link_e = link_edge_array(self.links, boarding_time)
         footpaths_e = self.footpaths[['a', 'b', 'time']].values
         ntlegs_e = self.ntlegs[['a', 'b', 'time']].values
@@ -171,39 +156,53 @@ class PublicPathFinder:
         if build_shortcuts:
             keep = {o for o, d in od_set}.union({d for o, d in od_set})
             e, s = combine_edges(edges, keep=keep)
-            los = paths_from_edges(edges=e, od_set=od_set, cutoff=cutoff, log=True,num_cores=num_cores)
+            los = paths_from_edges(edges=e, od_set=od_set, cutoff=cutoff, log=True, num_cores=num_cores)
             los['path'] = [expand_path(p, shortcuts=s) for p in los['path']]
         else:
             # Get the Best path
-            los = paths_from_edges(edges=edges, od_set=od_set, cutoff=cutoff, csgraph=self.csgraph, node_index=self.node_index, log=verbose,num_cores=num_cores)
+            los = paths_from_edges(
+                edges=edges,
+                od_set=od_set,
+                cutoff=cutoff,
+                csgraph=self.csgraph,
+                node_index=self.node_index,
+                log=verbose,
+                num_cores=num_cores,
+            )
 
         los['pathfinder_session'] = 'best_path'
         los['reversed'] = False
         self.best_paths = los.rename(columns={'length': 'gtime'})
-    
-    def find_broken_combination_paths(
-        self, column=None, prune=True,
-        cutoff=np.inf, build_shortcuts=False,
-        boarding_time=None, od_set=None, reuse_matrix=True,
-        log=False, keep_matrix=False, num_cores=1
-    ):
 
+    def find_broken_combination_paths(
+        self,
+        column=None,
+        prune=True,
+        cutoff=np.inf,
+        build_shortcuts=False,
+        boarding_time=None,
+        od_set=None,
+        reuse_matrix=True,
+        log=False,
+        keep_matrix=False,
+        num_cores=1,
+    ):
         def get_task(column, combination, od_set=None):
             od_sets = self.splitted_od_sets[column][combination] if od_set is None else (od_set, set())
             return (column, combination, od_sets)
-        
+
         csgraph, node_index, pcsgraph, pnode_index, edges = None, None, None, None, None
 
-        if reuse_matrix :
+        if reuse_matrix:
             if self.csgraph is None:
                 link_e = link_edge_array(self.links, boarding_time)
                 footpaths_e = self.footpaths[['a', 'b', 'time']].values
                 ntlegs_e = self.ntlegs[['a', 'b', 'time']].values
                 edges = np.concatenate([link_e, footpaths_e, ntlegs_e])
                 csgraph, node_index = sparse_matrix_with_access_penalty(edges, sources=self.zones.index)
-            else :
+            else:
                 csgraph, node_index = self.csgraph, self.node_index
-            
+
         if column is not None:
             combinations = [(column, combination) for combination in self.combinations[column]]
         else:
@@ -215,7 +214,7 @@ class PublicPathFinder:
         to_concat = []
         for column, combination, od_sets in iterator:
             iterator.desc = column + ' ' + str(set(combination))
-            
+
             to_prune = set(self.links.index[self.links[column].isin(combination)])
             links = self.links.drop(to_prune)
             footpaths = self.footpaths
@@ -223,13 +222,13 @@ class PublicPathFinder:
 
             if prune:
                 removed_nodes = set(self.links['a']).union(self.links['b']) - set(links['a']).union(links['b'])
-                removed_footpaths = set(footpaths.index[
-                    (~footpaths['a'].isin(removed_nodes)) & (~footpaths['b'].isin(removed_nodes))
-                ])
+                removed_footpaths = set(
+                    footpaths.index[(~footpaths['a'].isin(removed_nodes)) & (~footpaths['b'].isin(removed_nodes))]
+                )
                 footpaths = footpaths.drop(removed_footpaths)
-                removed_ntlegs = set(ntlegs.index[
-                    (~ntlegs['a'].isin(removed_nodes)) & (~ntlegs['b'].isin(removed_nodes))
-                ])
+                removed_ntlegs = set(
+                    ntlegs.index[(~ntlegs['a'].isin(removed_nodes)) & (~ntlegs['b'].isin(removed_nodes))]
+                )
                 ntlegs = ntlegs.drop(removed_ntlegs)
                 to_prune = to_prune.union(removed_nodes).union(removed_footpaths).union(removed_ntlegs)
 
@@ -256,16 +255,32 @@ class PublicPathFinder:
                     o_los = paths_from_edges(edges=e, od_set=o_od_set, cutoff=cutoff, log=log, num_cores=num_cores)
                     o_los['path'] = [expand_path(p, shortcuts=s) for p in o_los['path']]
                 else:
-                    o_los = paths_from_edges(edges=edges, od_set=o_od_set, cutoff=cutoff, csgraph=pcsgraph, node_index=pnode_index, log=log, num_cores=num_cores)
+                    o_los = paths_from_edges(
+                        edges=edges,
+                        od_set=o_od_set,
+                        cutoff=cutoff,
+                        csgraph=pcsgraph,
+                        node_index=pnode_index,
+                        log=log,
+                        num_cores=num_cores,
+                    )
                 o_los['reversed'] = False
-                
+
             # DLOS backward search
             if len(d_od_set):
                 if build_shortcuts:
                     d_los = paths_from_edges(edges=e, od_set=d_od_set, cutoff=cutoff, log=log, num_cores=num_cores)
                     d_los['path'] = [expand_path(p, shortcuts=s) for p in d_los['path']]
                 else:
-                    d_los = paths_from_edges(edges=edges, od_set=d_od_set, cutoff=cutoff, csgraph=pcsgraph, node_index=pnode_index, log=log, num_cores=num_cores)
+                    d_los = paths_from_edges(
+                        edges=edges,
+                        od_set=d_od_set,
+                        cutoff=cutoff,
+                        csgraph=pcsgraph,
+                        node_index=pnode_index,
+                        log=log,
+                        num_cores=num_cores,
+                    )
                 d_los['reversed'] = True
                 # CONCAT
                 los = pd.concat([o_los, d_los])
@@ -292,7 +307,7 @@ class PublicPathFinder:
         boarding_time=None,
         verbose=True,
         num_cores=1,
-        **kwargs
+        **kwargs,
     ):
         if od_set is None:
             pole_set = set(self.zones.index)
@@ -305,19 +320,19 @@ class PublicPathFinder:
             verbose=verbose,
             keep_matrix=True,
             num_cores=num_cores,
-            **kwargs
+            **kwargs,
         )  # builds the graph
 
         self.combinations = dict()
-         
+
         # BUILD OD SETS
         if broken_modes:
             # BUILD ALL MODE COMBINATIONS
             mode_combinations = [set()]
             modes = set(self.links[mode_column])
             for mode in modes:
-                mode_combinations += [s.union({mode}) for s in mode_combinations] 
-            self.combinations[mode_column] = mode_combinations[1:] # remove empty set
+                mode_combinations += [s.union({mode}) for s in mode_combinations]
+            self.combinations[mode_column] = mode_combinations[1:]  # remove empty set
             self.build_best_paths_sets(column=mode_column, first_and_last_only=False)
 
         if broken_routes:
@@ -332,27 +347,40 @@ class PublicPathFinder:
         # FIND BROKEN ROUTES
         self.broken_route_paths = pd.DataFrame()
         if broken_routes:
-            self.find_broken_combination_paths(column='route_id', cutoff=cutoff, build_shortcuts=False, prune=False, reuse_matrix=True, keep_matrix=True, log=verbose, num_cores=num_cores)
+            self.find_broken_combination_paths(
+                column='route_id',
+                cutoff=cutoff,
+                build_shortcuts=False,
+                prune=False,
+                reuse_matrix=True,
+                keep_matrix=True,
+                log=verbose,
+                num_cores=num_cores,
+            )
             self.broken_route_paths = self.broken_combination_paths
-            self.broken_route_paths['pathfinder_session'] = 'route_breaker' 
+            self.broken_route_paths['pathfinder_session'] = 'route_breaker'
             self.broken_route_paths['broken_route'] = self.broken_route_paths['broken_' + route_column].apply(
                 lambda s: list(s)[0]
-            ) # we assume only one route is broken at a time
+            )  # we assume only one route is broken at a time
 
-        # FIND BROKEN PATHS
+        # FIND BROKEN PATHS
         self.broken_mode_paths = pd.DataFrame()
         if broken_modes:
-            self.find_broken_combination_paths(column='route_type', cutoff=cutoff, build_shortcuts=False, prune=False, reuse_matrix=True, log=verbose, keep_matrix=True, num_cores=num_cores)
+            self.find_broken_combination_paths(
+                column='route_type',
+                cutoff=cutoff,
+                build_shortcuts=False,
+                prune=False,
+                reuse_matrix=True,
+                log=verbose,
+                keep_matrix=True,
+                num_cores=num_cores,
+            )
             self.broken_mode_paths = self.broken_combination_paths
             self.broken_mode_paths['pathfinder_session'] = 'mode_breaker'
             self.broken_mode_paths['broken_modes'] = self.broken_mode_paths['broken_' + mode_column].apply(set)
 
-        self.paths = pd.concat([
-            self.best_paths,
-            self.broken_mode_paths, 
-            self.broken_route_paths, 
-            ]
-        )
+        self.paths = pd.concat([self.best_paths, self.broken_mode_paths, self.broken_route_paths])
         self.paths['path'] = [tuple(p) for p in self.paths['path']]
         self.paths.loc[self.paths['origin'] == self.paths['destination'], ['gtime']] = 0.0
 
