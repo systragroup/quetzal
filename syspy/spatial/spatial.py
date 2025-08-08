@@ -1,6 +1,7 @@
 """
 This module provides tools for spatial analysis.
 """
+
 __author__ = 'qchasserieau'
 
 import warnings
@@ -14,7 +15,7 @@ import shapely.geometry.polygon
 import shapely.geometry.point
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from shapely.ops import polygonize
-from sklearn.cluster import AgglomerativeClustering, KMeans
+from sklearn.cluster import AgglomerativeClustering, KMeans, DBSCAN
 from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
 from typing import Tuple
@@ -27,23 +28,17 @@ from pyproj import Transformer
 def bounds(df):
     """Return a DataFrame of minx, miny, maxx, maxy of each geometry."""
     bounds = np.array([geom.bounds for geom in df.geometry])
-    return pd.DataFrame(
-        bounds,
-        columns=['minx', 'miny', 'maxx', 'maxy'],
-        index=df.index)
+    return pd.DataFrame(bounds, columns=['minx', 'miny', 'maxx', 'maxy'], index=df.index)
 
 
 def total_bounds(df):
-    """Return bounding box (minx, miny, maxx, maxy) of all geometries. """
+    """Return bounding box (minx, miny, maxx, maxy) of all geometries."""
     b = bounds(df)
-    return (b['minx'].min(),
-            b['miny'].min(),
-            b['maxx'].max(),
-            b['maxy'].max())
+    return (b['minx'].min(), b['miny'].min(), b['maxx'].max(), b['maxy'].max())
 
 
 def add_centroid(zones_shp):
-    """Returns a DataFrame with centroid attributes from a zonig pandas.DataFrame """
+    """Returns a DataFrame with centroid attributes from a zonig pandas.DataFrame"""
     zones = zones_shp.copy()
 
     zones['centroid_geometry'] = zones['geometry'].apply(lambda g: g.centroid)
@@ -65,9 +60,10 @@ def od_matrix(zones, centroids=False):
 
     od['geometry'] = od[['origin', 'destination']].apply(
         lambda r: shapely.geometry.LineString(
-            [_zones.loc[r['origin'], 'centroid_geometry'],
-             _zones.loc[r['destination'], 'centroid_geometry']]
-        ), axis=1)
+            [_zones.loc[r['origin'], 'centroid_geometry'], _zones.loc[r['destination'], 'centroid_geometry']]
+        ),
+        axis=1,
+    )
     return od
 
 
@@ -88,11 +84,7 @@ def buffer_until_polygon(g, b=1e-6, step=5):
     if type(g) == shapely.geometry.polygon.Polygon:
         return g
     else:
-        return buffer_until_polygon(
-            simplify_then_buffer(g, b),
-            b * step,
-            step
-        )
+        return buffer_until_polygon(simplify_then_buffer(g, b), b * step, step)
 
 
 def zone_clusters(
@@ -101,7 +93,7 @@ def zone_clusters(
     buffer=None,
     cluster_column=None,
     geo_union_method=union_geometry,
-    geo_join_method=lambda g: g.convex_hull
+    geo_join_method=lambda g: g.convex_hull,
 ):
     n_clusters = min(n_clusters, len(zones))
 
@@ -125,49 +117,49 @@ def zone_clusters(
     return clusters, cluster_series
 
 
-def agglomerative_clustering(
-    stops,
-    distance_threshold=150,
-    **kwargs
-):
+def agglomerative_clustering(stops, distance_threshold=150, **kwargs):
     """
     Stops must be in a metric cartesian coordinate system.
     """
     df = gpd.GeoDataFrame(stops).copy()
     df['x'] = df.geometry.x
     df['y'] = df.geometry.y
-    c = AgglomerativeClustering(
-        n_clusters=None,
-        distance_threshold=distance_threshold,
-        **kwargs
-    ).fit(df[['x', 'y']].values)
+    c = AgglomerativeClustering(n_clusters=None, distance_threshold=distance_threshold, **kwargs).fit(
+        df[['x', 'y']].values
+    )
     return c.labels_
+
+
+def DBSCAN_sclustering(stops, distance_threshold=150, min_samples=1, metric='haversine', **kwargs):
+    df = gpd.GeoDataFrame(stops).copy()
+    df['x'] = df.geometry.x
+    df['y'] = df.geometry.y
+
+    db = DBSCAN(eps=distance_threshold, min_samples=min_samples, metric=metric, **kwargs)
+    labels = db.fit_predict(df[['x', 'y']].values)
+    return labels
 
 
 def linestring_geometry(dataframe, point_dict, from_point, to_point):
     df = dataframe.copy()
 
     def geometry(row):
-        return shapely.geometry.linestring.LineString(
-            (point_dict[row[from_point]], point_dict[row[to_point]]))
+        return shapely.geometry.linestring.LineString((point_dict[row[from_point]], point_dict[row[to_point]]))
+
     return df.apply(geometry, axis=1)
 
 
 def _join_geometry(link_row, one, many):
-    return shapely.geometry.LineString(
-        [
-            one[link_row['ix_one']],
-            many[link_row['ix_many']]
-        ]
-    )
+    return shapely.geometry.LineString([one[link_row['ix_one']], many[link_row['ix_many']]])
+
 
 def add_geometry_coordinates(df, columns=['x_geometry', 'y_geometry'], to_crs=None):
-    '''
+    """
     get centroid and split geometry into 2 columns ['x_geometry', 'y_geometry'].
     parameters
     to_crs: (int)
         convert geometry to this crs. (this is faster than gpd.to_crs() method.)
-    '''
+    """
     df = df.copy()
     centroids = df['geometry']
     # if the geometry is not a point... get centroids.
@@ -180,15 +172,15 @@ def add_geometry_coordinates(df, columns=['x_geometry', 'y_geometry'], to_crs=No
         centroids = centroids.apply(lambda g: g.centroid)
 
     df[columns[0]], df[columns[1]] = zip(*centroids.apply(lambda g: g.coords[0]))
-    
+
     if to_crs is not None:
         from_crs = df.crs
         if from_crs != to_crs:
             # pyproj takes [y,x] and return [x,y]. however. if from_crs == to_crs. it return [y,x].
             # so we do not apply this function if to_crs == from_crs.
             transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
-            df[columns[0]], df[columns[1]]  = transformer.transform(df[columns[0]].values, df[columns[1]].values)
-        
+            df[columns[0]], df[columns[1]] = transformer.transform(df[columns[0]].values, df[columns[1]].values)
+
     return df
 
 
@@ -215,18 +207,13 @@ def nearest(one, many, geometry=False, n_neighbors=1, to_crs=None):
 
     to_concat = []
     for i in range(n_neighbors):
-
-        links = pd.merge(index_one, pd.DataFrame(
-            indices[:, i], columns=['index_nn']), left_index=True, right_index=True)
+        links = pd.merge(
+            index_one, pd.DataFrame(indices[:, i], columns=['index_nn']), left_index=True, right_index=True
+        )
 
         links = pd.merge(links, index_many, left_on='index_nn', right_index=True)
 
-        links = pd.merge(
-            links,
-            pd.DataFrame(distances[:, i], columns=['distance']),
-            left_index=True,
-            right_index=True
-        )
+        links = pd.merge(links, pd.DataFrame(distances[:, i], columns=['distance']), left_index=True, right_index=True)
         links['rank'] = i
         to_concat.append(links)
 
@@ -238,6 +225,7 @@ def nearest(one, many, geometry=False, n_neighbors=1, to_crs=None):
         links['geometry'] = links.apply(lambda r: _join_geometry(r, one_dict, many_dict), axis=1)
 
     return links
+
 
 def nearest_radius(one, many, radius=1, to_crs=None):
     try:
@@ -266,36 +254,20 @@ def nearest_radius(one, many, radius=1, to_crs=None):
     df['distance'] = df['distance'].astype(float)
 
     df = pd.merge(df, index_many, left_on='index_nn', right_index=True)
-    
+
     return df[['ix_one', 'ix_many', 'distance', 'rank']]
-    
 
-def nearest_geometry(
-    one,
-    many,
-    geometry=False,
-    n_neighbors=1,
-    n_neighbors_centroid=10
-):
 
+def nearest_geometry(one, many, geometry=False, n_neighbors=1, n_neighbors_centroid=10):
     one = pd.DataFrame(one).copy()
     many = pd.DataFrame(many).copy()
     one_centroid = pd.DataFrame(one).copy()
     many_centroid = pd.DataFrame(many).copy()
 
-    one_centroid['geometry'] = one_centroid['geometry'].apply(
-        lambda g: g.centroid
-    )
-    many_centroid['geometry'] = many_centroid['geometry'].apply(
-        lambda g: g.centroid
-    )
+    one_centroid['geometry'] = one_centroid['geometry'].apply(lambda g: g.centroid)
+    many_centroid['geometry'] = many_centroid['geometry'].apply(lambda g: g.centroid)
 
-    actual_nearest = nearest(
-        one_centroid,
-        many_centroid,
-        n_neighbors=n_neighbors_centroid,
-        geometry=geometry
-    )
+    actual_nearest = nearest(one_centroid, many_centroid, n_neighbors=n_neighbors_centroid, geometry=geometry)
 
     one_geometry_dict = one['geometry'].to_dict()
     many_geometry_dict = many['geometry'].to_dict()
@@ -304,24 +276,11 @@ def nearest_geometry(
         return dict_a[ix_a].distance(dict_b[ix_b])
 
     actual_nearest['actual_distance'] = [
-        actual_distance(
-            one_geometry_dict,
-            many_geometry_dict,
-            ix_one,
-            ix_many
-        )
-
-        for ix_one, ix_many
-        in tqdm(
-            actual_nearest[['ix_one', 'ix_many']].values,
-            'nearest_link'
-        )
+        actual_distance(one_geometry_dict, many_geometry_dict, ix_one, ix_many)
+        for ix_one, ix_many in tqdm(actual_nearest[['ix_one', 'ix_many']].values, 'nearest_link')
     ]
 
-    actual_nearest.sort_values(
-        ['ix_one', 'actual_distance'],
-        inplace=True
-    )
+    actual_nearest.sort_values(['ix_one', 'actual_distance'], inplace=True)
 
     ranks = list(range(n_neighbors_centroid)) * len(one)
     actual_nearest['actual_rank'] = ranks
@@ -334,17 +293,14 @@ def zones_in_influence_area(zones, area=None, links=None, cut_buffer=0.02):
         area = union_links.buffer(cut_buffer)
 
     zone_dict = zones.to_dict(orient='index')
-    keep = {
-        key: value for key, value in zone_dict.items()
-        if value['geometry'].intersects(area)
-    }
+    keep = {key: value for key, value in zone_dict.items() if value['geometry'].intersects(area)}
     return pd.DataFrame(keep).T.reset_index(drop=True)
 
 
-def voronoi_diagram_dataframes(points: pd.Series)-> Tuple[gpd.GeoDataFrame, pd.DataFrame]:
+def voronoi_diagram_dataframes(points: pd.Series) -> Tuple[gpd.GeoDataFrame, pd.DataFrame]:
     """take series of geometry (ex: zones['geometry'])."""
-    assert isinstance(points, pd.Series), "points should be a series."
-    assert points.index.duplicated().sum() == 0, "Index must not be duplicated"
+    assert isinstance(points, pd.Series), 'points should be a series.'
+    assert points.index.duplicated().sum() == 0, 'Index must not be duplicated'
 
     items = list(dict(points).items())
     key_dict = {}
@@ -365,10 +321,7 @@ def voronoi_diagram_dataframes(points: pd.Series)-> Tuple[gpd.GeoDataFrame, pd.D
     index_dict = nearest(polygon_dataframe, gpd.GeoDataFrame(points)).set_index('ix_one')['ix_many'].to_dict()
     polygon_dataframe.index = polygon_dataframe.index.map(index_dict.get)
 
-    ridge_dataframe = pd.DataFrame(
-        ridges,
-        columns=['a', 'b', 'geometry']
-    )
+    ridge_dataframe = pd.DataFrame(ridges, columns=['a', 'b', 'geometry'])
 
     ridge_dataframe['a'] = ridge_dataframe['a'].apply(lambda x: key_dict[x])
     ridge_dataframe['b'] = ridge_dataframe['b'].apply(lambda x: key_dict[x])
@@ -384,102 +337,89 @@ def voronoi_diagram(points, plot=False, size=None, method='box'):
 
     size = size if size else pow(g.area, 0.5)
     buffer = g.buffer(size)
-    points_and_bound = points + [
-        shapely.geometry.point.Point(c)
-        for c in buffer.boundary.coords
-    ][:-1]
+    points_and_bound = points + [shapely.geometry.point.Point(c) for c in buffer.boundary.coords][:-1]
 
     vor = Voronoi([list(g.coords)[0] for g in points_and_bound])
 
-    lines = [
-        shapely.geometry.LineString(vor.vertices[line])
-        for line in vor.ridge_vertices
-        if -1 not in line
-    ]
+    lines = [shapely.geometry.LineString(vor.vertices[line]) for line in vor.ridge_vertices if -1 not in line]
 
-    polygons = [
-        poly.intersection(g.buffer(size / 10))
-        for poly in polygonize(lines)
-    ]
+    polygons = [poly.intersection(g.buffer(size / 10)) for poly in polygonize(lines)]
 
     if plot:
         voronoi_plot_2d(vor)
 
     ridges = pd.DataFrame(vor.ridge_points, columns=['a', 'b'])
     ridges = ridges[(ridges['a'] < len(points)) & (ridges['b'] < len(points))]
-    ridges['geometry'] = ridges.apply(
-        lambda r: shapely.geometry.LineString([points[r['a']], points[r['b']]]),
-        axis=1
-    )
+    ridges['geometry'] = ridges.apply(lambda r: shapely.geometry.LineString([points[r['a']], points[r['b']]]), axis=1)
     return polygons, ridges[['a', 'b', 'geometry']].values.tolist()
 
 
 @jit(nopython=True)
-def fast_point_in_polygon(x: float, y: float , poly: np.ndarray) -> bool:
+def fast_point_in_polygon(x: float, y: float, poly: np.ndarray) -> bool:
     n = len(poly)
     inside = False
     p2x = 0.0
     p2y = 0.0
     xints = 0.0
-    p1x,p1y = poly[0]
-    for i in nb.prange(n+1):
-        p2x,p2y = poly[i % n]
-        if y > min(p1y,p2y):
-            if y <= max(p1y,p2y):
-                if x <= max(p1x,p2x):
+    p1x, p1y = poly[0]
+    for i in nb.prange(n + 1):
+        p2x, p2y = poly[i % n]
+        if y > min(p1y, p2y):
+            if y <= max(p1y, p2y):
+                if x <= max(p1x, p2x):
                     if p1y != p2y:
-                        xints = (y-p1y)*(p2x-p1x)/(p2y-p1y)+p1x
+                        xints = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
                     if p1x == p2x or x <= xints:
                         inside = not inside
-        p1x,p1y = p2x,p2y
-        
+        p1x, p1y = p2x, p2y
+
     return inside
 
 
-
 @njit(parallel=True)
-def fast_points_in_polygon(points:np.ndarray, polygon:np.ndarray) -> np.ndarray:
-    D = np.empty(len(points), dtype=nb.boolean) 
+def fast_points_in_polygon(points: np.ndarray, polygon: np.ndarray) -> np.ndarray:
+    D = np.empty(len(points), dtype=nb.boolean)
     for i in nb.prange(0, len(points)):
-        D[i] = fast_point_in_polygon(points[i,0], points[i,1], polygon)
+        D[i] = fast_point_in_polygon(points[i, 0], points[i, 1], polygon)
     return np.where(D)[0]
 
 
-def points_in_polygon(points:np.ndarray, polygon:gpd.GeoDataFrame) -> np.ndarray:
-    '''
+def points_in_polygon(points: np.ndarray, polygon: gpd.GeoDataFrame) -> np.ndarray:
+    """
     return a list of point in the polygon. values are the index in the points array.
-    
+
     points:np.array[np.array[float,float]]
         list of all the points coords (x,y)
     polygon: gpd.GeoDataFrame
         geodataframe of multiples polygons.
-    '''
+    """
     try:
         poly = np.array([*polygon.exterior.coords])
-        return fast_points_in_polygon(points,poly)
+        return fast_points_in_polygon(points, poly)
     except:
-        res=np.array([])
-        #polygon = polygon.geoms
+        res = np.array([])
+        # polygon = polygon.geoms
         for i in range(len(polygon)):
             poly = np.array([*polygon[i].exterior.coords])
-            val =fast_points_in_polygon(points,poly)
-            res = np.append(res,val)
+            val = fast_points_in_polygon(points, poly)
+            res = np.append(res, val)
         return res
-
 
 
 def plot_lineStrings(gdf, ax, **kwargs):
     # quickly plot a gpd.GeoDataframe. given an ax (fig, ax = plt.subplots())
     # kwargs for matplotlib plot classic kwargs.
     from matplotlib.collections import LineCollection
-    geometries = gdf['geometry'].apply(lambda g:[pts for pts in g.coords]).values
-    line_segments = LineCollection(geometries,**kwargs)
+
+    geometries = gdf['geometry'].apply(lambda g: [pts for pts in g.coords]).values
+    line_segments = LineCollection(geometries, **kwargs)
     ax.add_collection(line_segments)
     ax.autoscale()
+
 
 def plot_points(gdf, ax, **kwargs):
     # quickly plot a gpd.GeoDataframe. given an ax (fig, ax = plt.subplots())
     # kwargs for matplotlib plot classic kwargs.
     xy = gdf['geometry'].map(lambda point: point.xy)
     x, y = zip(*xy)
-    ax.scatter(x,y,**kwargs)
+    ax.scatter(x, y, **kwargs)

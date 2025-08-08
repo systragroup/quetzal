@@ -2,7 +2,7 @@ import geopandas as gpd
 import networkx as nx
 import pandas as pd
 import shapely
-from shapely.ops import cascaded_union
+from shapely.ops import unary_union
 from syspy.spatial import polygons, spatial
 from syspy.syspy_utils import neighbors, pandas_utils, syscolors
 from tqdm import tqdm
@@ -35,8 +35,7 @@ def compute_coverage_layer(layer, buffer, extensive_cols=[]):
 
     # Drop row with null areas
     layer_in_buffer_exploded.drop(
-        layer_in_buffer_exploded[layer_in_buffer_exploded['area_intersected'] == 0].index,
-        inplace=True
+        layer_in_buffer_exploded[layer_in_buffer_exploded['area_intersected'] == 0].index, inplace=True
     )
 
     # Recompute extensive columns values
@@ -55,9 +54,7 @@ def merge_zonings(background, foreground, min_area_factor=0.01, min_area=None):
     back = background.copy()
     front = foreground.copy()
 
-    stencil = shapely.geometry.MultiPolygon(
-        list(front['geometry'])
-    ).buffer(1e-9)
+    stencil = shapely.geometry.MultiPolygon(list(front['geometry'])).buffer(1e-9)
 
     back['geometry'] = back['geometry'].apply(lambda g: g.difference(stencil))
     back['geometry'] = polygons.biggest_polygons(list(back['geometry']))
@@ -74,20 +71,12 @@ def merge_zonings(background, foreground, min_area_factor=0.01, min_area=None):
 
     columns = ['zoning', 'id', 'geometry']
 
-    concatenated = pd.concat(
-        [back[columns], front[columns]]
-    )
+    concatenated = pd.concat([back[columns], front[columns]])
 
     df = concatenated
 
     zones = list(df['geometry'])
-    clean_zones = polygons.clean_zoning(
-        zones,
-        buffer=1e-4,
-        fill_buffer=2e-3,
-        fill_gaps=False,
-        unite_gaps=True
-    )
+    clean_zones = polygons.clean_zoning(zones, buffer=1e-4, fill_buffer=2e-3, fill_gaps=False, unite_gaps=True)
     df['geometry'] = clean_zones
     return df.reset_index(drop=True)
 
@@ -141,7 +130,7 @@ def cluster_snail_number(zones, n_clusters=20, centre=None, buffer=10):
     df['index'] = zones.index
 
     if centre is None:
-        union = cascaded_union(df.geometry).buffer(buffer)
+        union = unary_union(df.geometry).buffer(buffer)
         centre = union.centroid
 
     # Snail clusterize
@@ -156,7 +145,7 @@ def cluster_snail_number(zones, n_clusters=20, centre=None, buffer=10):
     to_concat = []
     for cluster in set(df['cluster_snail']):
         temp_df = df.loc[df['cluster_snail'] == cluster]
-        temp_centre = cascaded_union(temp_df.geometry).centroid
+        temp_centre = unary_union(temp_df.geometry).centroid
         temp_snail = snail_number(temp_df, temp_centre)
         temp_df['snail'] = temp_snail
         to_concat.append(temp_df)
@@ -164,11 +153,7 @@ def cluster_snail_number(zones, n_clusters=20, centre=None, buffer=10):
     concat = pd.concat(to_concat)
     concat = concat.sort_values(['cluster_snail', 'snail']).reset_index(drop=True)
     concat = concat.reset_index().rename(
-        columns={
-            'level_0': 'id',
-            'cluster_snail': 'cluster',
-            'index': 'original_index'
-        }
+        columns={'level_0': 'id', 'cluster_snail': 'cluster', 'index': 'original_index'}
     )
     ids = concat.set_index('original_index')['id']
     clusters = concat.set_index('original_index')['cluster']
@@ -185,15 +170,13 @@ def greedy_color(zoning, colors=syscolors.rainbow_shades, buffer=1e-6):
 
     g = nx.Graph()
     g.add_edges_from(edges)
-    d = nx.coloring.greedy_color(
-        g,
-        strategy=nx.coloring.strategy_largest_first
-    )
+    d = nx.coloring.greedy_color(g, strategy=nx.coloring.strategy_largest_first)
 
     color_list = list(colors)
 
     def index_to_color(index):
         return color_list[index]
+
     return pd.Series(d).apply(index_to_color)
 
 
@@ -211,22 +194,14 @@ def intersection_area(geoa, geob):
 def intersection_area_matrix(x_geometries, y_geometries):
     array = []
     for g in tqdm(x_geometries, desc=str(len(y_geometries))):
-        array.append(
-            [
-                intersection_area(y_geometry, g)
-                for y_geometry in y_geometries
-            ]
-        )
+        array.append([intersection_area(y_geometry, g) for y_geometry in y_geometries])
     return array
 
 
 def intersection_area_dataframe(front, back):
     front.index.name = 'front_index'
     back.index.name = 'back_index'
-    ia_matrix = intersection_area_matrix(
-        list(front['geometry']),
-        list(back['geometry'])
-    )
+    ia_matrix = intersection_area_matrix(list(front['geometry']), list(back['geometry']))
 
     df = pd.DataFrame(ia_matrix)
     df.index = front.index
@@ -270,16 +245,9 @@ def concatenate_back_columns_to_front(front, back, intensive, extensive):
     df = intersection_area_dataframe(front, back)
     apply_series = pd.Series(front.index, index=front.index)
 
-    intensive_dataframe = apply_series.apply(
-        lambda z: share_extensive_columns(z, back, df, intensive)
-    )
-    extensive_dataframe = apply_series.apply(
-        lambda z: share_extensive_columns(z, back, df, extensive)
-    )
-    return pd.concat(
-        [front, intensive_dataframe, extensive_dataframe],
-        axis=1
-    )
+    intensive_dataframe = apply_series.apply(lambda z: share_extensive_columns(z, back, df, intensive))
+    extensive_dataframe = apply_series.apply(lambda z: share_extensive_columns(z, back, df, extensive))
+    return pd.concat([front, intensive_dataframe, extensive_dataframe], axis=1)
 
 
 def normalize_columns(df):
@@ -288,11 +256,7 @@ def normalize_columns(df):
     return normalized
 
 
-def share_od_extensive_columns(
-    od_dataframe,
-    intersection_dataframe,
-    extensive_columns
-):
+def share_od_extensive_columns(od_dataframe, intersection_dataframe, extensive_columns):
     normalized = normalize_columns(intersection_dataframe)
     # series (front, back) -> normalized_intersection
     stack = normalized.stack()
@@ -312,30 +276,18 @@ def share_od_extensive_columns(
     share_stack.name = 'shares'
     share_stack = share_stack.reset_index()
 
-    pool = od_dataframe.rename(
-        columns={
-            'origin': 'back_index_origin',
-            'destination': 'back_index_destination'
-        }
-    )
+    pool = od_dataframe.rename(columns={'origin': 'back_index_origin', 'destination': 'back_index_destination'})
 
     # we expen the od_dataframe by mergint it on the shares
-    merged = pd.merge(
-        pool,
-        share_stack,
-        on=['back_index_origin', 'back_index_destination']
-    )
+    merged = pd.merge(pool, share_stack, on=['back_index_origin', 'back_index_destination'])
     print(len(merged))
 
     # we reduce merged by grouping it by front indexes,
     # multiplying each row by its' share
     shared = merged.copy()
-    shared[extensive_columns] = shared[extensive_columns].apply(
-        lambda c: c * shared['shares'])
+    shared[extensive_columns] = shared[extensive_columns].apply(lambda c: c * shared['shares'])
 
-    grouped = shared.groupby(
-        ['front_index_origin', 'front_index_destination'],
-    )
+    grouped = shared.groupby(['front_index_origin', 'front_index_destination'])
     extensive_sums = grouped[extensive_columns].sum()
     extensive_sums.index.names = ['origin', 'destination']
 
