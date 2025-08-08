@@ -10,9 +10,12 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import shapely
+from shapely import geometry
+
 import shapely.geometry.linestring
 import shapely.geometry.polygon
 import shapely.geometry.point
+from shapely.ops import unary_union as u2
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from shapely.ops import polygonize
 from sklearn.cluster import AgglomerativeClustering, KMeans, DBSCAN
@@ -404,6 +407,51 @@ def points_in_polygon(points: np.ndarray, polygon: gpd.GeoDataFrame) -> np.ndarr
             val = fast_points_in_polygon(points, poly)
             res = np.append(res, val)
         return res
+
+
+def _coords(g):
+    ls = list(g.coords)
+    a, b = ls[0], ls[-1]
+    xa, ya = a
+    xb, yb = b
+    return [xa, xb, ya, yb]
+
+
+def get_links_hull(links: gpd.GeoDataFrame, tolerance: float = 1e-2) -> geometry.Polygon:
+    # return tight envelop around links (not convex hull)
+    # NOTE: cluster before.
+    # sm.preparation_clusterize_nodes(distance_threshold=n * tolerance)
+    links = links.loc[links['a'] != links['b']]
+    df = pd.DataFrame(
+        data=list(links['geometry'].apply(_coords).values), index=links.index, columns=['xa', 'xb', 'ya', 'yb']
+    )
+    df['length'] = np.sqrt(np.power(df['yb'] - df['ya'], 2) + np.power(df['xb'] - df['xa'], 2))
+
+    df['nx'] = (df['yb'] - df['ya']) / df['length'] * tolerance
+    df['ny'] = (df['xb'] - df['xa']) / df['length'] * tolerance
+    df['xc'] = df['xa'] + df['nx']
+    df['yc'] = df['ya'] + df['ny']
+    df['xd'] = df['xb'] + df['nx']
+    df['yd'] = df['yb'] + df['ny']
+    df['xe'] = df['xa'] - df['nx']
+    df['ye'] = df['ya'] - df['ny']
+    df['xf'] = df['xb'] - df['nx']
+    df['yf'] = df['yb'] - df['ny']
+    df[['xc', 'yc', 'xd', 'yd', 'xe', 'ye', 'xf', 'yf']]
+    df['c'] = [tuple(v) for v in df[['xc', 'yc']].values]
+    df['d'] = [tuple(v) for v in df[['xd', 'yd']].values]
+    df['e'] = [tuple(v) for v in df[['xe', 'ye']].values]
+    df['f'] = [tuple(v) for v in df[['xf', 'yf']].values]
+    df['rectangle'] = [geometry.Polygon(points) for points in df[['c', 'd', 'f', 'e']].values]
+    united = u2(list(df['rectangle']))
+
+    return (
+        united.simplify(tolerance)
+        .buffer(tolerance)
+        .buffer(2 * tolerance)
+        .buffer(-2 * tolerance)
+        .simplify(tolerance / 2)
+    )
 
 
 def plot_lineStrings(gdf, ax, **kwargs):
