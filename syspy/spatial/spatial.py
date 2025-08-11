@@ -133,7 +133,7 @@ def agglomerative_clustering(stops, distance_threshold=150, **kwargs):
     return c.labels_
 
 
-def DBSCAN_sclustering(stops, distance_threshold=150, min_samples=1, metric='haversine', **kwargs):
+def DBSCAN_sclustering(stops, distance_threshold=150, min_samples=1, metric='euclidean', **kwargs):
     df = gpd.GeoDataFrame(stops).copy()
     df['x'] = df.geometry.x
     df['y'] = df.geometry.y
