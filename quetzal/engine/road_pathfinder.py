@@ -9,9 +9,9 @@ from quetzal.engine.msa_utils import (
     assign_volume,
     jam_time,
     find_phi,
+    find_beta,
     get_bfw_auxiliary_flow,
-    assign_tracked_volume,
-    assign_tracked_volumes_on_links_parallel,
+    assign_tracked_volumes_parallel,
     shortest_path,
     init_numba_volumes,
     assign_volume_on_links,
@@ -311,15 +311,17 @@ def msa_roadpathfinder(
     # initialization
     links['jam_time'] = jam_time(links, vdf, 'flow', time_col=time_col)
     links['jam_time'].fillna(links[time_col], inplace=True)
-    # init track links aux_flow dict and flow in links
-    track_links = len(track_links_list) > 0
-    if track_links:
-        print('tracked volumes may be inconsistent when using bfw') if method == 'bfw' else None
-        _tmp_dict = links[links['index'].isin(track_links_list)]['index'].to_dict()
-        track_links_index_dict = {v: k for k, v in _tmp_dict.items()}
-        track_links_list = [*map(track_links_index_dict.get, track_links_list)]
-        tracked_df = pd.DataFrame(index=links.index)
-        tracked_df[[str(idx) for idx in track_links_list]] = 0
+
+    # init track links
+    _tmp_dict = links[links['index'].isin(track_links_list)]['index'].to_dict()
+    sparse_to_links = {v: k for k, v in _tmp_dict.items()}
+    tracker = LinksTracker(
+        track_links_list=track_links_list,
+        links_index=links.index,
+        index_dict=index,
+        column_dict=sparse_to_links,
+        path='road_pathfinder',
+    )
 
     relgap = np.inf
     relgap_list = []
@@ -329,21 +331,19 @@ def msa_roadpathfinder(
         #
         # Routing and assignment
         #
-        if track_links:
-            tracked_volumes = {tup: ab_volumes.copy() for tup in track_links_list}
 
         for seg in segments:
             segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
             odv = segment_volumes[['origin_sparse', 'destination_sparse', seg]].values
 
             segment_links = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
-            _, predecessors = shortest_path(segment_links, 'jam_time', index, origins, num_cores=num_cores)
+            _, pred = shortest_path(segment_links, 'jam_time', index, origins, num_cores=num_cores)
 
-            links[(seg, 'auxiliary_flow')] = assign_volume(odv, predecessors, ab_volumes.copy())
+            links[(seg, 'auxiliary_flow')] = assign_volume(odv, pred, ab_volumes.copy())
 
-            if track_links:
-                for idx in track_links_list:
-                    tracked_volumes[idx] = assign_tracked_volume(odv, predecessors, tracked_volumes[idx], idx)
+            if tracker():
+                tracker.assign_volume_on_links(ab_volumes, odv, pred, seg)
+
         flow_cols = [(seg, 'auxiliary_flow') for seg in segments] + ['base_flow']
         links['auxiliary_flow'] = links[flow_cols].sum(axis=1)
         #
@@ -351,9 +351,12 @@ def msa_roadpathfinder(
         #
         if i == 0:
             phi = 1  # first iteration is AON
+            beta = [1, 0, 0]
         elif method == 'bfw':  # if biconjugate: takes the 2 last direction
             links['derivative'] = get_derivative(links, vdf, h=0.001, flow_col='flow', time_col=time_col)
-            links = get_bfw_auxiliary_flow(links, i, phi, segments)
+            if i > 2:
+                beta = find_beta(links, phi, segments)  # this is the previous phi (phi_-1)
+            links = get_bfw_auxiliary_flow(links, i, beta, segments)
             links['auxiliary_flow'] = links[flow_cols].sum(axis=1)
             max_phi = 1 / i**0.5  # limit search space
             phi = find_phi(links, vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
@@ -370,9 +373,6 @@ def msa_roadpathfinder(
         flow_cols = [(seg, 'flow') for seg in segments] + ['base_flow']
         links['flow'] = links[flow_cols].sum(axis=1)
 
-        if track_links:
-            for idx in track_links_list:
-                tracked_df[str(idx)] = (1 - phi) * tracked_df[str(idx)] + (phi * pd.Series(tracked_volumes[idx]))
         #
         # Get relGap. Skip first iteration (AON and relgap = -inf)
         #
@@ -380,6 +380,10 @@ def msa_roadpathfinder(
             relgap = get_relgap(links)
             relgap_list.append(relgap)
             print(f'{i:2}  |  {phi:.3f}  |  {relgap:.8f} ') if log else None
+
+        if tracker():
+            tracker.add_weights(phi, beta, relgap, i)
+            tracker.save(it=i)
 
         #
         # Update Time on links
@@ -402,10 +406,6 @@ def msa_roadpathfinder(
         temp_los['segment'] = seg
         car_los = pd.concat([car_los, temp_los], ignore_index=True)
 
-    if track_links:  # rename with original indexes
-        rename_dict = {str(v): k for k, v in track_links_index_dict.items()}
-        tracked_df = tracked_df.rename(columns=rename_dict)
-        links = pd.merge(links, tracked_df, left_index=True, right_index=True, how='left')
     links = links.set_index(['a', 'b'])  # go back to original indexes
 
     # drop columns
@@ -416,6 +416,69 @@ def msa_roadpathfinder(
     links = links.drop(columns=to_drop, errors='ignore')
 
     return links, car_los, relgap_list
+
+
+from quetzal.io.hdf_io import to_zippedpickle
+import os
+
+
+class LinksTracker:
+    def __init__(
+        self,
+        track_links_list: List[str],
+        links_index: List,
+        index_dict: Dict[str, int],
+        column_dict: Dict[str, int],
+        path: str = 'road_pathfinder',
+    ):
+        self.links_index = links_index
+        self.sparse_links_list = [*map(column_dict.get, track_links_list)]
+        self.reversed_index_dict = {v: k for k, v in index_dict.items()}
+        self.reversed_column_dict = {v: k for k, v in column_dict.items()}
+        # export data
+        self.weights = pd.DataFrame()
+        self.info = pd.DataFrame()
+        self.tracked_df: Dict[str, pd.DataFrame] = {}
+        self.path = path
+        if not os.path.exists(path) & self():  # __call__()
+            os.makedirs(path)
+
+    def __call__(self) -> bool:  # when calling the instance. check if we track links or no.
+        return len(self.sparse_links_list) > 0
+
+    def init_df(self) -> pd.DataFrame:
+        return pd.DataFrame(index=self.links_index, columns=self.sparse_links_list).fillna(0)
+
+    def assign_volume_on_links(self, ab_volumes, odv, pred, seg):
+        volumes = [ab_volumes.copy() for _ in self.sparse_links_list]
+        volumes = assign_tracked_volumes_parallel(odv, pred, volumes, self.sparse_links_list)
+        self.add_volumes(volumes, seg)
+
+    def add_volumes(self, volumes, seg):
+        df = self.init_df()
+        for link_index, vols in zip(self.sparse_links_list, volumes):
+            df[link_index] = vols
+        self.tracked_df[seg] = df
+
+    def add_weights(self, phi, beta, relgap, it):
+        new_line = pd.DataFrame([{'iteration': it, 'phi': phi, 'beta': beta, 'relgap': relgap}])
+        self.weights = pd.concat([self.weights, new_line], ignore_index=True)
+
+    def add_file_info(self, seg, name, it):
+        new_line = pd.DataFrame([{'iteration': it, 'segment': seg, 'file': name}])
+        self.info = pd.concat([self.info, new_line], ignore_index=True)
+
+    def save(self, it):
+        for seg, df in self.tracked_df.items():
+            df = df.rename(index=self.reversed_index_dict, columns=self.reversed_column_dict)
+            df.index.name = 'index'
+            name = f'tracked_volume_{seg}_{it}.zippedpickle'
+            to_zippedpickle(df, os.path.join(self.path, name))
+            self.add_file_info(seg, name, it)
+
+        self.weights.to_csv(os.path.join(self.path, 'weights.csv'), index=False)
+        self.info.to_csv(os.path.join(self.path, 'info.csv'), index=False)
+        self.tracked_df = {}
 
 
 def expanded_roadpathfinder(
@@ -491,12 +554,14 @@ def expanded_roadpathfinder(
     expanded_links['cost'] = expanded_links['sparse_index'].apply(lambda x: jam_time_dict.get(x, zone_penalty))
     expanded_links['cost'] += expanded_links['turn_penalty']
 
-    # init track links aux_flow dict and flow in links
-    track_links = len(track_links_list) > 0
-    if track_links:
-        print('tracked volumes may be inconsistent when using bfw') if method == 'bfw' else None
-        track_links_list = [*map(index.get, track_links_list)]
-        tracked_df = pd.DataFrame(index=links.index, columns=track_links_list).fillna(0)
+    # init track links
+    tracker = LinksTracker(
+        track_links_list=track_links_list,
+        links_index=links.index,
+        index_dict=index,
+        column_dict=index,
+        path='road_pathfinder',
+    )
 
     relgap = np.inf
     relgap_list = []
@@ -513,14 +578,10 @@ def expanded_roadpathfinder(
 
             segment_links = expanded_links[expanded_links['segments'].apply(lambda x: seg in x)]
             _, pred = shortest_path(segment_links, 'cost', index, origins, num_cores=num_cores)
-
             # assign volume
             links[(seg, 'auxiliary_flow')] = assign_volume_on_links(odv, pred, ab_volumes.copy())
-            if track_links:
-                tracked_volumes = [ab_volumes.copy() for _ in track_links_list]
-                tracked_volumes = assign_tracked_volumes_on_links_parallel(odv, pred, tracked_volumes, track_links_list)
-                for idx, vols in zip(track_links_list, tracked_volumes):
-                    tracked_df[(idx, seg, 'aux_flow')] = vols
+            if tracker():
+                tracker.assign_volume_on_links(ab_volumes, odv, pred, seg)
 
         auxiliary_flow_cols = [(seg, 'auxiliary_flow') for seg in segments] + ['base_flow']
         links['auxiliary_flow'] = links[auxiliary_flow_cols].sum(axis=1)  # for phi and relgap
@@ -531,9 +592,13 @@ def expanded_roadpathfinder(
 
         if i == 0:
             phi = 1  # first iteration is AON
+            beta = [1, 0, 0]
         elif method == 'bfw':  # if biconjugate: takes the 2 last direction
             links['derivative'] = get_derivative(links, vdf, h=0.001, flow_col='flow', time_col=time_col)
-            links = get_bfw_auxiliary_flow(links, i, phi, segments)
+            if i > 2:
+                beta = find_beta(links, phi, segments)  # this is the previous phi (phi_-1)
+            links = get_bfw_auxiliary_flow(links, i, beta, segments)
+
             links['auxiliary_flow'] = links[auxiliary_flow_cols].sum(axis=1)
             max_phi = 1 / i**0.5  # limit search space
             phi = find_phi(links, vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
@@ -553,10 +618,6 @@ def expanded_roadpathfinder(
         flow_cols = [(seg, 'flow') for seg in segments] + ['base_flow']
         links['flow'] = links[flow_cols].sum(axis=1)
 
-        if track_links:
-            for idx in track_links_list:
-                aux_flow = tracked_df[[(idx, seg, 'aux_flow') for seg in segments]].sum(axis=1)
-                tracked_df[idx] = (1 - phi) * tracked_df[idx] + (phi * aux_flow)
         #
         # Get relGap. Skip first iteration (AON and relgap = -inf)
         #
@@ -565,6 +626,10 @@ def expanded_roadpathfinder(
             relgap = get_relgap(links)
             relgap_list.append(relgap)
             print(f'{i:2}  |  {phi:.3f}  |  {relgap:.8f} ') if log else None
+
+        if tracker():
+            tracker.add_weights(phi, beta, relgap, i)
+            tracker.save(it=i)
 
         #
         # Update Time on links
@@ -591,12 +656,6 @@ def expanded_roadpathfinder(
         temp_los = get_car_los(segment_volumes, segment_links, index, origins, 'cost', num_cores)
         temp_los['segment'] = seg
         car_los = pd.concat([car_los, temp_los], ignore_index=True)
-
-    if track_links:  # put tracked flow as columns in links
-        reversed_index = {v: k for k, v in index.items()}
-        tracked_df = tracked_df[track_links_list]  # drop aux_flow columns
-        tracked_df = tracked_df.rename(columns=reversed_index)
-        links = pd.merge(links, tracked_df, left_index=True, right_index=True, how='left')
 
     # go back to original indexes
     links = links.set_index(['a', 'b'])

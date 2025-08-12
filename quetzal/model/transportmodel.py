@@ -293,9 +293,9 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             volume_dict = links[(seg, 'flow')].to_dict()
             self.road_links[(seg, 'flow')] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
 
-        for idx in track_links_list:
-            volume_dict = links[idx].to_dict()
-            self.road_links[f'flow_{idx}'] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
+        # for idx in track_links_list:
+        #     volume_dict = links[idx].to_dict()
+        #     self.road_links[f'flow_{idx}'] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
 
         car_los = get_car_los_time(car_los, self.road_links, self.zone_to_road, 'jam_time', 'time')
         self.car_los = car_los
