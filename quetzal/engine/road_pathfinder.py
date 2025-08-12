@@ -3,6 +3,7 @@ import geopandas as gpd
 import pandas as pd
 
 from quetzal.engine.pathfinder_utils import build_index, get_path
+from quetzal.engine.msa_plugins import LinksTracker
 from quetzal.engine.msa_utils import (
     get_derivative,
     init_ab_volumes,
@@ -11,7 +12,6 @@ from quetzal.engine.msa_utils import (
     find_phi,
     find_beta,
     get_bfw_auxiliary_flow,
-    assign_tracked_volumes_parallel,
     shortest_path,
     init_numba_volumes,
     assign_volume_on_links,
@@ -416,69 +416,6 @@ def msa_roadpathfinder(
     links = links.drop(columns=to_drop, errors='ignore')
 
     return links, car_los, relgap_list
-
-
-from quetzal.io.hdf_io import to_zippedpickle
-import os
-
-
-class LinksTracker:
-    def __init__(
-        self,
-        track_links_list: List[str],
-        links_index: List,
-        index_dict: Dict[str, int],
-        column_dict: Dict[str, int],
-        path: str = 'road_pathfinder',
-    ):
-        self.links_index = links_index
-        self.sparse_links_list = [*map(column_dict.get, track_links_list)]
-        self.reversed_index_dict = {v: k for k, v in index_dict.items()}
-        self.reversed_column_dict = {v: k for k, v in column_dict.items()}
-        # export data
-        self.weights = pd.DataFrame()
-        self.info = pd.DataFrame()
-        self.tracked_df: Dict[str, pd.DataFrame] = {}
-        self.path = path
-        if not os.path.exists(path) & self():  # __call__()
-            os.makedirs(path)
-
-    def __call__(self) -> bool:  # when calling the instance. check if we track links or no.
-        return len(self.sparse_links_list) > 0
-
-    def init_df(self) -> pd.DataFrame:
-        return pd.DataFrame(index=self.links_index, columns=self.sparse_links_list).fillna(0)
-
-    def assign_volume_on_links(self, ab_volumes, odv, pred, seg):
-        volumes = [ab_volumes.copy() for _ in self.sparse_links_list]
-        volumes = assign_tracked_volumes_parallel(odv, pred, volumes, self.sparse_links_list)
-        self.add_volumes(volumes, seg)
-
-    def add_volumes(self, volumes, seg):
-        df = self.init_df()
-        for link_index, vols in zip(self.sparse_links_list, volumes):
-            df[link_index] = vols
-        self.tracked_df[seg] = df
-
-    def add_weights(self, phi, beta, relgap, it):
-        new_line = pd.DataFrame([{'iteration': it, 'phi': phi, 'beta': beta, 'relgap': relgap}])
-        self.weights = pd.concat([self.weights, new_line], ignore_index=True)
-
-    def add_file_info(self, seg, name, it):
-        new_line = pd.DataFrame([{'iteration': it, 'segment': seg, 'file': name}])
-        self.info = pd.concat([self.info, new_line], ignore_index=True)
-
-    def save(self, it):
-        for seg, df in self.tracked_df.items():
-            df = df.rename(index=self.reversed_index_dict, columns=self.reversed_column_dict)
-            df.index.name = 'index'
-            name = f'tracked_volume_{seg}_{it}.zippedpickle'
-            to_zippedpickle(df, os.path.join(self.path, name))
-            self.add_file_info(seg, name, it)
-
-        self.weights.to_csv(os.path.join(self.path, 'weights.csv'), index=False)
-        self.info.to_csv(os.path.join(self.path, 'info.csv'), index=False)
-        self.tracked_df = {}
 
 
 def expanded_roadpathfinder(

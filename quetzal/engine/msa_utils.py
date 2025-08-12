@@ -184,28 +184,3 @@ def init_numba_volumes(indexes: List[int]) -> Dict[int, float]:
     for key in indexes:
         numba_volumes[key] = 0
     return numba_volumes
-
-
-@nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)
-def assign_tracked_volumes_parallel(odv, predecessors, volumes_list, key_list):
-    for i in nb.prange(len(key_list)):
-        assign_tracked_volume(odv, predecessors, volumes_list[i], key_list[i])
-    return volumes_list
-
-
-@nb.njit(locals={'predecessors': nb.int32[:, ::1]})  # parallel=> not thread safe. do not!
-def assign_tracked_volume(odv, predecessors, volumes, track_index):
-    # volumes is a numba dict with all the key initialized
-    is_tuple = isinstance(track_index, tuple)
-    for i in range(len(odv)):
-        origin = odv[i, 0]
-        destination = odv[i, 1]
-        v = odv[i, 2]
-        if v > 0:
-            path = get_node_path(predecessors, origin, destination)
-            if is_tuple:  # not expanded: we have tuple (a,b). else its a sparse index (link directly)
-                path = list(zip(path[:-1], path[1:]))
-            if track_index in path:
-                for key in path:
-                    volumes[key] += v
-    return volumes
