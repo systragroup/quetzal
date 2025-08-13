@@ -8,6 +8,7 @@ from quetzal.engine.road_pathfinder import (
     expanded_roadpathfinder,
     msa_roadpathfinder,
 )
+from quetzal.engine.msa_plugins import LinksTracker
 import pandas as pd
 from quetzal.model import stepmodel
 
@@ -147,7 +148,7 @@ class TestRoadPathfinder(unittest.TestCase):
         self.assertEqual(car_los['time'][0], 207)
         self.assertEqual(car_los['time'][1], 206)
 
-    def _get_msa_roadpathfinder(self, maxiters=10, method='bfw', track_links_list=[]):
+    def _get_msa_roadpathfinder(self, maxiters=10, method='bfw', **kwargs):
         tolerance = 0.01
         segments = ['car']
         time_column = 'time'
@@ -163,10 +164,10 @@ class TestRoadPathfinder(unittest.TestCase):
             vdf=vdf,
             maxiters=maxiters,
             tolerance=tolerance,
-            track_links_list=track_links_list,
             log=False,
             time_col=time_column,
             num_cores=num_cores,
+            **kwargs,
         )
         return links, car_los, relgap_list
 
@@ -194,14 +195,16 @@ class TestRoadPathfinder(unittest.TestCase):
         link = index_dict.get(('b', 'd'))
         assert self.sm.road_links.loc[link, 'a'] == 'b'
         assert self.sm.road_links.loc[link, 'b'] == 'd'
-        track_links_list = [link]
-        links, car_los, relgap = self._get_msa_roadpathfinder(track_links_list=track_links_list)
+        tracker_plugin = LinksTracker([link])
+        links, car_los, relgap = self._get_msa_roadpathfinder(tracker_plugin=tracker_plugin)
         # expected_path = ['z1', 'a', 'b', 'd', 'e', 'z2']
         expected_link_path = [*map(index_dict.get, [('a', 'b'), ('b', 'd'), ('d', 'e')])]
-        found_path = links[links[link] == 150]['index'].tolist()
+        merged = tracker_plugin.merge()['car']
+        found_path = merged[merged[link] == 150].index.tolist()
+
         self.assertEqual(expected_link_path, found_path)
 
-    def _get_expanded_roadpathfinder(self, method='bfw', track_links_list=[]):
+    def _get_expanded_roadpathfinder(self, method='bfw', **kwargs):
         maxiters = 10
         tolerance = 0.01
         segments = ['car']
@@ -219,11 +222,11 @@ class TestRoadPathfinder(unittest.TestCase):
             maxiters=maxiters,
             tolerance=tolerance,
             vdf=vdf,
-            track_links_list=track_links_list,
             log=False,
             time_col=time_column,
             zone_penalty=ntleg_penalty,
             num_cores=num_cores,
+            **kwargs,
         )
         return links, car_los, relgap_list
 
@@ -242,11 +245,14 @@ class TestRoadPathfinder(unittest.TestCase):
         link = index_dict.get(('b', 'd'))
         assert self.sm.road_links.loc[link, 'a'] == 'b'
         assert self.sm.road_links.loc[link, 'b'] == 'd'
-        track_links_list = [link]
-        links, car_los, relgap = self._get_expanded_roadpathfinder(track_links_list=track_links_list)
+        tracker_plugin = LinksTracker([link])
+        links, car_los, relgap = self._get_expanded_roadpathfinder(tracker_plugin=tracker_plugin)
         # expected_path = ['z1', 'a', 'b', 'd', 'e', 'z2']
         expected_link_path = [*map(index_dict.get, [('a', 'b'), ('b', 'd'), ('d', 'e')])]
-        found_path = links[links[link] == 150]['index'].tolist()
+
+        merged = tracker_plugin.merge()['car']
+        found_path = merged[merged[link] == 150].index.tolist()
+
         self.assertEqual(expected_link_path, found_path)
 
     def _get_turn_penality_roadpathfinder(self):
@@ -274,7 +280,6 @@ class TestRoadPathfinder(unittest.TestCase):
             time_col=time_column,
             zone_penalty=ntleg_penalty,
             turn_penalty=turn_penalty,
-            track_links_list=[],
             turn_penalties=turn_penalties,
             num_cores=num_cores,
         )

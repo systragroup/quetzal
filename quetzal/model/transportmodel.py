@@ -13,6 +13,7 @@ from quetzal.engine.road_pathfinder import (
     expanded_roadpathfinder,
     get_car_los_time,
 )
+from quetzal.engine.msa_plugins import LinksTracker
 from quetzal.engine.sampling import sample_od
 from quetzal.model import model, optimalmodel, parkridemodel
 from syspy.assignment import raw as raw_assignment
@@ -163,7 +164,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         time_column: str = 'time',
         access_time: str = 'time',
         od_set: Optional[Dict] = None,
-        track_links_list: List[str] = [],
+        tracker_plugin: LinksTracker = LinksTracker(),
         turn_penalties: Optional[Dict[str, List[str]]] = None,
         ntleg_penalty: float = 10e9,
         num_cores: int = 1,
@@ -211,10 +212,10 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
 
         num_cores : integer, optional, default 1
-            for parallelizatio
-            n
-        track_links_list :list[string] optional default: []
-            list of links index to track.
+            for parallelization
+
+        tracker_plugin: LinksTracker() optional
+            track OD using a selected links
 
         **kwargs :  see msa_roadpathfinder()
             vdf={'default_bpr': default_bpr, 'free_flow': free_flow},
@@ -265,7 +266,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 segments=segments,
                 method=method,
                 time_col=time_column,
-                track_links_list=track_links_list,
+                tracker_plugin=tracker_plugin,
                 num_cores=num_cores,
                 **kwargs,
             )
@@ -277,7 +278,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 segments=segments,
                 method=method,
                 time_col=time_column,
-                track_links_list=track_links_list,
+                tracker_plugin=tracker_plugin,
                 turn_penalties=turn_penalties,
                 num_cores=num_cores,
                 **kwargs,
@@ -292,10 +293,6 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         for seg in segments:
             volume_dict = links[(seg, 'flow')].to_dict()
             self.road_links[(seg, 'flow')] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
-
-        # for idx in track_links_list:
-        #     volume_dict = links[idx].to_dict()
-        #     self.road_links[f'flow_{idx}'] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
 
         car_los = get_car_los_time(car_los, self.road_links, self.zone_to_road, 'jam_time', 'time')
         self.car_los = car_los

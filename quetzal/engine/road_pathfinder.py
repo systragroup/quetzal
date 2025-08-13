@@ -279,7 +279,7 @@ def msa_roadpathfinder(
     tolerance=0.01,
     log=False,
     time_col='time',
-    track_links_list=[],
+    tracker_plugin: LinksTracker = LinksTracker(),
     num_cores=1,
 ):
     """
@@ -292,7 +292,7 @@ def msa_roadpathfinder(
     tolerance = 0.01 : stop condition for RelGap. (in percent)
     log = False : log data on each iteration.
     time_col='freeflow time column'. replace 'time' in vdf
-    track_links_list=[] list of link index to track flow at each iteration
+    tracker_plugin=LinksTracker() track OD using a selected links
     num_cores = 1 : for parallelization.
     """
     # preparation
@@ -300,7 +300,7 @@ def msa_roadpathfinder(
     assert_vdf_on_links(links, vdf)
 
     # reindex links to sparse indexes (a,b)
-    index = build_index(links[['a', 'b']].values)
+    index = build_index(links[['a', 'b']].values)  # a:sparse
     links['sparse_a'] = links['a'].apply(lambda x: index.get(x))
     links['sparse_b'] = links['b'].apply(lambda x: index.get(x))
     links = links.reset_index().set_index(['sparse_a', 'sparse_b'])
@@ -313,15 +313,11 @@ def msa_roadpathfinder(
     links['jam_time'].fillna(links[time_col], inplace=True)
 
     # init track links
-    _tmp_dict = links[links['index'].isin(track_links_list)]['index'].to_dict()
-    sparse_to_links = {v: k for k, v in _tmp_dict.items()}
-    tracker = LinksTracker(
-        track_links_list=track_links_list,
-        links_index=links.index,
-        index_dict=index,
-        column_dict=sparse_to_links,
-        path='road_pathfinder',
-    )
+
+    if tracker_plugin():
+        _tmp_dict = links['index'].to_dict()
+        links_to_sparse = {v: k for k, v in _tmp_dict.items()}
+        tracker_plugin.init(links_sparse_index=links.index, links_to_sparse=links_to_sparse)
 
     relgap = np.inf
     relgap_list = []
@@ -341,8 +337,8 @@ def msa_roadpathfinder(
 
             links[(seg, 'auxiliary_flow')] = assign_volume(odv, pred, ab_volumes.copy())
 
-            if tracker():
-                tracker.assign_volume_on_links(ab_volumes, odv, pred, seg)
+            if tracker_plugin():
+                tracker_plugin.assign_volume_on_links(ab_volumes, odv, pred, seg)
 
         flow_cols = [(seg, 'auxiliary_flow') for seg in segments] + ['base_flow']
         links['auxiliary_flow'] = links[flow_cols].sum(axis=1)
@@ -381,9 +377,9 @@ def msa_roadpathfinder(
             relgap_list.append(relgap)
             print(f'{i:2}  |  {phi:.3f}  |  {relgap:.8f} ') if log else None
 
-        if tracker():
-            tracker.add_weights(phi, beta, relgap, i)
-            tracker.save(it=i)
+        if tracker_plugin():
+            tracker_plugin.add_weights(phi, beta, relgap, i)
+            tracker_plugin.save(it=i)
 
         #
         # Update Time on links
@@ -431,7 +427,7 @@ def expanded_roadpathfinder(
     time_col='time',
     zone_penalty=10e9,
     turn_penalty=10e3,
-    track_links_list=[],
+    tracker_plugin: LinksTracker = LinksTracker(),
     turn_penalties={},
     num_cores=1,
 ):
@@ -492,13 +488,8 @@ def expanded_roadpathfinder(
     expanded_links['cost'] += expanded_links['turn_penalty']
 
     # init track links
-    tracker = LinksTracker(
-        track_links_list=track_links_list,
-        links_index=links.index,
-        index_dict=index,
-        column_dict=index,
-        path='road_pathfinder',
-    )
+    if tracker_plugin():
+        tracker_plugin.init(links_sparse_index=links.index, links_to_sparse=index)
 
     relgap = np.inf
     relgap_list = []
@@ -517,8 +508,8 @@ def expanded_roadpathfinder(
             _, pred = shortest_path(segment_links, 'cost', index, origins, num_cores=num_cores)
             # assign volume
             links[(seg, 'auxiliary_flow')] = assign_volume_on_links(odv, pred, ab_volumes.copy())
-            if tracker():
-                tracker.assign_volume_on_links(ab_volumes, odv, pred, seg)
+            if tracker_plugin():
+                tracker_plugin.assign_volume_on_links(ab_volumes, odv, pred, seg)
 
         auxiliary_flow_cols = [(seg, 'auxiliary_flow') for seg in segments] + ['base_flow']
         links['auxiliary_flow'] = links[auxiliary_flow_cols].sum(axis=1)  # for phi and relgap
@@ -564,9 +555,9 @@ def expanded_roadpathfinder(
             relgap_list.append(relgap)
             print(f'{i:2}  |  {phi:.3f}  |  {relgap:.8f} ') if log else None
 
-        if tracker():
-            tracker.add_weights(phi, beta, relgap, i)
-            tracker.save(it=i)
+        if tracker_plugin():
+            tracker_plugin.add_weights(phi, beta, relgap, i)
+            tracker_plugin.save(it=i)
 
         #
         # Update Time on links

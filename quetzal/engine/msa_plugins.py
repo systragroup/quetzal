@@ -1,10 +1,12 @@
 import pandas as pd
 import os
 import json
-from typing import List, Dict
+from typing import List, Dict, Union
 import numba as nb
 from quetzal.engine.pathfinder_utils import get_node_path
 from quetzal.io.hdf_io import to_zippedpickle, read_zippedpickle
+import tempfile
+import shutil
 
 
 @nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)
@@ -33,31 +35,49 @@ def assign_tracked_volume(odv, predecessors, volumes, track_index):
 
 
 class LinksTracker:
-    def __init__(
-        self,
-        track_links_list: List[str],
-        links_index: List,
-        index_dict: Dict[str, int],
-        column_dict: Dict[str, int],
-        path: str = 'road_pathfinder',
-    ):
-        self.links_index = links_index
-        self.sparse_links_list = [*map(column_dict.get, track_links_list)]
-        self.reversed_index_dict = {v: k for k, v in index_dict.items()}
-        self.reversed_column_dict = {v: k for k, v in column_dict.items()}
-        # export data
+    def __init__(self, track_links_list: List[str] = [], save_folder=None):
+        # list of road_link index to track
+        # use self.merge() at the end.
+
+        self.track_links_list = track_links_list
+        self._save_folder = save_folder
+        self.path = save_folder
+
         self.weights = pd.DataFrame()
         self.info = pd.DataFrame()
         self.tracked_df: Dict[str, pd.DataFrame] = {}
-        self.path = path
-        if not os.path.exists(path) & self():  # __call__()
-            os.makedirs(path)
+
+    def init(
+        self,
+        links_sparse_index: Union[List[int], List[tuple[int, int]]],
+        links_to_sparse: Union[Dict[str, int], Dict[str, tuple[int, int]]],
+    ):
+        self.links_sparse_index = links_sparse_index
+        self.sparse_links_list = [*map(links_to_sparse.get, self.track_links_list)]
+        # self.reversed_index_dict = {v: k for k, v in index_dict.items()}
+        # self.reversed_column_dict = {v: k for k, v in column_dict.items()}
+        self.sparse_to_links = {v: k for k, v in links_to_sparse.items()}
+        # export data
+        if self():
+            self.makedir()
+
+    def makedir(self):
+        if self._save_folder is None:
+            self.path = tempfile.mkdtemp()
+            print('Temp dir:', self.path)
+        elif not os.path.exists(self._save_folder):  # __call__()
+            self.path = self._save_folder
+            os.makedirs(self.path, exist_ok=True)
 
     def __call__(self) -> bool:  # when calling the instance. check if we track links or no.
-        return len(self.sparse_links_list) > 0
+        return len(self.track_links_list) > 0
+
+    def __del__(self):  # when object is deleted delete temp folder
+        if self._save_folder is None:
+            shutil.rmtree(self.path, ignore_errors=True)  # auto-clean on object deletion
 
     def init_df(self) -> pd.DataFrame:
-        return pd.DataFrame(index=self.links_index, columns=self.sparse_links_list).fillna(0)
+        return pd.DataFrame(index=self.links_sparse_index, columns=self.sparse_links_list).fillna(0)
 
     def assign_volume_on_links(self, ab_volumes, odv, pred, seg):
         volumes = [ab_volumes.copy() for _ in self.sparse_links_list]
@@ -80,7 +100,8 @@ class LinksTracker:
 
     def save(self, it):
         for seg, df in self.tracked_df.items():
-            df = df.rename(index=self.reversed_index_dict, columns=self.reversed_column_dict)
+            df = df.rename(columns=self.sparse_to_links)
+            df.index = df.index.map(self.sparse_to_links.get)
             df.index.name = 'index'
             name = f'tracked_volume_{seg}_{it}.zippedpickle'
             to_zippedpickle(df, os.path.join(self.path, name))
@@ -90,20 +111,12 @@ class LinksTracker:
         self.info.to_csv(os.path.join(self.path, 'info.csv'), index=False)
         self.tracked_df = {}
 
-    # def apply_frank_wolfe():
-    #     flow = pd.DataFrame()
-    #     for it in iterations:
-    #         filename = file_dict.get((it, seg))
-    #         aux_flow = read_zippedpickle(os.path.join(path, filename))
-    #         phi = phi_dict.get(it)
-    #         if it == 0:
-    #             flow = aux_flow.copy()
-    #         else:
-    #             flow = (1 - phi) * flow + phi * aux_flow
-    #     return flow
+    def merge(self) -> Dict[str, pd.DataFrame]:
+        # apply frank wolfe for each iteration on each segments
+        return _merge(path=self.path)
 
 
-def merge(path: str = 'road_pathfinder'):
+def _merge(path: str = 'road_pathfinder'):
     # read info [iteration,segment,file]
     info = pd.read_csv(os.path.join(path, 'info.csv'))
     iterations = info['iteration'].sort_values().unique()
@@ -143,3 +156,16 @@ def merge(path: str = 'road_pathfinder'):
     for seg in segments:
         res[seg] = apply_biconjugated_frank_wolfe()
     return res
+
+    # bfw should work as its  [1,0,0] if fw is use
+    # def apply_frank_wolfe():
+    #     flow = pd.DataFrame()
+    #     for it in iterations:
+    #         filename = file_dict.get((it, seg))
+    #         aux_flow = read_zippedpickle(os.path.join(path, filename))
+    #         phi = phi_dict.get(it)
+    #         if it == 0:
+    #             flow = aux_flow.copy()
+    #         else:
+    #             flow = (1 - phi) * flow + phi * aux_flow
+    #     return flow
