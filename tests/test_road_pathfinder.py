@@ -8,7 +8,7 @@ from quetzal.engine.road_pathfinder import (
     expanded_roadpathfinder,
     msa_roadpathfinder,
 )
-from quetzal.engine.msa_plugins import LinksTracker
+from quetzal.engine.msa_trackers.links_tracker import LinksTracker
 import pandas as pd
 from quetzal.model import stepmodel
 

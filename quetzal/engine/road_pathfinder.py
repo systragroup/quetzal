@@ -3,7 +3,7 @@ import geopandas as gpd
 import pandas as pd
 
 from quetzal.engine.pathfinder_utils import build_index, get_path
-from quetzal.engine.msa_plugins import LinksTracker
+from quetzal.engine.msa_trackers.links_tracker import LinksTracker
 from quetzal.engine.msa_utils import (
     get_derivative,
     init_ab_volumes,
@@ -338,7 +338,7 @@ def msa_roadpathfinder(
             links[(seg, 'auxiliary_flow')] = assign_volume(odv, pred, ab_volumes.copy())
 
             if tracker_plugin():
-                tracker_plugin.assign_volume_on_links(ab_volumes, odv, pred, seg, i)
+                tracker_plugin.assign(ab_volumes, odv, pred, seg, i)
 
         flow_cols = [(seg, 'auxiliary_flow') for seg in segments] + ['base_flow']
         links['auxiliary_flow'] = links[flow_cols].sum(axis=1)
@@ -508,7 +508,7 @@ def expanded_roadpathfinder(
             # assign volume
             links[(seg, 'auxiliary_flow')] = assign_volume_on_links(odv, pred, ab_volumes.copy())
             if tracker_plugin():
-                tracker_plugin.assign_volume_on_links(ab_volumes, odv, pred, seg, i)
+                tracker_plugin.assign(ab_volumes, odv, pred, seg, i)
 
         auxiliary_flow_cols = [(seg, 'auxiliary_flow') for seg in segments] + ['base_flow']
         links['auxiliary_flow'] = links[auxiliary_flow_cols].sum(axis=1)  # for phi and relgap

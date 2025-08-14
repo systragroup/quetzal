@@ -13,7 +13,7 @@ from quetzal.engine.road_pathfinder import (
     expanded_roadpathfinder,
     get_car_los_time,
 )
-from quetzal.engine.msa_plugins import LinksTracker
+from quetzal.engine.msa_trackers.links_tracker import LinksTracker
 from quetzal.engine.sampling import sample_od
 from quetzal.model import model, optimalmodel, parkridemodel
 from syspy.assignment import raw as raw_assignment

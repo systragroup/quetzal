@@ -3,17 +3,15 @@ from typing import List, Dict, Union
 import numba as nb
 from quetzal.engine.pathfinder_utils import get_node_path
 from scipy.sparse import csr_matrix
+from quetzal.engine.msa_trackers.tracker import Tracker
 from collections import namedtuple
 
 TrackedVolume = namedtuple('TrackedVolume', 'iteration seg mat row_labels col_labels')
 TrackedWeight = namedtuple('TrackedWeight', 'iteration phi beta relgap')
 
 
-class LinksTracker:
+class LinksTracker(Tracker):
     def __init__(self, track_links_list: List[str] = []):
-        # list of road_link index to track
-        # use self.merge() at the end.
-
         self.track_links_list = track_links_list
         self.weights = []
         self.tracked_mat: List[TrackedVolume] = []
@@ -30,7 +28,7 @@ class LinksTracker:
     def __call__(self) -> bool:  # when calling the instance. check if we track links or no.
         return len(self.track_links_list) > 0
 
-    def assign_volume_on_links(self, ab_volumes, odv, pred, seg, it):
+    def assign(self, ab_volumes, odv, pred, seg, it):
         volumes = [ab_volumes.copy() for _ in self.sparse_links_list]
         volumes = assign_tracked_volumes(odv, pred, volumes, self.sparse_links_list)
         ab_keys = [k for k in ab_volumes.keys()]
@@ -40,7 +38,6 @@ class LinksTracker:
         sparse_mat = dict_list_to_sparse_matrix(volumes, ab_keys)
         rows_labels = [*map(self.sparse_to_links.get, ab_keys)]
         cols_labels = self.track_links_list
-
         self.tracked_mat.append(TrackedVolume(it, seg, sparse_mat, rows_labels, cols_labels))
 
     def add_weights(self, phi, beta, relgap, it):
