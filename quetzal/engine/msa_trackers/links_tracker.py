@@ -6,8 +6,8 @@ from scipy.sparse import csr_matrix
 from quetzal.engine.msa_trackers.tracker import Tracker
 from collections import namedtuple
 
-TrackedVolume = namedtuple('TrackedVolume', 'iteration seg mat row_labels col_labels')
-TrackedWeight = namedtuple('TrackedWeight', 'iteration phi beta relgap')
+TrackedVolume = namedtuple('matrix', 'iteration seg mat row_labels col_labels')
+TrackedWeight = namedtuple('weights', 'iteration phi beta relgap')
 
 
 class LinksTracker(Tracker):
@@ -48,46 +48,43 @@ class LinksTracker(Tracker):
         return _merge(self.tracked_mat, self.weights)
 
 
+def _merge(mat_datas, weights):
+    # read info [iteration,segment,file]
+    segments = segments = set([el.seg for el in mat_datas])
+    # read weights [phi,beta]
+    phi_dict = {w.iteration: w.phi for w in weights}
+    beta_dict = {w.iteration: w.beta for w in weights}
+    res = {}
+    for seg in segments:
+        filtered = [mat for mat in mat_datas if mat.seg == seg]
+        res[seg] = apply_biconjugated_frank_wolfe(filtered, phi_dict, beta_dict)
+    return res
+
+
 def _mat_to_df(mat_data):
     return pd.DataFrame(mat_data.mat.toarray(), index=mat_data.row_labels, columns=mat_data.col_labels)
 
 
-def _merge(mat_datas, weights):
-    # read info [iteration,segment,file]
-    iterations = [el.iteration for el in weights]
-    segments = segments = set([el.seg for el in mat_datas])
+def apply_biconjugated_frank_wolfe(mat_datas, phi_dict, beta_dict):
+    flow = pd.DataFrame()
+    sk_1 = pd.DataFrame()
+    sk_2 = pd.DataFrame()
+    for mat_data in mat_datas:
+        it = mat_data.iteration
+        phi = phi_dict.get(it)
+        beta = beta_dict.get(it)
+        aux_flow = _mat_to_df(mat_data)
+        if it > 2:
+            aux_flow = beta[0] * aux_flow + beta[1] * sk_1 + beta[2] * sk_2
 
-    # read weights [phi,beta]
-    phi_dict = {w.iteration: w.phi for w in weights}
+        sk_2 = sk_1.copy()
+        sk_1 = aux_flow.copy()
 
-    beta_dict = {w.iteration: w.beta for w in weights}
-
-    def apply_biconjugated_frank_wolfe():
-        flow = pd.DataFrame()
-        sk_1 = pd.DataFrame()
-        sk_2 = pd.DataFrame()
-        for it in iterations:
-            phi = phi_dict.get(it)
-            beta = beta_dict.get(it)
-            mat_data = [mat for mat in mat_datas if mat.iteration == it and mat.seg == seg][0]
-
-            aux_flow = _mat_to_df(mat_data)
-            if it > 2:
-                aux_flow = beta[0] * aux_flow + beta[1] * sk_1 + beta[2] * sk_2
-
-            sk_2 = sk_1.copy()
-            sk_1 = aux_flow.copy()
-
-            if it == 0:
-                flow = aux_flow.copy()
-            else:
-                flow = (1 - phi) * flow + phi * aux_flow
-        return flow
-
-    res = {}
-    for seg in segments:
-        res[seg] = apply_biconjugated_frank_wolfe()
-    return res
+        if it == 0:
+            flow = aux_flow.copy()
+        else:
+            flow = (1 - phi) * flow + phi * aux_flow
+    return flow
 
 
 @nb.njit()
