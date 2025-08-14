@@ -338,7 +338,7 @@ def msa_roadpathfinder(
             links[(seg, 'auxiliary_flow')] = assign_volume(odv, pred, ab_volumes.copy())
 
             if tracker_plugin():
-                tracker_plugin.assign_volume_on_links(ab_volumes, odv, pred, seg)
+                tracker_plugin.assign_volume_on_links(ab_volumes, odv, pred, seg, i)
 
         flow_cols = [(seg, 'auxiliary_flow') for seg in segments] + ['base_flow']
         links['auxiliary_flow'] = links[flow_cols].sum(axis=1)
@@ -379,7 +379,6 @@ def msa_roadpathfinder(
 
         if tracker_plugin():
             tracker_plugin.add_weights(phi, beta, relgap, i)
-            tracker_plugin.save(it=i)
 
         #
         # Update Time on links
@@ -509,7 +508,7 @@ def expanded_roadpathfinder(
             # assign volume
             links[(seg, 'auxiliary_flow')] = assign_volume_on_links(odv, pred, ab_volumes.copy())
             if tracker_plugin():
-                tracker_plugin.assign_volume_on_links(ab_volumes, odv, pred, seg)
+                tracker_plugin.assign_volume_on_links(ab_volumes, odv, pred, seg, i)
 
         auxiliary_flow_cols = [(seg, 'auxiliary_flow') for seg in segments] + ['base_flow']
         links['auxiliary_flow'] = links[auxiliary_flow_cols].sum(axis=1)  # for phi and relgap
@@ -557,7 +556,6 @@ def expanded_roadpathfinder(
 
         if tracker_plugin():
             tracker_plugin.add_weights(phi, beta, relgap, i)
-            tracker_plugin.save(it=i)
 
         #
         # Update Time on links
