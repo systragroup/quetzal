@@ -44,7 +44,7 @@ class TupleTracker(Tracker):
     def add_weights(self, phi, beta, relgap, it):
         self.weights.append(TrackedWeight(iteration=it, phi=phi, beta=beta, relgap=relgap))
 
-    def merge(self) -> Dict[str, pd.DataFrame]:
+    def merge(self) -> pd.DataFrame:
         # apply frank wolfe for each iteration on each segments
         merged = _merge(self.tracked_mat, self.weights)
         return pd.DataFrame(merged, index=self.track_links_list)
@@ -98,23 +98,32 @@ def get_paths(odv, predecessors):
             cols.append(path[j])
             vals.append(True)
 
-    return rows, cols, vals
+    return np.array(rows, dtype=np.int32), np.array(cols, dtype=np.int32), np.array(vals, dtype=np.bool)
 
 
 def get_paths_matrix(odv, pred, ab_keys):
+    # cols: links. rows: OD
+    # having dtypes in index make this way faster.
     n_cols = len(ab_keys)
     n_rows = len(odv)
     rows, cols, vals = get_paths(odv, pred)  # List for Each od. the index of links.
     return csc_matrix((vals, (rows, cols)), shape=(n_rows, n_cols))
 
 
-def get_od_indexes(mat, track_index_list):
-    # return, for each track_index_list, indexes of odv
-    resp = []
-    for pair in track_index_list:
-        res = mat[:, pair[0]]
-        for col in pair[1:]:
-            res = res.multiply(mat[:, col])
-        idx = res.nonzero()[0]
-        resp.append(idx)
-    return resp
+def get_od_indexes(mat, track_index_list) -> List[List[int]]:
+    # this assume that every track_index_list is a tuple of 2 values.
+    # we could extend to more (everyone must have the same), and multiply more matrix
+
+    first_link_list = [el[0] for el in track_index_list]
+    second_link_list = [el[1] for el in track_index_list]
+
+    first_mat = mat[:, first_link_list]
+    second_mat = mat[:, second_link_list]
+    res = first_mat.multiply(second_mat)
+
+    cols, rows = res.T.nonzero()
+
+    od_list = [[] for _ in range(len(track_index_list))]
+    for col, row in zip(cols, rows):
+        od_list[col].append(row)
+    return od_list
