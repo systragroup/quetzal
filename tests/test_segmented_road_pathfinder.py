@@ -1,6 +1,7 @@
 import unittest
 
 from quetzal.engine.road_pathfinder import init_network, init_volumes, msa_roadpathfinder, expanded_roadpathfinder
+from quetzal.engine.msa_trackers.links_tracker import LinksTracker
 import pandas as pd
 from quetzal.model import stepmodel
 
@@ -57,7 +58,7 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
         sm.volumes = volumes
         self.sm = sm
 
-    def _get_msa_roadpathfinder(self, maxiters=10, method='bfw', track_links_list=[], segments=['car']):
+    def _get_msa_roadpathfinder(self, maxiters=10, method='bfw', segments=['car'], **kwargs):
         tolerance = 0.01
         time_column = 'time'
         access_time = 'time'
@@ -72,10 +73,10 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
             vdf=vdf,
             maxiters=maxiters,
             tolerance=tolerance,
-            track_links_list=track_links_list,
             log=False,
             time_col=time_column,
             num_cores=num_cores,
+            **kwargs,
         )
         return links, car_los, relgap_list
 
@@ -96,10 +97,23 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
         segments = ['car', 'truck']
         self.sm.road_links.loc['rlink_4', 'segments'] = set(['car'])
         link = ['rlink_2']
-        links, car_los, relgap = self._get_msa_roadpathfinder(segments=segments, method='fw', track_links_list=link)
+        tracker = LinksTracker(link)
+        links, car_los, relgap = self._get_msa_roadpathfinder(segments=segments, method='fw', tracker_plugin=tracker)
         links = links.set_index('index')
+
+        tracked_flow = tracker.merge()
+
+        expected_flow = links.loc[link][('car', 'flow')]
+        car_flow = tracked_flow['car']
+        self.assertAlmostEqual(expected_flow.values[0], car_flow.loc[link, link].values[0][0], places=3)
+
+        expected_flow = links.loc[link][('truck', 'flow')]
+        truck_flow = tracked_flow['truck']
+        self.assertAlmostEqual(expected_flow.values[0], truck_flow.loc[link, link].values[0][0], places=3)
+
         expected_flow = links.loc[link, 'flow'] - links.loc[link, 'base_flow']
-        self.assertAlmostEqual(expected_flow.values[0], links.loc[link, link].values[0][0], places=3)
+        tot_flow = car_flow + truck_flow
+        self.assertAlmostEqual(expected_flow.values[0], tot_flow.loc[link, link].values[0][0], places=3)
 
     def test_expanded_pathfinder_car_los_SHOULD_contain_all_segments(self):
         segments = ['car', 'truck']
@@ -111,7 +125,7 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
         for seg in segments:
             self.assertIn(seg, car_los['segment'].unique())
 
-    def _get_expanded_roadpathfinder(self, method='bfw', track_links_list=[], segments=['car']):
+    def _get_expanded_roadpathfinder(self, method='bfw', segments=['car'], **kwargs):
         maxiters = 10
         tolerance = 0.1
         time_column = 'time'
@@ -128,11 +142,11 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
             maxiters=maxiters,
             tolerance=tolerance,
             vdf=vdf,
-            track_links_list=track_links_list,
             log=False,
             time_col=time_column,
             zone_penalty=ntleg_penalty,
             num_cores=num_cores,
+            **kwargs,
         )
         return links, car_los, relgap_list
 
@@ -153,12 +167,25 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
         segments = ['car', 'truck']
         self.sm.road_links.loc['rlink_4', 'segments'] = set(['car'])
         link = ['rlink_2']
+        tracker = LinksTracker(link)
         links, car_los, relgap = self._get_expanded_roadpathfinder(
-            segments=segments, method='fw', track_links_list=link
+            segments=segments, method='fw', tracker_plugin=tracker
         )
         links = links.set_index('index')
+
+        tracked_flow = tracker.merge()
+
+        expected_flow = links.loc[link][('car', 'flow')]
+        car_flow = tracked_flow['car']
+        self.assertAlmostEqual(expected_flow.values[0], car_flow.loc[link, link].values[0][0], places=3)
+
+        expected_flow = links.loc[link][('truck', 'flow')]
+        truck_flow = tracked_flow['truck']
+        self.assertAlmostEqual(expected_flow.values[0], truck_flow.loc[link, link].values[0][0], places=3)
+
         expected_flow = links.loc[link, 'flow'] - links.loc[link, 'base_flow']
-        self.assertAlmostEqual(expected_flow.values[0], links.loc[link, link].values[0][0], places=3)
+        tot_flow = car_flow + truck_flow
+        self.assertAlmostEqual(expected_flow.values[0], tot_flow.loc[link, link].values[0][0], places=3)
 
     def test_expanded_pathfinder_car_los_SHOULD_contain_all_segments(self):
         segments = ['car', 'truck']

@@ -104,22 +104,6 @@ def assign_volume(odv, predecessors, volumes):
     return volumes
 
 
-@nb.njit(locals={'predecessors': nb.int32[:, ::1]})  # parallel=> not thread safe. do not!
-def assign_tracked_volume(odv, predecessors, volumes, track_index):
-    # volumes is a numba dict with all the key initialized
-    for i in range(len(odv)):  # nb.prange(len(odv)):
-        origin = odv[i, 0]
-        destination = odv[i, 1]
-        v = odv[i, 2]
-        if v > 0:
-            path = get_node_path(predecessors, origin, destination)
-            path = list(zip(path[:-1], path[1:]))
-            if track_index in path:
-                for key in path:
-                    volumes[key] += v
-    return volumes
-
-
 def init_ab_volumes(indexes: List[Tuple]) -> Dict[Tuple, float]:
     numba_volumes = nb.typed.Dict.empty(key_type=nb.types.UniTuple(nb.types.int64, 2), value_type=nb.types.float64)
     for key in indexes:
@@ -137,7 +121,6 @@ def init_expanded_track_volumes(base_flow: Dict[int, float], track_links_list: L
 def find_beta(links, phi_1, segments):
     # The Stiff is Moving - Conjugate Direction Frank-Wolfe Methods with Applications to Traffic Assignment from Mitradjieva maria
     b = [0, 0, 0]
-
     s_k_1 = links[[(seg, 's_k-1') for seg in segments]].sum(axis=1)
     s_k_2 = links[[(seg, 's_k-2') for seg in segments]].sum(axis=1)
     aux = links[[(seg, 'auxiliary_flow') for seg in segments]].sum(axis=1)
@@ -159,9 +142,8 @@ def find_beta(links, phi_1, segments):
     return b
 
 
-def get_bfw_auxiliary_flow(links, i, prev_phi, segments) -> pd.DataFrame:
+def get_bfw_auxiliary_flow(links, i, b, segments) -> pd.DataFrame:
     if i > 2:
-        b = find_beta(links, prev_phi, segments)  # this is the previous phi (phi_-1)
         for seg in segments:  # track per segments
             col = (seg, 'auxiliary_flow')
             links[col] = b[0] * links[col] + b[1] * links[(seg, 's_k-1')] + b[2] * links[(seg, 's_k-2')]
@@ -202,26 +184,3 @@ def init_numba_volumes(indexes: List[int]) -> Dict[int, float]:
     for key in indexes:
         numba_volumes[key] = 0
     return numba_volumes
-
-
-@nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)
-def assign_tracked_volumes_on_links_parallel(odv, predecessors, volumes_list, key_list):
-    for i in nb.prange(len(key_list)):
-        assign_tracked_volume_on_links(odv, predecessors, volumes_list[i], key_list[i])
-    return volumes_list
-
-
-@nb.njit(locals={'predecessors': nb.int32[:, ::1]})  # parallel=> not thread safe. do not!
-def assign_tracked_volume_on_links(odv, predecessors, volumes, track_index):
-    # volumes is a numba dict with all the key initialized
-    for i in range(len(odv)):  # nb.prange(len(odv)):
-        origin = odv[i, 0]
-        destination = odv[i, 1]
-        v = odv[i, 2]
-        if v > 0:
-            # our nodes are alreadt links in the original Graph
-            path = get_node_path(predecessors, origin, destination)
-            if track_index in path:
-                for key in path:
-                    volumes[key] += v
-    return volumes

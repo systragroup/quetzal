@@ -51,6 +51,14 @@ def to_zippedpickle(frame, filepath, pickle_protocol_level=4, complevel=-1):
             file.write(smallbuffer)
 
 
+def read_zippedpickle(filename):
+    with open(filename, 'rb') as file:
+        buffer = file.read()
+        decompressor = zstandard.ZstdDecompressor()
+        bigbuffer = decompressor.decompress(buffer)
+        return pickle.loads(bigbuffer)
+
+
 def frame_to_zip(frame, filepath, level=4, complevel=None):
     with pickle_protocol(level):
         with pd.HDFStore(
