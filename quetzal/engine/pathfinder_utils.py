@@ -274,8 +274,9 @@ def sparse_matrix(edges, index=None):
     if index is None:
         index = build_index(edges)
     nlen = len(index)
-    coefficients = zip(*((index[u], index[v], w) for u, v, w in edges))
-    row, col, data = coefficients
+    row = np.array([*map(index.get, [e[0] for e in edges])], dtype=np.int32)
+    col = np.array([*map(index.get, [e[1] for e in edges])], dtype=np.int32)
+    data = [e[2] for e in edges]
     return csr_matrix((data, (row, col)), shape=(nlen, nlen)), index
 
 
