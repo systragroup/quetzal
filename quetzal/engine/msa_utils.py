@@ -89,6 +89,23 @@ def get_relgap(links) -> float:
     return 100 * (a - b) / a
 
 
+@nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)  # parallel=> not thread safe. do not!
+def assign_volume_parallel(odv, predecessors, volumes, num_cores=1):
+    # volumes is a numba dict with all the key initialized
+    if num_cores == 1:
+        return assign_volume(odv, predecessors, volumes)
+    nb.set_num_threads(num_cores)
+    odv_mat = np.array_split(odv, num_cores)
+    volumes_mat = [volumes.copy() for _ in range(num_cores)]
+    for j in nb.prange(num_cores):
+        assign_volume(odv_mat[j], predecessors, volumes_mat[j])
+    for d in volumes_mat:
+        for k in d:
+            volumes[k] += d[k]
+
+    return volumes
+
+
 @nb.njit(locals={'predecessors': nb.int32[:, ::1]})  # parallel=> not thread safe. do not!
 def assign_volume(odv, predecessors, volumes):
     # volumes is a numba dict with all the key initialized
@@ -162,6 +179,23 @@ def get_derivative(links, vdf, flow_col='flow', h=0.001, **kwargs):
     links['x1'] = jam_time(links, vdf, flow='x1', **kwargs)
     links['x2'] = jam_time(links, vdf, flow='x2', **kwargs)
     return (links['x1'] - links['x2']) / (2 * h)
+
+
+@nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)  # parallel=> not thread safe. do not!
+def assign_volume_on_links_parallel(odv, predecessors, volumes, num_cores=1):
+    # volumes is a numba dict with all the key initialized
+    if num_cores == 1:
+        return assign_volume_on_links(odv, predecessors, volumes)
+    nb.set_num_threads(num_cores)
+    odv_mat = np.array_split(odv, num_cores)
+    volumes_mat = [volumes.copy() for _ in range(num_cores)]
+    for j in nb.prange(num_cores):
+        assign_volume_on_links(odv_mat[j], predecessors, volumes_mat[j])
+    for d in volumes_mat:
+        for k in d:
+            volumes[k] += d[k]
+
+    return volumes
 
 
 @nb.njit(locals={'predecessors': nb.int32[:, ::1]})  # parallel=> not thread safe. do not!

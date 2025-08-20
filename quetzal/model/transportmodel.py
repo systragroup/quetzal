@@ -168,6 +168,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         turn_penalties: Optional[Dict[str, List[str]]] = None,
         ntleg_penalty: float = 10e9,
         num_cores: int = 1,
+        return_car_los=True,
         **kwargs,
     ) -> None:
         """Performs road assignment with or without capacity constraint, depending on the method used
@@ -216,6 +217,9 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         tracker_plugin: LinksTracker() optional
             track OD using a selected links
+
+        return_car_los:
+            compute and return self.car_los
 
         **kwargs :  see msa_roadpathfinder()
             vdf={'default_bpr': default_bpr, 'free_flow': free_flow},
@@ -268,6 +272,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 time_col=time_column,
                 tracker_plugin=tracker_plugin,
                 num_cores=num_cores,
+                return_car_los=return_car_los,
                 **kwargs,
             )
         else:
@@ -281,6 +286,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 tracker_plugin=tracker_plugin,
                 turn_penalties=turn_penalties,
                 num_cores=num_cores,
+                return_car_los=return_car_los,
                 **kwargs,
             )
 
@@ -293,9 +299,9 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         for seg in segments:
             volume_dict = links[(seg, 'flow')].to_dict()
             self.road_links[(seg, 'flow')] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
-
-        car_los = get_car_los_time(car_los, self.road_links, self.zone_to_road, 'jam_time', 'time')
-        self.car_los = car_los
+        if return_car_los:
+            car_los = get_car_los_time(car_los, self.road_links, self.zone_to_road, 'jam_time', 'time')
+            self.car_los = car_los
         self.relgap = rel_gap
 
     @track_args

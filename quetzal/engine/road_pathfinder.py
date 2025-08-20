@@ -7,14 +7,14 @@ from quetzal.engine.msa_trackers.links_tracker import LinksTracker
 from quetzal.engine.msa_utils import (
     get_derivative,
     init_ab_volumes,
-    assign_volume,
+    assign_volume_parallel,
     jam_time,
     find_phi,
     find_beta,
     get_bfw_auxiliary_flow,
     shortest_path,
     init_numba_volumes,
-    assign_volume_on_links,
+    assign_volume_on_links_parallel,
     get_relgap,
     get_sparse_volumes,
 )
@@ -280,6 +280,7 @@ def msa_roadpathfinder(
     log=False,
     time_col='time',
     tracker_plugin: LinksTracker = LinksTracker(),
+    return_car_los=True,
     num_cores=1,
 ):
     """
@@ -335,7 +336,7 @@ def msa_roadpathfinder(
             segment_links = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
             _, pred = shortest_path(segment_links, 'jam_time', index, origins, num_cores=num_cores)
 
-            links[(seg, 'auxiliary_flow')] = assign_volume(odv, pred, ab_volumes.copy())
+            links[(seg, 'auxiliary_flow')] = assign_volume_parallel(odv, pred, ab_volumes.copy())
 
             if tracker_plugin():
                 tracker_plugin.assign(ab_volumes, odv, pred, seg, i)
@@ -392,16 +393,6 @@ def msa_roadpathfinder(
     #
     # Finish: reindex back and get car_los
     #
-    car_los = pd.DataFrame()
-    for seg in segments:
-        # filter links to allowed segment
-        segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
-        segment_links = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
-        temp_los = get_car_los(segment_volumes, segment_links, index, origins, 'jam_time', num_cores)
-        temp_los['segment'] = seg
-        car_los = pd.concat([car_los, temp_los], ignore_index=True)
-
-    links = links.set_index(['a', 'b'])  # go back to original indexes
 
     # drop columns
     to_drop = ['x1', 'x2', 'result', 'new_flow', 'derivative', 'auxiliary_flow']
@@ -409,6 +400,19 @@ def msa_roadpathfinder(
     to_drop += [(seg, 's_k-2') for seg in segments]
     to_drop += [(seg, 'auxiliary_flow') for seg in segments]
     links = links.drop(columns=to_drop, errors='ignore')
+
+    car_los = pd.DataFrame()
+
+    if return_car_los:
+        for seg in segments:
+            # filter links to allowed segment
+            segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
+            segment_links = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
+            temp_los = get_car_los(segment_volumes, segment_links, index, origins, 'jam_time', num_cores)
+            temp_los['segment'] = seg
+            car_los = pd.concat([car_los, temp_los], ignore_index=True)
+
+    links = links.set_index(['a', 'b'])  # go back to original indexes
 
     return links, car_los, relgap_list
 
@@ -428,6 +432,7 @@ def expanded_roadpathfinder(
     turn_penalty=10e3,
     tracker_plugin: LinksTracker = LinksTracker(),
     turn_penalties={},
+    return_car_los=True,
     num_cores=1,
 ):
     """
@@ -506,7 +511,7 @@ def expanded_roadpathfinder(
             segment_links = expanded_links[expanded_links['segments'].apply(lambda x: seg in x)]
             _, pred = shortest_path(segment_links, 'cost', index, origins, num_cores=num_cores)
             # assign volume
-            links[(seg, 'auxiliary_flow')] = assign_volume_on_links(odv, pred, ab_volumes.copy())
+            links[(seg, 'auxiliary_flow')] = assign_volume_on_links_parallel(odv, pred, ab_volumes.copy(), num_cores)
             if tracker_plugin():
                 tracker_plugin.assign(ab_volumes, odv, pred, seg, i)
 
@@ -574,20 +579,6 @@ def expanded_roadpathfinder(
     #
     # Finish: reindex back and get car_los
     #
-    car_los = pd.DataFrame()
-    for seg in segments:
-        # filter links to allowed segment
-        segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
-        segment_links = expanded_links[expanded_links['segments'].apply(lambda x: seg in x)]
-        temp_los = get_car_los(segment_volumes, segment_links, index, origins, 'cost', num_cores)
-        temp_los['segment'] = seg
-        car_los = pd.concat([car_los, temp_los], ignore_index=True)
-
-    # go back to original indexes
-    links = links.set_index(['a', 'b'])
-    # change path of links to path of nodes
-    links_to_nodes_dict = {v: k for k, v in links['index'].to_dict().items()}
-    car_los['path'] = car_los['path'].apply(lambda ls: expanded_path_to_nodes(ls, links_to_nodes_dict))
 
     # drop columns
     to_drop = ['x1', 'x2', 'result', 'new_flow', 'derivative', 'auxiliary_flow']
@@ -595,5 +586,21 @@ def expanded_roadpathfinder(
     to_drop += [(seg, 's_k-2') for seg in segments]
     to_drop += [(seg, 'auxiliary_flow') for seg in segments]
     links = links.drop(columns=to_drop, errors='ignore')
+
+    car_los = pd.DataFrame()
+    if return_car_los:
+        for seg in segments:
+            # filter links to allowed segment
+            segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
+            segment_links = expanded_links[expanded_links['segments'].apply(lambda x: seg in x)]
+            temp_los = get_car_los(segment_volumes, segment_links, index, origins, 'cost', num_cores)
+            temp_los['segment'] = seg
+            car_los = pd.concat([car_los, temp_los], ignore_index=True)
+
+        # go back to original indexes
+        links = links.set_index(['a', 'b'])
+        # change path of links to path of nodes
+        links_to_nodes_dict = {v: k for k, v in links['index'].to_dict().items()}
+        car_los['path'] = car_los['path'].apply(lambda ls: expanded_path_to_nodes(ls, links_to_nodes_dict))
 
     return links, car_los, relgap_list
