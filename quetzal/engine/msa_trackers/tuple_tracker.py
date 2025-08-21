@@ -26,14 +26,14 @@ class TupleTracker(Tracker):
         self.links_sparse_index = links_sparse_index
         self.sparse_links_list = [[*map(links_to_sparse.get, ls)] for ls in self.track_links_list]
         self.sparse_to_links = {v: k for k, v in links_to_sparse.items()}
+        self.tracked_links_set = set(np.concatenate(self.sparse_links_list))
 
     def __call__(self) -> bool:  # when calling the instance. check if we track links or no.
         return len(self.track_links_list) > 0
 
     def assign(self, ab_volumes, odv, pred, seg, it):
-        # volumes = [ab_volumes.copy() for _ in self.sparse_links_list]
-        ab_keys = [k for k in ab_volumes.keys()]
-        mat = get_paths_matrix(odv, pred, ab_keys)
+        n_cols = len(ab_volumes)
+        mat = get_paths_matrix(odv, pred, n_cols, self.tracked_links_set)
         od_indexes_list = get_od_indexes(mat, self.sparse_links_list)
         volumes = []
         for od_indexes in od_indexes_list:
@@ -85,28 +85,29 @@ def apply_biconjugated_frank_wolfe(mat_datas, phi_dict, beta_dict):
     return flow
 
 
-@nb.njit(locals={'predecessors': nb.int32[:, ::1]})  # parallel=> not thread safe. do not!
-def get_paths(odv, predecessors):
-    # volumes is a numba dict with all the key initialized
+@nb.njit(locals={'predecessors': nb.int32[:, ::1]})
+def get_paths_matrix_data(odv, predecessors, path_set):
+    # only append data if its in the set.
+    # so we only keep the cols of links we will use (the one we track)
     rows, cols, vals = [], [], []
     for i in range(len(odv)):
         origin = odv[i, 0]
         destination = odv[i, 1]
         path = get_node_path(predecessors, origin, destination)
-        for j in range(len(path)):
-            rows.append(i)
-            cols.append(path[j])
-            vals.append(True)
+        for p in path:
+            if p in path_set:
+                rows.append(i)
+                cols.append(p)
+                vals.append(True)
 
     return np.array(rows, dtype=np.int32), np.array(cols, dtype=np.int32), np.array(vals, dtype=np.bool)
 
 
-def get_paths_matrix(odv, pred, ab_keys):
+def get_paths_matrix(odv, pred, n_cols, cols_set):
     # cols: links. rows: OD
     # having dtypes in index make this way faster.
-    n_cols = len(ab_keys)
     n_rows = len(odv)
-    rows, cols, vals = get_paths(odv, pred)  # List for Each od. the index of links.
+    rows, cols, vals = get_paths_matrix_data(odv, pred, cols_set)  # List for Each od. the index of links.
     return csc_matrix((vals, (rows, cols)), shape=(n_rows, n_cols))
 
 

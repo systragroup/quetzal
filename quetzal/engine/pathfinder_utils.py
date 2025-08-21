@@ -15,9 +15,7 @@ def parallel_dijkstra(csgraph, indices=None, return_predecessors=True, num_core=
     if num_core == 1:
         return dijkstra(csgraph=csgraph, indices=indices, return_predecessors=return_predecessors, **kwargs)
 
-    batch = round(len(indices) / num_core)
-    indices_mat = [indices[i * batch : (1 + i) * batch] for i in range(num_core - 1)]
-    indices_mat.append(indices[(num_core - 1) * batch :])
+    indices_mat = np.array_split(indices, num_core)
 
     results = parallel_executor(
         dijkstra,
@@ -28,7 +26,7 @@ def parallel_dijkstra(csgraph, indices=None, return_predecessors=True, num_core=
         **kwargs,
     )
 
-    if return_predecessors == True:  # result is a tuple
+    if return_predecessors:  # result is a tuple
         dist_matrix = np.concatenate([res[0] for res in results], axis=0)
         predecessors = np.concatenate([res[1] for res in results], axis=0).astype(np.int32)
         return dist_matrix, predecessors
@@ -70,13 +68,12 @@ def simple_routing(origin, destination, links, weight_col='time', dijkstra_limit
 
 @nb.njit(locals={'predecessors': nb.int32[:, ::1], 'i': nb.int32, 'j': nb.int32})
 def get_path(predecessors, i, j):
-    path = [j]
+    path = []
     k = j
-    p = 0
-    while p != -9999:
-        k = p = predecessors[i, k]
-        path.append(p)
-    return path[::-1][1:]
+    while k != -9999:
+        path.append(k)
+        k = predecessors[i, k]
+    return path[::-1]
 
 
 @nb.njit()

@@ -14,6 +14,7 @@ def get_sparse_volumes(volumes: pd.DataFrame, index: dict[str, int]):
     zone_index = dict(zip(sources, range(len(sources))))
 
     volumes['origin_sparse'] = volumes['origin'].apply(zone_index.get)
+    # could do this once before to save 100ms/it.
     volumes['destination_sparse'] = volumes['destination'].apply(index.get)
     return volumes, origins
 
