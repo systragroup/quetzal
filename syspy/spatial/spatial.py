@@ -21,7 +21,8 @@ from shapely.ops import polygonize
 from sklearn.cluster import AgglomerativeClustering, KMeans, DBSCAN
 from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
-from typing import Tuple
+from typing import Tuple, List, Union
+from shapely.geometry import Polygon
 from numba import jit, njit
 import numba as nb
 
@@ -387,14 +388,23 @@ def fast_points_in_polygon(points: np.ndarray, polygon: np.ndarray) -> np.ndarra
     return np.where(D)[0]
 
 
-def points_in_polygon(points: np.ndarray, polygon: gpd.GeoDataFrame) -> np.ndarray:
+def geometries_in_polygon(gdf: gpd.GeoDataFrame, polygon: Union[Polygon, List[Polygon]]) -> List:
+    """
+    return list of index of gdf in the polygon (or polygons).
+    """
+    points = add_geometry_coordinates(gdf)[['x_geometry', 'y_geometry']].values
+    idx_in_polygon = points_in_polygon(points, polygon)
+    return gdf.iloc[idx_in_polygon].index.to_list()
+
+
+def points_in_polygon(points: np.ndarray, polygon: Union[Polygon, List[Polygon]]) -> np.ndarray[int]:
     """
     return a list of point in the polygon. values are the index in the points array.
 
     points:np.array[np.array[float,float]]
         list of all the points coords (x,y)
-    polygon: gpd.GeoDataFrame
-        geodataframe of multiples polygons.
+    polygon: Polygon or list of Polygon
+        list of multiples polygons.
     """
     try:
         poly = np.array([*polygon.exterior.coords])
