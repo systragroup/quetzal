@@ -6,8 +6,9 @@ from scipy.sparse import csr_matrix
 from quetzal.engine.msa_trackers.tracker import Tracker
 from collections import namedtuple
 
-TrackedVolume = namedtuple('matrix', 'iteration seg mat row_labels col_labels')
-TrackedWeight = namedtuple('weights', 'iteration phi beta relgap')
+# need to name the class the same as the namedTuple name for pickle.
+TrackedVolume = namedtuple('TrackedVolume', 'iteration seg mat row_labels col_labels')
+TrackedWeight = namedtuple('TrackedWeight', 'iteration phi beta relgap')
 
 
 class LinksTracker(Tracker):

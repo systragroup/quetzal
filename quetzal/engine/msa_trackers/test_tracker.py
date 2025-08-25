@@ -2,8 +2,9 @@ from typing import List, Dict, Union
 from quetzal.engine.msa_trackers.tracker import Tracker
 from collections import namedtuple
 
-TrackedAssign = namedtuple('assign', 'ab_volumes odv pred seg it')
-TrackedWeight = namedtuple('weights', 'iteration phi beta relgap')
+# need to name the class the same as the namedTuple name for pickle.
+TrackedAssign = namedtuple('TrackedAssign', 'ab_volumes odv pred seg it')
+TrackedWeight = namedtuple('TrackedWeight', 'iteration phi beta relgap')
 
 
 class TestTracker(Tracker):

@@ -7,8 +7,9 @@ from scipy.sparse import csc_matrix
 from quetzal.engine.msa_trackers.tracker import Tracker
 from collections import namedtuple
 
-TrackedArrays = namedtuple('arrays', 'iteration seg volumes')
-TrackedWeight = namedtuple('weights', 'iteration phi beta relgap')
+# need to name the class the same as the namedTuple name for pickle.
+TrackedArrays = namedtuple('TrackedArrays', 'iteration seg volumes')
+TrackedWeight = namedtuple('TrackedWeight', 'iteration phi beta relgap')
 
 
 class TupleTracker(Tracker):
