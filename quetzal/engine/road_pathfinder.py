@@ -225,15 +225,13 @@ def expanded_path_to_nodes(path: List[str], links_to_nodes_dict: Dict[str, Tuple
     if len(path) <= 2:
         return path  # just zone-to-zone, no links
 
-    nodes = []
-    for i, link_id in enumerate(path[1:-1]):
-        tup = links_to_nodes_dict.get(link_id)
-        if i == 0:
-            nodes.extend(tup)  # include both on first
-        else:
-            nodes.append(tup[1])  # only append the new one
-
-    return [path[0]] + nodes + [path[-1]]
+    nodes = [path[0]]  # origin (zone)
+    nodes.append(links_to_nodes_dict.get(path[1])[0])  # first node a
+    for link_id in path[1:-1]:
+        node_b = links_to_nodes_dict.get(link_id)[1]
+        nodes.append(node_b)  # only append the new one
+    nodes.append(path[-1])  # destination (zone)
+    return nodes
 
 
 def fix_zone_to_road(expanded_links: gpd.GeoDataFrame, volumes: gpd.geodataframe) -> gpd.GeoDataFrame:
