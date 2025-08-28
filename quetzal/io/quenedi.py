@@ -4,6 +4,8 @@ import geopandas as gpd
 from quetzal.model.stepmodel import StepModel
 from quetzal.io.gtfs_reader.frequencies import hhmmss_to_seconds_since_midnight, seconds_since_midnight_to_hhmmss
 from syspy.spatial.geometries import reverse_geometry
+from syspy.spatial.spatial import nearest_geometry
+from shapely.geometry import Point
 from pathlib import Path
 import tempfile
 import json
@@ -46,12 +48,12 @@ def quenedi_to_quetzal_schedule(links, pattern_col='pattern_id'):
 def quetzal_to_quenedi_schedule(links, group='route_id'):
     """Convert scheduled links as defined in Quetzal for Quenedi
 
-    Parameters
-    ----------
-    links : geodataframe
-        Links GeoDataFrame were all links represent a departure as used in Quetzal
-    group : str, optional, default 'route_id'
-        Column representing a group of similar route to be aggregated in pattern_id
+        Parameters
+        ----------
+        links : geodataframe
+            Links GeoDataFrame were all links represent a departure as used in Quetzal
+        group : str, optional, default 'route_id'
+            Column representing a group of similar route to be aggregated in pattern_id
 
     Returns
     -------
@@ -324,3 +326,58 @@ def restrict_to_variant(self: StepModel, variant: str, log=True):
             if log:
                 print(attribute)
             self.__dict__[attribute] = restrict_df_to_variant(val, variant, log)
+
+
+def od_add_zones(self, ods):
+    ods['from'] = ods['geometry'].apply(lambda g: Point(g.coords[0]))
+    ods['to'] = ods['geometry'].apply(lambda g: Point(g.coords[-1]))
+
+    ods['linestring'] = ods['geometry']
+
+    ods['geometry'] = ods['from']
+    ods['origin'] = nearest_geometry(ods, self.centroids, n_neighbors=1)['ix_many']
+
+    ods['geometry'] = ods['to']
+    ods['destination'] = nearest_geometry(ods, self.centroids, n_neighbors=1)['ix_many']
+
+    ods[['origin', 'destination']] = ods[['origin', 'destination']].astype(type(self.pt_los['origin'].values[0]))
+    return ods
+
+
+def od_pt_paths(self, od_filename, mode_column='mode', footpaths=False, ntlegs=False):
+    crs = self.centroids.crs
+    ods = gpd.read_file(od_filename).to_crs(crs)
+    ods = od_add_zones(self, ods)
+
+    to_concat = []
+    df = ods.merge(self.pt_los[{'origin', 'destination', 'link_path', mode_column}], on=['origin', 'destination'])
+    df = df.explode('link_path')
+    df.rename(columns={'link_path': 'geometry_index'}, inplace=True)
+    to_concat.append(df)
+
+    if footpaths:
+        footpaths = self.footpaths.sort_values(by='time').drop_duplicates(subset=['a', 'b'])
+        index = footpaths.index
+        footpaths['index'] = index
+        footpaths_index_dict = footpaths.set_index(['a', 'b'])['index'].to_dict()
+
+        df = ods.merge(self.pt_los[{'origin', 'destination', 'footpaths', mode_column}], on=['origin', 'destination'])
+        df = df.explode('footpaths')
+        df.rename(columns={'footpaths': 'geometry_index'}, inplace=True)
+
+        df['geometry_index'] = df['geometry_index'].apply(footpaths_index_dict.get)
+        df.dropna(subset='geometry_index', inplace=True)
+        if len(df) > 0:
+            to_concat.append(df)
+
+    styles = {
+        'links': {'color': '#B5E0D6', 'alpha': 1, 'width': 3, 'markersize': 1},
+        'footpaths': {'color': '#000000', 'alpha': 1, 'width': 2},
+    }
+
+    geometries = self.get_geometries(styles=styles)
+    left = pd.concat(to_concat).drop(columns='geometry', errors='ignore')
+    df = pd.merge(left, geometries, left_on='geometry_index', right_index=True)
+
+    df = df.drop(columns=['from', 'to', 'origin', 'destination', 'linestring', 'geometry_index'])
+    return gpd.GeoDataFrame(df, geometry='geometry').set_crs(self.links.crs).to_crs(4326)
