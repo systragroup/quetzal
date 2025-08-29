@@ -31,9 +31,9 @@ def init_network(
     """
     road_links = sm.road_links.copy()
     zone_to_road = sm.zone_to_road.copy()
-    assert not road_links.set_index(['a', 'b']).index.has_duplicates, (
-        'there is duplicated road links (same a,b for a link) please remove duplicated'
-    )
+    assert not road_links.set_index(
+        ['a', 'b']
+    ).index.has_duplicates, 'there is duplicated road links (same a,b for a link) please remove duplicated'
     assert time_col in road_links.columns, f'time_column: {time_col} not found in road_links.'
     aon = method == 'aon'
 
@@ -52,13 +52,12 @@ def init_volumes(sm, od_set=None):
             volumes = volumes[volumes.set_index(['origin', 'destination']).index.isin(od_set)]
     except AttributeError:
         print('self.volumes does not exist. od generated with self.zones, od_set')
-        if od_set is not None:
-            print('od_set ignored')
-        zones = sm.zones.index.values
-        od_set = []
-        for o in zones:
-            for d in zones:
-                od_set.append((o, d))
+        if od_set is None:
+            zones = sm.zones.index.values
+            od_set = []
+            for o in zones:
+                for d in zones:
+                    od_set.append((o, d))
         volumes = pd.DataFrame(od_set, columns=['origin', 'destination'])
         volumes['volume'] = 0
 
