@@ -281,13 +281,8 @@ def read_geojson(filename, **kwargs):
     return gdf
 
 
-#
-# variant time period.
-#
-
-
-def read_parameters(params_dict, period=None):
-    df = pd.DataFrame.from_dict(params_dict, orient='index')
+def read_parameters(params_dict, period=None) -> pd.Series:
+    df = pd.DataFrame.from_dict(params_dict, orient='index', dtype=object)
     if period is not None:
         period_cols = [col for col in df.columns if col.endswith(f'#{period}')]
         name_dict = {col: col.split('#')[0] for col in period_cols}
@@ -296,6 +291,19 @@ def read_parameters(params_dict, period=None):
             if col in df.columns:
                 df[col] = df[col_period].combine_first(df[col])
     return df.stack()
+
+
+def update_parameters(parameters: pd.Series, new_params: pd.Series):
+    # update parameters with new parameters keeping dtypes of parameters.
+    # ignore if not found in original parameters (excel)
+    for key, val in new_params.items():
+        param = parameters.get(key)
+        if param is not None:
+            casted = type(param)(val)
+            parameters[key] = casted
+        else:
+            print(f'key: {key} not found in parameters')
+            pass
 
 
 def restrict_df_to_variant(
