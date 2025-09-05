@@ -173,12 +173,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         --------
         ::
                                                                                                             sm.step_ntlegs(
-                                                                                                                n_ntlegs=5,
-                                                                                                                walk_speed=2,
-                                                                                                                short_leg_speed=3,
-                                                                                                                long_leg_speed=15,
-                                                                                                                threshold=500,
-                                                                                                                max_ntleg_length=5000,
+                                                                                                                n_ntlegs=5, walk_speed=2, short_leg_speed=3, long_leg_speed=15, threshold=500, max_ntleg_length=5000
                                                                                                             )
         """
         if keep_centroids:
@@ -859,9 +854,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
 
         # mode nests
         self.mode_nests = pd.DataFrame({'root': pd.Series({rt: 'pt' for rt in route_types})})
-
         self.mode_nests.loc['pt', 'root'] = 'root'
-        self.mode_nests.loc[['car', 'walk'], 'root'] = 'root'
         self.mode_nests.loc[['root'], 'root'] = np.nan
         self.mode_nests.index.name = 'route_type'
         self.mode_nests.columns.name = 'segment'
@@ -869,9 +862,16 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         # logit_scales
         self.logit_scales = self.mode_nests.copy()
         self.logit_scales['root'] = pt_path
-        self.logit_scales.loc[['car', 'walk'], 'root'] = 0
         self.logit_scales.loc[['pt'], 'root'] = pt_mode
         self.logit_scales.loc[['root'], 'root'] = mode
+
+        if 'car' in route_types:
+            self.mode_nests.loc['car', 'root'] = 'root'
+            self.logit_scales.loc['car', 'root'] = 0
+
+        if 'walk' in route_types:
+            self.mode_nests.loc['walk', 'root'] = 'root'
+            self.logit_scales.loc['walk', 'root'] = 0
 
         for segment in segments:
             for df in (self.mode_utility, self.mode_nests, self.logit_scales, self.utility_values):
