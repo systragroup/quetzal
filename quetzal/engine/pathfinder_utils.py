@@ -396,7 +396,6 @@ def paths_from_edges(
     node_index=None,  # {name such as 'link_123': matrix index}
     num_cores=1,
 ):
-    reverse = False
     if od_set:
         o_set = {o for o, d in od_set}
         d_set = {d for o, d in od_set}
@@ -408,21 +407,19 @@ def paths_from_edges(
             targets = [t for t in targets if t in d_set]
         else:
             targets = list(d_set)
-
-    if len(sources) > len(targets):
-        reverse = True
+    reverse = len(sources) > len(targets)
+    if reverse:
         if log:
             print(len(sources), 'sources', len(targets), 'targets', 'transposed search')
         sources, targets = targets, sources
-        if csgraph is None or node_index is None:
-            edges = [(b, a, w) for a, b, w in edges]
+        # if csgraph is None or node_index is None:
+        #     edges = [(b, a, w) for a, b, w in edges]
     elif log:
         print(len(sources), 'sources', len(targets), 'targets', 'direct search')
 
     st = set(sources).union(targets)
     if csgraph is None or node_index is None:
         csgraph, node_index = sparse_matrix_with_access_penalty(edges, sources=st, penalty=penalty)
-
     if reverse:
         csgraph = csgraph.transpose()
 
@@ -447,8 +444,8 @@ def paths_from_edges(
     df.columns.name = 'destination'
     df.index.name = 'origin'
 
-    od_index = {(d, o) for o, d in od_set} if reverse else od_set
     if od_set is not None:
+        od_index = {(d, o) for o, d in od_set} if reverse else od_set
         mask = pd.Series(index=od_index, data=1).unstack()
         mask.index.name = 'origin'
         mask.columns.name = 'destination'
