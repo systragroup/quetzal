@@ -35,35 +35,46 @@ def parallel_dijkstra(csgraph, indices=None, return_predecessors=True, num_core=
         return dist_matrix
 
 
-def simple_routing(origin, destination, links, weight_col='time', dijkstra_limit=np.inf, return_predecessors=False):
-    # simple routing scipy wrapper for GTFS routing
+def simple_edge_routing(edges, origins, destinations, return_predecessors=False, **kwargs):
+    # simple routing
     #
-    mat, node_index = sparse_matrix(links[['a', 'b', weight_col]].values)
+    mat, node_index = sparse_matrix(edges)
+
+    reverse = len(origins) > len(destinations)
+    if reverse:
+        origins, destinations = destinations, origins
+        mat = mat.transpose()
     index_node = {v: k for k, v in node_index.items()}
     # liste des origines pour le dijkstra
-    origin_sparse = [node_index[x] for x in origin]
+    origin_sparse = [node_index[x] for x in origins]
 
     # dijktra on the road network from node = incices to every other nodes.
     # from b to a.
-    if return_predecessors:
-        dist_matrix, predecessors = dijkstra(
-            csgraph=mat, directed=True, indices=origin_sparse, return_predecessors=True, limit=dijkstra_limit
-        )
-    else:
-        dist_matrix = dijkstra(
-            csgraph=mat, directed=True, indices=origin_sparse, return_predecessors=False, limit=dijkstra_limit
-        )
+    response = parallel_dijkstra(
+        csgraph=mat, directed=True, indices=origin_sparse, return_predecessors=return_predecessors, **kwargs
+    )
+
+    dist_matrix = response[0] if return_predecessors else response
+    predecessors = response[1] if return_predecessors else None
 
     dist_matrix = pd.DataFrame(dist_matrix)
-    dist_matrix.index = origin
+    dist_matrix.index = origins
     # filtrer. on garde seulement les destination d'intéret
-    destination_sparse = [node_index[x] for x in destination]
+    destination_sparse = [node_index[x] for x in destinations]
     dist_matrix = dist_matrix[destination_sparse]
     dist_matrix = dist_matrix.rename(columns=index_node)
+    if reverse:
+        dist_matrix = dist_matrix.T
     if return_predecessors:
         return dist_matrix, predecessors, node_index
     else:
         return dist_matrix
+
+
+def simple_routing(origin, destination, links, weight_col='time', **kwargs):
+    # simple routing with with df
+    edges = links[['a', 'b', weight_col]].values
+    return simple_edge_routing(edges, origin, destination, **kwargs)
 
 
 @nb.njit(locals={'predecessors': nb.int32[:, ::1], 'i': nb.int32, 'j': nb.int32})
@@ -412,14 +423,13 @@ def paths_from_edges(
         if log:
             print(len(sources), 'sources', len(targets), 'targets', 'transposed search')
         sources, targets = targets, sources
-        # if csgraph is None or node_index is None:
-        #     edges = [(b, a, w) for a, b, w in edges]
     elif log:
         print(len(sources), 'sources', len(targets), 'targets', 'direct search')
 
     st = set(sources).union(targets)
     if csgraph is None or node_index is None:
         csgraph, node_index = sparse_matrix_with_access_penalty(edges, sources=st, penalty=penalty)
+
     if reverse:
         csgraph = csgraph.transpose()
 
