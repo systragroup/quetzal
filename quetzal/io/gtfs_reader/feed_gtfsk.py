@@ -108,7 +108,7 @@ def read_gtfs(*args, **kwargs) -> dict:
         temp = gk.feed.read_gtfs(*args, **kwargs)
     except Exception:
         temp = gk.feed.read_feed(*args, **kwargs)
-    init_temp = {key: value for key, value in temp.__dict__.items() if key in gk.constants.FEED_ATTRS}
+    init_temp = {key: value for key, value in temp.__dict__.items() if key in gk.constants.FEED_ATTRS_1}
     init_temp['calendar'] = temp.calendar
     init_temp['calendar_dates'] = temp.calendar_dates
     init_temp['trips'] = temp.trips
