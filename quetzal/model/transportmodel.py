@@ -129,9 +129,11 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         self, bidimentional_sampling=False, fit_sums=True, sample_weight=1, sample_size=None, inplace=True, **kwargs
     ):
         od_volumes = self.volumes.set_index(['origin', 'destination'])
+        # remove segments without volumes.
+        columns = od_volumes.columns[od_volumes.sum(axis=0) > 0]
 
         series = {}
-        for c in od_volumes.columns:
+        for c in columns:
             try:
                 sw = sample_weight[c]
             except TypeError:  # it is not a dict but a value
