@@ -299,7 +299,7 @@ def get_links_and_nodes_gdf(gdf: gpd.GeoDataFrame):
         Node points with index IDs
     """
     # 1. Merge reversed geometries
-    gdf = merged_reversed_geometries_gdf(gdf)
+    # gdf = merged_reversed_geometries_gdf(gdf)
 
     # 2. Split at intersections
     gdf = split_features_gdf(gdf)
