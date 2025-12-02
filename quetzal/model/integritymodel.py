@@ -312,7 +312,7 @@ class IntegrityModel:
         msg = 'the road graph have %i connected components (> 1)' % ncc
         assert nx.number_connected_components(g) == 1, msg
 
-    def integrity_test_dead_ends(self, cutoff=5):
+    def integrity_test_dead_ends(self, cutoff=5, valid_deadends=[]):
         """
         look for dead-ends in the road network
         only the dead-ends with a dead-rank lower than the cutoff
@@ -328,7 +328,7 @@ class IntegrityModel:
         for node, path_dict in tqdm(a):
             if len(path_dict) < cutoff:
                 dead_ends.append(node)
-
+        dead_ends = list(set(dead_ends) - set(valid_deadends))
         message = "some directional road_links are dead-ends \n"
         message += "ex 1 : if their is an a->b link and their is no link leaving b; b is a dead-nodes \n"
         message += "ex 2 : in the given network (a->b, b->c, c->d, b->a) both c and d are dead-nodes \n"
@@ -431,13 +431,13 @@ class IntegrityModel:
         ]
         self.road_nodes = self.road_nodes.loc[list(self.road_link_nodeset())]
 
-    def integrity_test_road_network(self, cutoff=10):
+    def integrity_test_road_network(self, cutoff=10, valid_deadends=[]):
         self.integrity_test_isolated_roads()
-        self.integrity_test_dead_ends(cutoff=cutoff)
+        self.integrity_test_dead_ends(cutoff=cutoff, valid_deadends=valid_deadends)
         self.integrity_test_road_nodeset_consistency()
         self.integrity_test_road_duplicated_ab_links()
 
-    def integrity_fix_road_network(self, cutoff=10, recursive_depth=1):
+    def integrity_fix_road_network(self, cutoff=10, recursive_depth=1, valid_deadends=[]):
         """
         clean road_network
             * requires: road_links, road_nodes
@@ -448,15 +448,16 @@ class IntegrityModel:
             return
 
         self.road_links = networktools.drop_secondary_components(self.road_links)
-        self.road_links = networktools.drop_deadends(self.road_links, cutoff=cutoff)
+        self.road_links = networktools.drop_deadends(self.road_links, cutoff=cutoff, valid_deadends=valid_deadends)
         self.integrity_fix_road_nodeset_consistency()
         self.integrity_fix_road_duplicated_ab_links()
         try:
-            self.integrity_test_road_network()
+            self.integrity_test_road_network(cutoff=cutoff, valid_deadends=valid_deadends)
         except AssertionError:
             self.integrity_fix_road_network(
                 cutoff=cutoff,
-                recursive_depth=recursive_depth - 1
+                recursive_depth=recursive_depth - 1,
+                valid_deadends=valid_deadends
             )
 
     def integrity_test_duplicate_volumes(self):

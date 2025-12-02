@@ -273,7 +273,7 @@ def drop_secondary_components(links):
     return main_links
 
 
-def drop_deadends(links, cutoff=10):
+def drop_deadends(links, cutoff=10, valid_deadends=[]):
     """
     drop the dead ends
     """
@@ -317,6 +317,7 @@ def drop_deadends(links, cutoff=10):
     }
 
     deadends = direct_deadends.union(reversed_deadends)
+    deadends = deadends - set(valid_deadends)
 
     # nodes
     nodes = set(links['a']).union(set(links['b'])) - deadends
