@@ -31,9 +31,9 @@ def init_network(
     """
     road_links = sm.road_links.copy()
     zone_to_road = sm.zone_to_road.copy()
-    assert not road_links.set_index(
-        ['a', 'b']
-    ).index.has_duplicates, 'there is duplicated road links (same a,b for a link) please remove duplicated'
+    assert not road_links.set_index(['a', 'b']).index.has_duplicates, (
+        'there is duplicated road links (same a,b for a link) please remove duplicated'
+    )
     assert time_col in road_links.columns, f'time_column: {time_col} not found in road_links.'
     aon = method == 'aon'
 
@@ -583,7 +583,8 @@ def expanded_roadpathfinder(
     to_drop += [(seg, 's_k-2') for seg in segments]
     to_drop += [(seg, 'auxiliary_flow') for seg in segments]
     links = links.drop(columns=to_drop, errors='ignore')
-
+    # go back to original indexes
+    links = links.set_index(['a', 'b'])
     car_los = pd.DataFrame()
     if return_car_los:
         for seg in segments:
@@ -594,8 +595,6 @@ def expanded_roadpathfinder(
             temp_los['segment'] = seg
             car_los = pd.concat([car_los, temp_los], ignore_index=True)
 
-        # go back to original indexes
-        links = links.set_index(['a', 'b'])
         # change path of links to path of nodes
         links_to_nodes_dict = {v: k for k, v in links['index'].to_dict().items()}
         car_los['path'] = car_los['path'].apply(lambda ls: expanded_path_to_nodes(ls, links_to_nodes_dict))
