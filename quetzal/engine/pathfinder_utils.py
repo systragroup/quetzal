@@ -7,6 +7,21 @@ from copy import deepcopy
 from quetzal.os.parallel_call import parallel_executor
 
 
+from fast_dijkstra import directed_dijkstra
+
+
+# Wrapper to split the indices (destination) into parallel batchs and compute the shortest path on each batchs.
+def fast_dijkstra(edges, weights, indices, return_predecessors=True, num_threads=1):
+    """
+    num_core = 1 : number of threads.
+    """
+    distances, predecessor = directed_dijkstra(edges, weights, indices, num_threads)
+    if return_predecessors:
+        return distances, predecessor
+    else:
+        return distances
+
+
 # Wrapper to split the indices (destination) into parallel batchs and compute the shortest path on each batchs.
 def parallel_dijkstra(csgraph, indices=None, return_predecessors=True, num_core=1, **kwargs):
     """
