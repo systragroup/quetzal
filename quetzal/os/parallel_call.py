@@ -158,6 +158,8 @@ def parallel_call_notebook(
     jobs = []
     os.system('jupyter nbconvert --to python %s' % notebook)
     file = notebook.replace('.ipynb', '.py')
+    if not os.path.exists(file): # jupyter nb convert failed, for instance, jupyter is not recognized
+        convertNotebook(notebook, file)
     if freeze_support:
         add_freeze_support(file)
 
