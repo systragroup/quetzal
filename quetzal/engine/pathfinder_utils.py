@@ -7,15 +7,17 @@ from copy import deepcopy
 from quetzal.os.parallel_call import parallel_executor
 
 
-from fast_dijkstra import directed_dijkstra
+import fast_dijkstra as fd
 
 
 # Wrapper to split the indices (destination) into parallel batchs and compute the shortest path on each batchs.
-def fast_dijkstra(edges, weights, indices, return_predecessors=True, num_threads=1):
-    """
-    num_core = 1 : number of threads.
-    """
-    distances, predecessor = directed_dijkstra(edges, weights, indices, num_threads)
+def fast_dijkstra(csgraph: csr_matrix, indices=None, return_predecessors=True, limit=np.inf, num_threads=-1):
+    """ """
+    if isinstance(csgraph, csc_matrix):
+        csgraph = csgraph.tocsr()
+    if indices is None:
+        indices = csgraph.indptr
+    distances, predecessor = fd.dijkstra(csgraph.indptr, csgraph.indices, csgraph.data, indices, limit, num_threads)
     if return_predecessors:
         return distances, predecessor
     else:
@@ -65,9 +67,7 @@ def simple_edge_routing(edges, origins, destinations, return_predecessors=False,
 
     # dijktra on the road network from node = incices to every other nodes.
     # from b to a.
-    response = parallel_dijkstra(
-        csgraph=mat, directed=True, indices=origin_sparse, return_predecessors=return_predecessors, **kwargs
-    )
+    response = fast_dijkstra(csgraph=mat, indices=origin_sparse, return_predecessors=True, **kwargs)
 
     dist_matrix = response[0] if return_predecessors else response
     predecessors = response[1] if return_predecessors else None
@@ -454,13 +454,8 @@ def paths_from_edges(
     source_index = dict(zip(sources, range(len(sources))))
     index_node = {v: k for k, v in node_index.items()}
     # DIKSTRA
-    dist_matrix, predecessors = parallel_dijkstra(
-        csgraph=csgraph,
-        directed=True,
-        indices=source_indices,
-        return_predecessors=True,
-        limit=cutoff + penalty,
-        num_core=num_cores,
+    dist_matrix, predecessors = fast_dijkstra(
+        csgraph=csgraph, indices=source_indices, return_predecessors=True, limit=cutoff + penalty, num_threads=num_cores
     )
 
     dist_matrix = dist_matrix.T[target_indices].T

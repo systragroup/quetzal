@@ -24,6 +24,8 @@ def get_sparse_volumes(volumes: pd.DataFrame, index: dict[str, int]):
 
 def get_sparse_matrix(edges, index):
     row, col, data = edges.T
+    row = np.array(row, dtype=np.int32)
+    col = np.array(col, dtype=np.int32)
     nlen = len(index)
     return csr_matrix((data, (row, col)), shape=(nlen, nlen))
 
@@ -32,11 +34,11 @@ def shortest_path(
     links: pd.DataFrame, weight_col: str, index: dict[str, int], origins: list[int], num_cores: int
 ) -> Tuple[np.ndarray, np.ndarray]:
     # from  df index(a,b) and weight col, return predecessor.
-    edges = links.index
-    weights = links[weight_col].values
+    edges = links[weight_col].reset_index().values  # build the edges again, useless
+    csgraph = get_sparse_matrix(edges, index=index)
     # shortest path
     weight_matrix, predecessors = fast_dijkstra(
-        edges, weights, indices=origins, return_predecessors=True, num_threads=num_cores
+        csgraph, indices=origins, return_predecessors=True, num_threads=num_cores
     )
     return weight_matrix, predecessors
 
