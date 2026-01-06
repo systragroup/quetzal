@@ -67,7 +67,7 @@ def simple_edge_routing(edges, origins, destinations, return_predecessors=False,
 
     # dijktra on the road network from node = incices to every other nodes.
     # from b to a.
-    response = fast_dijkstra(csgraph=mat, indices=origin_sparse, return_predecessors=True, **kwargs)
+    response = fast_dijkstra(csgraph=mat, indices=origin_sparse, return_predecessors=return_predecessors, **kwargs)
 
     dist_matrix = response[0] if return_predecessors else response
     predecessors = response[1] if return_predecessors else None
