@@ -5,14 +5,23 @@ from scipy.sparse.csgraph import dijkstra
 import numba as nb
 from copy import deepcopy
 from quetzal.os.parallel_call import parallel_executor
-
+from typing import Optional
 
 import fast_dijkstra as fd
 
 
 # Wrapper to split the indices (destination) into parallel batchs and compute the shortest path on each batchs.
-def fast_dijkstra(csgraph: csr_matrix, indices=None, return_predecessors=True, limit=np.inf, num_threads=-1):
-    """ """
+def fast_dijkstra(
+    csgraph: csr_matrix,
+    indices: Optional[list[str]] = None,
+    return_predecessors: bool = True,
+    limit: float = np.inf,
+    num_threads: int = -1,
+):
+    """
+    C++ dijkstra Faster than scipy when parallelize.
+    On windows with 16 threads. it is almost 6 times faster than scipy (parallilize scipy)
+    """
     if isinstance(csgraph, csc_matrix):
         csgraph = csgraph.tocsr()
     if indices is None:
