@@ -101,27 +101,36 @@ def restrict_common_trips(common_trips: pd.DataFrame, links: pd.DataFrame, min_t
     return common_trips
 
 
-def create_common_links(common_trips: pd.DataFrame, links: pd.DataFrame) -> pd.DataFrame:
-    #
+def create_common_links(
+    common_trips: pd.DataFrame, links: pd.DataFrame, merge_overwrite={}, agg_overwrite={}
+) -> pd.DataFrame:
+    """
+    merge_overwrite: to change a column agg (in the merge)
+        we take first of all cols, but merge geometry, sum time, etc
+    agg_overwrite: to change a column agg (in the merge.)
+        we take first of all cols, but average time, 1 / sum(1 / x) headway, etc
+
+    """
+
     # create agg dict
-    #
     # to merge links (fillgap) when there are multiple links for 1 link
     merge_dict = {col: 'first' for col in links.columns}
     merge_dict['index'] = 'first'
+    merge_dict['boarding_time'] = 'first'  # we board on first link. not a sum of all
+    merge_dict['headway'] = 'first'
     merge_dict['geometry'] = line_list_to_polyline
     merge_dict['road_link_list'] = lambda x: sum(x, [])
-    merge_dict['original_links'] = lambda x: sum(x, [])
     merge_dict['time'] = sum
     merge_dict['length'] = sum
-    merge_dict['boarding_time'] = sum
+    merge_dict.update(merge_overwrite)  # change predefined agg func
     # agg dict
     agg_dict = {col: 'first' for col in links.columns}
     agg_dict['road_link_list'] = lambda x: sum(x, [])
-    agg_dict['original_links'] = lambda x: sum(x, [])
     agg_dict['headway'] = lambda x: 1 / sum(1 / x)
     agg_dict['time'] = np.mean
     agg_dict['length'] = np.mean
     agg_dict['boarding_time'] = np.mean
+    agg_dict.update(agg_overwrite)  # change predefined agg func
 
     #
     # create links

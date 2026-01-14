@@ -1081,21 +1081,19 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         self.common_trips = common_trips
         self.preparation_add_common_to_links()
 
-    def preparation_add_common_to_links(self):
+    def preparation_add_common_to_links(self, **kwargs):
         """
         from self.common_trips, create new links and add them to self.links.
 
         Parameters
         ----------
-        min_time :float
-            filter common trips such that they are >= min_time (sometime its just common on 1 segment so we filter out)
+        merge_overwrite={} to modify the aggregation (sum links)
+        agg_overwrite={} to modify the aggregation (mean links)
 
         Builds
         ----------
-        self.common_trips :
-                        table that gives each trips and links used for every common_trips
         self.links :
-                        with common trips added.
+                     with common trips added.
         """
         assert 'common_trips' in self.__dict__.keys(), 'need to run self.preparation_find_common_trips()'
         common_trips = self.common_trips
@@ -1104,7 +1102,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             print('drop common links in links')
             links = links[~links['is_common']]
         links['is_common'] = False
-        common_links = create_common_links(common_trips=common_trips, links=links)
+        common_links = create_common_links(common_trips=common_trips, links=links, **kwargs)
 
         self.links = pd.concat([links, common_links])
 
