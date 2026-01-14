@@ -1,10 +1,13 @@
 from typing import List, Tuple, Dict
 import pandas as pd
+import polars as pl
 import numpy as np
-from quetzal.engine.pathfinder_utils import get_node_path, parallel_dijkstra
+from quetzal.engine.pathfinder_utils import get_node_path, fast_dijkstra
+
 import numba as nb
 from scipy.sparse import csr_matrix
 from scipy.optimize import minimize_scalar
+import re
 
 
 def get_sparse_volumes(volumes: pd.DataFrame, index: dict[str, int]):
@@ -21,6 +24,8 @@ def get_sparse_volumes(volumes: pd.DataFrame, index: dict[str, int]):
 
 def get_sparse_matrix(edges, index):
     row, col, data = edges.T
+    row = np.array(row, dtype=np.int32)
+    col = np.array(col, dtype=np.int32)
     nlen = len(index)
     return csr_matrix((data, (row, col)), shape=(nlen, nlen))
 
@@ -30,50 +35,46 @@ def shortest_path(
 ) -> Tuple[np.ndarray, np.ndarray]:
     # from  df index(a,b) and weight col, return predecessor.
     edges = links[weight_col].reset_index().values  # build the edges again, useless
-    sparse = get_sparse_matrix(edges, index=index)
+    csgraph = get_sparse_matrix(edges, index=index)
     # shortest path
-    weight_matrix, predecessors = parallel_dijkstra(
-        sparse, directed=True, indices=origins, return_predecessors=True, num_core=num_cores
+    weight_matrix, predecessors = fast_dijkstra(
+        csgraph, indices=origins, return_predecessors=True, num_threads=num_cores
     )
     return weight_matrix, predecessors
 
 
-def jam_time(links: pd.DataFrame, vdf, flow: str = 'flow', time_col: str = 'time') -> pd.Series:
-    # vdf is a {function_name: function } to apply on links
-    # 3 types of functions are accepted:
-    # 1) str that will be evaluated with pandas.eval
-    # 2) python function of the form func(df, flow_col, time_col).
-    # 3) Jit function with single input matrix ['alpha','beta','limit',flow_col ,time_col,'penalty','capacity']]
-    keys = set(links['vdf'])
-    for key in keys:
-        if isinstance(vdf[key], str):
-            str_expression = vdf[key].replace('flow', flow).replace('time', time_col)
-            links.loc[links['vdf'] == key, 'result'] = links.loc[links['vdf'] == key].eval(str_expression)
-        elif type(vdf[key]).__name__ == 'function':  # normal python function.
-            links.loc[links['vdf'] == key, 'result'] = vdf[key](links.loc[links['vdf'] == key], flow, time_col)
-        else:  # numba function.
-            links.loc[links['vdf'] == key, 'result'] = vdf[key](
-                links.loc[links['vdf'] == key, ['alpha', 'beta', 'limit', flow, time_col, 'penalty', 'capacity']].values
-            )
-
-    return links['result']
+# convert string to Polars expression
+def pl_expr_from_str(expr_str: str) -> pl.Expr:
+    tokens = set(re.findall(r'[A-Za-z_]\w*', expr_str))
+    for tok in tokens:
+        expr_str = re.sub(rf'\b{tok}\b', f'pl.col("{tok}")', expr_str)
+    return eval(expr_str, {'pl': pl})
 
 
-def z_prime(links, vdf, phi, **kwargs):
+def jam_time(links: pl.DataFrame, vdf, flow: str = 'flow', time_col: str = 'time') -> pd.Series:
+    expr = pl.when(False).then(None)
+    for key, str_expression in vdf.items():
+        str_expression = str_expression.replace('flow', flow).replace('time', time_col)
+        expr = expr.when(pl.col('vdf') == key).then(pl_expr_from_str(str_expression))
+
+    return links.with_columns(expr.alias('result')).get_column('result').to_numpy()
+
+
+def z_prime(links: pl.DataFrame, vdf, phi, **kwargs):
     # min sum(on links) integral from 0 to flow + φΔ of Cost(f) df
     # using a single trapez (ok if phi small), which is the case after <10 iteration.
     # This give not perfect phi to begin with, but thats ok.
     # approx  ( Cost(flow) + Cost(flow + φΔ)  ) x φΔ /2
     # Δ = links['auxiliary_flow'] - links['flow']
-    delta = (links['auxiliary_flow'] - links['flow']).values
-    links['new_flow'] = delta * phi + links['flow']
-    cost_del = jam_time(links, vdf=vdf, flow='new_flow', **kwargs).values
-    cost_flow = links['jam_time'].values
+    delta = links['auxiliary_flow'] - links['flow']
+    links = links.with_columns((pl.col('flow') + delta * phi).alias('new_flow'))
+    cost_del = jam_time(links, vdf=vdf, flow='new_flow', **kwargs)
+    cost_flow = links['jam_time'].to_numpy()
     z = delta * phi * (cost_flow + cost_del) * 0.5
     return np.ma.masked_invalid(z).sum()
 
 
-def find_phi(links, vdf, maxiter=10, tol=1e-4, bounds=(0, 1), **kwargs):
+def find_phi(links: pl.DataFrame, vdf, maxiter=10, tol=1e-4, bounds=(0, 1), **kwargs):
     return minimize_scalar(
         lambda x: z_prime(links, vdf, x, **kwargs),
         bounds=bounds,
@@ -174,12 +175,10 @@ def get_bfw_auxiliary_flow(links, i, b, segments) -> pd.DataFrame:
     return links
 
 
-def get_derivative(links, vdf, flow_col='flow', h=0.001, **kwargs):
-    links['x1'] = links[flow_col] + h
-    links['x2'] = links[flow_col] - h
-    links['x1'] = jam_time(links, vdf, flow='x1', **kwargs)
-    links['x2'] = jam_time(links, vdf, flow='x2', **kwargs)
-    return (links['x1'] - links['x2']) / (2 * h)
+def get_derivative(links: pl.DataFrame, vdf, flow_col='flow', h=0.001, **kwargs):
+    x1 = jam_time(links.with_columns((pl.col(flow_col) + h).alias('x1')), vdf=vdf, flow='x1', **kwargs)
+    x2 = jam_time(links.with_columns((pl.col(flow_col) - h).alias('x2')), vdf=vdf, flow='x2', **kwargs)
+    return (x1 - x2) / (2 * h)
 
 
 @nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)  # parallel=> not thread safe. do not!

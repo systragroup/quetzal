@@ -9,6 +9,12 @@ from quetzal.engine.add_network_mapmatching import (
     Parallel_Mapmatching,
     duplicate_nodes,
 )
+from quetzal.engine.add_network_common_links import (
+    find_common_sets,
+    find_common_trips,
+    restrict_common_trips,
+    create_common_links,
+)
 from quetzal.model import cubemodel, model, integritymodel
 from syspy.spatial import spatial
 from syspy.renumber import renumber
@@ -173,7 +179,12 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         --------
         ::
                                                                                                             sm.step_ntlegs(
-                                                                                                                n_ntlegs=5, walk_speed=2, short_leg_speed=3, long_leg_speed=15, threshold=500, max_ntleg_length=5000
+                                                                                                                n_ntlegs=5,
+                                                                                                                walk_speed=2,
+                                                                                                                short_leg_speed=3,
+                                                                                                                long_leg_speed=15,
+                                                                                                                threshold=500,
+                                                                                                                max_ntleg_length=5000,
                                                                                                             )
         """
         if keep_centroids:
@@ -1035,3 +1046,64 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         for c in aggregated.columns:
             self.road_links[c] = aggregated[c]
         self.track_links = concatenated.drop(['a', 'b'], axis=1)
+
+    def preparation_create_common_trips(self, min_time=5 * 60):
+        """
+        Build the common trips. if multiple trips are sharing the same links. a new common trip with improve headway is created (1 / sum(1 / x)).
+
+        common_trips : (index  a	b	trip_id_list	index_list	link_sequence	trip_id)
+        index_list is a list of list
+        for example:
+        common_link_1 => [trip_1, trip_2, trip_3] => [[link_1], [link_2], [link_3, link_4, link_5]]
+        where the common_link_1 is the "average" of trip_1, trip_2 and trip_3.
+        link_1 of trip_1 and link_2 of trip_2 share the same a,b while trip_3 have a detour in its path.
+        in most case, we have only one element per list (no detours).
+
+        Parameters
+        ----------
+        min_time :float
+            filter common trips such that they are >= min_time (sometime its just common on 1 segment so we filter out)
+
+        Builds
+        ----------
+        self.common_trips :
+                        table that gives each trips and links used for every common_trips
+        self.links :
+                        with common trips added.
+        """
+        if 'is_common' in self.links.columns:
+            print('drop common links in links')
+            self.links = self.links[~self.links['is_common']]
+
+        trip_id_sets = find_common_sets(links=self.links)
+        common_trips = find_common_trips(links=self.links, trip_id_sets=trip_id_sets)
+        common_trips = restrict_common_trips(common_trips=common_trips, links=self.links, min_time=min_time)
+        self.common_trips = common_trips
+        self.preparation_add_common_to_links()
+
+    def preparation_add_common_to_links(self, **kwargs):
+        """
+        from self.common_trips, create new links and add them to self.links.
+
+        Parameters
+        ----------
+        merge_overwrite={} to modify the aggregation (sum links)
+        agg_overwrite={} to modify the aggregation (mean links)
+
+        Builds
+        ----------
+        self.links :
+                     with common trips added.
+        """
+        assert 'common_trips' in self.__dict__.keys(), 'need to run self.preparation_find_common_trips()'
+        common_trips = self.common_trips
+        links = self.links
+        if 'is_common' in links.columns:
+            print('drop common links in links')
+            links = links[~links['is_common']]
+        links['is_common'] = False
+        common_links = create_common_links(common_trips=common_trips, links=links, **kwargs)
+
+        self.links = pd.concat([links, common_links])
+
+        print(f'{len(common_links)} common_links added to self.links')

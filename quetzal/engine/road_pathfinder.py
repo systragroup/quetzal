@@ -1,7 +1,7 @@
 import numpy as np
 import geopandas as gpd
 import pandas as pd
-
+import polars as pl
 from quetzal.engine.pathfinder_utils import build_index, get_path
 from quetzal.engine.msa_trackers.links_tracker import LinksTracker
 from quetzal.engine.msa_utils import (
@@ -20,6 +20,10 @@ from quetzal.engine.msa_utils import (
 )
 from typing import List, Dict, Tuple
 from quetzal.engine.vdf import default_bpr, free_flow
+
+
+def to_polars(df):
+    return pl.DataFrame(df.drop(columns=['geometry'], errors='ignore'))
 
 
 def init_network(
@@ -41,6 +45,11 @@ def init_network(
     zone_to_road = zone_to_road_preparation(zone_to_road, segments, time_col, access_time, ntleg_penalty, aon, log)
     # create DataFrame with road_links and zone to road
     network = concat_connectors_to_roads(road_links, zone_to_road, segments, time_col, aon, log)
+    # try to convert to polars.
+
+    # assert_links_are_polars_compatible
+    to_polars(network)
+
     return network
 
 
@@ -307,7 +316,7 @@ def msa_roadpathfinder(
     # in the volumes assignment, start with base_flow (ex: network preloaded with buses on road)
     ab_volumes = init_ab_volumes(links.index)
     # initialization
-    links['jam_time'] = jam_time(links, vdf, 'flow', time_col=time_col)
+    links['jam_time'] = jam_time(to_polars(links), vdf, 'flow', time_col=time_col)
     links['jam_time'].fillna(links[time_col], inplace=True)
 
     # init track links
@@ -347,16 +356,16 @@ def msa_roadpathfinder(
             phi = 1  # first iteration is AON
             beta = [1, 0, 0]
         elif method == 'bfw':  # if biconjugate: takes the 2 last direction
-            links['derivative'] = get_derivative(links, vdf, h=0.001, flow_col='flow', time_col=time_col)
+            links['derivative'] = get_derivative(to_polars(links), vdf, h=0.001, flow_col='flow', time_col=time_col)
             if i > 2:
                 beta = find_beta(links, phi, segments)  # this is the previous phi (phi_-1)
             links = get_bfw_auxiliary_flow(links, i, beta, segments)
             links['auxiliary_flow'] = links[flow_cols].sum(axis=1)
             max_phi = 1 / i**0.5  # limit search space
-            phi = find_phi(links, vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
+            phi = find_phi(to_polars(links), vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
         elif method == 'fw':
             max_phi = 1 / i**0.5  # limit search space
-            phi = find_phi(links, vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
+            phi = find_phi(to_polars(links), vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
         else:  # msa
             phi = 1 / (i + 2)
         #
@@ -381,7 +390,7 @@ def msa_roadpathfinder(
         #
         # Update Time on links
         #
-        links['jam_time'] = jam_time(links, vdf, 'flow', time_col=time_col)
+        links['jam_time'] = jam_time(to_polars(links), vdf, 'flow', time_col=time_col)
         links['jam_time'].fillna(links[time_col], inplace=True)
         # skip first iteration (AON asignment) as relgap in -inf
         if relgap <= tolerance:
@@ -479,9 +488,9 @@ def expanded_roadpathfinder(
 
     # init numba dict with (links, 0)
     ab_volumes = init_numba_volumes(links.index)
-
+    tracker_plugin.value = links
     # initialization time
-    links['jam_time'] = jam_time(links, vdf, 'flow', time_col=time_col)
+    links['jam_time'] = jam_time(to_polars(links), vdf, 'flow', time_col=time_col)
     links['jam_time'].fillna(links[time_col], inplace=True)
     # init cost on expanded Links
     jam_time_dict = links['jam_time'].to_dict()
@@ -523,17 +532,17 @@ def expanded_roadpathfinder(
             phi = 1  # first iteration is AON
             beta = [1, 0, 0]
         elif method == 'bfw':  # if biconjugate: takes the 2 last direction
-            links['derivative'] = get_derivative(links, vdf, h=0.001, flow_col='flow', time_col=time_col)
+            links['derivative'] = get_derivative(to_polars(links), vdf, h=0.001, flow_col='flow', time_col=time_col)
             if i > 2:
                 beta = find_beta(links, phi, segments)  # this is the previous phi (phi_-1)
             links = get_bfw_auxiliary_flow(links, i, beta, segments)
 
             links['auxiliary_flow'] = links[auxiliary_flow_cols].sum(axis=1)
             max_phi = 1 / i**0.5  # limit search space
-            phi = find_phi(links, vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
+            phi = find_phi(to_polars(links), vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
         elif method == 'fw':
             max_phi = 1 / i**0.5  # limit search space
-            phi = find_phi(links, vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
+            phi = find_phi(to_polars(links), vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
         else:  # msa
             phi = 1 / (i + 2)
 
@@ -563,7 +572,7 @@ def expanded_roadpathfinder(
         # Update Time on links
         #
 
-        links['jam_time'] = jam_time(links, vdf, 'flow', time_col=time_col)
+        links['jam_time'] = jam_time(to_polars(links), vdf, 'flow', time_col=time_col)
         links['jam_time'].fillna(links[time_col], inplace=True)
         jam_time_dict = links['jam_time'].to_dict()
         expanded_links['cost'] = expanded_links['sparse_index'].apply(lambda x: jam_time_dict.get(x, zone_penalty))
