@@ -162,12 +162,12 @@ class AnalysisModel(summarymodel.SummaryModel):
             return hierarchy[-1]
 
         self.pt_los['route_types'] = self.pt_los['link_path'].apply(
-            lambda p: tuple({route_type_dict[l] for l in p})
+            lambda p: tuple(sorted({route_type_dict[l] for l in p}))
         )
         self.pt_los['route_type'] = self.pt_los['route_types'].apply(higher_route_type)
         try:
             self.pr_los['route_types'] = self.pr_los['link_path_transit'].apply(
-                lambda p: ('car',) + tuple({route_type_dict[l] for l in p})
+                lambda p: ('car',) + tuple(sorted({route_type_dict[l] for l in p}))
             )
             self.pr_los['route_type'] = 'parkride'
         except (AttributeError, KeyError):
