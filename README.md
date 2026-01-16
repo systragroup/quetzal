@@ -101,6 +101,12 @@ version = "3.1.1"
 git tag -a v3.1.1 -m 'description'
 ```
 
+3) push the tag
+
+```bash
+git push origin v3.1.1
+```
+
 that's it. A Github action will 
 * build
 * create a release 
