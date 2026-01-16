@@ -13,6 +13,8 @@ In order to improve the ergonomics, the code may be re-factored and a few method
 
 # Installation
 
+https://pypi.org/project/quetzal-transport/
+
 ```bash
 pip install quetzal-transport
 ```
@@ -87,13 +89,21 @@ Anaconda and Pip do not get along well, your Anaconda install may have been corr
 
 # Deploying
 
-1) change the version in pyproject.toml
+1) change the version in **pyproject.toml**
 
 ```toml
 [tool.poetry]
 name = "quetzal-transport"
 version = "3.1.1"
 ```
+
+2) edit **CHANGELOG.md** with the changes
+```md
+## [3.1.1] (2026-01-15)
+## changes
+* some changes
+```
+
 
 2) create a tag matching the version **(starting with v)**
 
