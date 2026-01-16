@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "quetzal-modelling"
+name = "quetzal-transport"
 version = "3.0.2"
 description = "modeling library for transport planning"
 authors = ["Quentin Chasserieau <qchasserieau@systra.com>"]
