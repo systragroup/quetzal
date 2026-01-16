@@ -4,7 +4,8 @@ version = "3.1.1"
 description = "modeling library for transport planning"
 authors = ["Quentin Chasserieau <qchasserieau@systra.com>"]
 readme = "README.md"
-Homepage = "https://github.com/systragroup/quetzal"
+repository = "https://github.com/systragroup/quetzal"
+documentation = "https://systragroup.github.io/quetzal"
 keywords = ["transport", "planning", "simulation", "fast"]
 license = "CeCILL-B"
 
