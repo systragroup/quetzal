@@ -38,7 +38,6 @@ jobs:
           tag_name: ${{ github.ref_name }} # Get tag name without the refs/tags/ prefix
           name: Release ${{ github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          name: ${{ github.ref_name }}
           files: |
             dist/*.whl
             dist/*.tar.gz
