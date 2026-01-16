@@ -1,8 +1,13 @@
 [tool.poetry]
 name = "quetzal-transport"
-version = "3.1.0"
+version = "3.1.1"
 description = "modeling library for transport planning"
 authors = ["Quentin Chasserieau <qchasserieau@systra.com>"]
+readme = "README.md"
+Homepage = "https://github.com/systragroup/quetzal"
+keywords = ["transport", "planning", "simulation", "fast"]
+license = "CeCILL-B"
+
 packages = [
   { include = "quetzal" },
   { include = "syspy" }
