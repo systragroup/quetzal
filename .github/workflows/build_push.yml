@@ -36,19 +36,19 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }} # Get tag name without the refs/tags/ prefix
-          name: Release ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
           files: |
             dist/*.whl
             dist/*.tar.gz
 
-      # 4) Upload to PyPI
+      # 3) Upload to PyPI
       - name: Upload to PyPI
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
         run: |
-          twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+          twine upload --repository-url https://pypi.org/legacy/ dist/*
 
 
 
