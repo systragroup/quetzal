@@ -13,6 +13,7 @@ tests/data/out/
 .vscode/
 
 build/
+dist/
 *.env
 !docker/templates/.env
 
