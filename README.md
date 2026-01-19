@@ -1,7 +1,7 @@
 
 # quetzal
 ## What is it?
-**quetzal** is a Python package providing flexible models for transport planning and traffic forecasting.
+**quetzal** is a Python package providing flexible models for transport planning and traffic forecasting. Quetzal is highly optimized to run fast on big cities.
 ## Copyright
 (c) SYSTRA
 ## License
@@ -21,13 +21,9 @@ pip install quetzal-transport
 
 # Installation from sources
 ## For Linux
-One should choose between 
-- Poetry (recommended)
-- Virtualenv 
-- Anaconda
 
 ### poetry
-1) May need to set the default (or local) python version in the project
+1) You may need to set the default (or local) python version in the project
 ```bash
 pyenv local 3.12
 ```
@@ -39,26 +35,8 @@ poetry install
 ```bash
 poetry shell
 ```
-4) add the env to ipykernel (to use in jupyter)
+4) (optional) add the env to ipykernel (to use in jupyter)
 ```bash
-python -m ipykernel install --user --name=quetzal_env
-```
-
-### Virtualenv
-Virtual environment: `virtualenv .venv -p python3.12; source .venv/bin/activate` or any equivalent command.
-
-```bash
-pip install -e .
-```
-
-#### Anaconda
-In order to use python notebook, Anaconda 3 + Python 3.12 must be installed.
-Then create + activate quetzal environment:
-```bash
-conda init
-conda create -n quetzal_env -y python=3.12
-conda activate quetzal_env
-pip install -e . -r requirements_win.txt
 python -m ipykernel install --user --name=quetzal_env
 ```
 
@@ -66,7 +44,7 @@ python -m ipykernel install --user --name=quetzal_env
 
 ## For Windows
 `Anaconda 3 + Python 3.12` is supposed to be installed
-#### PIP and Anaconda (recommended)
+#### Poetry and Anaconda (recommended)
 To create quetzal_env automatically and install quetzal, open anaconda prompt and
 run windows-install batch file
 ```bash
