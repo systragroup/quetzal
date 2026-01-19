@@ -1,7 +1,7 @@
 
 # quetzal
 ## What is it?
-**quetzal** is a Python package providing flexible models for transport planning and traffic forecasting.
+**quetzal** is a Python package providing flexible models for transport planning and traffic forecasting. Quetzal is highly optimized to run fast on big cities.
 ## Copyright
 (c) SYSTRA
 ## License
@@ -11,15 +11,19 @@ The official documentation is hosted on https://systragroup.github.io/quetzal
 ## Backward compatibility
 In order to improve the ergonomics, the code may be re-factored and a few method calls may be re-designed. As a consequence, the backward compatibility of the library is not guaranteed. Therefore, the version of quetzal used for a project should be specified in its requirements.
 
+# Installation
+
+https://pypi.org/project/quetzal-transport/
+
+```bash
+pip install quetzal-transport
+```
+
 # Installation from sources
 ## For Linux
-One should choose between 
-- Poetry (recommended)
-- Virtualenv 
-- Anaconda
 
 ### poetry
-1) May need to set the default (or local) python version in the project
+1) You may need to set the default (or local) python version in the project
 ```bash
 pyenv local 3.12
 ```
@@ -31,26 +35,8 @@ poetry install
 ```bash
 poetry shell
 ```
-4) add the env to ipykernel (to use in jupyter)
+4) (optional) add the env to ipykernel (to use in jupyter)
 ```bash
-python -m ipykernel install --user --name=quetzal_env
-```
-
-### Virtualenv
-Virtual environment: `virtualenv .venv -p python3.12; source .venv/bin/activate` or any equivalent command.
-
-```bash
-pip install -e .
-```
-
-#### Anaconda
-In order to use python notebook, Anaconda 3 + Python 3.12 must be installed.
-Then create + activate quetzal environment:
-```bash
-conda init
-conda create -n quetzal_env -y python=3.12
-conda activate quetzal_env
-pip install -e . -r requirements_win.txt
 python -m ipykernel install --user --name=quetzal_env
 ```
 
@@ -58,7 +44,7 @@ python -m ipykernel install --user --name=quetzal_env
 
 ## For Windows
 `Anaconda 3 + Python 3.12` is supposed to be installed
-#### PIP and Anaconda (recommended)
+#### Poetry and Anaconda (recommended)
 To create quetzal_env automatically and install quetzal, open anaconda prompt and
 run windows-install batch file
 ```bash
@@ -79,34 +65,37 @@ Anaconda and Pip do not get along well, your Anaconda install may have been corr
 - Delete your Python and Anaconda folders (users\you\Anaconda3, users\you\Appdata\Roaming\Python, ...etc)
 - Install Anaconda 
 
+# Deploying
 
-## migration to 3.12
-* pandas append was remove: 
-```python
-# before
-sm.volumes = sm.volumes.append(vol)
-#now
-sm.volumes = pd.concat([sm.volumes, vol])
-#or
-sm.volumes = pd.concat([sm.volumes, pd.DataFrame(vol)])
-```
-filtering index with set was remove:
-```python
-# before
-sm.volumes = sm.volumes.loc[od_set]
-#now
-sm.volumes = sm.volumes.loc[list(od_set)]
+1) change the version in **pyproject.toml**
+
+```toml
+[tool.poetry]
+name = "quetzal-transport"
+version = "3.1.1"
 ```
 
-* shapely
-```python
-# before
-hull = zones.unary_union.convex_hull
-# now
-hull = zones.union_all().convex_hull
+2) edit **CHANGELOG.md** with the changes
+```md
+## [3.1.1] (2026-01-15)
+## changes
+* some changes
 ```
-* scikitlearn
-```python
-# add n_init='auto'
-KMeans(n_clusters=num_zones,random_state=0,n_init='auto')
+
+
+2) create a tag matching the version **(starting with v)**
+
+```bash
+git tag -a v3.1.1 -m 'description'
 ```
+
+3) push the tag
+
+```bash
+git push origin v3.1.1
+```
+
+that's it. A Github action will 
+* build
+* create a release 
+* update the package on pipy.

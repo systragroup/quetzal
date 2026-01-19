@@ -1,13 +1,22 @@
 [tool.poetry]
-name = "quetzal"
-version = "1.0.0"
+name = "quetzal-transport"
+version = "3.1.1"
 description = "modeling library for transport planning"
-authors = ["Quentin Chasserieau <qchasserieau@systra.com"]
-package-mode = false
+authors = ["Quentin Chasserieau <qchasserieau@systra.com>"]
+readme = "README.md"
+repository = "https://github.com/systragroup/quetzal"
+documentation = "https://systragroup.github.io/quetzal"
+keywords = ["transport", "planning", "simulation", "fast"]
+license = "CeCILL-B"
+
+packages = [
+  { include = "quetzal" },
+  { include = "syspy" }
+]
 
 [tool.poetry.dependencies]
-python = "^3.12"
-numpy = "<2.3"
+python = ">=3.12,<3.14"
+numpy = "*"
 pandas = "<3.0"
 geopandas = "*"
 gtfs-kit = "6.1.0"
@@ -19,7 +28,6 @@ geopy = "*"
 scikit-learn = "*"
 matplotlib = "*"
 notebook = "<7.0"
-setuptools = "*"
 tqdm = "*"
 seaborn = "*"
 xlrd = "*"
@@ -27,14 +35,17 @@ s3fs = "*"
 rasterio = "*"
 ipywidgets = "*"
 openmatrix = "*"
-pip-chill = "*"
 networkx = "*"
-ruff = "^0.7.4"
-zstandard = "^0.23.0"
-pydantic = "^2.11.5"
-polars = "^1.36.1"
-pyarrow = "^22.0.0"
+ruff = "*"
+zstandard = "*"
+pydantic = "*"
+polars = "*"
+pyarrow = "*"
 fast-dijkstra = "*"
 
+
+[tool.poetry.group.dev.dependencies]
+twine = "^6.2.0"
+pip-chill = "*"
 
 
