@@ -64,6 +64,13 @@ Anaconda and Pip do not get along well, your Anaconda install may have been corr
 - Uninstall Anaconda
 - Delete your Python and Anaconda folders (users\you\Anaconda3, users\you\Appdata\Roaming\Python, ...etc)
 - Install Anaconda 
+ 
+# Tests
+to run unittest:
+
+```bash
+poetry run python -W ignore -m unittest discover
+```
 
 # Deploying
 

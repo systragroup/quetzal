@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "quetzal-transport"
-version = "3.1.1"
+version = "3.1.2"
 description = "modeling library for transport planning"
 authors = ["Quentin Chasserieau <qchasserieau@systra.com>"]
 readme = "README.md"
