@@ -1,7 +1,0 @@
-__pycache__
-*.ipynb_checkpoints
-*.python-version
-*.md
-*.env
-api/ML_MatrixRoadCaster/notebook
-syspy/surveys
