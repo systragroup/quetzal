@@ -40,7 +40,7 @@ rlinks.index = 'rlink_' + rlinks.index.astype(str)
 rlinks.index.name = 'index'
 
 
-from quetzal.engine.vdf import default_bpr, free_flow
+from quetzal.engine.road_pathfinder import default_bpr, free_flow
 
 num_cores = 1
 vdf = {'free_flow': free_flow, 'default_bpr': default_bpr}

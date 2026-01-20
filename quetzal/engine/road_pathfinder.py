@@ -19,7 +19,10 @@ from quetzal.engine.msa_utils import (
     get_sparse_volumes,
 )
 from typing import List, Dict, Tuple
-from quetzal.engine.vdf import default_bpr, free_flow
+
+# base vdf
+free_flow = 'time'
+default_bpr = 'time * (1 + {alpha} * (flow/capacity)**{beta})'.format(alpha=0.15, beta=4)
 
 
 def to_polars(df):
@@ -45,10 +48,9 @@ def init_network(
     zone_to_road = zone_to_road_preparation(zone_to_road, segments, time_col, access_time, ntleg_penalty, aon, log)
     # create DataFrame with road_links and zone to road
     network = concat_connectors_to_roads(road_links, zone_to_road, segments, time_col, aon, log)
-    # try to convert to polars.
 
     # assert_links_are_polars_compatible
-    to_polars(network)
+    to_polars(network)  # just to try
 
     return network
 
@@ -150,6 +152,9 @@ def concat_connectors_to_roads(road_links, zone_to_road, segments, time_col='tim
         if 'base_flow' not in links.columns:
             links['base_flow'] = 0
         links['base_flow'] = links['base_flow'].fillna(0)
+        # vdf keys to string. polars doesnt like mixed key (int and str)
+        # later we will convert vdf to str keys. vdf = {str(key): val for key, val in vdf.items()}
+        links['vdf'] = links['vdf'].apply(str)
     return links
 
 
@@ -303,7 +308,7 @@ def msa_roadpathfinder(
     num_cores = 1 : for parallelization.
     """
     # preparation
-
+    vdf = {str(key): val for key, val in vdf.items()}
     assert_vdf_on_links(links, vdf)
 
     # reindex links to sparse indexes (a,b)
@@ -458,6 +463,7 @@ def expanded_roadpathfinder(
     turn_penalties: dict of turn penalties {from_link: [to_link]}
     num_cores = 1 : for parallelization.
     """
+    vdf = {str(key): val for key, val in vdf.items()}
     assert_vdf_on_links(links, vdf)
     #
     # preparation
