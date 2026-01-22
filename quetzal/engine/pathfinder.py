@@ -137,9 +137,16 @@ class PublicPathFinder:
         self.mode_combinations = mode_combinations
 
     def find_best_path(
-        self, od_set=None, cutoff=np.inf, build_shortcuts=False, keep_matrix=False, verbose=False, num_cores=1, **kwargs
+        self,
+        od_set=None,
+        cutoff=np.inf,
+        boarding_time=None,
+        build_shortcuts=False,
+        keep_matrix=False,
+        verbose=False,
+        num_cores=1,
     ):
-        link_e = link_edge_array(self.links, **kwargs)
+        link_e = link_edge_array(self.links, boarding_time=boarding_time)
         footpaths_e = self.footpaths[['a', 'b', 'time']].values
         ntlegs_e = self.ntlegs[['a', 'b', 'time']].values
         edges = np.concatenate([link_e, footpaths_e, ntlegs_e])
@@ -172,13 +179,13 @@ class PublicPathFinder:
         column=None,
         prune=True,
         cutoff=np.inf,
+        boarding_time=None,
         build_shortcuts=False,
         od_set=None,
         reuse_matrix=True,
         log=False,
         keep_matrix=False,
         num_cores=1,
-        **kwargs,
     ):
         def get_task(column, combination, od_set=None):
             od_sets = self.splitted_od_sets[column][combination] if od_set is None else (od_set, set())
@@ -188,7 +195,7 @@ class PublicPathFinder:
 
         if reuse_matrix:
             if self.csgraph is None:
-                link_e = link_edge_array(self.links, **kwargs)
+                link_e = link_edge_array(self.links, boarding_time=boarding_time)
                 footpaths_e = self.footpaths[['a', 'b', 'time']].values
                 ntlegs_e = self.ntlegs[['a', 'b', 'time']].values
                 edges = np.concatenate([link_e, footpaths_e, ntlegs_e])
@@ -226,7 +233,7 @@ class PublicPathFinder:
                 to_prune = to_prune.union(removed_nodes).union(removed_footpaths).union(removed_ntlegs)
 
             if not reuse_matrix:
-                link_e = link_edge_array(links, **kwargs)
+                link_e = link_edge_array(links, boarding_time=boarding_time)
                 footpaths_e = footpaths[['a', 'b', 'time']].values
                 ntlegs_e = ntlegs[['a', 'b', 'time']].values
                 edges = np.concatenate([link_e, footpaths_e, ntlegs_e])

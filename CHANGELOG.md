@@ -1,3 +1,7 @@
+## [3.1.3] (2026-01-22)
+## bug fixes
+* pt_pathfinder: dont use column cost. recompute the cost (for boarding links) 
+    =>  time + headway/2 + boarding_time
 ## [3.1.2] (2026-01-20)
 ## changes
 * road_pathfinder: moved default_brp and free_flow vdf from quetzal/engine/vdf.py to quetzal/engine/road_pathfinder.py
