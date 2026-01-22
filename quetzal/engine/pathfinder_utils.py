@@ -321,7 +321,13 @@ def sparse_matrix_with_access_penalty(edges, sources=set(), penalty=1e9):
     return sparse_matrix(penalty_edges)
 
 
-def _link_edges(links, boarding_time=None, alighting_time=None):
+def _link_edges(links, boarding_time=None, alighting_time=None, cost_col='_cost'):
+    """
+    :param links: Description
+    :param boarding_time: if None: column boarding_time
+    :param alighting_time: if None: column alighting_time
+    :param cost_col: if non_existant (like _cost)  l['time'] + l['headway'] / 2 else column name provided
+    """
     assert not (boarding_time is not None and 'boarding_time' in links.columns)
     boarding_time = 0 if boarding_time is None else boarding_time
 
@@ -332,8 +338,8 @@ def _link_edges(links, boarding_time=None, alighting_time=None):
     l['index'] = l.index
     l['next'] = l['link_sequence'] + 1
 
-    if 'cost' not in l.columns:
-        l['cost'] = l['time'] + l['headway'] / 2
+    if cost_col not in l.columns:
+        l[cost_col] = l['time'] + l['headway'] / 2
 
     if 'boarding_time' not in l.columns:
         l['boarding_time'] = boarding_time
@@ -341,7 +347,7 @@ def _link_edges(links, boarding_time=None, alighting_time=None):
     if 'alighting_time' not in l.columns:
         l['alighting_time'] = alighting_time
 
-    l['total_time'] = l['boarding_time'] + l['cost']
+    l['total_time'] = l['boarding_time'] + l[cost_col]
 
     transit = pd.merge(
         l[['index', 'next', 'trip_id']],
@@ -355,9 +361,9 @@ def _link_edges(links, boarding_time=None, alighting_time=None):
     return boarding_edges, alighting_edges, transit_edges
 
 
-def link_edges(links, boarding_time=None, alighting_time=None):
+def link_edges(links, boarding_time=None, alighting_time=None, cost_col='_cost'):
     boarding_e, alighting_e, transit_e = _link_edges(
-        links=links, boarding_time=boarding_time, alighting_time=alighting_time
+        links=links, boarding_time=boarding_time, alighting_time=alighting_time, cost_col=cost_col
     )
     boarding_edges = boarding_e.values.tolist()
     alighting_edges = alighting_e.values.tolist()
@@ -366,9 +372,9 @@ def link_edges(links, boarding_time=None, alighting_time=None):
     return boarding_edges + transit_edges + alighting_edges
 
 
-def link_edge_array(links, boarding_time=None, alighting_time=None):
+def link_edge_array(links, boarding_time=None, alighting_time=None, cost_col='_cost'):
     boarding_e, alighting_e, transit_e = _link_edges(
-        links=links, boarding_time=boarding_time, alighting_time=alighting_time
+        links=links, boarding_time=boarding_time, alighting_time=alighting_time, cost_col=cost_col
     )
     boarding_edges = boarding_e.values
     alighting_edges = alighting_e.values
@@ -505,7 +511,7 @@ def adjacency_matrix(links, ntlegs, footpaths, ntlegs_penalty=1e9, boarding_time
     ntleg_edges = ntlegs[['a', 'b', 'time']].values.tolist()
     footpaths_edges = footpaths[['a', 'b', 'time']].values.tolist()
 
-    edges = link_edges(links, boarding_time, alighting_time)
+    edges = link_edges(links, boarding_time, alighting_time, *kwargs)
     edges += footpaths_edges + ntleg_edges
     return sparse_matrix(edges)
 

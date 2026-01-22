@@ -9,8 +9,8 @@ from syspy.spatial import spatial
 from tqdm import tqdm
 from syspy.spatial.geometries import reverse_geometry
 
-def od_volume_from_zones(zones, deterrence_matrix=None, power=2,
-                         coordinates_unit='degree', intrazonal=False):
+
+def od_volume_from_zones(zones, deterrence_matrix=None, power=2, coordinates_unit='degree', intrazonal=False):
     """
     Use this function to build an Origin -> Destination demand matrix.
         * a deterrence matrix can be provided, if not:
@@ -40,8 +40,7 @@ def od_volume_from_zones(zones, deterrence_matrix=None, power=2,
     """
     if deterrence_matrix is None:
         euclidean = skims.euclidean(zones, coordinates_unit=coordinates_unit, intrazonal=intrazonal)
-        distance = euclidean.set_index(
-            ['origin', 'destination'])['euclidean_distance'].unstack('destination')
+        distance = euclidean.set_index(['origin', 'destination'])['euclidean_distance'].unstack('destination')
 
         # If intrazonal volumes are not wanted, the distance is set to infinity
         if not intrazonal:
@@ -52,16 +51,10 @@ def od_volume_from_zones(zones, deterrence_matrix=None, power=2,
         deterrence_matrix.replace(float('inf'), 1e9, inplace=True)
     # gravitaire doublement contraint
     volume_array = distribution.CalcDoublyConstrained(
-        zones['emission'].values,
-        zones['attraction'].values,
-        deterrence_matrix.values
+        zones['emission'].values, zones['attraction'].values, deterrence_matrix.values
     )
 
-    volumes = pd.DataFrame(
-        volume_array,
-        index=list(zones.index),
-        columns=list(zones.index)
-    ).stack()
+    volumes = pd.DataFrame(volume_array, index=list(zones.index), columns=list(zones.index)).stack()
 
     volumes = volumes.reset_index()
     volumes.columns = ['origin', 'destination', 'volume']
@@ -70,15 +63,8 @@ def od_volume_from_zones(zones, deterrence_matrix=None, power=2,
 
 
 def ntlegs_from_centroids_and_nodes(
-    centroids,
-    nodes,
-    short_leg_speed=3,
-    long_leg_speed=15,
-    threshold=500,
-    n_neighbors=5,
-    coordinates_unit='degree'
+    centroids, nodes, short_leg_speed=3, long_leg_speed=15, threshold=500, n_neighbors=5, coordinates_unit='degree'
 ):
-
     """
     From a given zoning an a given set of nodes, links the nearest nodes to each
     centroid of the zoning.
@@ -87,12 +73,7 @@ def ntlegs_from_centroids_and_nodes(
     ::
         centroids = zones.copy()
         centroids['geometry'] = centroids['geometry'].apply(lambda g: g.centroid)
-        ntlegs = engine.ntlegs_from_centroids_and_nodes(
-            centroids,
-            nodes,
-            ntleg_speed=3,
-            n_neighbors=6
-        )
+        ntlegs = engine.ntlegs_from_centroids_and_nodes(centroids, nodes, ntleg_speed=3, n_neighbors=6)
 
     :param centroids: a point GeoDataFrame indexed by a numeric index;
     :param nodes: a point GeoDataFrame indexed by a numeric index;
@@ -104,12 +85,7 @@ def ntlegs_from_centroids_and_nodes(
         the centroid and the node, the distance and the proximity rank;
     :rtype : line GeoDataFrame
     """
-    ntlegs = spatial.nearest(
-        centroids,
-        nodes,
-        geometry=True,
-        n_neighbors=n_neighbors
-    ).rename(
+    ntlegs = spatial.nearest(centroids, nodes, geometry=True, n_neighbors=n_neighbors).rename(
         columns={'ix_one': 'centroid', 'ix_many': 'node'}
     )[['centroid', 'node', 'rank', 'distance', 'geometry']]
 
@@ -119,7 +95,6 @@ def ntlegs_from_centroids_and_nodes(
     eggress['direction'] = 'eggress'
     eggress['geometry'] = eggress['geometry'].apply(lambda x: reverse_geometry(x))
 
-
     ntlegs = pd.concat([access, eggress], ignore_index=True)
 
     if coordinates_unit == 'degree':
@@ -127,7 +102,7 @@ def ntlegs_from_centroids_and_nodes(
     elif coordinates_unit == 'meter':
         ntlegs['distance'] = ntlegs['geometry'].apply(lambda x: x.length)
     else:
-        raise('Invalid coordinates_unit.')
+        raise ('Invalid coordinates_unit.')
 
     ntlegs['speed_factor'] = np.power(ntlegs['distance'] / threshold, 0.5)
     ntlegs['short_leg_speed'] = short_leg_speed
@@ -152,8 +127,6 @@ def graph_links(links):
 
     # links['arrival_time'] = 1
     links['duration'] = links['time']
-    if 'cost' not in links.columns:
-        links['cost'] = links['duration'] + links['headway'] / 2
 
     links['origin'] = links['a']
     links['destination'] = links['b']
@@ -165,15 +138,7 @@ def graph_links(links):
     return links
 
 
-def multimodal_graph(
-    links,
-    ntlegs,
-    pole_set,
-    footpaths=None,
-    boarding_cost=300,
-    ntlegs_penalty=1e9,
-):
-
+def multimodal_graph(links, ntlegs, pole_set, footpaths=None, boarding_cost=300, ntlegs_penalty=1e9):
     """
     This is a graph builder and a pathfinder wrapper
         * Builds a public transport frequency graph from links;
@@ -183,11 +148,8 @@ def multimodal_graph(
 
     example:
     ::
-        links = engine.graph_links(links) # links is a LineDraft export
-        path_finder_stack = engine.path_and_duration_from_links_and_ntlegs(
-            links,
-            ntlegs
-        )
+        links = engine.graph_links(links)  # links is a LineDraft export
+        path_finder_stack = engine.path_and_duration_from_links_and_ntlegs(links, ntlegs)
 
     :param links: link DataFrame, built with graph_links;
     :param ntlegs: ntlegs DataFrame built;
@@ -205,31 +167,20 @@ def multimodal_graph(
     links['index'] = links.index  # to be consistent with frequency_graph
 
     nx_graph, _ = frequency_graph.graphs_from_links(
-        links,
-        include_edges=[],
-        include_igraph=False,
-        boarding_cost=boarding_cost
+        links, include_edges=[], include_igraph=False, boarding_cost=boarding_cost
     )
     ntlegs.loc[ntlegs['direction'] == 'access', 'time'] += ntlegs_penalty
     nx_graph.add_weighted_edges_from(ntlegs[['a', 'b', 'time']].values.tolist())
 
     if footpaths is not None:
-        nx_graph.add_weighted_edges_from(
-            footpaths[['a', 'b', 'time']].values.tolist()
-        )
+        nx_graph.add_weighted_edges_from(footpaths[['a', 'b', 'time']].values.tolist())
 
     return nx_graph
 
 
 def path_and_duration_from_links_and_ntlegs(
-    links,
-    ntlegs,
-    pole_set,
-    footpaths=None,
-    boarding_cost=300,
-    ntlegs_penalty=1e9
+    links, ntlegs, pole_set, footpaths=None, boarding_cost=300, ntlegs_penalty=1e9
 ):
-
     """
     This is a graph builder and a pathfinder wrapper
         * Builds a public transport frequency graph from links;
@@ -239,11 +190,8 @@ def path_and_duration_from_links_and_ntlegs(
 
     example:
     ::
-        links = engine.graph_links(links) # links is a LineDraft export
-        path_finder_stack = engine.path_and_duration_from_links_and_ntlegs(
-            links,
-            ntlegs
-        )
+        links = engine.graph_links(links)  # links is a LineDraft export
+        path_finder_stack = engine.path_and_duration_from_links_and_ntlegs(links, ntlegs)
 
     :param links: link DataFrame, built with graph_links;
     :param ntlegs: ntlegs DataFrame built;
@@ -260,18 +208,13 @@ def path_and_duration_from_links_and_ntlegs(
     links['index'] = links.index  # to be consistent with frequency_graph
 
     nx_graph, _ = frequency_graph.graphs_from_links(
-        links,
-        include_edges=[],
-        include_igraph=False,
-        boarding_cost=boarding_cost
+        links, include_edges=[], include_igraph=False, boarding_cost=boarding_cost
     )
     ntlegs['time'] += ntlegs_penalty
     nx_graph.add_weighted_edges_from(ntlegs[['a', 'b', 'time']].values.tolist())
 
     if footpaths is not None:
-        nx_graph.add_weighted_edges_from(
-            footpaths[['a', 'b', 'time']].values.tolist()
-        )
+        nx_graph.add_weighted_edges_from(footpaths[['a', 'b', 'time']].values.tolist())
 
     # return nx_graph
     allpaths = {}
@@ -285,14 +228,12 @@ def path_and_duration_from_links_and_ntlegs(
         olengths = {target: p for target, p in olengths.items() if target in pole_set}
         alllengths[pole], allpaths[pole] = olengths, opaths
 
-    duration_stack = assignment_raw.nested_dict_to_stack_matrix(
-        alllengths, pole_set, name='gtime')
+    duration_stack = assignment_raw.nested_dict_to_stack_matrix(alllengths, pole_set, name='gtime')
     # Remove access and egress ntlegs penalty
     duration_stack['gtime'] -= 2 * ntlegs_penalty
     duration_stack['gtime'] = np.clip(duration_stack['gtime'], 0, None)
 
-    path_stack = assignment_raw.nested_dict_to_stack_matrix(
-        allpaths, pole_set, name='path')
+    path_stack = assignment_raw.nested_dict_to_stack_matrix(allpaths, pole_set, name='path')
 
     los = pd.merge(duration_stack, path_stack, on=['origin', 'destination'])
     los['path'] = los['path'].apply(tuple)
@@ -300,13 +241,7 @@ def path_and_duration_from_links_and_ntlegs(
     return los, nx_graph
 
 
-def modal_split_from_volumes_and_los(
-    volumes,
-    los,
-    time_scale=1 / 3600,
-    alpha_car=2,
-    beta_car=0
-):
+def modal_split_from_volumes_and_los(volumes, los, time_scale=1 / 3600, alpha_car=2, beta_car=0):
     """
     This is a modal split wrapper essentially based on duration and modal penalties.
     Based on all modes demand and levels of services, it returns the volume by mode.
@@ -342,15 +277,14 @@ def modal_split_from_volumes_and_los(
 
     def share_pt(row):
         return np.exp(-time_scale * row['duration_pt']) / (
-            np.exp(-time_scale * row['duration_pt']) + np.exp(
-                -time_scale * (alpha_car * row['duration_car'] + beta_car)))
+            np.exp(-time_scale * row['duration_pt'])
+            + np.exp(-time_scale * (alpha_car * row['duration_car'] + beta_car))
+        )
 
     los['utility_pt'] = -los['duration_pt']
     los['utility_car'] = -los['duration_car'] * alpha_car - beta_car
     los['delta_utility'] = los['utility_car'] - los['utility_pt']
-    los['share_pt'] = 1 / (
-        1 + np.exp(mu * (los['delta_utility']))
-    )
+    los['share_pt'] = 1 / (1 + np.exp(mu * (los['delta_utility'])))
     los['share_car'] = 1 - los['share_pt']
 
     shared = pd.merge(volumes, los, on=['origin', 'destination'])
@@ -376,7 +310,6 @@ def attraction_share_pt(shared, destination):
 
 
 def aggregate_shares(shared, zones):
-
     """
     Aggregates modal shares by zone. Weights the share by the demand;
     :param shared: straight output from the modal split;
@@ -384,19 +317,14 @@ def aggregate_shares(shared, zones):
     :return: aggregated_shares, the zoning augmented with the modal shares as columns;
     """
     aggregated_shares = pd.DataFrame(
-        [
-            (emission_share_pt(shared, i), attraction_share_pt(shared, i))
-            for i in zones.index
-        ],
-        columns=['pt_share_emission', 'pt_share_attraction']
+        [(emission_share_pt(shared, i), attraction_share_pt(shared, i)) for i in zones.index],
+        columns=['pt_share_emission', 'pt_share_attraction'],
     )
 
     aggregated_shares['geometry'] = zones['geometry']
 
     try:
-        aggregated_shares[
-            ['emission', 'attraction']] = zones[
-            ['emission', 'attraction']]
+        aggregated_shares[['emission', 'attraction']] = zones[['emission', 'attraction']]
     except Exception:
         pass
 
@@ -418,7 +346,7 @@ def loaded_links_and_nodes(
     link_checkpoints=set(),
     node_checkpoints=set(),
     checkpoints_how='all',
-    **kwargs
+    **kwargs,
 ):
     """
     The assignment function. The last step of modelling the demand.
@@ -428,8 +356,7 @@ def loaded_links_and_nodes(
 
     example:
     ::
-        links, nodes = engine.loaded_links_and_nodes(
-        links, nodes, shared, path_finder_stack, 'volume_pt')
+        links, nodes = engine.loaded_links_and_nodes(links, nodes, shared, path_finder_stack, 'volume_pt')
 
     :param links: links DataFrame to be loaded
     :param nodes: nodes DataFrame to be loaded
@@ -468,20 +395,16 @@ def loaded_links_and_nodes(
     # we don't want name collision
     merged = pd.merge(
         volumes[['origin', 'destination', volume_column]],
-        path_finder_stack[['origin', 'destination', 'pivot', path_column, ] + analysis_col],
-        on=['origin', 'destination'])
+        path_finder_stack[['origin', 'destination', 'pivot', path_column] + analysis_col],
+        on=['origin', 'destination'],
+    )
 
     merged[volume_column] = merged[volume_column] * merged['pivot']
     volume_array = merged[volume_column].values
     paths = merged[path_column].values
 
     def assigned_node_links(paths):
-        assigned = assignment_raw.assign(
-            volume_array,
-            paths,
-            checkpoints=checkpoints,
-            checkpoints_how=checkpoints_how
-        )
+        assigned = assignment_raw.assign(volume_array, paths, checkpoints=checkpoints, checkpoints_how=checkpoints_how)
 
         try:
             link_index = [s for s in list(assigned.index) if s in links.index]

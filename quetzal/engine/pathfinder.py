@@ -137,16 +137,9 @@ class PublicPathFinder:
         self.mode_combinations = mode_combinations
 
     def find_best_path(
-        self,
-        od_set=None,
-        cutoff=np.inf,
-        boarding_time=None,
-        build_shortcuts=False,
-        keep_matrix=False,
-        verbose=False,
-        num_cores=1,
+        self, od_set=None, cutoff=np.inf, build_shortcuts=False, keep_matrix=False, verbose=False, num_cores=1, **kwargs
     ):
-        link_e = link_edge_array(self.links, boarding_time)
+        link_e = link_edge_array(self.links, **kwargs)
         footpaths_e = self.footpaths[['a', 'b', 'time']].values
         ntlegs_e = self.ntlegs[['a', 'b', 'time']].values
         edges = np.concatenate([link_e, footpaths_e, ntlegs_e])
@@ -180,12 +173,12 @@ class PublicPathFinder:
         prune=True,
         cutoff=np.inf,
         build_shortcuts=False,
-        boarding_time=None,
         od_set=None,
         reuse_matrix=True,
         log=False,
         keep_matrix=False,
         num_cores=1,
+        **kwargs,
     ):
         def get_task(column, combination, od_set=None):
             od_sets = self.splitted_od_sets[column][combination] if od_set is None else (od_set, set())
@@ -195,7 +188,7 @@ class PublicPathFinder:
 
         if reuse_matrix:
             if self.csgraph is None:
-                link_e = link_edge_array(self.links, boarding_time)
+                link_e = link_edge_array(self.links, **kwargs)
                 footpaths_e = self.footpaths[['a', 'b', 'time']].values
                 ntlegs_e = self.ntlegs[['a', 'b', 'time']].values
                 edges = np.concatenate([link_e, footpaths_e, ntlegs_e])
@@ -233,7 +226,7 @@ class PublicPathFinder:
                 to_prune = to_prune.union(removed_nodes).union(removed_footpaths).union(removed_ntlegs)
 
             if not reuse_matrix:
-                link_e = link_edge_array(links, boarding_time)
+                link_e = link_edge_array(links, **kwargs)
                 footpaths_e = footpaths[['a', 'b', 'time']].values
                 ntlegs_e = ntlegs[['a', 'b', 'time']].values
                 edges = np.concatenate([link_e, footpaths_e, ntlegs_e])
@@ -304,7 +297,6 @@ class PublicPathFinder:
         drop_duplicates=True,
         cutoff=np.inf,
         od_set=None,
-        boarding_time=None,
         verbose=True,
         num_cores=1,
         **kwargs,
@@ -314,13 +306,7 @@ class PublicPathFinder:
             od_set = set([(i, j) for i in pole_set for j in pole_set])
 
         self.find_best_path(
-            boarding_time=boarding_time,
-            cutoff=cutoff,
-            od_set=od_set,
-            verbose=verbose,
-            keep_matrix=True,
-            num_cores=num_cores,
-            **kwargs,
+            cutoff=cutoff, od_set=od_set, verbose=verbose, keep_matrix=True, num_cores=num_cores, **kwargs
         )  # builds the graph
 
         self.combinations = dict()
@@ -356,6 +342,7 @@ class PublicPathFinder:
                 keep_matrix=True,
                 log=verbose,
                 num_cores=num_cores,
+                **kwargs,
             )
             self.broken_route_paths = self.broken_combination_paths
             self.broken_route_paths['pathfinder_session'] = 'route_breaker'
@@ -375,6 +362,7 @@ class PublicPathFinder:
                 log=verbose,
                 keep_matrix=True,
                 num_cores=num_cores,
+                **kwargs,
             )
             self.broken_mode_paths = self.broken_combination_paths
             self.broken_mode_paths['pathfinder_session'] = 'mode_breaker'
