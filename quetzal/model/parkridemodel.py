@@ -5,19 +5,9 @@ from quetzal.model import preparationmodel
 
 
 class ParkRideModel(preparationmodel.PreparationModel):
-    def node_transit_zone_edges(
-        self,
-        pr_nodes,
-        reverse=False,
-        boarding_time=None,
-        alighting_time=None
-    ):
+    def node_transit_zone_edges(self, pr_nodes, reverse=False, **kwargs):
         # link edges
-        edges = pathfinder_utils.link_edges(
-            self.links,
-            boarding_time=boarding_time,
-            alighting_time=alighting_time
-        )
+        edges = pathfinder_utils.link_edges(self.links, **kwargs)
 
         # connectors and footpaths
         zn = 'a' if reverse else 'b'
@@ -28,14 +18,9 @@ class ParkRideModel(preparationmodel.PreparationModel):
         footpaths = self.road_links[['a', 'b', 'walk_time']].values.tolist()
         return edges + ztr + footpaths + rtt
 
-    def get_node_transit_zone(
-        self, pr_nodes, reverse=False,
-        boarding_time=None, alighting_time=None,
-        cutoff=np.inf
-    ):
+    def get_node_transit_zone(self, pr_nodes, reverse=False, boarding_time=None, alighting_time=None, cutoff=np.inf):
         ntz_edges = self.node_transit_zone_edges(
-            pr_nodes=pr_nodes, reverse=reverse,
-            boarding_time=boarding_time, alighting_time=alighting_time
+            pr_nodes=pr_nodes, reverse=reverse, boarding_time=boarding_time, alighting_time=alighting_time
         )
 
         matrix, node_index = pathfinder_utils.sparse_matrix(ntz_edges)
@@ -44,28 +29,18 @@ class ParkRideModel(preparationmodel.PreparationModel):
 
         zones = set(self.zones.index).intersection(self.zone_to_road[zn])
         zones = list(zones)
-        
+
         sources, targets = (zones, pr_nodes) if reverse else (pr_nodes, zones)
-        assert type(sources) is not set,"sources must not be a set"
-        assert type(targets) is not set,"targets must not be a set"
+        assert type(sources) is not set, 'sources must not be a set'
+        assert type(targets) is not set, 'targets must not be a set'
         node_transit_zone = pathfinder_utils.paths_from_graph(
-            csgraph=matrix,
-            node_index=node_index,
-            sources=sources,
-            targets=targets,
-            cutoff=cutoff
+            csgraph=matrix, node_index=node_index, sources=sources, targets=targets, cutoff=cutoff
         )
 
         node_transit_zone['reverse'] = reverse
         return node_transit_zone
 
-    def zone_road_node_edges(
-        self,
-        pr_nodes=None,
-        reverse=False,
-        zrn_access_time='time',
-        road_time = 'time'
-    ):
+    def zone_road_node_edges(self, pr_nodes=None, reverse=False, zrn_access_time='time', road_time='time'):
         # zn = 'a' keeps zone->road zn='b' keeps road->zone
         zn, pn = ('b', 'a') if reverse else ('a', 'b')
         ztr = self.zone_to_road.copy()
@@ -81,68 +56,49 @@ class ParkRideModel(preparationmodel.PreparationModel):
         edges += self.road_links[['a', 'b', road_time]].values.tolist()
         return edges
 
-    def get_zone_road_node(
-        self, pr_nodes=None, reverse=False,
-        zrn_access_time='time',
-        road_time='time',
-        cutoff=np.inf
-
-    ):
+    def get_zone_road_node(self, pr_nodes=None, reverse=False, zrn_access_time='time', road_time='time', cutoff=np.inf):
         zn = 'b' if reverse else 'a'
         zones = set(self.zones.index).intersection(self.zone_to_road[zn])
         zones = list(zones)
-        
-        
-           
+
         zrt_edges = self.zone_road_node_edges(
-            zrn_access_time=zrn_access_time,
-            pr_nodes=pr_nodes, reverse=reverse,
-            road_time=road_time
+            zrn_access_time=zrn_access_time, pr_nodes=pr_nodes, reverse=reverse, road_time=road_time
         )
         matrix, node_index = pathfinder_utils.sparse_matrix(zrt_edges)
 
         sources, targets = (pr_nodes, zones) if reverse else (zones, pr_nodes)
-        assert type(sources) is not set,"sources must not be a set"
-        assert type(targets) is not set,"targets must not be a set" 
+        assert type(sources) is not set, 'sources must not be a set'
+        assert type(targets) is not set, 'targets must not be a set'
         zone_road_node = pathfinder_utils.paths_from_graph(
-            csgraph=matrix,
-            node_index=node_index,
-            sources=sources,
-            targets=targets,
-            cutoff=cutoff
+            csgraph=matrix, node_index=node_index, sources=sources, targets=targets, cutoff=cutoff
         )
         zone_road_node['reverse'] = reverse
         return zone_road_node
 
     def build_park_ride_shortcuts(
-        self, pr_nodes,
+        self,
+        pr_nodes,
         zrn_access_time='time',
         road_time='time',
-        boarding_time=None, alighting_time=None,
+        boarding_time=None,
+        alighting_time=None,
         reverse=False,
         cutoff=np.inf,
     ):
         # MORNING
         self.node_transit_zone = self.get_node_transit_zone(
-            pr_nodes=pr_nodes, reverse=reverse,
-            boarding_time=boarding_time, alighting_time=alighting_time,
-            cutoff=cutoff
+            pr_nodes=pr_nodes,
+            reverse=reverse,
+            boarding_time=boarding_time,
+            alighting_time=alighting_time,
+            cutoff=cutoff,
         )
         self.zone_road_node = self.get_zone_road_node(
-            zrn_access_time=zrn_access_time,
-            pr_nodes=pr_nodes, reverse=reverse,
-            cutoff=cutoff,
-            road_time=road_time
+            zrn_access_time=zrn_access_time, pr_nodes=pr_nodes, reverse=reverse, cutoff=cutoff, road_time=road_time
         )
 
     def combine_shortcuts(
-        self,
-        pr_nodes=None,
-        ntlegs_penalty=1e9,
-        cutoff=np.inf,
-        od_set=None,
-        parking_times=None,
-        reverse=False,
+        self, pr_nodes=None, ntlegs_penalty=1e9, cutoff=np.inf, od_set=None, parking_times=None, reverse=False
     ):
         zrn, ntz = self.zone_road_node, self.node_transit_zone
         ntz.reset_index(drop=True, inplace=True)
@@ -159,19 +115,13 @@ class ParkRideModel(preparationmodel.PreparationModel):
 
         # ADD PARKING TIME
         if parking_times is not None:
-            right = pd.DataFrame(
-                parking_times.items(),
-                columns=['origin', 'parking_time']
-            )
+            right = pd.DataFrame(parking_times.items(), columns=['origin', 'parking_time'])
             shortcuts = pd.merge(shortcuts, right, on='origin', how='left')
             shortcuts['parking_time'].fillna(0, inplace=True)
             shortcuts['length'] += shortcuts['parking_time']
 
         if pr_nodes is not None:
-            shortcuts.loc[
-                shortcuts['origin'].isin(pr_nodes)
-                | shortcuts['destination'].isin(pr_nodes)
-            ]
+            shortcuts.loc[shortcuts['origin'].isin(pr_nodes) | shortcuts['destination'].isin(pr_nodes)]
         edges = shortcuts[['origin', 'destination', 'length']].values
 
         matrix, node_index = pathfinder_utils.sparse_matrix(edges)
@@ -191,7 +141,7 @@ class ParkRideModel(preparationmodel.PreparationModel):
             sources=zone_set,
             targets=zone_set,
             cutoff=cutoff + ntlegs_penalty,
-            od_set=od_set
+            od_set=od_set,
         )
         paths['shortcut_path'] = paths['path']
         paths['path'] = [concatenate_path(p) for p in paths['shortcut_path']]
@@ -209,27 +159,18 @@ class ParkRideModel(preparationmodel.PreparationModel):
 
         c = ['origin', 'destination', 'length', 'path']
         left, right = (ntz[c], zrn[c]) if reverse else (zrn[c], ntz[c])
-        left = pd.merge(
-            left, pd.Series(parking_times, name='parking_time'),
-            left_on='destination', right_index=True
-        )
+        left = pd.merge(left, pd.Series(parking_times, name='parking_time'), left_on='destination', right_index=True)
 
         left.rename(columns={'destination': 'parking_node'}, inplace=True)
         right.rename(columns={'origin': 'parking_node'}, inplace=True)
 
         hinge = pd.DataFrame(od_set, columns=['origin', 'destination'])
         left = pd.merge(left, hinge, on=['origin'])
-        paths = pd.merge(
-            left, right, on=['parking_node', 'destination'],
-            suffixes=['_left', '_right']
-        )
+        paths = pd.merge(left, right, on=['parking_node', 'destination'], suffixes=['_left', '_right'])
 
         paths['length'] = paths['length_left'] + paths['length_right'] + paths['parking_time']
         lengths = paths.groupby(['origin', 'destination'], as_index=False)['length'].min()
-        paths = pd.merge(
-            paths, lengths, on=['origin', 'destination'],
-            suffixes=['', '_min']
-        )
+        paths = pd.merge(paths, lengths, on=['origin', 'destination'], suffixes=['', '_min'])
         paths['length_spread'] = paths['length'] - paths['length_min']
         paths = paths.loc[paths['length_spread'] <= length_spread_max]
         paths['path'] = paths['path_left'] + paths['path_right']
@@ -239,20 +180,14 @@ class ParkRideModel(preparationmodel.PreparationModel):
         return paths
 
     def lighten_pr_los(self, los_attributes=['pr_los'], keep_summary_columns=False):
-
-        time_columns = [
-            'access_time',  'footpath_time',
-            'waiting_time', 'boarding_time',  'gtime'
-        ]
+        time_columns = ['access_time', 'footpath_time', 'waiting_time', 'boarding_time', 'gtime']
         if not keep_summary_columns:
             time_columns += ['time', 'in_vehicle_time']
         length_columns = ['access_length']
         if not keep_summary_columns:
             length_columns += ['length', 'in_vehicle_length']
         path_columns = ['path', 'link_path', 'node_path', 'ntlegs', 'footpaths']
-        pt_columns = [
-            'boardings', 'alightings', 'boarding_links', 'alighting_links', 'footpaths'
-        ]
+        pt_columns = ['boardings', 'alightings', 'boarding_links', 'alighting_links', 'footpaths']
         to_drop = []
         for clist in [time_columns, length_columns, path_columns, pt_columns]:
             for c in clist:
@@ -263,24 +198,28 @@ class ParkRideModel(preparationmodel.PreparationModel):
         for los in los_attributes:
             self.__getattribute__(los).drop(to_drop, axis=1, errors='ignore', inplace=True)
 
-
-
     def analysis_pr_los(
-        self,
-        reverse=False,
-        analysis_time=False,
-        analysis_length=False,
-        boarding_time=None,
-        zrn_access_time='time',
+        self, reverse=False, analysis_time=False, analysis_length=False, boarding_time=None, zrn_access_time='time'
     ):
         time_columns = [
-            'access_time', 'in_vehicle_time', 'footpath_time',
-            'waiting_time', 'boarding_time', 'time', 'gtime']
+            'access_time',
+            'in_vehicle_time',
+            'footpath_time',
+            'waiting_time',
+            'boarding_time',
+            'time',
+            'gtime',
+        ]
         length_columns = ['access_length', 'in_vehicle_length', 'length']
         path_columns = ['path', 'link_path', 'node_path', 'ntlegs', 'footpaths']
         pt_columns = [
-            'boardings', 'alightings', 'boarding_links',
-            'alighting_links', 'footpaths', 'transfers', 'ntransfers'
+            'boardings',
+            'alightings',
+            'boarding_links',
+            'alighting_links',
+            'footpaths',
+            'transfers',
+            'ntransfers',
         ]
 
         # node_transit_zone

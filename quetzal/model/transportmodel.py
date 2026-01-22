@@ -346,7 +346,6 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         if not force:
             sets = ['nodes', 'links', 'zones', 'road_nodes', 'road_links']
             self.integrity_test_collision(sets)
-        self.links = engine.graph_links(self.links)
         parkridepathfinder = ParkRidePathFinder(self)
         parkridepathfinder.find_best_path(**kwargs)
 
@@ -369,7 +368,6 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         boarding_time=None,
         speedup=False,
         walk_on_road=False,
-        # keep_graph=False,
         keep_pathfinder=False,
         force=False,
         path_analysis=True,
@@ -414,8 +412,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         alighting_time : float, optional, default None
             aditional alighting time
 
-        speedup : bool, optional, default False
-            Speed up the computation time, by
+        speedup : not used anymore
 
         walk_on_road : bool, optional, default False
             If True, will consider using the road network and zone_to_road for pedestrian paths.
@@ -445,7 +442,6 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         if not force:
             self.integrity_test_collision(sets)
 
-        self.links = engine.graph_links(self.links)
         print('start publicpathfinder')
         publicpathfinder = PublicPathFinder(self, walk_on_road=walk_on_road)
         publicpathfinder.find_best_paths(
@@ -456,9 +452,6 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             boarding_time=boarding_time,
             **kwargs,
         )
-
-        # if keep_graph:
-        #     self.nx_graph=publicpathfinder.nx_graph
 
         if keep_pathfinder:
             self.publicpathfinder = publicpathfinder
