@@ -51,6 +51,8 @@ class TestFrankWolfe(unittest.TestCase):
         sm.volumes = volumes
         self.sm = sm
 
+    # getters
+
     def _get_msa_roadpathfinder(self, maxiters=10, method='bfw'):
         tolerance = 10e-6
         segments = ['car']
@@ -80,26 +82,6 @@ class TestFrankWolfe(unittest.TestCase):
             self.assertAlmostEqual(links.loc[key, 'flow'], expected_flow, places=0)
             self.assertAlmostEqual(links.loc[key, 'jam_time'], expected_jam_time, places=1)
 
-    def test_bfw_pathfinder(self):
-        self._test_msa_pathfinder_with_method(method='bfw')
-
-    def test_fw_pathfinder(self):
-        self._test_msa_pathfinder_with_method(method='fw')
-
-    @unittest.skip('msa will fail affectation cause its not good')
-    def test_msa_pathfinder(self):
-        self._test_msa_pathfinder_with_method(method='msa')
-
-    def test_msa_pathfinder_base_flow(self):
-        self.sm.road_links['base_flow'] = 100
-        links, car_los, relgap = self._get_msa_roadpathfinder(method='bfw')
-        expected_flows = {('a', 'm1'): 358.329, ('a', 'm2'): 464.514, ('a', 'm3'): 177.157}
-        for key, expected_flow in expected_flows.items():
-            self.assertNotAlmostEqual(links.loc[key, 'flow'], expected_flow, places=0)
-        self.assertAlmostEqual(links.loc[('a', 'm1'), 'jam_time'], links.loc[('a', 'm2'), 'jam_time'], places=0)
-        self.assertAlmostEqual(links.loc[('a', 'm1'), 'jam_time'], links.loc[('a', 'm3'), 'jam_time'], places=0)
-        self.sm.road_links['base_flow'] = 0
-
     def _get_expanded_roadpathfinder(self, maxiters=10, method='bfw'):
         tolerance = 10e-6
         segments = ['car']
@@ -128,6 +110,26 @@ class TestFrankWolfe(unittest.TestCase):
         for key, expected_flow in expected_flows.items():
             self.assertAlmostEqual(links.loc[key, 'flow'], expected_flow, places=0)
             self.assertAlmostEqual(links.loc[key, 'jam_time'], expected_jam_time, places=1)
+
+    def test_bfw_pathfinder(self):
+        self._test_msa_pathfinder_with_method(method='bfw')
+
+    def test_fw_pathfinder(self):
+        self._test_msa_pathfinder_with_method(method='fw')
+
+    @unittest.skip('msa will fail affectation cause its not good')
+    def test_msa_pathfinder(self):
+        self._test_msa_pathfinder_with_method(method='msa')
+
+    def test_msa_pathfinder_base_flow(self):
+        self.sm.road_links['base_flow'] = 100
+        links, car_los, relgap = self._get_msa_roadpathfinder(method='bfw')
+        expected_flows = {('a', 'm1'): 358.329, ('a', 'm2'): 464.514, ('a', 'm3'): 177.157}
+        for key, expected_flow in expected_flows.items():
+            self.assertNotAlmostEqual(links.loc[key, 'flow'], expected_flow, places=0)
+        self.assertAlmostEqual(links.loc[('a', 'm1'), 'jam_time'], links.loc[('a', 'm2'), 'jam_time'], places=0)
+        self.assertAlmostEqual(links.loc[('a', 'm1'), 'jam_time'], links.loc[('a', 'm3'), 'jam_time'], places=0)
+        self.sm.road_links['base_flow'] = 0
 
     def test_bfw_expanded_pathfinder(self):
         self._test_expanded_pathfinder_with_method(method='bfw')

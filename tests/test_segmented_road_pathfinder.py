@@ -57,6 +57,7 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
         sm.volumes = volumes
         self.sm = sm
 
+    # getters
     def _get_msa_roadpathfinder(self, maxiters=10, method='bfw', segments=['car'], **kwargs):
         tolerance = 0.01
         time_column = 'time'
@@ -74,6 +75,30 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
             tolerance=tolerance,
             log=False,
             time_col=time_column,
+            num_cores=num_cores,
+            **kwargs,
+        )
+        return links, car_los, relgap_list
+
+    def _get_expanded_roadpathfinder(self, method='bfw', segments=['car'], **kwargs):
+        maxiters = 10
+        tolerance = 0.1
+        time_column = 'time'
+        access_time = 'time'
+        ntleg_penalty = 100
+        network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
+        volumes = init_volumes(self.sm)
+        links, car_los, relgap_list = expanded_roadpathfinder(
+            network,
+            volumes,
+            segments=segments,
+            method=method,
+            maxiters=maxiters,
+            tolerance=tolerance,
+            vdf=vdf,
+            log=False,
+            time_col=time_column,
+            zone_penalty=ntleg_penalty,
             num_cores=num_cores,
             **kwargs,
         )
@@ -124,30 +149,6 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
         for seg in segments:
             self.assertIn(seg, car_los['segment'].unique())
 
-    def _get_expanded_roadpathfinder(self, method='bfw', segments=['car'], **kwargs):
-        maxiters = 10
-        tolerance = 0.1
-        time_column = 'time'
-        access_time = 'time'
-        ntleg_penalty = 100
-        network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
-        volumes = init_volumes(self.sm)
-        links, car_los, relgap_list = expanded_roadpathfinder(
-            network,
-            volumes,
-            segments=segments,
-            method=method,
-            maxiters=maxiters,
-            tolerance=tolerance,
-            vdf=vdf,
-            log=False,
-            time_col=time_column,
-            zone_penalty=ntleg_penalty,
-            num_cores=num_cores,
-            **kwargs,
-        )
-        return links, car_los, relgap_list
-
     def test_expanded_pathfinder_flow_SHOULD_be_the_sum_of_segments(self):
         self.sm.road_links['segments'] = [set(['car', 'truck']) for _ in range(len(self.sm.road_links))]
         segments = ['car', 'truck']
@@ -184,13 +185,3 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
         expected_flow = links.loc[link, 'flow'] - links.loc[link, 'base_flow']
         tot_flow = car_flow + truck_flow
         self.assertAlmostEqual(expected_flow.values[0], tot_flow.loc[link, link].values[0][0], places=3)
-
-    def test_expanded_pathfinder_car_los_SHOULD_contain_all_segments(self):
-        segments = ['car', 'truck']
-        links, car_los, relgap = self._get_expanded_roadpathfinder(segments=segments, method='bfw')
-
-        expected_columns = ['origin', 'destination', 'path', 'segment']
-        for col in expected_columns:
-            self.assertIn(col, car_los.columns)
-        for seg in segments:
-            self.assertIn(seg, car_los['segment'].unique())
