@@ -216,7 +216,6 @@ class TestRoadPathfinder(unittest.TestCase):
         links, car_los, relgap_list = expanded_roadpathfinder(
             network,
             volumes,
-            self.sm.zones,
             segments=segments,
             method=method,
             maxiters=maxiters,
@@ -270,7 +269,6 @@ class TestRoadPathfinder(unittest.TestCase):
         links, car_los, relgap_list = expanded_roadpathfinder(
             network,
             volumes,
-            self.sm.zones,
             segments=segments,
             method=method,
             maxiters=maxiters,

@@ -110,7 +110,6 @@ class TestFrankWolfe(unittest.TestCase):
         links, car_los, relgap_list = expanded_roadpathfinder(
             network,
             volumes,
-            zones=self.sm.zones,
             segments=segments,
             method=method,
             vdf=vdf,

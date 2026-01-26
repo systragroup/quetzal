@@ -281,7 +281,6 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             links, car_los, rel_gap = expanded_roadpathfinder(
                 network,
                 volumes,
-                zones=self.zones,
                 segments=segments,
                 method=method,
                 time_col=time_column,

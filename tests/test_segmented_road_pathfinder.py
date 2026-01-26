@@ -54,7 +54,6 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
         sm.road_links = rlinks
 
         sm.zone_to_road = zone_to_road
-        sm.zones = zones
         sm.volumes = volumes
         self.sm = sm
 
@@ -136,7 +135,6 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
         links, car_los, relgap_list = expanded_roadpathfinder(
             network,
             volumes,
-            self.sm.zones,
             segments=segments,
             method=method,
             maxiters=maxiters,
