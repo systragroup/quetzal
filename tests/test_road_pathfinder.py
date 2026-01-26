@@ -207,7 +207,7 @@ class TestRoadPathfinder(unittest.TestCase):
             expected_path_2 = ['z2', 'c', 'b', 'a', 'z1']
             self.assertEqual(car_los['path'][1], expected_path_2)
 
-    def test_msa_pathfinder_0(self):
+    def test_msa_pathfinder_0_iters(self):
         for method in ['bfw', 'msa', 'fw']:
             links, car_los, relgap = self._get_msa_roadpathfinder(method=method, maxiters=0)
             expected_path_1 = ['z1', 'a', 'b', 'd', 'e', 'z2']
@@ -271,3 +271,11 @@ class TestRoadPathfinder(unittest.TestCase):
         expected_columns = ['flow', 'jam_time']
         for col in expected_columns:
             self.assertIn(col, links.columns)
+
+    def test_msa_pathfinder_with_cost_functions(self):
+        for method in ['bfw', 'msa', 'fw']:
+            cost_functions = {'car': 'jam_time + length'}
+            links, car_los, relgap = self._get_msa_roadpathfinder(method=method, cost_functions=cost_functions)
+            expected = (links['jam_time'] + links['length']).to_list()
+            cost = links[('car', 'cost')].to_list()
+            self.assertEqual(expected, cost)
