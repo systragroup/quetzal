@@ -391,7 +391,7 @@ def msa_roadpathfinder(
             phi = 1  # first iteration is AON
             beta = [1, 0, 0]
         elif method == 'bfw':  # if biconjugate: takes the 2 last direction
-            links['derivative'] = get_derivative(to_polars(links), vdf, h=0.001, flow_col='flow', time_col=time_col)
+            links['derivative'] = get_derivative(to_polars(links), vdf, cost_functions, segments, time_col=time_col)
             if i > 2:
                 beta = find_beta(links, phi, segments)  # this is the previous phi (phi_-1)
             links = get_bfw_auxiliary_flow(links, beta, segments)
@@ -577,7 +577,7 @@ def expanded_roadpathfinder(
             phi = 1  # first iteration is AON
             beta = [1, 0, 0]
         elif method == 'bfw':  # if biconjugate: takes the 2 last direction
-            links['derivative'] = get_derivative(to_polars(links), vdf, h=0.001, flow_col='flow', time_col=time_col)
+            links['derivative'] = get_derivative(to_polars(links), vdf, cost_functions, segments, time_col=time_col)
             if i > 2:
                 beta = find_beta(links, phi, segments)  # this is the previous phi (phi_-1)
             links = get_bfw_auxiliary_flow(links, beta, segments)

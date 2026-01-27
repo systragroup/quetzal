@@ -51,8 +51,11 @@ def pl_expr_from_str(expr_str: str) -> pl.Expr:
     return eval(expr_str, {'pl': pl})
 
 
-def apply_segment_cost(links: Union[pd.DataFrame, pl.DataFrame], str_expression: str) -> np.ndarray:
-    # simply evealute string expression on dataframe for a pandas or polars dataframe.
+def apply_segment_cost(
+    links: Union[pd.DataFrame, pl.DataFrame], str_expression: str, jam_time_col: str = 'jam_time'
+) -> np.ndarray:
+    # simply evaluate string expression on dataframe for a pandas or polars dataframe.
+    str_expression = str_expression.replace('jam_time', jam_time_col)
     if isinstance(links, pd.DataFrame):
         return links.eval(str_expression).values
     else:
@@ -79,10 +82,11 @@ def z_prime(plinks: pl.DataFrame, segments, vdf, cost_functions, phi, **kwargs):
 
     # compute a new jam_time for a given phi
     plinks = plinks.with_columns((pl.col('flow') * (1 - phi) + pl.col('auxiliary_flow') * phi).alias('new_flow'))
-    plinks = plinks.with_columns(pl.Series(jam_time(plinks, vdf=vdf, flow='new_flow', **kwargs)).alias('jam_time'))
+    new_jam_time = jam_time(plinks, vdf=vdf, flow='new_flow', **kwargs)
+    plinks = plinks.with_columns(pl.Series(new_jam_time).alias('new_jam_time'))
     tot_z = 0
     for seg in segments:
-        cost_delta = apply_segment_cost(plinks, cost_functions.get(seg))  # get cost for new jam_time
+        cost_delta = apply_segment_cost(plinks, cost_functions.get(seg), 'new_jam_time')  # get cost for new jam_time
         delta = (plinks[str((seg, 'auxiliary_flow'))] - plinks[str((seg, 'flow'))]).to_numpy()  # str(tuple) for polars
         current_cost = plinks[str((seg, 'cost'))].to_numpy()  # current cost
         z = delta * phi * (current_cost + cost_delta) * 0.5
@@ -199,10 +203,18 @@ def get_bfw_auxiliary_flow(links: pd.DataFrame, b: list[float], segments: list[s
     return links
 
 
-def get_derivative(links: pl.DataFrame, vdf, flow_col='flow', h=0.001, **kwargs):
-    # TODO: derivative of costs not jamtime.
-    x1 = jam_time(links.with_columns((pl.col(flow_col) + h).alias('x1')), vdf=vdf, flow='x1', **kwargs)
-    x2 = jam_time(links.with_columns((pl.col(flow_col) - h).alias('x2')), vdf=vdf, flow='x2', **kwargs)
+def get_derivative(plinks: pl.DataFrame, vdf, cost_functions, segments, h=0.001, **kwargs):
+    # get Cost function derivative approximation around flow+-h
+    plinks = plinks.with_columns([(pl.col('flow') + h).alias('flow_1'), (pl.col('flow') - h).alias('flow_2')])
+    jam_time_1 = jam_time(plinks, vdf=vdf, flow='flow_1', **kwargs)
+    jam_time_2 = jam_time(plinks, vdf=vdf, flow='flow_2', **kwargs)
+    plinks = plinks.with_columns([pl.Series(jam_time_1).alias('jam_time_1'), pl.Series(jam_time_2).alias('jam_time_2')])
+    x1 = np.zeros(len(plinks))
+    x2 = np.zeros(len(plinks))
+    for seg in segments:
+        func = cost_functions.get(seg)
+        x1 += apply_segment_cost(plinks, func, 'jam_time_1') * (plinks[str((seg, 'flow'))].to_numpy() + h)
+        x2 += apply_segment_cost(plinks, func, 'jam_time_2') * (plinks[str((seg, 'flow'))].to_numpy() - h)
     return (x1 - x2) / (2 * h)
 
 
