@@ -5,7 +5,6 @@ from quetzal.engine.msa_trackers.links_tracker import LinksTracker
 import pandas as pd
 from quetzal.model import stepmodel
 
-
 zones = pd.DataFrame({'id': ['z1', 'z2']})
 zones.index = zones['id']
 zones.index.name = 'index'
@@ -54,10 +53,10 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
         sm.road_links = rlinks
 
         sm.zone_to_road = zone_to_road
-        sm.zones = zones
         sm.volumes = volumes
         self.sm = sm
 
+    # getters
     def _get_msa_roadpathfinder(self, maxiters=10, method='bfw', segments=['car'], **kwargs):
         tolerance = 0.01
         time_column = 'time'
@@ -80,17 +79,40 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
         )
         return links, car_los, relgap_list
 
+    def _get_expanded_roadpathfinder(self, method='bfw', segments=['car'], **kwargs):
+        maxiters = 10
+        tolerance = 0.1
+        time_column = 'time'
+        access_time = 'time'
+        ntleg_penalty = 100
+        network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
+        volumes = init_volumes(self.sm)
+        links, car_los, relgap_list = expanded_roadpathfinder(
+            network,
+            volumes,
+            segments=segments,
+            method=method,
+            maxiters=maxiters,
+            tolerance=tolerance,
+            vdf=vdf,
+            log=False,
+            time_col=time_column,
+            zone_penalty=ntleg_penalty,
+            num_cores=num_cores,
+            **kwargs,
+        )
+        return links, car_los, relgap_list
+
     def test_msa_pathfinder_flow_SHOULD_be_the_sum_of_segments(self):
         self.sm.road_links['segments'] = [set(['car', 'truck']) for _ in range(len(self.sm.road_links))]
         segments = ['car', 'truck']
         self.sm.road_links.loc['rlink_4', 'segments'] = set(['car'])
         links, car_los, relgap = self._get_msa_roadpathfinder(segments=segments)
 
-        flow_agg = links['flow'].values
+        flow_agg = links['flow'].to_list()
         cols = [(seg, 'flow') for seg in segments] + ['base_flow']
-        flow_segmented = links[cols].sum(axis=1).values
-        for a, b in zip(flow_agg, flow_segmented):
-            self.assertAlmostEqual(a, b, places=3)
+        flow_segmented = links[cols].sum(axis=1).to_list()
+        self.assertAlmostEqual(flow_agg, flow_segmented, places=3)
 
     def test_msa_pathfinder_with_fw_SHOULD_track_links_volumes(self):
         self.sm.road_links['segments'] = [set(['car', 'truck']) for _ in range(len(self.sm.road_links))]
@@ -125,42 +147,16 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
         for seg in segments:
             self.assertIn(seg, car_los['segment'].unique())
 
-    def _get_expanded_roadpathfinder(self, method='bfw', segments=['car'], **kwargs):
-        maxiters = 10
-        tolerance = 0.1
-        time_column = 'time'
-        access_time = 'time'
-        ntleg_penalty = 100
-        network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
-        volumes = init_volumes(self.sm)
-        links, car_los, relgap_list = expanded_roadpathfinder(
-            network,
-            volumes,
-            self.sm.zones,
-            segments=segments,
-            method=method,
-            maxiters=maxiters,
-            tolerance=tolerance,
-            vdf=vdf,
-            log=False,
-            time_col=time_column,
-            zone_penalty=ntleg_penalty,
-            num_cores=num_cores,
-            **kwargs,
-        )
-        return links, car_los, relgap_list
-
     def test_expanded_pathfinder_flow_SHOULD_be_the_sum_of_segments(self):
         self.sm.road_links['segments'] = [set(['car', 'truck']) for _ in range(len(self.sm.road_links))]
         segments = ['car', 'truck']
         self.sm.road_links.loc['rlink_4', 'segments'] = set(['car'])
         links, car_los, relgap = self._get_expanded_roadpathfinder(segments=segments, method='bfw')
 
-        flow_agg = links['flow'].values
+        flow_agg = links['flow'].to_list()
         cols = [(seg, 'flow') for seg in segments] + ['base_flow']
-        flow_segmented = links[cols].sum(axis=1).values
-        for a, b in zip(flow_agg, flow_segmented):
-            self.assertAlmostEqual(a, b, places=3)
+        flow_segmented = links[cols].sum(axis=1).to_list()
+        self.assertAlmostEqual(flow_agg, flow_segmented, places=3)
 
     def test_expanded_pathfinder_with_fw_SHOULD_track_links_volumes(self):
         self.sm.road_links['segments'] = [set(['car', 'truck']) for _ in range(len(self.sm.road_links))]
@@ -187,12 +183,27 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
         tot_flow = car_flow + truck_flow
         self.assertAlmostEqual(expected_flow.values[0], tot_flow.loc[link, link].values[0][0], places=3)
 
-    def test_expanded_pathfinder_car_los_SHOULD_contain_all_segments(self):
+    def test_expanded_pathfinder_Cost_functions_SHOULD_be_apply_to_each_segments(self):
+        self.sm.road_links['segments'] = [set(['car', 'truck']) for _ in range(len(self.sm.road_links))]
         segments = ['car', 'truck']
-        links, car_los, relgap = self._get_expanded_roadpathfinder(segments=segments, method='bfw')
+        self.sm.road_links.loc['rlink_4', 'segments'] = set(['car'])
 
-        expected_columns = ['origin', 'destination', 'path', 'segment']
-        for col in expected_columns:
-            self.assertIn(col, car_los.columns)
-        for seg in segments:
-            self.assertIn(seg, car_los['segment'].unique())
+        cost_functions = {'car': 'jam_time + 2*length', 'truck': 'jam_time + length'}
+
+        links, car_los, relgap = self._get_expanded_roadpathfinder(
+            segments=segments, method='bfw', cost_functions=cost_functions
+        )
+        # check we still have same flow (why not)
+        flow_agg = links['flow'].to_list()
+        cols = [(seg, 'flow') for seg in segments] + ['base_flow']
+        flow_segmented = links[cols].sum(axis=1).to_list()
+        self.assertAlmostEqual(flow_agg, flow_segmented, places=3)
+
+        # actual test
+        expected = (links['jam_time'] + 2 * links['length']).to_list()
+        cost = links[('car', 'cost')].to_list()
+        self.assertEqual(expected, cost)
+
+        expected = (links['jam_time'] + links['length']).to_list()
+        cost = links[('truck', 'cost')].to_list()
+        self.assertEqual(expected, cost)

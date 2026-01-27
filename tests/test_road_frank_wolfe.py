@@ -51,6 +51,8 @@ class TestFrankWolfe(unittest.TestCase):
         sm.volumes = volumes
         self.sm = sm
 
+    # getters
+
     def _get_msa_roadpathfinder(self, maxiters=10, method='bfw'):
         tolerance = 10e-6
         segments = ['car']
@@ -80,6 +82,35 @@ class TestFrankWolfe(unittest.TestCase):
             self.assertAlmostEqual(links.loc[key, 'flow'], expected_flow, places=0)
             self.assertAlmostEqual(links.loc[key, 'jam_time'], expected_jam_time, places=1)
 
+    def _get_expanded_roadpathfinder(self, maxiters=10, method='bfw'):
+        tolerance = 10e-6
+        segments = ['car']
+        time_column = 'time'
+        access_time = 'time'
+        network = init_network(self.sm, method, segments, time_column, access_time)
+        volumes = init_volumes(self.sm)
+        links, car_los, relgap_list = expanded_roadpathfinder(
+            network,
+            volumes,
+            segments=segments,
+            method=method,
+            vdf=vdf,
+            maxiters=maxiters,
+            tolerance=tolerance,
+            time_col=time_column,
+            num_cores=num_cores,
+            log=False,
+        )
+        return links, car_los, relgap_list
+
+    def _test_expanded_pathfinder_with_method(self, method):
+        links, car_los, relgap = self._get_expanded_roadpathfinder(method=method)
+        expected_flows = {('a', 'm1'): 358.329, ('a', 'm2'): 464.514, ('a', 'm3'): 177.157}
+        expected_jam_time = 25.456
+        for key, expected_flow in expected_flows.items():
+            self.assertAlmostEqual(links.loc[key, 'flow'], expected_flow, places=0)
+            self.assertAlmostEqual(links.loc[key, 'jam_time'], expected_jam_time, places=1)
+
     def test_bfw_pathfinder(self):
         self._test_msa_pathfinder_with_method(method='bfw')
 
@@ -99,36 +130,6 @@ class TestFrankWolfe(unittest.TestCase):
         self.assertAlmostEqual(links.loc[('a', 'm1'), 'jam_time'], links.loc[('a', 'm2'), 'jam_time'], places=0)
         self.assertAlmostEqual(links.loc[('a', 'm1'), 'jam_time'], links.loc[('a', 'm3'), 'jam_time'], places=0)
         self.sm.road_links['base_flow'] = 0
-
-    def _get_expanded_roadpathfinder(self, maxiters=10, method='bfw'):
-        tolerance = 10e-6
-        segments = ['car']
-        time_column = 'time'
-        access_time = 'time'
-        network = init_network(self.sm, method, segments, time_column, access_time)
-        volumes = init_volumes(self.sm)
-        links, car_los, relgap_list = expanded_roadpathfinder(
-            network,
-            volumes,
-            zones=self.sm.zones,
-            segments=segments,
-            method=method,
-            vdf=vdf,
-            maxiters=maxiters,
-            tolerance=tolerance,
-            time_col=time_column,
-            num_cores=num_cores,
-            log=False,
-        )
-        return links, car_los, relgap_list
-
-    def _test_expanded_pathfinder_with_method(self, method):
-        links, car_los, relgap = self._get_expanded_roadpathfinder(method=method)
-        expected_flows = {('a', 'm1'): 358.329, ('a', 'm2'): 464.514, ('a', 'm3'): 177.157}
-        expected_jam_time = 25.456
-        for key, expected_flow in expected_flows.items():
-            self.assertAlmostEqual(links.loc[key, 'flow'], expected_flow, places=0)
-            self.assertAlmostEqual(links.loc[key, 'jam_time'], expected_jam_time, places=1)
 
     def test_bfw_expanded_pathfinder(self):
         self._test_expanded_pathfinder_with_method(method='bfw')

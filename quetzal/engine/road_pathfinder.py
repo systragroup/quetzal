@@ -9,6 +9,7 @@ from quetzal.engine.msa_utils import (
     init_ab_volumes,
     assign_volume_parallel,
     jam_time,
+    apply_segment_cost,
     find_phi,
     find_beta,
     get_bfw_auxiliary_flow,
@@ -152,6 +153,8 @@ def concat_connectors_to_roads(road_links, zone_to_road, segments, time_col='tim
         if 'base_flow' not in links.columns:
             links['base_flow'] = 0
         links['base_flow'] = links['base_flow'].fillna(0)
+
+        links['jam_time'] = links[time_col]  # temporary. to test the cost function
         # vdf keys to string. polars doesnt like mixed key (int and str)
         # later we will convert vdf to str keys. vdf = {str(key): val for key, val in vdf.items()}
         links['vdf'] = links['vdf'].apply(str)
@@ -162,6 +165,22 @@ def assert_vdf_on_links(links, vdf):
     keys = set(links['vdf'])
     missing_vdf = keys - set(vdf.keys())
     assert len(missing_vdf) == 0, 'you should provide methods for the following vdf keys' + str(missing_vdf)
+
+
+def assert_segs_in_cost_functions(segments, cost_functions):
+    keys = set(segments)
+    miss = keys - set(cost_functions.keys())
+    assert len(miss) == 0, 'you should provide Cost function for the following segments' + str(miss)
+
+
+def test_cost_functions(links: pd.DataFrame, cost_functions: dict):
+    for seg, expr in cost_functions.items():
+        test = np.isfinite(apply_segment_cost(links, expr))
+        if not all(test):
+            loc = np.where(~test)[0]
+            print(f'evaluating the cost function yield NaN on some links. {seg} : {expr}')
+            print('make sure the zone_to_road also contains every fields in the cost_function')
+            print(links.iloc[loc].index)
 
 
 def get_car_los(volumes, links, index, zones, weight_col, num_cores=1):
@@ -291,6 +310,7 @@ def msa_roadpathfinder(
     log=False,
     time_col='time',
     tracker_plugin: LinksTracker = LinksTracker(),
+    cost_functions=None,
     return_car_los=True,
     num_cores=1,
 ):
@@ -305,12 +325,21 @@ def msa_roadpathfinder(
     log = False : log data on each iteration.
     time_col='freeflow time column'. replace 'time' in vdf
     tracker_plugin=LinksTracker() track OD using a selected links
+    cost_functions : if None return dict {seg:'jam_time'} for each segments.
+    return_car_los: return the car los.,
     num_cores = 1 : for parallelization.
     """
     # preparation
+    # vdf kets must be string for polars.
     vdf = {str(key): val for key, val in vdf.items()}
     assert_vdf_on_links(links, vdf)
 
+    # if no cost function provided. just use jam_time for each segments
+    if cost_functions is None:
+        cost_functions = {seg: 'jam_time' for seg in segments}
+
+    assert_segs_in_cost_functions(segments, cost_functions)
+    test_cost_functions(links, cost_functions)
     # reindex links to sparse indexes (a,b)
     index = build_index(links[['a', 'b']].values)  # a:sparse
     links['sparse_a'] = links['a'].apply(lambda x: index.get(x))
@@ -322,7 +351,8 @@ def msa_roadpathfinder(
     ab_volumes = init_ab_volumes(links.index)
     # initialization
     links['jam_time'] = jam_time(to_polars(links), vdf, 'flow', time_col=time_col)
-    links['jam_time'].fillna(links[time_col], inplace=True)
+    for seg in segments:
+        links[(seg, 'cost')] = apply_segment_cost(links, cost_functions.get(seg))
 
     # init track links
 
@@ -345,7 +375,7 @@ def msa_roadpathfinder(
             odv = segment_volumes[['origin_sparse', 'destination_sparse', seg]].values
 
             segment_links = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
-            _, pred = shortest_path(segment_links, 'jam_time', index, origins, num_cores=num_cores)
+            _, pred = shortest_path(segment_links, (seg, 'cost'), index, origins, num_cores=num_cores)
 
             links[(seg, 'auxiliary_flow')] = assign_volume_parallel(odv, pred, ab_volumes.copy())
 
@@ -361,16 +391,16 @@ def msa_roadpathfinder(
             phi = 1  # first iteration is AON
             beta = [1, 0, 0]
         elif method == 'bfw':  # if biconjugate: takes the 2 last direction
-            links['derivative'] = get_derivative(to_polars(links), vdf, h=0.001, flow_col='flow', time_col=time_col)
+            links['derivative'] = get_derivative(to_polars(links), vdf, cost_functions, segments, time_col=time_col)
             if i > 2:
                 beta = find_beta(links, phi, segments)  # this is the previous phi (phi_-1)
-            links = get_bfw_auxiliary_flow(links, i, beta, segments)
+            links = get_bfw_auxiliary_flow(links, beta, segments)
             links['auxiliary_flow'] = links[flow_cols].sum(axis=1)
             max_phi = 1 / i**0.5  # limit search space
-            phi = find_phi(to_polars(links), vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
+            phi = find_phi(to_polars(links), segments, vdf, cost_functions, bounds=(0, max_phi), time_col=time_col)
         elif method == 'fw':
             max_phi = 1 / i**0.5  # limit search space
-            phi = find_phi(to_polars(links), vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
+            phi = find_phi(to_polars(links), segments, vdf, cost_functions, bounds=(0, max_phi), time_col=time_col)
         else:  # msa
             phi = 1 / (i + 2)
         #
@@ -385,7 +415,7 @@ def msa_roadpathfinder(
         # Get relGap. Skip first iteration (AON and relgap = -inf)
         #
         if i > 0:
-            relgap = get_relgap(links)
+            relgap = get_relgap(links, segments)
             relgap_list.append(relgap)
             print(f'{i:2}  |  {phi:.3f}  |  {relgap:.8f} ') if log else None
 
@@ -396,7 +426,8 @@ def msa_roadpathfinder(
         # Update Time on links
         #
         links['jam_time'] = jam_time(to_polars(links), vdf, 'flow', time_col=time_col)
-        links['jam_time'].fillna(links[time_col], inplace=True)
+        for seg in segments:
+            links[(seg, 'cost')] = apply_segment_cost(links, cost_functions.get(seg))
         # skip first iteration (AON asignment) as relgap in -inf
         if relgap <= tolerance:
             print('tolerance reached') if log else None
@@ -419,7 +450,7 @@ def msa_roadpathfinder(
             # filter links to allowed segment
             segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
             segment_links = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
-            temp_los = get_car_los(segment_volumes, segment_links, index, origins, 'jam_time', num_cores)
+            temp_los = get_car_los(segment_volumes, segment_links, index, origins, (seg, 'cost'), num_cores)
             temp_los['segment'] = seg
             car_los = pd.concat([car_los, temp_los], ignore_index=True)
 
@@ -431,7 +462,6 @@ def msa_roadpathfinder(
 def expanded_roadpathfinder(
     links,
     volumes,
-    zones,
     segments=['volume'],
     vdf={'default_bpr': default_bpr, 'free_flow': free_flow},
     method='bfw',
@@ -443,13 +473,13 @@ def expanded_roadpathfinder(
     turn_penalty=10e3,
     tracker_plugin: LinksTracker = LinksTracker(),
     turn_penalties={},
+    cost_functions=None,
     return_car_los=True,
     num_cores=1,
 ):
     """
     links: road_network with zone_to_road
     volumes: volumes to assign
-    zones: zones of the step model.
     segments: list of segments (in volumes) to assign
     vdf = dict of function for the jam time.
     method = bfw, fw, msa, aon
@@ -461,11 +491,20 @@ def expanded_roadpathfinder(
     turn_penalty = 10e3 : penalty for turn links.
     track_links_list=[] list of link index to track flow at each iteration
     turn_penalties: dict of turn penalties {from_link: [to_link]}
+    cost_functions : if None return dict {seg:'jam_time'} for each segments.
+    return_car_los: return car los
     num_cores = 1 : for parallelization.
     """
+    # vdf keys  must be string for polars
     vdf = {str(key): val for key, val in vdf.items()}
     assert_vdf_on_links(links, vdf)
-    #
+
+    # if no cost function provided. just use jam_time for each segments
+    if cost_functions is None:
+        cost_functions = {seg: 'jam_time' for seg in segments}
+    assert_segs_in_cost_functions(segments, cost_functions)
+    test_cost_functions(links, cost_functions)
+
     # preparation
     #
 
@@ -497,11 +536,11 @@ def expanded_roadpathfinder(
     tracker_plugin.value = links
     # initialization time
     links['jam_time'] = jam_time(to_polars(links), vdf, 'flow', time_col=time_col)
-    links['jam_time'].fillna(links[time_col], inplace=True)
-    # init cost on expanded Links
-    jam_time_dict = links['jam_time'].to_dict()
-    expanded_links['cost'] = expanded_links['sparse_index'].apply(lambda x: jam_time_dict.get(x, zone_penalty))
-    expanded_links['cost'] += expanded_links['turn_penalty']
+    for seg in segments:
+        links[(seg, 'cost')] = apply_segment_cost(links, cost_functions.get(seg))
+        _dict = links[(seg, 'cost')].to_dict()
+        expanded_links[(seg, 'cost')] = expanded_links['sparse_index'].apply(lambda x: _dict.get(x, zone_penalty))
+        expanded_links[(seg, 'cost')] += expanded_links['turn_penalty']
 
     # init track links
     if tracker_plugin():
@@ -521,7 +560,7 @@ def expanded_roadpathfinder(
             odv = segment_volumes[['origin_sparse', 'destination_sparse', seg]].values
 
             segment_links = expanded_links[expanded_links['segments'].apply(lambda x: seg in x)]
-            _, pred = shortest_path(segment_links, 'cost', index, origins, num_cores=num_cores)
+            _, pred = shortest_path(segment_links, (seg, 'cost'), index, origins, num_cores=num_cores)
             # assign volume
             links[(seg, 'auxiliary_flow')] = assign_volume_on_links_parallel(odv, pred, ab_volumes.copy(), num_cores)
             if tracker_plugin():
@@ -538,17 +577,17 @@ def expanded_roadpathfinder(
             phi = 1  # first iteration is AON
             beta = [1, 0, 0]
         elif method == 'bfw':  # if biconjugate: takes the 2 last direction
-            links['derivative'] = get_derivative(to_polars(links), vdf, h=0.001, flow_col='flow', time_col=time_col)
+            links['derivative'] = get_derivative(to_polars(links), vdf, cost_functions, segments, time_col=time_col)
             if i > 2:
                 beta = find_beta(links, phi, segments)  # this is the previous phi (phi_-1)
-            links = get_bfw_auxiliary_flow(links, i, beta, segments)
+            links = get_bfw_auxiliary_flow(links, beta, segments)
 
             links['auxiliary_flow'] = links[auxiliary_flow_cols].sum(axis=1)
             max_phi = 1 / i**0.5  # limit search space
-            phi = find_phi(to_polars(links), vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
+            phi = find_phi(to_polars(links), segments, vdf, cost_functions, bounds=(0, max_phi), time_col=time_col)
         elif method == 'fw':
             max_phi = 1 / i**0.5  # limit search space
-            phi = find_phi(to_polars(links), vdf, maxiter=10, bounds=(0, max_phi), time_col=time_col)
+            phi = find_phi(to_polars(links), segments, vdf, cost_functions, bounds=(0, max_phi), time_col=time_col)
         else:  # msa
             phi = 1 / (i + 2)
 
@@ -567,7 +606,7 @@ def expanded_roadpathfinder(
         #
 
         if i > 0:
-            relgap = get_relgap(links)
+            relgap = get_relgap(links, segments)
             relgap_list.append(relgap)
             print(f'{i:2}  |  {phi:.3f}  |  {relgap:.8f} ') if log else None
 
@@ -579,10 +618,11 @@ def expanded_roadpathfinder(
         #
 
         links['jam_time'] = jam_time(to_polars(links), vdf, 'flow', time_col=time_col)
-        links['jam_time'].fillna(links[time_col], inplace=True)
-        jam_time_dict = links['jam_time'].to_dict()
-        expanded_links['cost'] = expanded_links['sparse_index'].apply(lambda x: jam_time_dict.get(x, zone_penalty))
-        expanded_links['cost'] += expanded_links['turn_penalty']
+        for seg in segments:
+            links[(seg, 'cost')] = apply_segment_cost(links, cost_functions.get(seg))
+            _dict = links[(seg, 'cost')].to_dict()
+            expanded_links[(seg, 'cost')] = expanded_links['sparse_index'].apply(lambda x: _dict.get(x, zone_penalty))
+            expanded_links[(seg, 'cost')] += expanded_links['turn_penalty']
 
         # skip first iteration (AON asignment) as relgap in -inf
         if relgap <= tolerance:
@@ -606,7 +646,7 @@ def expanded_roadpathfinder(
             # filter links to allowed segment
             segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
             segment_links = expanded_links[expanded_links['segments'].apply(lambda x: seg in x)]
-            temp_los = get_car_los(segment_volumes, segment_links, index, origins, 'cost', num_cores)
+            temp_los = get_car_los(segment_volumes, segment_links, index, origins, (seg, 'cost'), num_cores)
             temp_los['segment'] = seg
             car_los = pd.concat([car_los, temp_los], ignore_index=True)
 

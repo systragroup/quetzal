@@ -62,6 +62,67 @@ class TestRoadPathfinder(unittest.TestCase):
         sm.volumes = volumes
         self.sm = sm
 
+    ## getters
+    def _get_aon_los(self):
+        method = 'aon'
+        segments = []
+        time_column = 'time'
+        access_time = 'time'
+        ntleg_penalty = 100
+        network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
+        volumes = init_volumes(self.sm)
+        car_los = aon_roadpathfinder(network, volumes, time_column, num_cores)
+        return car_los
+
+    def _get_msa_roadpathfinder(self, maxiters=10, method='bfw', **kwargs):
+        tolerance = 0.01
+        segments = ['car']
+        time_column = 'time'
+        access_time = 'time'
+        ntleg_penalty = 100
+        network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
+        volumes = init_volumes(self.sm)
+        links, car_los, relgap_list = msa_roadpathfinder(
+            network,
+            volumes,
+            segments=segments,
+            method=method,
+            vdf=vdf,
+            maxiters=maxiters,
+            tolerance=tolerance,
+            log=False,
+            time_col=time_column,
+            num_cores=num_cores,
+            **kwargs,
+        )
+        return links, car_los, relgap_list
+
+    def _get_expanded_roadpathfinder(self, method='bfw', **kwargs):
+        maxiters = 10
+        tolerance = 0.01
+        segments = ['car']
+        time_column = 'time'
+        access_time = 'time'
+        ntleg_penalty = 100
+        network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
+        volumes = init_volumes(self.sm)
+        links, car_los, relgap_list = expanded_roadpathfinder(
+            network,
+            volumes,
+            segments=segments,
+            method=method,
+            maxiters=maxiters,
+            tolerance=tolerance,
+            vdf=vdf,
+            log=False,
+            time_col=time_column,
+            zone_penalty=ntleg_penalty,
+            num_cores=num_cores,
+            **kwargs,
+        )
+        return links, car_los, relgap_list
+
+    # test
     def test_init_network(self):
         method = 'bfw'
         segments = ['car']
@@ -121,17 +182,6 @@ class TestRoadPathfinder(unittest.TestCase):
         self.assertEqual(len(volumes), expected_len)
         self.assertIn('volume', volumes.columns)
 
-    def _get_aon_los(self):
-        method = 'aon'
-        segments = []
-        time_column = 'time'
-        access_time = 'time'
-        ntleg_penalty = 100
-        network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
-        volumes = init_volumes(self.sm)
-        car_los = aon_roadpathfinder(network, volumes, time_column, num_cores)
-        return car_los
-
     def test_aon_pathfinder(self):
         car_los = self._get_aon_los()
 
@@ -148,29 +198,6 @@ class TestRoadPathfinder(unittest.TestCase):
         self.assertEqual(car_los['time'][0], 207)
         self.assertEqual(car_los['time'][1], 206)
 
-    def _get_msa_roadpathfinder(self, maxiters=10, method='bfw', **kwargs):
-        tolerance = 0.01
-        segments = ['car']
-        time_column = 'time'
-        access_time = 'time'
-        ntleg_penalty = 100
-        network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
-        volumes = init_volumes(self.sm)
-        links, car_los, relgap_list = msa_roadpathfinder(
-            network,
-            volumes,
-            segments=segments,
-            method=method,
-            vdf=vdf,
-            maxiters=maxiters,
-            tolerance=tolerance,
-            log=False,
-            time_col=time_column,
-            num_cores=num_cores,
-            **kwargs,
-        )
-        return links, car_los, relgap_list
-
     def test_msa_pathfinder(self):
         for method in ['bfw', 'msa', 'fw']:
             links, car_los, relgap = self._get_msa_roadpathfinder(method=method)
@@ -180,7 +207,7 @@ class TestRoadPathfinder(unittest.TestCase):
             expected_path_2 = ['z2', 'c', 'b', 'a', 'z1']
             self.assertEqual(car_los['path'][1], expected_path_2)
 
-    def test_msa_pathfinder_0(self):
+    def test_msa_pathfinder_0_iters(self):
         for method in ['bfw', 'msa', 'fw']:
             links, car_los, relgap = self._get_msa_roadpathfinder(method=method, maxiters=0)
             expected_path_1 = ['z1', 'a', 'b', 'd', 'e', 'z2']
@@ -203,32 +230,6 @@ class TestRoadPathfinder(unittest.TestCase):
         found_path = merged[merged[link] == 150].index.tolist()
 
         self.assertEqual(expected_link_path, found_path)
-
-    def _get_expanded_roadpathfinder(self, method='bfw', **kwargs):
-        maxiters = 10
-        tolerance = 0.01
-        segments = ['car']
-        time_column = 'time'
-        access_time = 'time'
-        ntleg_penalty = 100
-        network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
-        volumes = init_volumes(self.sm)
-        links, car_los, relgap_list = expanded_roadpathfinder(
-            network,
-            volumes,
-            self.sm.zones,
-            segments=segments,
-            method=method,
-            maxiters=maxiters,
-            tolerance=tolerance,
-            vdf=vdf,
-            log=False,
-            time_col=time_column,
-            zone_penalty=ntleg_penalty,
-            num_cores=num_cores,
-            **kwargs,
-        )
-        return links, car_los, relgap_list
 
     def test_expanded_pathfinder(self):
         for method in ['bfw', 'msa', 'fw']:
@@ -255,38 +256,12 @@ class TestRoadPathfinder(unittest.TestCase):
 
         self.assertEqual(expected_link_path, found_path)
 
-    def _get_turn_penality_roadpathfinder(self):
-        method = 'bfw'
-        maxiters = 10
-        tolerance = 0.01
-        segments = ['car']
-        time_column = 'time'
-        access_time = 'time'
-        ntleg_penalty = 100
+    def test_turn_penality_roadpathfinder(self):
         turn_penalty = 100
         turn_penalties = {'rlink_0': ['rlink_4']}
-        network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
-        volumes = init_volumes(self.sm)
-        links, car_los, relgap_list = expanded_roadpathfinder(
-            network,
-            volumes,
-            self.sm.zones,
-            segments=segments,
-            method=method,
-            maxiters=maxiters,
-            tolerance=tolerance,
-            vdf=vdf,
-            log=False,
-            time_col=time_column,
-            zone_penalty=ntleg_penalty,
-            turn_penalty=turn_penalty,
-            turn_penalties=turn_penalties,
-            num_cores=num_cores,
+        links, car_los, relgap = self._get_expanded_roadpathfinder(
+            turn_penalty=turn_penalty, turn_penalties=turn_penalties
         )
-        return links, car_los, relgap_list
-
-    def test_turn_penality_roadpathfinder(self):
-        links, car_los, relgap = self._get_turn_penality_roadpathfinder()
         expected_path_1 = ['z1', 'a', 'b', 'c', 'e', 'z2']
         self.assertEqual(car_los['path'][0], expected_path_1)
 
@@ -296,3 +271,11 @@ class TestRoadPathfinder(unittest.TestCase):
         expected_columns = ['flow', 'jam_time']
         for col in expected_columns:
             self.assertIn(col, links.columns)
+
+    def test_msa_pathfinder_with_cost_functions(self):
+        for method in ['bfw', 'msa', 'fw']:
+            cost_functions = {'car': 'jam_time + length'}
+            links, car_los, relgap = self._get_msa_roadpathfinder(method=method, cost_functions=cost_functions)
+            expected = (links['jam_time'] + links['length']).to_list()
+            cost = links[('car', 'cost')].to_list()
+            self.assertEqual(expected, cost)

@@ -1,4 +1,4 @@
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Union
 import pandas as pd
 import polars as pl
 import numpy as np
@@ -51,32 +51,53 @@ def pl_expr_from_str(expr_str: str) -> pl.Expr:
     return eval(expr_str, {'pl': pl})
 
 
-def jam_time(links: pl.DataFrame, vdf, flow: str = 'flow', time_col: str = 'time') -> pd.Series:
+def apply_segment_cost(
+    links: Union[pd.DataFrame, pl.DataFrame], str_expression: str, jam_time_col: str = 'jam_time'
+) -> np.ndarray:
+    # simply evaluate string expression on dataframe for a pandas or polars dataframe.
+    str_expression = str_expression.replace('jam_time', jam_time_col)
+    if isinstance(links, pd.DataFrame):
+        return links.eval(str_expression).values
+    else:
+        expr = pl_expr_from_str(str_expression)
+        return links.select(expr).to_series().to_numpy()
+
+
+def jam_time(links: pl.DataFrame, vdf, flow: str = 'flow', time_col: str = 'time') -> np.ndarray:
+    # using polars is almost 30X faster than pandas here
     expr = pl.when(False).then(None)
     for key, str_expression in vdf.items():
         str_expression = str_expression.replace('flow', flow).replace('time', time_col)
         expr = expr.when(pl.col('vdf') == key).then(pl_expr_from_str(str_expression))
+        # return a numpy array with filled with time_col
+    return links.select(expr.fill_nan(pl.col(time_col))).to_series().to_numpy()
 
-    return links.with_columns(expr.alias('result')).get_column('result').to_numpy()
 
-
-def z_prime(links: pl.DataFrame, vdf, phi, **kwargs):
+def z_prime(plinks: pl.DataFrame, segments, vdf, cost_functions, phi, **kwargs):
     # min sum(on links) integral from 0 to flow + φΔ of Cost(f) df
     # using a single trapez (ok if phi small), which is the case after <10 iteration.
     # This give not perfect phi to begin with, but thats ok.
     # approx  ( Cost(flow) + Cost(flow + φΔ)  ) x φΔ /2
     # Δ = links['auxiliary_flow'] - links['flow']
-    delta = links['auxiliary_flow'] - links['flow']
-    links = links.with_columns((pl.col('flow') + delta * phi).alias('new_flow'))
-    cost_del = jam_time(links, vdf=vdf, flow='new_flow', **kwargs)
-    cost_flow = links['jam_time'].to_numpy()
-    z = delta * phi * (cost_flow + cost_del) * 0.5
-    return np.ma.masked_invalid(z).sum()
+
+    # compute a new jam_time for a given phi
+    plinks = plinks.with_columns((pl.col('flow') * (1 - phi) + pl.col('auxiliary_flow') * phi).alias('new_flow'))
+    new_jam_time = jam_time(plinks, vdf=vdf, flow='new_flow', **kwargs)
+    plinks = plinks.with_columns(pl.Series(new_jam_time).alias('new_jam_time'))
+    tot_z = 0
+    for seg in segments:
+        cost_delta = apply_segment_cost(plinks, cost_functions.get(seg), 'new_jam_time')  # get cost for new jam_time
+        delta = (plinks[str((seg, 'auxiliary_flow'))] - plinks[str((seg, 'flow'))]).to_numpy()  # str(tuple) for polars
+        current_cost = plinks[str((seg, 'cost'))].to_numpy()  # current cost
+        z = delta * phi * (current_cost + cost_delta) * 0.5
+        # tot_z += np.ma.masked_invalid(z).sum()
+        tot_z += z.sum()
+    return tot_z
 
 
-def find_phi(links: pl.DataFrame, vdf, maxiter=10, tol=1e-4, bounds=(0, 1), **kwargs):
+def find_phi(plinks: pl.DataFrame, segments, vdf, cost_functions, maxiter=10, tol=1e-4, bounds=(0, 1), **kwargs):
     return minimize_scalar(
-        lambda x: z_prime(links, vdf, x, **kwargs),
+        lambda x: z_prime(plinks=plinks, segments=segments, vdf=vdf, cost_functions=cost_functions, phi=x, **kwargs),
         bounds=bounds,
         method='Bounded',
         tol=tol,
@@ -84,11 +105,15 @@ def find_phi(links: pl.DataFrame, vdf, maxiter=10, tol=1e-4, bounds=(0, 1), **kw
     ).x
 
 
-def get_relgap(links) -> float:
+def get_relgap(links: pd.DataFrame, segments: list[str]) -> float:
     # modelling transport eq 11.11. SUM currentFlow x currentCost - SUM AONFlow x currentCost / SUM currentFlow x currentCost
-    a = np.sum((links['flow']) * links['jam_time'])  # currentFlow x currentCost
-    b = np.sum((links['auxiliary_flow']) * links['jam_time'])  # AON_flow x currentCost
-    return 100 * (a - b) / a
+    # NOTE: base_flow is ignored now while it was considered before. they dont move and they dont have cost, so I think its ok
+    flow_cost = 0
+    aux_cost = 0
+    for seg in segments:
+        flow_cost += (links[(seg, 'flow')] * links[(seg, 'cost')]).sum()  # currentFlow x currentCost
+        aux_cost += (links[(seg, 'auxiliary_flow')] * links[(seg, 'cost')]).sum()  # AON_flow x currentCost
+    return 100 * (flow_cost - aux_cost) / flow_cost
 
 
 @nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)  # parallel=> not thread safe. do not!
@@ -143,16 +168,16 @@ def find_beta(links, phi_1, segments):
     s_k_1 = links[[(seg, 's_k-1') for seg in segments]].sum(axis=1)
     s_k_2 = links[[(seg, 's_k-2') for seg in segments]].sum(axis=1)
     aux = links[[(seg, 'auxiliary_flow') for seg in segments]].sum(axis=1)
-    flow = links['flow']
+    flow = links[[(seg, 'flow') for seg in segments]].sum(axis=1)
     derivative = links['derivative']
 
     dk_1 = s_k_1 - flow
     dk_2 = phi_1 * s_k_1 + (1 - phi_1) * s_k_2 - flow
     dk = aux - flow
-    # put a try here except mu=0 if we have a division by 0...
+
     mu = -sum(dk_2 * derivative * dk) / sum(dk_2 * derivative * (s_k_2 - s_k_1))
-    mu = max(0, mu)  # beta_k >=0
-    # same try here.
+    mu = max(0, mu)
+
     nu = -sum(dk_1 * derivative * dk) / sum(dk_1 * derivative * dk_1) + (mu * phi_1 / (1 - phi_1))
     nu = max(0, nu)
     b[0] = 1 / (1 + mu + nu)
@@ -161,23 +186,35 @@ def find_beta(links, phi_1, segments):
     return b
 
 
-def get_bfw_auxiliary_flow(links, i, b, segments) -> pd.DataFrame:
-    if i > 2:
-        for seg in segments:  # track per segments
-            col = (seg, 'auxiliary_flow')
-            links[col] = b[0] * links[col] + b[1] * links[(seg, 's_k-1')] + b[2] * links[(seg, 's_k-2')]
-
+def get_bfw_auxiliary_flow(links: pd.DataFrame, b: list[float], segments: list[str]) -> pd.DataFrame:
+    # first create sk1 then sk2, then aux is computed with beta and those 2.
+    # this kick in after 2 iteration, to have sk1 and sk2
+    columns = links.columns
     for seg in segments:
-        if i > 1:
-            links[(seg, 's_k-2')] = links[(seg, 's_k-1')]
-        links[(seg, 's_k-1')] = links[(seg, 'auxiliary_flow')]
+        aux = (seg, 'auxiliary_flow')
+        s1 = (seg, 's_k-1')
+        s2 = (seg, 's_k-2')
+        if s2 in columns:
+            links[aux] = b[0] * links[aux] + b[1] * links[s1] + b[2] * links[s2]
+        if s1 in columns:
+            links[s2] = links[s1]
+        links[s1] = links[aux]
 
     return links
 
 
-def get_derivative(links: pl.DataFrame, vdf, flow_col='flow', h=0.001, **kwargs):
-    x1 = jam_time(links.with_columns((pl.col(flow_col) + h).alias('x1')), vdf=vdf, flow='x1', **kwargs)
-    x2 = jam_time(links.with_columns((pl.col(flow_col) - h).alias('x2')), vdf=vdf, flow='x2', **kwargs)
+def get_derivative(plinks: pl.DataFrame, vdf, cost_functions, segments, h=0.001, **kwargs):
+    # get Cost function derivative approximation around flow+-h
+    plinks = plinks.with_columns([(pl.col('flow') + h).alias('flow_1'), (pl.col('flow') - h).alias('flow_2')])
+    jam_time_1 = jam_time(plinks, vdf=vdf, flow='flow_1', **kwargs)
+    jam_time_2 = jam_time(plinks, vdf=vdf, flow='flow_2', **kwargs)
+    plinks = plinks.with_columns([pl.Series(jam_time_1).alias('jam_time_1'), pl.Series(jam_time_2).alias('jam_time_2')])
+    x1 = np.zeros(len(plinks))
+    x2 = np.zeros(len(plinks))
+    for seg in segments:
+        func = cost_functions.get(seg)
+        x1 += apply_segment_cost(plinks, func, 'jam_time_1') * (plinks[str((seg, 'flow'))].to_numpy() + h)
+        x2 += apply_segment_cost(plinks, func, 'jam_time_2') * (plinks[str((seg, 'flow'))].to_numpy() - h)
     return (x1 - x2) / (2 * h)
 
 
