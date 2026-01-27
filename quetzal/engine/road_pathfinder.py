@@ -153,6 +153,8 @@ def concat_connectors_to_roads(road_links, zone_to_road, segments, time_col='tim
         if 'base_flow' not in links.columns:
             links['base_flow'] = 0
         links['base_flow'] = links['base_flow'].fillna(0)
+
+        links['jam_time'] = links[time_col]  # temporary. to test the cost function
         # vdf keys to string. polars doesnt like mixed key (int and str)
         # later we will convert vdf to str keys. vdf = {str(key): val for key, val in vdf.items()}
         links['vdf'] = links['vdf'].apply(str)
@@ -169,6 +171,16 @@ def assert_segs_in_cost_functions(segments, cost_functions):
     keys = set(segments)
     miss = keys - set(cost_functions.keys())
     assert len(miss) == 0, 'you should provide Cost function for the following segments' + str(miss)
+
+
+def test_cost_functions(links: pd.DataFrame, cost_functions: dict):
+    for seg, expr in cost_functions.items():
+        test = np.isfinite(apply_segment_cost(links, expr))
+        if not all(test):
+            loc = np.where(~test)[0]
+            print(f'evaluating the cost function yield NaN on some links. {seg} : {expr}')
+            print('make sure the zone_to_road also contains every fields in the cost_function')
+            print(links.iloc[loc].index)
 
 
 def get_car_los(volumes, links, index, zones, weight_col, num_cores=1):
@@ -327,7 +339,7 @@ def msa_roadpathfinder(
         cost_functions = {seg: 'jam_time' for seg in segments}
 
     assert_segs_in_cost_functions(segments, cost_functions)
-
+    test_cost_functions(links, cost_functions)
     # reindex links to sparse indexes (a,b)
     index = build_index(links[['a', 'b']].values)  # a:sparse
     links['sparse_a'] = links['a'].apply(lambda x: index.get(x))
@@ -491,7 +503,8 @@ def expanded_roadpathfinder(
     if cost_functions is None:
         cost_functions = {seg: 'jam_time' for seg in segments}
     assert_segs_in_cost_functions(segments, cost_functions)
-    #
+    test_cost_functions(links, cost_functions)
+
     # preparation
     #
 
