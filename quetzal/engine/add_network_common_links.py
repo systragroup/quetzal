@@ -39,6 +39,8 @@ def find_common_trips(links: pd.DataFrame, trip_id_sets: list[frozenset]) -> pd.
         common_list = filtered_links.group_by(['a', 'b']).agg(_expr)
         # some links doesnt contain all our trip. check if list == set with a n_unique.(this method is valid because of the prior filter)
         common_list = common_list.filter(pl.col('trip_id_list').list.n_unique() == len(trip_set))
+        # if a link uses 2 trip. we dont want 3 links because its a loop and reuse multiple time the same link. we drop and it will be filled if necessary.
+        common_list = common_list.filter(pl.col('trip_id_list').list.n_unique() == pl.col('index_list').list.n_unique())
         common_list = common_list.sort(by='link_sequence')
 
         # check if link_sequences is consecutives for each trip. if not. its not to agg.
