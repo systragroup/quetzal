@@ -394,7 +394,7 @@ def msa_roadpathfinder(
             links['derivative'] = get_derivative(to_polars(links), vdf, h=0.001, flow_col='flow', time_col=time_col)
             if i > 2:
                 beta = find_beta(links, phi, segments)  # this is the previous phi (phi_-1)
-            links = get_bfw_auxiliary_flow(links, i, beta, segments)
+            links = get_bfw_auxiliary_flow(links, beta, segments)
             links['auxiliary_flow'] = links[flow_cols].sum(axis=1)
             max_phi = 1 / i**0.5  # limit search space
             phi = find_phi(to_polars(links), segments, vdf, cost_functions, bounds=(0, max_phi), time_col=time_col)
@@ -580,7 +580,7 @@ def expanded_roadpathfinder(
             links['derivative'] = get_derivative(to_polars(links), vdf, h=0.001, flow_col='flow', time_col=time_col)
             if i > 2:
                 beta = find_beta(links, phi, segments)  # this is the previous phi (phi_-1)
-            links = get_bfw_auxiliary_flow(links, i, beta, segments)
+            links = get_bfw_auxiliary_flow(links, beta, segments)
 
             links['auxiliary_flow'] = links[auxiliary_flow_cols].sum(axis=1)
             max_phi = 1 / i**0.5  # limit search space

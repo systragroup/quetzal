@@ -164,16 +164,16 @@ def find_beta(links, phi_1, segments):
     s_k_1 = links[[(seg, 's_k-1') for seg in segments]].sum(axis=1)
     s_k_2 = links[[(seg, 's_k-2') for seg in segments]].sum(axis=1)
     aux = links[[(seg, 'auxiliary_flow') for seg in segments]].sum(axis=1)
-    flow = links['flow']
+    flow = links[[(seg, 'flow') for seg in segments]].sum(axis=1)
     derivative = links['derivative']
 
     dk_1 = s_k_1 - flow
     dk_2 = phi_1 * s_k_1 + (1 - phi_1) * s_k_2 - flow
     dk = aux - flow
-    # put a try here except mu=0 if we have a division by 0...
+
     mu = -sum(dk_2 * derivative * dk) / sum(dk_2 * derivative * (s_k_2 - s_k_1))
-    mu = max(0, mu)  # beta_k >=0
-    # same try here.
+    mu = max(0, mu)
+
     nu = -sum(dk_1 * derivative * dk) / sum(dk_1 * derivative * dk_1) + (mu * phi_1 / (1 - phi_1))
     nu = max(0, nu)
     b[0] = 1 / (1 + mu + nu)
@@ -182,21 +182,25 @@ def find_beta(links, phi_1, segments):
     return b
 
 
-def get_bfw_auxiliary_flow(links, i, b, segments) -> pd.DataFrame:
-    if i > 2:
-        for seg in segments:  # track per segments
-            col = (seg, 'auxiliary_flow')
-            links[col] = b[0] * links[col] + b[1] * links[(seg, 's_k-1')] + b[2] * links[(seg, 's_k-2')]
-
+def get_bfw_auxiliary_flow(links: pd.DataFrame, b: list[float], segments: list[str]) -> pd.DataFrame:
+    # first create sk1 then sk2, then aux is computed with beta and those 2.
+    # this kick in after 2 iteration, to have sk1 and sk2
+    columns = links.columns
     for seg in segments:
-        if i > 1:
-            links[(seg, 's_k-2')] = links[(seg, 's_k-1')]
-        links[(seg, 's_k-1')] = links[(seg, 'auxiliary_flow')]
+        aux = (seg, 'auxiliary_flow')
+        s1 = (seg, 's_k-1')
+        s2 = (seg, 's_k-2')
+        if s2 in columns:
+            links[aux] = b[0] * links[aux] + b[1] * links[s1] + b[2] * links[s2]
+        if s1 in columns:
+            links[s2] = links[s1]
+        links[s1] = links[aux]
 
     return links
 
 
 def get_derivative(links: pl.DataFrame, vdf, flow_col='flow', h=0.001, **kwargs):
+    # TODO: derivative of costs not jamtime.
     x1 = jam_time(links.with_columns((pl.col(flow_col) + h).alias('x1')), vdf=vdf, flow='x1', **kwargs)
     x2 = jam_time(links.with_columns((pl.col(flow_col) - h).alias('x2')), vdf=vdf, flow='x2', **kwargs)
     return (x1 - x2) / (2 * h)
