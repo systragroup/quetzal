@@ -1,7 +1,22 @@
+## [3.2.0] (2026-01-27)
+## Features
+ * road_pathfinder : can now specify a Cost function for each segment ex: {'car': 'jam_time + length + toll', 'truck': 'jam_time + 2*toll'}
+
+## changes
+* road_pathfinder: results will be slightly different because there was some changes and bug fixes in the computation of phi (step_size):
+    - base_flow was considered in the computation of relgap, not anymore.
+    - relgap now is for the Cost, and not the time ( was sum(flow x time) on links, now its flow x cost on links)
+    - for BFW, when finding Beta, base_flow was considered in 'flow' but not in 'auxiliary_flow'. removed in both.
+    - for BFW, the derivative of jam_time around flow was used. With cost we now use sum(cost_seg * flow_seg)
+
+## bug fixes
+ * common_links creation was failling for some circular lines
+
 ## [3.1.3] (2026-01-22)
 ## bug fixes
 * pt_pathfinder: dont use column cost. recompute the cost (for boarding links) 
     =>  time + headway/2 + boarding_time
+    
 ## [3.1.2] (2026-01-20)
 ## changes
 * road_pathfinder: moved default_brp and free_flow vdf from quetzal/engine/vdf.py to quetzal/engine/road_pathfinder.py
