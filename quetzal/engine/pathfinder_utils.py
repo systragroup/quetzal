@@ -493,7 +493,7 @@ def paths_from_edges(
     od_list = odl[['origin', 'destination']].values
     path = get_reversed_path if reverse else get_path
 
-    paths = [[index_node[i] for i in path(predecessors, source_index[o], node_index[d])] for o, d in od_list]
+    paths = [tuple(index_node[i] for i in path(predecessors, source_index[o], node_index[d])) for o, d in od_list]
     odl['path'] = paths
 
     if reverse:

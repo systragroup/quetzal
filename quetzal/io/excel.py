@@ -10,18 +10,16 @@ from tqdm import tqdm
 def read_var(file='parameters.xlsx', scenario='base', period=None, return_ancestry=False):
     parameter_frame = pd.read_excel(file, sheet_name='parameters').dropna(axis=1, how='all')
     try:
-        types = parameter_frame.set_index(
-            ['category', 'parameter']
-        )['type'].dropna().to_dict()
+        types = parameter_frame.set_index(['category', 'parameter'])['type'].dropna().to_dict()
     except KeyError:
         types = dict()
-    
+
     if period is not None:
-        mask  = ((parameter_frame['period'].isna()) | 
-                (parameter_frame['period'].str.casefold() == period.casefold()))
-        parameter_frame = parameter_frame[mask]
-        parameter_frame.sort_values('period', inplace=True)
-        parameter_frame.drop_duplicates(subset=['category','parameter'], inplace=True)
+        if 'period' in parameter_frame.columns:
+            mask = (parameter_frame['period'].isna()) | (parameter_frame['period'].str.casefold() == period.casefold())
+            parameter_frame = parameter_frame[mask]
+            parameter_frame.sort_values('period', inplace=True)
+        parameter_frame.drop_duplicates(subset=['category', 'parameter'], inplace=True)
         parameter_frame.sort_index(inplace=True)
     parameter_frame.drop(['description', 'desc', 'unit', 'type', 'period'], axis=1, errors='ignore', inplace=True)
     parameter_frame.set_index(['category', 'parameter'], inplace=True)
@@ -54,7 +52,7 @@ def read_var(file='parameters.xlsx', scenario='base', period=None, return_ancest
 def merge_files(
     parameters_filepath=r'inputs/parameters.xlsx',
     scenario_filepath=r'model/{scenario}/stacks.xlsx',
-    merged_filepath=r'outputs/stacks.xlsx'
+    merged_filepath=r'outputs/stacks.xlsx',
 ):
     parameters = pd.read_excel(parameters_filepath)
     scenarios = [c for c in parameters.columns if c not in {'category', 'parameter'}]
@@ -81,28 +79,32 @@ def merge_files(
         for name, stack in tqdm(stacks.items(), desc='writing'):
             stack.to_excel(writer, sheet_name=name, index=False)
 
+
 def get_ancestry(parameter_frame, scenario='base'):
     child = scenario
     ancestry = [child]
     while True:
-        parent = parameter_frame.loc[('general','parent'), child]
-        if parent == child: break
+        parent = parameter_frame.loc[('general', 'parent'), child]
+        if parent == child:
+            break
         ancestry.append(parent)
         child = parent
     return ancestry
+
 
 def get_filepath(filepath, ancestry=['base'], log=True):
     for scen in ancestry:
         relpath = filepath.format(s=scen)
         if os.path.exists(relpath):
-            if log: 
-                print(f"specified file found: {relpath}")
+            if log:
+                print(f'specified file found: {relpath}')
             return relpath
         if log:
-            print(f"{relpath} does not exist")
+            print(f'{relpath} does not exist')
     if log:
-        print("specified file or input path does not exist")
+        print('specified file or input path does not exist')
     return None
+
 
 def recursive_get_filepaths(path, ancestry=['base'], return_dicts=False, log=True):
     file_filepath = {}
@@ -110,12 +112,12 @@ def recursive_get_filepaths(path, ancestry=['base'], return_dicts=False, log=Tru
 
     for scen in ancestry[::-1]:
         filepaths = glob.glob(path.format(s=scen))
-        if log: 
-            print(f"{len(filepaths)} specified file found in {scen}")
+        if log:
+            print(f'{len(filepaths)} specified file found in {scen}')
         for filepath in filepaths:
             file = os.path.basename(filepath).split('.')[0]
             if log & (file in file_filepath.keys()):
-                print(f"replacing {file} from {file_scen[file]} by {scen}")
+                print(f'replacing {file} from {file_scen[file]} by {scen}')
             file_filepath[file] = filepath
             file_scen[file] = scen
 
@@ -123,16 +125,15 @@ def recursive_get_filepaths(path, ancestry=['base'], return_dicts=False, log=Tru
         return file_filepath, file_scen
     else:
         return list(file_filepath.values())
-    
-def to_json(file = 'parameters.xlsx', scenario = 'base'):
-    var = read_var(file = file, scenario = scenario).drop(('general', 'parent')).to_frame()
+
+
+def to_json(file='parameters.xlsx', scenario='base'):
+    var = read_var(file=file, scenario=scenario).drop(('general', 'parent')).to_frame()
     parameter_frame = pd.read_excel(file, sheet_name='parameters').dropna(axis=1, how='all')
 
     # types
     try:
-        types = parameter_frame.set_index(
-            ['category', 'parameter']
-        )['type'].dropna()
+        types = parameter_frame.set_index(['category', 'parameter'])['type'].dropna()
         js_types_dict = {'float': 'Number', 'int': 'Number', 'bool': 'Boolean', 'str': 'String'}
         var = var.join(types)
         var['type'] = var['type'].apply(lambda x: js_types_dict.get(x, x))
@@ -141,27 +142,21 @@ def to_json(file = 'parameters.xlsx', scenario = 'base'):
 
     # units
     try:
-        units = parameter_frame.set_index(
-            ['category', 'parameter']
-        )['unit'].dropna()
+        units = parameter_frame.set_index(['category', 'parameter'])['unit'].dropna()
         var = var.join(units)
     except KeyError:
         var['unit'] = np.nan
 
     # hints
     try:
-        hints = parameter_frame.set_index(
-            ['category', 'parameter']
-        )['description'].dropna()
+        hints = parameter_frame.set_index(['category', 'parameter'])['description'].dropna()
         var = var.join(hints)
     except KeyError:
         var['description'] = np.nan
 
     # rules
     try:
-        rules = parameter_frame.set_index(
-            ['category', 'parameter']
-        )['rules'].dropna()
+        rules = parameter_frame.set_index(['category', 'parameter'])['rules'].dropna()
         var = var.join(rules)
     except KeyError:
         var['rules'] = np.full((len(var), 1), ['required']).tolist()
