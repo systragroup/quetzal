@@ -1,3 +1,10 @@
+## [FUTURE] (2026-02-04)
+## Changes
+ * pt_pathfinder: paths_from_edges return path as tuple instead of list. usefull to drop_duplicates whitout converting to tuple (not effective on large dataframe)
+
+ ## bug fixes
+ * read_var (excel): fix a bug when we specify a period and there is no period in the excel file
+
 ## [3.2.0] (2026-01-27)
 ## Features
  * road_pathfinder : can now specify a Cost function for each segment ex: {'car': 'jam_time + length + toll', 'truck': 'jam_time + 2*toll'}
