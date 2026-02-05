@@ -59,12 +59,12 @@ def find_common_trips(links: pd.DataFrame, trip_id_sets: list[frozenset]) -> pd.
 
         missing_list[['a', 'b']] = missing_list[['b', 'next_a']]
         missing_list = missing_list.with_columns(pl.col('link_sequence') + 1)
-        missing_list = missing_list.drop(['next_a'])
+        missing_list = missing_list.drop(['next_a', 'index_list'])
         if len(missing_list) > 0:
             lsls = []
             for a, b, trips in missing_list[['a', 'b', 'trip_id_list']].to_numpy():
                 lsls.append(_get_links_inbetween_trips(a, b, trips, filtered_links))
-            missing_list = missing_list.with_columns(pl.Series('index', lsls))
+            missing_list = missing_list.with_columns(pl.Series('index_list', lsls))
             missing_list = missing_list.select(common_list.columns)
             common_list = pl.concat([common_list, missing_list])
 
@@ -180,5 +180,45 @@ def _get_links_inbetween(a: str, b: str, trip_links: pl.DataFrame) -> list[str]:
     arr = trip_links.select(['a', 'b', 'index']).to_numpy()
     filter_from = np.where(arr[:, 0] == a)[0][0]
     filter_to = np.where(arr[:, 1] == b)[0][-1]
-    index_list = arr[filter_from:filter_to, 2]
+    index_list = arr[filter_from : filter_to + 1, 2]
     return index_list
+
+
+def distribute_commons_on_links(
+    links: pd.DataFrame, common_trips: pd.DataFrame, cols=['boardings', 'alightings', 'volume'], keep_common=False
+):
+    # distribute volumes, baordings, aligthings
+    # from common to normal links
+
+    # we have common_link : [[links], [links]] # first list is each trip. second is the merge of links (fill gap)
+    common_links = common_trips[['index_list', 'trip_id_list', 'trip_id']]
+    # add each common_link volume to the df
+    # we also need the common_link headway (to weight each trip in the common trip later)
+    common_links = common_links.merge(links[[*cols, 'headway']], left_index=True, right_index=True).reset_index()
+    # explode to have common_link: [links]. so each row is a trip that get a portion of the volume
+    common_links = common_links.explode(['trip_id_list', 'index_list'])
+    # add each trip headway to compute the weight.
+    # we can take the fist link to have the trip headway
+    # common_links['first_link'] = common_links['index_list'].apply(lambda x: x if type(x) is str else x[0])
+    headway_dict = links.set_index('trip_id')['headway'].to_dict()
+    common_links['trip_headway'] = common_links['trip_id_list'].apply(headway_dict.get)
+    # Weight = combined_headway*(1/headway)
+    common_links['weight'] = common_links['headway'] / common_links['trip_headway']
+
+    # now we have each Trip weight for each common links. we can explode.
+    # The volume for Gap links is still weight X volume for each link
+    common_links = common_links.explode('index_list')
+    for col in cols:
+        common_links[col] = common_links[col] * common_links['weight']
+
+    # then sum on the links. (we can ahve multiple common links using the same link)
+    common_links = common_links.groupby('index_list')[cols].agg(sum)
+    common_links.index.name = 'index'
+
+    # apply to links
+    if not keep_common:
+        links = links[~links['is_common']]
+
+    links[cols] = links[cols].add(common_links[cols], fill_value=0)
+
+    return links

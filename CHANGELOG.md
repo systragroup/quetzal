@@ -4,6 +4,7 @@
 
  ## bug fixes
  * read_var (excel): fix a bug when we specify a period and there is no period in the excel file
+ * common_trips: there was a bug in the function filling missing links making duplicates.
 
 ## [3.2.0] (2026-01-27)
 ## Features
