@@ -2,6 +2,7 @@ import pandas as pd
 import polars as pl
 import numpy as np
 from syspy.spatial.geometries import line_list_to_polyline
+from itertools import chain
 
 
 def find_common_sets(links: pd.DataFrame) -> list[frozenset]:
@@ -121,13 +122,13 @@ def create_common_links(
     merge_dict['boarding_time'] = 'first'  # we board on first link. not a sum of all
     merge_dict['headway'] = 'first'
     merge_dict['geometry'] = line_list_to_polyline
-    merge_dict['road_link_list'] = lambda x: sum(x, [])
+    merge_dict['road_link_list'] = lambda x: list(chain.from_iterable(x))  # concat list
     merge_dict['time'] = sum
     merge_dict['length'] = sum
     merge_dict.update(merge_overwrite)  # change predefined agg func
     # agg dict
     agg_dict = {col: 'first' for col in links.columns}
-    agg_dict['road_link_list'] = lambda x: sum(x, [])
+    agg_dict['road_link_list'] = lambda x: list(chain.from_iterable(x))  # concat list
     agg_dict['headway'] = lambda x: 1 / sum(1 / x)
     agg_dict['time'] = np.mean
     agg_dict['length'] = np.mean

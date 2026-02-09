@@ -1,6 +1,6 @@
-## [FUTURE] (2026-02-04)
+## [3.3.0] (2026-02-04)
 ## Changes
- * pt_pathfinder: paths_from_edges return path as tuple instead of list. usefull to drop_duplicates whitout converting to tuple (not effective on large dataframe)
+ * pt_pathfinder: paths_from_edges return path as tuple instead of list. usefull to drop_duplicates whithout converting to tuple (not effective on large dataframe)
 
  ## bug fixes
  * read_var (excel): fix a bug when we specify a period and there is no period in the excel file

@@ -1047,7 +1047,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             self.road_links[c] = aggregated[c]
         self.track_links = concatenated.drop(['a', 'b'], axis=1)
 
-    def preparation_create_common_trips(self, min_time=5 * 60):
+    def preparation_create_common_trips(self, min_time=5 * 60, **kwargs):
         """
         Build the common trips. if multiple trips are sharing the same links. a new common trip with improve headway is created (1 / sum(1 / x)).
 
@@ -1079,7 +1079,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         common_trips = find_common_trips(links=self.links, trip_id_sets=trip_id_sets)
         common_trips = restrict_common_trips(common_trips=common_trips, links=self.links, min_time=min_time)
         self.common_trips = common_trips
-        self.preparation_add_common_to_links()
+        self.preparation_add_common_to_links(**kwargs)
 
     def preparation_add_common_to_links(self, **kwargs):
         """
