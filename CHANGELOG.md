@@ -1,3 +1,8 @@
+## [FUTURE] (2026-02-12)
+## Changes
+* road_pathfinder: add the option to add zone_to_road in the expanded links. its not use in the wrapper as of today.
+* road_pathfinder: add cost in the los too.
+
 ## [3.3.0] (2026-02-04)
 ## Changes
  * pt_pathfinder: paths_from_edges return path as tuple instead of list. usefull to drop_duplicates whithout converting to tuple (not effective on large dataframe)

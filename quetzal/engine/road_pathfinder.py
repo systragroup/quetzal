@@ -61,7 +61,8 @@ def init_volumes(sm, od_set=None):
     try:
         volumes = sm.volumes.copy()
         if od_set is not None:
-            volumes = volumes[volumes.set_index(['origin', 'destination']).index.isin(od_set)]
+            od = pd.DataFrame(od_set, columns=['origin', 'destination'])
+            volumes = od.merge(volumes, on=['origin', 'destination'], how='left').fillna(0)
     except AttributeError:
         print('self.volumes does not exist. od generated with self.zones, od_set')
         if od_set is None:
@@ -266,7 +267,9 @@ def expanded_path_to_nodes(path: List[str], links_to_nodes_dict: Dict[str, Tuple
     return nodes
 
 
-def fix_zone_to_road(expanded_links: gpd.GeoDataFrame, volumes: gpd.geodataframe) -> gpd.GeoDataFrame:
+def fix_zone_to_road(
+    expanded_links: gpd.GeoDataFrame, volumes: gpd.geodataframe, create_zone_to_road=False
+) -> gpd.GeoDataFrame:
     """
     change zone_to_road expanded links to only the zone index.
     Usefull to do routing on zones when the graph is on links.
@@ -274,16 +277,29 @@ def fix_zone_to_road(expanded_links: gpd.GeoDataFrame, volumes: gpd.geodataframe
     """
     links = expanded_links.copy()
     zones_set = set(volumes['origin']).union(set(volumes['destination']))
-    # rename zone-to-link
-    cond = links['from_node'].isin(zones_set)
-    links.loc[cond, 'from_link'] = links.loc[cond, 'from_node']
-    # rename link-to-zone
-    cond = links['to_node'].isin(zones_set)
-    links.loc[cond, 'to_link'] = links.loc[cond, 'to_node']
     # remove links that go through zones.
     links = links[~links['mid_node'].isin(zones_set)]
     # remove zone to zone links.
     links = links[~(links['from_node'].isin(zones_set) & links['to_node'].isin(zones_set))]
+    if create_zone_to_road:
+        # add virtual links to connect zones to its zone_to_road
+        cond = links['from_node'].isin(zones_set)
+        access = links.loc[cond]
+        access['to_link'] = access['from_link']
+        access['from_link'] = access['from_node']
+
+        cond = links['to_node'].isin(zones_set)
+        eggress = links.loc[cond]
+        eggress['from_link'] = eggress['to_link']
+        eggress['to_link'] = eggress['to_node']
+        links = pd.concat([links, access, eggress])
+    else:
+        # rename zone-to-link
+        cond = links['from_node'].isin(zones_set)
+        links.loc[cond, 'from_link'] = links.loc[cond, 'from_node']
+        # rename link-to-zone
+        cond = links['to_node'].isin(zones_set)
+        links.loc[cond, 'to_link'] = links.loc[cond, 'to_node']
 
     return links
 
@@ -508,10 +524,10 @@ def expanded_roadpathfinder(
     # preparation
     #
 
-    expanded_links = links_to_expanded_links(links, False)
+    expanded_links = links_to_expanded_links(links, u_turns=False)
     expanded_links = fix_zone_to_road(expanded_links, volumes)
     expanded_links = expanded_links.rename(columns={'from_link': 'a', 'to_link': 'b'})
-    expanded_links = expanded_links[['a', 'b', 'from_node', 'mid_node', 'to_node', 'time', 'segments']]
+    expanded_links = expanded_links[['a', 'b', 'from_node', 'mid_node', 'to_node', time_col, 'segments']]
 
     # reindex links to sparse indexes
     index = build_index(expanded_links[['a', 'b']].values)

@@ -300,6 +300,10 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         for seg in segments:
             volume_dict = links[(seg, 'flow')].to_dict()
             self.road_links[(seg, 'flow')] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
+        for seg in segments:
+            cost_dict = links[(seg, 'cost')].to_dict()
+            self.road_links[(seg, 'cost')] = self.road_links.set_index(['a', 'b']).index.map(cost_dict.get)
+
         if return_car_los:
             car_los = get_car_los_time(car_los, self.road_links, self.zone_to_road, 'jam_time', 'time')
             self.car_los = car_los
