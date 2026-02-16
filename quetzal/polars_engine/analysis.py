@@ -60,6 +60,7 @@ def analysis_pt_los(self, walk_on_road: bool = True, excluded: List[str] = []):
 
 def analysis_pt_time(self, walk_on_road=False):
     assert 'boarding_time' in self.links.columns, 'need boarding_time in self.links'
+    # need: link_path,boarding_links,footpaths,access,eggress
 
     if walk_on_road:
         road_links = self.road_links.copy()
@@ -71,6 +72,9 @@ def analysis_pt_time(self, walk_on_road=False):
     else:
         footpaths = self.footpaths
         access = self.zone_to_transit
+
+    footpaths = pl.LazyFrame(footpaths[['a', 'b', 'time']])
+    access = pl.LazyFrame(access[['a', 'b', 'time']])
 
     in_vehicle_time = self.links['time'].to_dict()
     waiting_time = (self.links['headway'] / 2).to_dict()
@@ -89,29 +93,42 @@ def analysis_pt_time(self, walk_on_road=False):
     los = los.with_columns(**exprs)
     # compute footpath_time and access_time
 
-    # for tuple paths, we need to explode first and join our time on a,b
-    footpaths_time = pl.LazyFrame(footpaths[['a', 'b', 'time']])
-    _los = los.select(['index', 'footpaths'])
-    _los = _los.explode('footpaths')
-    _los = _los.with_columns(
-        [pl.col('footpaths').list.get(0).alias('a'), pl.col('footpaths').list.get(1).alias('b')]
-    ).drop('footpaths')
-    _los = _los.join(footpaths_time, on=['a', 'b'])
-    _los = _los.group_by('index').agg(pl.col('time').sum().alias('footpath_time'))
-    los = los.join(_los, on='index', maintain_order='left', how='left')
+    footpaths_time = _compute_footpaths_time(los, footpaths)
+    los = los.join(footpaths_time, on='index', maintain_order='left', how='left')
 
     # compute ntlegs time as access_time = access_time + eggress_time
-    ntlegs_time = pl.LazyFrame(access[['a', 'b', 'time']])
-    _los = los.select(['index', 'access', 'eggress'])
-    # split access to a,b columns and join the access_time on a,b
-    _los = _los.with_columns([pl.col('access').list.first().alias('a'), pl.col('access').list.last().alias('b')])
-    _los = _los.join(ntlegs_time, on=['a', 'b']).drop(['a', 'b']).rename({'time': 'access_time'})
-    # split eggress to a,b columns and join the egress_time on a,b
-    _los = _los.with_columns([pl.col('eggress').list.first().alias('a'), pl.col('eggress').list.last().alias('b')])
-    _los = _los.join(ntlegs_time, on=['a', 'b']).drop(['a', 'b']).rename({'time': 'eggress_time'})
-    # access_time = access + eggress
-    _los = _los.with_columns((pl.col('access_time') + pl.col('eggress_time')).alias('access_time'))
-    # add total access_time to the los
-    los = los.join(_los.select(['index', 'access_time']), on='index', maintain_order='left', how='left')
+
+    access_time = _compute_access_time(los, access)
+    los = los.join(access_time, on='index', maintain_order='left', how='left')
 
     self.pt_los = los.collect(engine='streaming')
+
+
+def _compute_footpaths_time(los: pl.LazyFrame, footpaths_time: pl.LazyFrame) -> pl.LazyFrame:
+    # los = pdf with ['index', 'footpaths'] (list of list)
+    # footpaths_time = pdf with ['a','b','time']
+    # return a pdf ['index', 'footpath_time']
+    _los = los.select(['index', 'footpaths'])
+    _los = _los.explode('footpaths')
+    _los = _los.with_columns(a=pl.col('footpaths').list.first(), b=pl.col('footpaths').list.last())
+    _los = _los.join(footpaths_time, on=['a', 'b'])
+    _los = _los.group_by('index').agg(pl.col('time').sum().alias('footpath_time'))
+    return _los.select(['index', 'footpath_time'])
+
+
+def _compute_access_time(los, access_time):
+    # los = pdf with ['index', 'access','eggress'] (simple list)
+    # access = pdf with ['a','b','time']
+    # return a pdf ['index', 'access_time'] where access_time is access + egress time
+
+    _los = los.select(['index', 'access', 'eggress'])
+    # split access to a, b columns and join the access_time on a,b
+    _los = _los.with_columns(a=pl.col('access').list.first(), b=pl.col('access').list.last())
+    _los = _los.join(access_time, on=['a', 'b']).drop(['a', 'b']).rename({'time': 'access_time'})
+    # split eggress to a,b columns and join the egress_time on a,b
+    _los = _los.with_columns(a=pl.col('eggress').list.first(), b=pl.col('eggress').list.last())
+    _los = _los.join(access_time, on=['a', 'b']).drop(['a', 'b']).rename({'time': 'eggress_time'})
+    # access_time = access + eggress
+    _los = _los.with_columns((pl.col('access_time') + pl.col('eggress_time')).alias('access_time'))
+    return _los.select(['index', 'access_time'])
+    # add total access_time to the los
