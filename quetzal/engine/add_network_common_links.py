@@ -25,8 +25,7 @@ def find_common_trips(links: pd.DataFrame, trip_id_sets: list[frozenset]) -> pd.
     # be multiple links (when we find missing links) for a given a,b,trip. so we need a list of list.
     ab_links = ab_links.with_columns(pl.col('index').map_elements(lambda x: [x]).alias('index_list'))
     new_links = []
-    i = 0
-    for trip_set in trip_id_sets:
+    for i, trip_set in enumerate(trip_id_sets):
         # filter links for the one in the trip_set.
         filtered_links = ab_links.filter(pl.col('trip_id').is_in(trip_set))
 
@@ -47,9 +46,11 @@ def find_common_trips(links: pd.DataFrame, trip_id_sets: list[frozenset]) -> pd.
         # check if link_sequences is consecutives for each trip. if not. its not to agg.
         # ex: we have trips_1 and_2 going from link_a to link_b. and  trip (trip_3) from link_b to link_a.
         # if its the case, we do not agg, we exit. there should be a trip_set in trip_id_sets that is only {trip_1, trip_2}
-        arr = np.stack(common_list['seq'].to_numpy(), axis=1)
+        arr = common_list['seq'].to_numpy()
+        if len(arr) == 0:
+            continue
+        arr = np.stack(arr, axis=1)
         if not np.all(np.diff(arr) > 0):
-            i += 1
             continue
 
         common_list = common_list.drop('seq')
@@ -72,15 +73,13 @@ def find_common_trips(links: pd.DataFrame, trip_id_sets: list[frozenset]) -> pd.
         # finish up
         common_list = common_list.sort('link_sequence')
 
-        common_list = common_list.with_columns([pl.arange(1, common_list.height + 1).alias('link_sequence')])
-        common_list = common_list.with_columns([pl.lit(f'common_{i}').alias('trip_id')])
+        common_list = common_list.with_columns(pl.arange(1, common_list.height + 1).alias('link_sequence'))
+        common_list = common_list.with_columns(pl.lit(f'common_{i}').alias('trip_id'))
         common_list = common_list.with_columns(
             ('link_' + pl.col('trip_id') + '_' + pl.col('link_sequence').cast(str)).alias('index')
         )
 
-        # pl.concat([new_links,new_list])
         new_links.append(common_list)
-        i += 1
 
     new_links = pl.concat(new_links)
     new_links.to_pandas().set_index('index')

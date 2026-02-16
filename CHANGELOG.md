@@ -1,4 +1,4 @@
-## [FUTURE] (2026-02-12)
+## [FUTURE] (2026-02-16)
 ## WIP
 * engine.fast_utils.py
 * start adding new way to compute paths and store it in LOS using numba, polars, jagged array and pyarrow.
@@ -6,6 +6,9 @@
 ## Changes
 * road_pathfinder: add the option to add zone_to_road in the expanded links. its not use in the wrapper as of today.
 * road_pathfinder: add cost in the los too.
+
+ ## bug fixes
+ * common_links: fix bug when common_list is empty and we want to skip. skip
 
 ## [3.3.0] (2026-02-04)
 ## Changes
