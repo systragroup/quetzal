@@ -30,21 +30,12 @@ def tp_summary(links, shared):
             return 0
 
     # transfer
-    transfers = pd.Series(
-        [average_value(line, 'transfer') for line in line_list],
-        index=line_list
-    )
-    exclusivities = pd.Series(
-        [average_value(line, 'exclusivity') for line in line_list],
-        index=line_list
-    )
+    transfers = pd.Series([average_value(line, 'transfer') for line in line_list], index=line_list)
+    exclusivities = pd.Series([average_value(line, 'exclusivity') for line in line_list], index=line_list)
     right = pd.DataFrame({'transfer': transfers, 'exclusivity': exclusivities})
 
     # boardings
-    lines = pd.DataFrame(
-        df[line_list].sum().sort_index(),
-        columns=['boardings']
-    )
+    lines = pd.DataFrame(df[line_list].sum().sort_index(), columns=['boardings'])
 
     # passenger_km
     links['passenger_km'] = links['load'] * links['length'] / 1000
@@ -57,22 +48,13 @@ def tp_summary(links, shared):
     maxs = links.groupby('trip_id')[['load']].max()
 
     lines = pd.concat(
-        [
-            lines,
-            sums,
-            firsts,
-            means.rename(columns={'load': 'mean_load'}),
-            maxs.rename(columns={'load': 'max_load'})
-        ],
-        axis=1
+        [lines, sums, firsts, means.rename(columns={'load': 'mean_load'}), maxs.rename(columns={'load': 'max_load'})],
+        axis=1,
     )
 
     lines = pd.concat([lines, right], axis=1)
 
-    lines[['name']] = pd.DataFrame(
-        [s.split('_')[0] for s in lines.index],
-        index=lines.index
-    )
+    lines[['name']] = pd.DataFrame([s.split('_')[0] for s in lines.index], index=lines.index)
     lines['color'] = lines['line_color']
     return lines
 
@@ -86,34 +68,36 @@ def analysis_path(path, vertex_type):
     link_path = []
     footpaths = []
     ntlegs = []
-
-    for i in range(1, len(path) - 1):
-        from_node = path[i - 1]
-        node = path[i]
-        to_node = path[i + 1]
-
+    if len(path) > 2:
+        from_node = path[0]
+        node = path[1]
         from_vtype = vertex_type.get(from_node)
         vtype = vertex_type.get(node)
-        to_vtype = vertex_type.get(to_node)
 
-        if vtype == 'link':
-            link_path.append(node)
-            if to_vtype != 'link':
-                alighting_links.append(node)
-            if from_vtype != 'link':
-                boarding_links.append(node)
-        elif vtype == 'node':
-            node_path.append(node)
-            if from_vtype == 'link':
-                alightings.append(node)
-            elif from_vtype == 'centroid':
-                ntlegs.append((from_node, node))
-            elif from_vtype == 'node':
-                footpaths.append((from_node, node))
-            if to_vtype == 'link':
-                boardings.append(node)
-            elif to_vtype == 'centroid':
-                ntlegs.append((node, to_node))
+        for to_node in path[2:]:
+            to_vtype = vertex_type.get(to_node)
+            if vtype == 'link':
+                link_path.append(node)
+                if to_vtype != 'link':
+                    alighting_links.append(node)
+                if from_vtype != 'link':
+                    boarding_links.append(node)
+            elif vtype == 'node':
+                node_path.append(node)
+                if from_vtype == 'link':
+                    alightings.append(node)
+                elif from_vtype == 'centroid':
+                    ntlegs.append((from_node, node))  # remap to ntlegs
+                elif from_vtype == 'node':
+                    footpaths.append((from_node, node))  # remap to foothpath indexes
+                if to_vtype == 'link':
+                    boardings.append(node)
+                elif to_vtype == 'centroid':
+                    ntlegs.append((node, to_node))
+            from_node = node
+            node = to_node
+            from_vtype = vtype
+            vtype = to_vtype
 
     transfers = [n for n in boardings if n in alightings]
     to_return = {
@@ -125,38 +109,22 @@ def analysis_path(path, vertex_type):
         'ntlegs': ntlegs,
         'transfers': transfers,
         'boarding_links': boarding_links,
-        'alighting_links': alighting_links
+        'alighting_links': alighting_links,
     }
     return to_return
 
 
-def path_analysis_od_matrix(
-    od_matrix,
-    links,
-    nodes,
-    centroids,
-    agg={'link_path': ['time', 'length']},
-):
-    vertex_sets = {
-        'node': set(nodes.index),
-        'link': set(links.index),
-        'centroid': set(centroids.index)
-    }
+def path_analysis_od_matrix(od_matrix, links, nodes, centroids, agg={'link_path': ['time', 'length']}):
+    vertex_sets = {'node': set(nodes.index), 'link': set(links.index), 'centroid': set(centroids.index)}
     vertex_type = {}
     for vtype, vset in vertex_sets.items():
         for v in vset:
             vertex_type[v] = vtype
     link_dict = links.to_dict()
 
-    analysis_path_list = [
-        analysis_path(p, vertex_type)
-        for p in tqdm(list(od_matrix['path']), desc='path_analysis')
-    ]
+    analysis_path_list = [analysis_path(p, vertex_type) for p in tqdm(list(od_matrix['path']), desc='path_analysis')]
 
-    analysis_path_dataframe = pd.DataFrame(
-        analysis_path_list,
-        index=od_matrix.index
-    )
+    analysis_path_dataframe = pd.DataFrame(analysis_path_list, index=od_matrix.index)
 
     df = pd.concat([od_matrix, analysis_path_dataframe], axis=1)
     df['all_walk'] = df['link_path'].apply(lambda p: len(p) == 0)
@@ -165,9 +133,7 @@ def path_analysis_od_matrix(
     for key, extensive_columns in agg.items():
         for column in extensive_columns:
             column_dict = link_dict[column]
-            df[column + '_' + key] = df[key].apply(
-                lambda p: sum([column_dict[i] for i in p])
-            )
+            df[column + '_' + key] = df[key].apply(lambda p: sum([column_dict[i] for i in p]))
     return df
 
 
@@ -202,30 +168,23 @@ def analysis_tp_summary(lines, period_duration=1):
 
 
 def economic_series(od_stack, lines, period_length=1):
-    df = pd.concat([
-        od_stack[
-            [
-                'volume',
-                'volume_pt',
-                'volume_car',
-                'volume_walk',
-                'volume_duration_car',
-                'volume_duration_pt',
-                'volume_distance_car',
-                'volume_distance_pt'
-            ]
-        ].sum(),
-        lines[
-            [
-                'boardings',
-                'passenger_km',
-                'vehicles',
-                'exclusive_passenger',
-                'vehicles_distance'
-
-            ]
-        ].sum()
-    ])
+    df = pd.concat(
+        [
+            od_stack[
+                [
+                    'volume',
+                    'volume_pt',
+                    'volume_car',
+                    'volume_walk',
+                    'volume_duration_car',
+                    'volume_duration_pt',
+                    'volume_distance_car',
+                    'volume_distance_pt',
+                ]
+            ].sum(),
+            lines[['boardings', 'passenger_km', 'vehicles', 'exclusive_passenger', 'vehicles_distance']].sum(),
+        ]
+    )
     return df
 
 
