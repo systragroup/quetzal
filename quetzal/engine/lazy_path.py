@@ -2,6 +2,7 @@ import numpy as np
 from typing import List, Dict, Union, Any
 from quetzal.engine.fast_utils import compute_offsets
 import numba as nb
+import pandas as pd
 
 
 @nb.njit()
@@ -89,8 +90,11 @@ class LosPaths:
         self.index_node = {k: v for v, k in node_index.items()}  # {0: link_0, 1: link1, ...}
         self.source_index = dict(zip(sources, range(len(sources))))  # {zone_0:0, zone_1: 1, ...}
 
-    def _repr__(self):
+    def __repr__(self):
         return f'Lazy paths with {self.predecessors.shape[0]} sessions'
+
+    def __hash__(self):
+        return id(self)
 
     def append(self, predecessor, index_node) -> int:
         new_pred = remap_predecessor(self.predecessors[0], self.node_index, predecessor, index_node)
@@ -100,12 +104,6 @@ class LosPaths:
     def _get_int_path(self, o: int, d: int, s: int) -> List[int]:
         return get_path_3d(self.predecessors, o, d, s, self.reverse)
 
-    def get_path(self, origin: str, destination: str, session: int, remap: bool = True) -> Union[List[str], List[int]]:
-        path = self._get_int_path(self.source_index[origin], self.node_index[destination], session)
-        if remap:
-            path = [*map(self.index_node.get, path)]
-        return path
-
     def _remap_od_list(self, od_list: np.ndarray) -> np.ndarray[int, int]:
         o_list = [*map(self.source_index.get, od_list[:, 0])]
         d_list = [*map(self.node_index.get, od_list[:, 1])]
@@ -113,11 +111,20 @@ class LosPaths:
         od_index_list = np.stack([o_list, d_list, s_list], axis=1)
         return od_index_list
 
-    def _get_jagged_int_path(self, od_index_list: np.ndarray[int, int]):
+    def _get_jagged_int_path(self, od_index_list: np.ndarray):
         lengths = compute_path_lengths(od_index_list, self.predecessors)
         offsets, total_len = compute_offsets(lengths)
         flat_paths = get_flat_path(od_index_list, self.predecessors, offsets, total_len, self.reverse)
         return flat_paths, offsets
+
+    #
+    # exposed
+    #
+    def get_path(self, origin: str, destination: str, session: int, remap: bool = True) -> Union[List[str], List[int]]:
+        path = self._get_int_path(self.source_index[origin], self.node_index[destination], session)
+        if remap:
+            path = [*map(self.index_node.get, path)]
+        return path
 
     def get_all_paths(self, od_list: np.ndarray, remap: bool = True) -> list[list]:
         od_list = self._remap_od_list(od_list)
@@ -130,6 +137,10 @@ class LosPaths:
     def get_all_paths_hash(self, od_list: np.ndarray) -> list[list]:
         od_list = self._remap_od_list(od_list)
         return get_paths_hash(od_list, self.predecessors)
+
+    def get_all_paths_len(self, od_list: np.ndarray) -> list[list]:
+        od_list = self._remap_od_list(od_list)
+        return compute_path_lengths(od_list, self.predecessors)
 
     def apply_dict_on_all_paths(self, od_list: np.ndarray, mapper: Dict[str, float]):
         od_list = self._remap_od_list(od_list)
@@ -161,3 +172,15 @@ def remap_predecessor(full_pred, full_dict, pruned_pred, pruned_dict):
     # assert full_paths.source_index == pruned_paths.source_index, 'TODO need to remap source too.'
 
     return new_predecessor
+
+
+def concat(los_list):
+    pt_los = pd.concat(los_list, ignore_index=True)
+    lazy_path_list = pt_los['path'].unique()
+    path_to_group = {p: i for i, p in enumerate(lazy_path_list)}
+    pt_los['lazy_session'] = pt_los['path'].map(path_to_group)
+    lazy_path = lazy_path_list[0]
+    for obj in lazy_path_list[1:]:
+        lazy_path.append(obj.predecessors[0], obj.index_node)
+    pt_los['path'] = lazy_path
+    return pt_los

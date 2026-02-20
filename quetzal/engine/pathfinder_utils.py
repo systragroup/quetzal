@@ -8,6 +8,7 @@ from quetzal.os.parallel_call import parallel_executor
 from typing import Optional
 
 import fast_dijkstra as fd
+import polars as pl
 from quetzal.engine.lazy_path import LosPaths
 
 
@@ -473,25 +474,18 @@ def paths_from_edges(
         csgraph=csgraph, indices=source_indices, return_predecessors=True, limit=cutoff + penalty, num_threads=num_cores
     )
 
-    dist_matrix = dist_matrix.T[target_indices].T
-    df = pd.DataFrame(dist_matrix, index=sources, columns=targets)
-
-    df.columns.name = 'destination'
-    df.index.name = 'origin'
-
+    dist_matrix = dist_matrix[:, target_indices]
+    df = pl.DataFrame(dist_matrix, schema=targets)
+    df = df.insert_column(0, pl.Series('origin', sources))
+    df = df.unpivot(index='origin', variable_name='destination', value_name='length')
     if od_set is not None:
-        od_index = {(d, o) for o, d in od_set} if reverse else od_set
-        mask = pd.Series(index=od_index, data=1).unstack()
-        mask.index.name = 'origin'
-        mask.columns.name = 'destination'
-        df = df.multiply(mask)
+        mask = pl.DataFrame({'origin': [od[0] for od in od_set], 'destination': [od[1] for od in od_set]})  # for late
+        df = df.join(mask, on=['origin', 'destination'], how='semi')  # drop rows not in od_set
 
-    stack = df.stack()
+    odl = df.to_pandas()
+    odl['length'] -= penalty
+    odl = odl.loc[odl['length'] < np.inf]
 
-    stack.name = 'length'
-    stack -= penalty
-    stack = stack.loc[stack < np.inf]
-    odl = stack.reset_index()
     if reverse:
         odl[['origin', 'destination']] = odl[['destination', 'origin']]
 
