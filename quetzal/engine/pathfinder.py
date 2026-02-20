@@ -144,6 +144,7 @@ class PublicPathFinder:
         build_shortcuts=False,
         keep_matrix=False,
         verbose=False,
+        lazy_paths=False,
         num_cores=1,
     ):
         link_e = link_edge_array(self.links, boarding_time=boarding_time)
@@ -167,6 +168,7 @@ class PublicPathFinder:
                 csgraph=self.csgraph,
                 node_index=self.node_index,
                 log=verbose,
+                lazy_paths=lazy_paths,
                 num_cores=num_cores,
             )
 
@@ -185,6 +187,7 @@ class PublicPathFinder:
         reuse_matrix=True,
         log=False,
         keep_matrix=False,
+        lazy_paths=False,
         num_cores=1,
     ):
         def get_task(column, combination, od_set=None):
@@ -262,6 +265,7 @@ class PublicPathFinder:
                         csgraph=pcsgraph,
                         node_index=pnode_index,
                         log=log,
+                        lazy_paths=lazy_paths,
                         num_cores=num_cores,
                     )
                 o_los['reversed'] = False
@@ -279,6 +283,7 @@ class PublicPathFinder:
                         csgraph=pcsgraph,
                         node_index=pnode_index,
                         log=log,
+                        lazy_paths=lazy_paths,
                         num_cores=num_cores,
                     )
                 d_los['reversed'] = True
@@ -376,7 +381,7 @@ class PublicPathFinder:
             self.broken_mode_paths['broken_modes'] = self.broken_mode_paths['broken_' + mode_column].apply(set)
 
         self.paths = pd.concat([self.best_paths, self.broken_mode_paths, self.broken_route_paths])
-        self.paths['path'] = [tuple(p) for p in self.paths['path']]
+        # self.paths['path'] = [tuple(p) for p in self.paths['path']]
         self.paths.loc[self.paths['origin'] == self.paths['destination'], ['gtime']] = 0.0
 
         if drop_duplicates:
