@@ -8,6 +8,7 @@ from quetzal.os.parallel_call import parallel_executor
 from typing import Optional
 
 import fast_dijkstra as fd
+from quetzal.engine.lazy_path import LosPaths
 
 
 # Wrapper to split the indices (destination) into parallel batchs and compute the shortest path on each batchs.
@@ -433,6 +434,7 @@ def paths_from_edges(
     # edges can be transmitted as a CSR matrix
     csgraph=None,  # CSR matrix
     node_index=None,  # {name such as 'link_123': matrix index}
+    lazy_paths=False,
     num_cores=1,
 ):
     if od_set:
@@ -490,14 +492,19 @@ def paths_from_edges(
     stack -= penalty
     stack = stack.loc[stack < np.inf]
     odl = stack.reset_index()
-    od_list = odl[['origin', 'destination']].values
-    path = get_reversed_path if reverse else get_path
-
-    paths = [tuple(index_node[i] for i in path(predecessors, source_index[o], node_index[d])) for o, d in od_list]
-    odl['path'] = paths
-
     if reverse:
         odl[['origin', 'destination']] = odl[['destination', 'origin']]
+
+    if lazy_paths:
+        los_paths = LosPaths(predecessors, node_index, sources, reverse)
+        odl.path = los_paths
+        odl['path'] = los_paths
+
+    else:
+        od_list = odl[['origin', 'destination']].values
+        path = get_reversed_path if reverse else get_path
+        paths = [tuple(index_node[i] for i in path(predecessors, source_index[o], node_index[d])) for o, d in od_list]
+        odl['path'] = paths
     return odl
 
 
