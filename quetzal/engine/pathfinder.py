@@ -7,6 +7,7 @@ from quetzal.engine import engine
 from quetzal.engine.graph_utils import combine_edges, expand_path
 from quetzal.engine.pathfinder_utils import paths_from_edges, link_edge_array, sparse_matrix_with_access_penalty
 from quetzal.engine.pathfinder_utils import get_first_and_last, get_all, pruned_matrix, efficient_od_sets
+from quetzal.engine.lazy_path import concat_lazy_los, LosPaths
 
 
 class PublicPathFinder:
@@ -15,6 +16,7 @@ class PublicPathFinder:
         self.links = engine.graph_links(model.links.copy())
         self.csgraph = None
         self.node_index = None
+        self.lazy_path: LosPaths = None
 
         if walk_on_road:
             road_links = model.road_links.copy()
@@ -310,6 +312,7 @@ class PublicPathFinder:
         cutoff=np.inf,
         od_set=None,
         verbose=True,
+        lazy_paths=False,
         num_cores=1,
         **kwargs,
     ):
@@ -318,7 +321,13 @@ class PublicPathFinder:
             od_set = set([(i, j) for i in pole_set for j in pole_set])
 
         self.find_best_path(
-            cutoff=cutoff, od_set=od_set, verbose=verbose, keep_matrix=True, num_cores=num_cores, **kwargs
+            cutoff=cutoff,
+            od_set=od_set,
+            verbose=verbose,
+            keep_matrix=True,
+            lazy_paths=lazy_paths,
+            num_cores=num_cores,
+            **kwargs,
         )  # builds the graph
 
         self.combinations = dict()
@@ -353,6 +362,7 @@ class PublicPathFinder:
                 reuse_matrix=True,
                 keep_matrix=True,
                 log=verbose,
+                lazy_paths=lazy_paths,
                 num_cores=num_cores,
                 **kwargs,
             )
@@ -373,16 +383,22 @@ class PublicPathFinder:
                 reuse_matrix=True,
                 log=verbose,
                 keep_matrix=True,
+                lazy_paths=lazy_paths,
                 num_cores=num_cores,
                 **kwargs,
             )
             self.broken_mode_paths = self.broken_combination_paths
             self.broken_mode_paths['pathfinder_session'] = 'mode_breaker'
             self.broken_mode_paths['broken_modes'] = self.broken_mode_paths['broken_' + mode_column].apply(set)
-
-        self.paths = pd.concat([self.best_paths, self.broken_mode_paths, self.broken_route_paths])
-        # self.paths['path'] = [tuple(p) for p in self.paths['path']]
-        self.paths.loc[self.paths['origin'] == self.paths['destination'], ['gtime']] = 0.0
+        to_concat = [self.best_paths, self.broken_mode_paths, self.broken_route_paths]
+        if lazy_paths:
+            self.paths, self.lazy_path = concat_lazy_los(to_concat)
+            self.paths['path_hash'] = self.lazy_path.get_all_paths_hash(self.paths)
+        else:
+            self.paths = pd.concat(to_concat)
+            self.paths['path_hash'] = self.paths['path'].apply(lambda ls: hash(tuple(ls)))
 
         if drop_duplicates:
-            self.paths.drop_duplicates(subset=['path'], inplace=True)
+            self.paths.drop_duplicates(subset=['path_hash'], inplace=True)
+
+        self.paths.loc[self.paths['origin'] == self.paths['destination'], ['gtime']] = 0.0

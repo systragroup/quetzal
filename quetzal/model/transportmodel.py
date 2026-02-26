@@ -460,6 +460,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             self.publicpathfinder = publicpathfinder
 
         self.pt_los = publicpathfinder.paths
+        self.lazy_path = publicpathfinder.lazy_path
         analysis_nodes = pd.concat([self.nodes, self.road_nodes]) if walk_on_road else self.nodes
         print('path_analysis')
         if path_analysis:
