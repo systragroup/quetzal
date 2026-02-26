@@ -1,87 +1,23 @@
 import numpy as np
-from typing import List, Dict, Union, Any
-from quetzal.engine.fast_utils import compute_offsets
-import numba as nb
+from typing import List, Dict, Union
+from quetzal.engine.fast_utils import compute_offsets, remap_int_array, dict_to_lut
+from quetzal.engine.lazy_path_utils import (
+    get_path_3d,
+    remap_predecessor,
+    compute_path_lengths,
+    get_flat_path,
+    get_paths_hash,
+    sum_jagged_array,
+    analysis_flat_path,
+)
+
 import pandas as pd
-
-
-@nb.njit()
-def get_path_3d(predecessors, i, j, s, reverse=False):
-    path = []
-    k = j
-    while k != -9999:
-        path.append(k)
-        k = predecessors[s, i, k]
-    if reverse:
-        return path
-    else:
-        return path[::-1]
-
-
-@nb.njit(parallel=True)
-def get_flat_path(od_list, predecessors, offsets, total_len, reverse=False) -> np.ndarray:
-    # get all paths as a single flat array.
-    n = len(od_list)
-    flat_paths = np.zeros(total_len, dtype=np.int32)
-    for i in nb.prange(n):
-        o, d, s = od_list[i]
-        path = get_path_3d(predecessors, o, d, s, reverse)
-        start = offsets[i]
-        for j in range(len(path)):
-            flat_paths[start + j] = path[j]
-    return flat_paths
-
-
-@nb.njit(parallel=True)
-def compute_path_lengths(od_list, predecessors):
-    # return the length of each path in predecessor.
-    n = len(od_list)
-    lengths = np.zeros(n, dtype=np.int32)
-    for i in nb.prange(n):
-        o, d, s = od_list[i]
-        path = get_path_3d(predecessors, o, d, s)
-        lengths[i] = len(path)
-    return lengths
-
-
-@nb.njit(parallel=True)
-def get_paths_hash(od_list, predecessors) -> np.ndarray:
-    # get all paths as a single flat array.
-    n = len(od_list)
-    hash_list = np.empty(n, dtype=np.int64)
-    for i in nb.prange(n):
-        o, d, s = od_list[i]
-        path = get_path_3d(predecessors, o, d, s)
-        h = 0
-        for x in path:
-            h ^= hash(x) + 0x9E3779B9 + (h << 6) + (h >> 2)  # boost::hash_combine
-        hash_list[i] = h
-
-    return hash_list
-
-
-@nb.njit()
-def sum_jagged_array(flat_paths, offsets):
-    row_sums = np.zeros(len(offsets) - 1, dtype=flat_paths.dtype)
-    for i in nb.prange(len(offsets) - 1):
-        row_sums[i] = flat_paths[offsets[i] : offsets[i + 1]].sum()
-    return row_sums
-
-
-def remap_arr(arr: np.ndarray[int], mapper: dict[int, Any]) -> np.ndarray[Any]:
-    # take max of array for the Lookup table
-    max_key = arr.max() + 1
-    # determine array dtype with input dict and create an empty array
-    first = next(iter(mapper.values()))
-    lut = np.empty(max_key, dtype=object) if isinstance(first, str) else np.zeros(max_key, dtype=type(first))
-    for k, v in mapper.items():
-        if k < max_key:  # mapper could have more values than the array
-            lut[k] = v
-    return lut[arr]
 
 
 class LosPaths:
     def __init__(self, predecessors, node_index: Dict[str, int], sources: List[str], reverse: bool = False) -> int:
+        # TODO: append predecessor to stay 2d? this way we can reuse the same functions.
+        # just need to change source_index. thi also allow us to have different source per pathfinder Session.
         self.predecessors = np.array([predecessors])
         self.node_index = node_index  # {link_0: 0, link_1: 1, ...}
         self.sources = sources  # list of zones
@@ -97,6 +33,7 @@ class LosPaths:
         return id(self)
 
     def append(self, predecessor, index_node) -> int:
+
         new_pred = remap_predecessor(self.predecessors[0], self.node_index, predecessor, index_node)
         self.predecessors = np.vstack([self.predecessors, [new_pred]])
         return self.predecessors.shape[0]
@@ -126,61 +63,121 @@ class LosPaths:
             path = [*map(self.index_node.get, path)]
         return path
 
-    def get_all_paths(self, od_list: np.ndarray, remap: bool = True) -> list[list]:
-        od_list = self._remap_od_list(od_list)
+    def get_all_paths(self, pt_los: pd.DataFrame, remap: bool = True, flat=False) -> list[list]:
+        od_list = self._remap_od_list(pt_los[['origin', 'destination', 'lazy_session']].values)
         flat_paths, offsets = self._get_jagged_int_path(od_list)
         if remap:
-            flat_paths = remap_arr(flat_paths, self.index_node)
+            flat_paths = remap_int_array(flat_paths, self.index_node)
+        if flat:
+            return flat_paths, offsets
+        else:
+            return [flat_paths[offsets[i] : offsets[i + 1]] for i in range(len(offsets) - 1)]
 
-        return [flat_paths[offsets[i] : offsets[i + 1]] for i in range(len(offsets) - 1)]
-
-    def get_all_paths_hash(self, od_list: np.ndarray) -> list[list]:
-        od_list = self._remap_od_list(od_list)
+    def get_all_paths_hash(self, pt_los: pd.DataFrame) -> list[list]:
+        od_list = self._remap_od_list(pt_los[['origin', 'destination', 'lazy_session']].values)
         return get_paths_hash(od_list, self.predecessors)
 
-    def get_all_paths_len(self, od_list: np.ndarray) -> list[list]:
-        od_list = self._remap_od_list(od_list)
+    def get_all_paths_len(self, pt_los: pd.DataFrame) -> list[list]:
+        od_list = self._remap_od_list(pt_los[['origin', 'destination', 'lazy_session']].values)
         return compute_path_lengths(od_list, self.predecessors)
 
-    def apply_dict_on_all_paths(self, od_list: np.ndarray, mapper: Dict[str, float]):
-        od_list = self._remap_od_list(od_list)
+    def apply_dict_on_all_paths(self, pt_los: pd.DataFrame, mapper: Dict[str, float]):
+        od_list = self._remap_od_list(pt_los[['origin', 'destination', 'lazy_session']].values)
         flat_paths, offsets = self._get_jagged_int_path(od_list)
 
         mapper = {self.node_index.get(k): v for k, v in mapper.items()}
-        flat_paths = remap_arr(flat_paths, mapper)
+        flat_paths = remap_int_array(flat_paths, mapper)
         return sum_jagged_array(flat_paths, offsets)
 
 
-def remap_predecessor(full_pred, full_dict, pruned_pred, pruned_dict):
-
-    pruned_to_full = {k: full_dict[v] for k, v in pruned_dict.items()}
-
-    # create a lookup table :  prune to full index
-    pruned_to_full_map = np.empty(pruned_pred.shape[1], dtype=np.int32)
-    full_indexes = np.array(list(pruned_to_full.values()))
-    pruned_indexes = np.array(list(pruned_to_full.keys()))
-    pruned_to_full_map[pruned_indexes] = full_indexes
-
-    # remap value in pruned_predecessor to the one in full_pred
-    mask = pruned_pred != -9999  # need to mask if we want to keep -9999,else it will look at index -9999 in lut
-    pruned_pred[mask] = pruned_to_full_map[pruned_pred[mask]]
-
-    # reorder rows to the full predecessor indexing. (and shape it as the full_pred)
-    new_predecessor = np.full_like(full_pred, -9999, dtype=np.int32)
-    new_predecessor[:, full_indexes] = pruned_pred[:, pruned_indexes]
-
-    # assert full_paths.source_index == pruned_paths.source_index, 'TODO need to remap source too.'
-
-    return new_predecessor
-
-
-def concat(los_list):
+def concat_lazy_los(los_list) -> tuple[pd.DataFrame, LosPaths]:
+    # concat Lazy_paths object in a single one
+    # remove lazy_paths of los
+    # add a lazy_session.
     pt_los = pd.concat(los_list, ignore_index=True)
     lazy_path_list = pt_los['path'].unique()
-    path_to_group = {p: i for i, p in enumerate(lazy_path_list)}
-    pt_los['lazy_session'] = pt_los['path'].map(path_to_group)
+    lazy_session = {p: i for i, p in enumerate(lazy_path_list)}
+    pt_los['lazy_session'] = pt_los['path'].map(lazy_session)
     lazy_path = lazy_path_list[0]
     for obj in lazy_path_list[1:]:
         lazy_path.append(obj.predecessors[0], obj.index_node)
-    pt_los['path'] = lazy_path
+    pt_los = pt_los.drop(columns='path')
+    return pt_los, lazy_path
+
+
+def get_vertex_type_dict(links, nodes, centroids) -> Dict[str, int]:
+    vertex_sets = {1: set(centroids.index), 2: set(nodes.index), 3: set(links.index)}
+    vertex_type = {}
+    for vtype, vset in vertex_sets.items():
+        for v in vset:
+            vertex_type[v] = vtype
+    return vertex_type
+
+
+def lazy_analysis_pt_los(
+    lazy_path: LosPaths,
+    pt_los: pd.DataFrame,
+    links,
+    nodes,
+    centroids,
+    includes=[
+        'link_path',
+        'node_path',
+        'boardings',
+        'alightings',
+        'boarding_links',
+        'alighting_links',
+        'ntlegs',
+        'footpaths',
+        'transfers',
+        'all_walk',
+        'ntransfers',
+    ],
+):
+
+    vertex_type = get_vertex_type_dict(links, nodes, centroids)
+    # create a lookup table for the vertex type
+    index_node = lazy_path.index_node
+    vertex_type = {k: np.int16(vertex_type[v]) for k, v in index_node.items()}
+    vertex_lut = dict_to_lut(vertex_type)
+
+    flat_paths, offsets = lazy_path.get_all_paths(pt_los, remap=False, flat=True)
+
+    res = analysis_flat_path(flat_paths, offsets, vertex_lut, includes)
+
+    for name, _path, _offset in res:
+        _path = remap_int_array(_path, index_node)
+        if name in ['ntlegs', 'footpaths']:  # we have a list of tuple for those
+            _path = [tuple(el) for el in _path]
+        # stack to a list of list for pandas
+        pt_los[name] = [_path[_offset[i] : _offset[i + 1]] for i in range(len(_offset) - 1)]
+    # other values
+    if ('all_walk' in includes) & ('link_path' in includes):
+        pt_los['all_walk'] = pt_los['link_path'].apply(lambda p: len(p) == 0)
+    if ('ntransfers' in includes) & ('boarding_links' in includes):
+        pt_los['ntransfers'] = pt_los['boarding_links'].apply(lambda x: max(len(x) - 1, 0))
+    return pt_los
+
+
+def lazy_analysis_pt_time(lazy_path: LosPaths, pt_los: pd.DataFrame, links, nodes, centroids, access, footpaths):
+    #
+    # create a lookup table for the vertex type
+    vertex_type = get_vertex_type_dict(links, nodes, centroids)
+    index_node = lazy_path.index_node
+    node_index = lazy_path.node_index
+    vertex_type = {k: np.int16(vertex_type[v]) for k, v in index_node.items()}
+    vertex_lut = dict_to_lut(vertex_type)
+
+    flat_paths, offsets = lazy_path.get_all_paths(pt_los, remap=False, flat=True)
+
+    includes = ['link_path', 'boarding_links', 'ntlegs', 'footpaths']
+
+    res = analysis_flat_path(flat_paths, offsets, vertex_lut, includes)
+
+    for name, _path, _offset in res:
+        if name == 'link_path':
+            d = links['time'].to_dict()
+            d = {node_index.get(k): v for k, v in d.items()}
+            result = remap_int_array(_path, d)
+            pt_los['in_vehicle_time'] = [result[_offset[i] : _offset[i + 1]].sum() for i in range(len(_offset) - 1)]
     return pt_los

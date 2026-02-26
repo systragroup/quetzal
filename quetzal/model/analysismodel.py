@@ -3,12 +3,13 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 from quetzal.analysis import analysis
-from quetzal.engine import engine, linearsolver_utils, nested_logit, fares
+from quetzal.engine import engine, linearsolver_utils, fares
 from quetzal.io.export import build_lines
-from quetzal.model import model, summarymodel, transportmodel
-from syspy.spatial import geometries, spatial
+from quetzal.model import model, summarymodel
+from syspy.spatial import geometries
 from syspy.syspy_utils import neighbors
 from tqdm import tqdm
+from quetzal.engine.lazy_path import lazy_analysis_pt_los, lazy_analysis_pt_time
 
 
 def read_hdf(filepath):
@@ -36,22 +37,20 @@ class AnalysisModel(summarymodel.SummaryModel):
         """
         self.agg = self.copy()
         self.agg.preparation_clusterize_zones(
-            nb_clusters, cluster_column, is_od_stack=True,
-            volume_columns=[volume_column], volume_od_columns=[volume_column]
+            nb_clusters,
+            cluster_column,
+            is_od_stack=True,
+            volume_columns=[volume_column],
+            volume_od_columns=[volume_column],
         )
         self.cluster_series = self.agg.cluster_series
         self.agg.indicator = linearsolver_utils.reduce_indicator(
-            self.indicator,
-            self.cluster_series,
-            self.od_stack,
-            volume_column=volume_column
+            self.indicator, self.cluster_series, self.od_stack, volume_column=volume_column
         )
 
     def _disaggregate(self):
         self.pivot_stack_matrix, self.od_stack = linearsolver_utils.extrapolate(
-            self.agg.pivot_stack_matrix,
-            self.od_stack,
-            self.cluster_series
+            self.agg.pivot_stack_matrix, self.od_stack, self.cluster_series
         )
 
     def _build_pivot_stack_matrix(self, constrained_links, linprog_kwargs, **kwargs):
@@ -61,11 +60,7 @@ class AnalysisModel(summarymodel.SummaryModel):
             * builds: pivot_stack_matrix
         """
         self.pivot_stack_matrix = linearsolver_utils.linearsolver(
-            self.indicator,
-            constrained_links,
-            self.od_stack,
-            **linprog_kwargs,
-            **kwargs
+            self.indicator, constrained_links, self.od_stack, **linprog_kwargs, **kwargs
         )
 
     def _analysis_road_link_path(self, include_road_footpaths=False):
@@ -104,7 +99,7 @@ class AnalysisModel(summarymodel.SummaryModel):
             'bounds_tot_emissions': [0.95, 1.05],
             'pas_distance': 200,
             'maxiter': 3000,
-            'tolerance': 1e-5
+            'tolerance': 1e-5,
         },
         **kwargs,
     ):
@@ -126,9 +121,7 @@ class AnalysisModel(summarymodel.SummaryModel):
         3. Désagrégation de la matrice pivot pour revenir au modèle de base.
         """
         self.indicator = linearsolver_utils.build_indicator(
-            self.od_stack,
-            constrained_links,
-            link_path_column=link_path_column
+            self.od_stack, constrained_links, link_path_column=link_path_column
         )
         if len(self.zones) < nb_clusters:
             self._build_pivot_stack_matrix(constrained_links, linprog_kwargs, **kwargs)
@@ -152,7 +145,7 @@ class AnalysisModel(summarymodel.SummaryModel):
         -------
         self.pt_los
             add columns route_type
-        """        
+        """
         route_type_dict = self.links['route_type'].to_dict()
 
         def higher_route_type(route_types):
@@ -184,6 +177,7 @@ class AnalysisModel(summarymodel.SummaryModel):
             tuples = list(zip(road_node_list[:-1], road_node_list[1:]))
             road_link_list = [ab_indexed_dict[t] for t in tuples]
             return road_link_list
+
         road_links = self.road_links
         road_links['index'] = road_links.index
         indexed = road_links.set_index(['a', 'b']).sort_index()
@@ -195,14 +189,22 @@ class AnalysisModel(summarymodel.SummaryModel):
         los['ntlegs'] = los['path'].apply(path_to_ntlegs)
         self.car_los = los
 
-    def analysis_pt_los(self, walk_on_road=False):
+    def analysis_pt_los(self, walk_on_road=False, lazy_path=False, **kwargs):
         analysis_nodes = pd.concat([self.nodes, self.road_nodes]) if walk_on_road else self.nodes
-        self.pt_los = analysis.path_analysis_od_matrix(
-            od_matrix=self.pt_los,
-            links=self.links,
-            nodes=analysis_nodes,
-            centroids=self.zones,
-        )
+        if lazy_path:
+            self.pt_los = lazy_analysis_pt_los(
+                lazy_path=self.lazy_path,
+                pt_los=self.pt_los,
+                links=self.links,
+                nodes=analysis_nodes,
+                centroids=self.zones,
+                **kwargs,
+            )
+
+        else:
+            self.pt_los = analysis.path_analysis_od_matrix(
+                od_matrix=self.pt_los, links=self.links, nodes=analysis_nodes, centroids=self.zones
+            )
 
     def lighten_car_los(self, los_attributes=['car_los']):
         to_drop = ['node_path', 'link_path', 'ntlegs']
@@ -211,9 +213,18 @@ class AnalysisModel(summarymodel.SummaryModel):
 
     def lighten_pt_los(self, los_attributes=['pt_los']):
         to_drop = [
-            'alighting_links', 'alightings', 'all_walk', 'boarding_links', 'boardings',
-            'footpaths', 'length_link_path', 'link_path', 'node_path', 'ntlegs',
-            'time_link_path', 'transfers'
+            'alighting_links',
+            'alightings',
+            'all_walk',
+            'boarding_links',
+            'boardings',
+            'footpaths',
+            'length_link_path',
+            'link_path',
+            'node_path',
+            'ntlegs',
+            'time_link_path',
+            'transfers',
         ]
         for los in los_attributes:
             try:
@@ -221,18 +232,13 @@ class AnalysisModel(summarymodel.SummaryModel):
             except AttributeError as e:
                 print(e)
 
-
-
     def lighten_los(self, keep_summary_columns=False):
         try:
             self.lighten_pt_los(los_attributes=['pt_los', 'los'])
         except AttributeError:
             pass
         try:
-            self.lighten_pr_los(
-                los_attributes=['pr_los', 'los'], 
-                keep_summary_columns=keep_summary_columns
-            )
+            self.lighten_pr_los(los_attributes=['pr_los', 'los'], keep_summary_columns=keep_summary_columns)
         except AttributeError:
             pass
         try:
@@ -247,7 +253,7 @@ class AnalysisModel(summarymodel.SummaryModel):
     def analysis_car_route_type(self):
         """Add columns : route_type = 'car' and route_types in car_los
         to allow concatenation with pt_los and use of logit functions.
-        """        
+        """
         self.car_los['route_types'] = [tuple(['car']) for i in self.car_los.index]
         self.car_los['route_type'] = 'car'
 
@@ -260,25 +266,19 @@ class AnalysisModel(summarymodel.SummaryModel):
         access = pd.concat([self.zone_to_road, self.zone_to_transit])
 
         d = access.set_index(['a', 'b'])['time'].to_dict()
-        self.pr_los['access_time'] = self.pr_los['ntlegs'].apply(
-            lambda l: sum([d[t] for t in l]))
+        self.pr_los['access_time'] = self.pr_los['ntlegs'].apply(lambda l: sum([d[t] for t in l]))
 
         d = footpaths.set_index(['a', 'b'])['time'].to_dict()
-        self.pr_los['footpath_time'] = self.pr_los['footpaths'].apply(
-            lambda l: sum([d.get(t, 0) for t in l]))
+        self.pr_los['footpath_time'] = self.pr_los['footpaths'].apply(lambda l: sum([d.get(t, 0) for t in l]))
 
         d = road_links.set_index(['a', 'b'])['time'].to_dict()
-        self.pr_los['car_time'] = self.pr_los['footpaths'].apply(
-            lambda l: sum([d.get(t, 0) for t in l]))
+        self.pr_los['car_time'] = self.pr_los['footpaths'].apply(lambda l: sum([d.get(t, 0) for t in l]))
 
         d = self.links['time'].to_dict()
-        self.pr_los['pt_time'] = self.pr_los['link_path'].apply(
-            lambda l: sum([d[t] for t in l]))
+        self.pr_los['pt_time'] = self.pr_los['link_path'].apply(lambda l: sum([d[t] for t in l]))
         d = self.links['headway'].to_dict()
-        self.pr_los['waiting_time'] = self.pr_los['boarding_links'].apply(
-            lambda l: sum([d[t] / 2 for t in l]))
-        self.pr_los['boarding_time'] = self.pr_los['boarding_links'].apply(
-            lambda t: len(t) * boarding_time)
+        self.pr_los['waiting_time'] = self.pr_los['boarding_links'].apply(lambda l: sum([d[t] / 2 for t in l]))
+        self.pr_los['boarding_time'] = self.pr_los['boarding_links'].apply(lambda t: len(t) * boarding_time)
         self.pr_los['in_vehicle_time'] = self.pr_los[['pt_time', 'car_time']].T.sum()
         self.pr_los['time'] = self.pr_los[
             ['access_time', 'footpath_time', 'waiting_time', 'boarding_time', 'in_vehicle_time']
@@ -293,45 +293,37 @@ class AnalysisModel(summarymodel.SummaryModel):
         access = pd.concat([self.zone_to_road, self.zone_to_transit])
 
         d = access.set_index(['a', 'b'])['distance'].to_dict()
-        self.pr_los['access_length'] = self.pr_los['ntlegs'].apply(
-            lambda l: sum([d[t] for t in l]))
+        self.pr_los['access_length'] = self.pr_los['ntlegs'].apply(lambda l: sum([d[t] for t in l]))
 
         d = footpaths.set_index(['a', 'b'])['length'].to_dict()
-        self.pr_los['footpath_length'] = self.pr_los['footpaths'].apply(
-            lambda l: sum([d.get(t, 0) for t in l]))
+        self.pr_los['footpath_length'] = self.pr_los['footpaths'].apply(lambda l: sum([d.get(t, 0) for t in l]))
 
         d = road_links.set_index(['a', 'b'])['length'].to_dict()
-        self.pr_los['in_car_length'] = self.pr_los['footpaths'].apply(
-            lambda l: sum([d.get(t, 0) for t in l]))
+        self.pr_los['in_car_length'] = self.pr_los['footpaths'].apply(lambda l: sum([d.get(t, 0) for t in l]))
 
         d = self.links['length'].to_dict()
-        self.pr_los['in_vehicle_length'] = self.pr_los['link_path'].apply(
-            lambda l: sum([d.get(t, 0) for t in l]))
+        self.pr_los['in_vehicle_length'] = self.pr_los['link_path'].apply(lambda l: sum([d.get(t, 0) for t in l]))
 
         self.pr_los['length'] = self.pr_los[
             ['access_length', 'footpath_length', 'in_car_length', 'in_vehicle_length']
         ].T.sum()
 
     def analysis_pt_time(
-        self,
-        boarding_time=None,
-        alighting_time=None,
-        walk_on_road=False,
-        time_only=False,
+        self, boarding_time=None, alighting_time=None, walk_on_road=False, time_only=False, lazy_path=False
     ):
-        '''
-        boarding_time: 
+        """
+        boarding_time:
             constant number. if none, will try to use boarding_time in self.links.columns
-        alighting_time: 
+        alighting_time:
             should be None.
-        walk_on_road: 
+        walk_on_road:
             if walk on road:
-        time_only: 
+        time_only:
             if True. only add 'time' to self.pt_los: else
             'time', 'access_time', 'footpath_time', 'waiting_time', 'boarding_time', 'in_vehicle_time'
 
         return self.pt_los
-        '''
+        """
         assert not (boarding_time is not None and 'boarding_time' in self.links.columns)
         boarding_time = 0 if boarding_time is None else boarding_time
 
@@ -342,7 +334,7 @@ class AnalysisModel(summarymodel.SummaryModel):
             road_links['time'] = road_links['walk_time']
             road_to_transit = self.road_to_transit.copy()
             road_to_transit['length'] = road_to_transit['distance']
-            
+
             to_concat = [road_links, road_to_transit]
             try:
                 to_concat.append(self.footpaths)
@@ -356,42 +348,45 @@ class AnalysisModel(summarymodel.SummaryModel):
             except AttributeError:
                 pass
             access = pd.concat(to_concat)
-        else :
+        else:
             footpaths = self.footpaths
             access = self.zone_to_transit
-
-        d = access.set_index(['a', 'b'])['time'].to_dict()
-        self.pt_los['access_time'] = self.pt_los['ntlegs'].apply(
-            lambda l: sum([d[t] for t in l]))
-
-        d = footpaths.set_index(['a', 'b'])['time'].to_dict()
-        self.pt_los['footpath_time'] = self.pt_los['footpaths'].apply(
-            lambda l: sum([d[t] for t in l]))
-
-        d = self.links['time'].to_dict()
-        self.pt_los['in_vehicle_time'] = self.pt_los['link_path'].apply(
-            lambda l: sum([d[t] for t in l]))
-        d = self.links['headway'].to_dict()
-        self.pt_los['waiting_time'] = self.pt_los['boarding_links'].apply(
-            lambda l: sum([d[t] / 2 for t in l]))
-
-        if 'boarding_time' in self.links.columns:
-            d = self.links['boarding_time'].to_dict()
-            self.pt_los['boarding_time'] = self.pt_los['boarding_links'].apply(
-                lambda l: sum([d[t] for t in l])
+        if lazy_path:
+            analysis_nodes = pd.concat([self.nodes, self.road_nodes]) if walk_on_road else self.nodes
+            self.pt_los = lazy_analysis_pt_time(
+                lazy_path=self.lazy_path,
+                pt_los=self.pt_los,
+                links=self.links,
+                nodes=analysis_nodes,
+                centroids=self.zones,
+                access=access,
+                footpaths=footpaths,
             )
         else:
-            self.pt_los['boarding_time'] = self.pt_los['boarding_links'].apply(
-                lambda t: len(t) * boarding_time)
+            d = access.set_index(['a', 'b'])['time'].to_dict()
+            self.pt_los['access_time'] = self.pt_los['ntlegs'].apply(lambda l: sum([d[t] for t in l]))
 
-        cols = ['access_time', 'footpath_time', 'waiting_time', 'boarding_time', 'in_vehicle_time']
-        self.pt_los['time'] = self.pt_los[cols].T.sum()
-        
-        if time_only:
-            self.pt_los = self.pt_los.drop(columns = cols)
+            d = footpaths.set_index(['a', 'b'])['time'].to_dict()
+            self.pt_los['footpath_time'] = self.pt_los['footpaths'].apply(lambda l: sum([d[t] for t in l]))
+
+            d = self.links['time'].to_dict()
+            self.pt_los['in_vehicle_time'] = self.pt_los['link_path'].apply(lambda l: sum([d[t] for t in l]))
+            d = self.links['headway'].to_dict()
+            self.pt_los['waiting_time'] = self.pt_los['boarding_links'].apply(lambda l: sum([d[t] / 2 for t in l]))
+
+            if 'boarding_time' in self.links.columns:
+                d = self.links['boarding_time'].to_dict()
+                self.pt_los['boarding_time'] = self.pt_los['boarding_links'].apply(lambda l: sum([d[t] for t in l]))
+            else:
+                self.pt_los['boarding_time'] = self.pt_los['boarding_links'].apply(lambda t: len(t) * boarding_time)
+
+            cols = ['access_time', 'footpath_time', 'waiting_time', 'boarding_time', 'in_vehicle_time']
+            self.pt_los['time'] = self.pt_los[cols].T.sum()
+
+            if time_only:
+                self.pt_los = self.pt_los.drop(columns=cols)
 
     def analysis_pt_length(self, walk_on_road=False):
-
 
         if walk_on_road:
             road_links = self.road_links.copy()
@@ -412,47 +407,33 @@ class AnalysisModel(summarymodel.SummaryModel):
             except AttributeError:
                 pass
             access = pd.concat(to_concat)
-        else :
+        else:
             footpaths = self.footpaths
             access = self.zone_to_transit
 
-
         d = access.set_index(['a', 'b'])['distance'].to_dict()
-        self.pt_los['access_length'] = self.pt_los['ntlegs'].apply(
-            lambda l: sum([d[t] for t in l]))
+        self.pt_los['access_length'] = self.pt_los['ntlegs'].apply(lambda l: sum([d[t] for t in l]))
         d = footpaths.set_index(['a', 'b'])['length'].to_dict()
-        self.pt_los['footpath_length'] = self.pt_los['footpaths'].apply(
-            lambda l: sum([d[t] for t in l]))
+        self.pt_los['footpath_length'] = self.pt_los['footpaths'].apply(lambda l: sum([d[t] for t in l]))
         d = self.links['length'].to_dict()
-        self.pt_los['in_vehicle_length'] = self.pt_los['link_path'].apply(
-            lambda l: np.nansum([*map(d.get, l)]))
-        self.pt_los['length'] = self.pt_los[
-            ['access_length', 'footpath_length', 'in_vehicle_length']
-        ].T.sum()
+        self.pt_los['in_vehicle_length'] = self.pt_los['link_path'].apply(lambda l: np.nansum([*map(d.get, l)]))
+        self.pt_los['length'] = self.pt_los[['access_length', 'footpath_length', 'in_vehicle_length']].T.sum()
 
     def analysis_car_time(self, access_time='time'):
         d = self.zone_to_road.set_index(['a', 'b'])[access_time].to_dict()
-        self.car_los['access_time'] = self.car_los['ntlegs'].apply(
-            lambda l: sum([d[t] for t in l]))
+        self.car_los['access_time'] = self.car_los['ntlegs'].apply(lambda l: sum([d[t] for t in l]))
         d = self.road_links['time'].to_dict()
-        self.car_los['in_vehicle_time'] = self.car_los['link_path'].apply(
-            lambda l: sum([d[t] for t in l]))
-        self.car_los['time'] = self.car_los[
-            ['access_time', 'in_vehicle_time']
-        ].T.sum()
+        self.car_los['in_vehicle_time'] = self.car_los['link_path'].apply(lambda l: sum([d[t] for t in l]))
+        self.car_los['time'] = self.car_los[['access_time', 'in_vehicle_time']].T.sum()
 
     def analysis_car_length(self):
         d = self.zone_to_road.set_index(['a', 'b'])['distance'].to_dict()
-        self.car_los['access_length'] = self.car_los['ntlegs'].apply(
-            lambda l: sum([d[t] for t in l]))
+        self.car_los['access_length'] = self.car_los['ntlegs'].apply(lambda l: sum([d[t] for t in l]))
 
         d = self.road_links['length'].to_dict()
-        self.car_los['in_vehicle_length'] = self.car_los['link_path'].apply(
-            lambda l: np.nansum([*map(d.get, l)]))
+        self.car_los['in_vehicle_length'] = self.car_los['link_path'].apply(lambda l: np.nansum([*map(d.get, l)]))
 
-        self.car_los['length'] = self.car_los[
-            ['access_length', 'in_vehicle_length']
-        ].T.sum()
+        self.car_los['length'] = self.car_los[['access_length', 'in_vehicle_length']].T.sum()
 
     @track_args
     def analysis_summary(self):
@@ -463,8 +444,7 @@ class AnalysisModel(summarymodel.SummaryModel):
             * builds: aggregated_shares, lines, economic_series
         """
         try:
-            self.aggregated_shares = engine.aggregate_shares(
-                self.shared, self.zones)
+            self.aggregated_shares = engine.aggregate_shares(self.shared, self.zones)
         except AttributeError:
             pass
         self.lines = analysis.tp_summary(self.loaded_links, self.od_stack)
@@ -479,10 +459,7 @@ class AnalysisModel(summarymodel.SummaryModel):
             * builds: neighborhood, macro_neighborhood
         """
         self.neighborhood = neighbors.Neighborhood(
-            self.zones,
-            self.volumes,
-            volume_columns=['volume'],
-            display_progress=False
+            self.zones, self.volumes, volume_columns=['volume'], display_progress=False
         )
         zones = self.zones.copy()
         zones['geometry'] = zones['geometry'].apply(lambda g: g.buffer(1e-9))
@@ -493,19 +470,15 @@ class AnalysisModel(summarymodel.SummaryModel):
             volume_columns=['volume'],
             display_progress=False,
             n_clusters=min(25, len(zones)),
-            od_geometry=True)
+            od_geometry=True,
+        )
 
         if store_shp:
             columns_to_keep = ['origin', 'destination', 'volume', 'volume_transit', 'geometry']
             self.desire_lines = self.neighborhood.volume[columns_to_keep].dropna(subset=['geometry'])
 
     @track_args
-    def analysis_checkpoints(
-        self,
-        link_checkpoints=(),
-        node_checkpoints=(),
-        **loaded_links_and_nodes_kwargs
-    ):
+    def analysis_checkpoints(self, link_checkpoints=(), node_checkpoints=(), **loaded_links_and_nodes_kwargs):
         """
         tree analysis (arborescences)
         :param link_checkpoints: mandatory transit links collection (set)
@@ -531,18 +504,13 @@ class AnalysisModel(summarymodel.SummaryModel):
             path_finder_stack=self.pt_los,
             link_checkpoints=set(link_checkpoints),
             node_checkpoints=set(node_checkpoints),
-            **loaded_links_and_nodes_kwargs
+            **loaded_links_and_nodes_kwargs,
         )
         self.checkpoint_links = selected[0]
         self.checkpoint_nodes = selected[1]
 
     def analysis_lines(self, line_columns='all', group_id='trip_id', *args, **kwargs):
-        self.lines = build_lines(
-            self.links,
-            line_columns=line_columns,
-            group_id=group_id,
-            *args, **kwargs
-        )
+        self.lines = build_lines(self.links, line_columns=line_columns, group_id=group_id, *args, **kwargs)
 
     def get_road_links(self, trip_id='trip_id'):
         l = self.links.copy()
@@ -591,16 +559,14 @@ class AnalysisModel(summarymodel.SummaryModel):
         values = []
         for leg in leg_tuples:
             transfers_lists = []
-        
+
             for transfer_node_a, transfer_node_b, alighting_link, boarding_link in leg:
                 route_id_a = route_dict[alighting_link]
                 route_id_b = route_dict[boarding_link]
                 stop_code_a = stop_code_dict[transfer_node_a]
                 stop_code_b = stop_code_dict[transfer_node_b]
-                
-                transfers_lists.append(
-                    (stop_code_a, stop_code_b, route_id_a, route_id_b)
-                )
+
+                transfers_lists.append((stop_code_a, stop_code_b, route_id_a, route_id_b))
             values.append(transfers_lists)
         self.pt_los['transfers_list'] = values
 
@@ -609,15 +575,17 @@ class AnalysisModel(summarymodel.SummaryModel):
         agency_dict = self.links['agency_id'].to_dict()
         route_dict = self.links['route_id'].to_dict()
         node_zone_dict = self.nodes['zone_id'].to_dict()
-        df = self.pt_los[['boardings', 'boarding_links',  'alightings', 'alighting_links']]
+        df = self.pt_los[['boardings', 'boarding_links', 'alightings', 'alighting_links']]
         leg_tuples = [tuple(zip(*r)) for r in df.values]
 
         tap_free = tap_free_transfers
-        assert not (tap_free_transfers and tap_free_networks), 'tap_free_tranfers and tap_free_networks cannot be merged'
+        assert not (tap_free_transfers and tap_free_networks), (
+            'tap_free_tranfers and tap_free_networks cannot be merged'
+        )
         if tap_free_networks is not None:
             tap_free = fares.get_tap_free_transfers(tap_free_networks)
         if tap_free is not None:
-            leg_tuples = [fares.merge_tuple(t,route_dict=route_dict, tap_free=tap_free) for t in leg_tuples]
+            leg_tuples = [fares.merge_tuple(t, route_dict=route_dict, tap_free=tap_free) for t in leg_tuples]
         print(tap_free)
 
         values = []
@@ -630,9 +598,7 @@ class AnalysisModel(summarymodel.SummaryModel):
                 origin_id = node_zone_dict[boarding_node]
                 destination_id = node_zone_dict[alighting_node]
 
-                agencies_od_lists.append(
-                    (agency_id, route_id, origin_id, destination_id)
-                )
+                agencies_od_lists.append((agency_id, route_id, origin_id, destination_id))
             values.append(agencies_od_lists)
         self.pt_los['arod_list'] = values
 
@@ -688,11 +654,9 @@ class AnalysisModel(summarymodel.SummaryModel):
         fare_options = [fares.get_fare_options(arod_list, route_fares_dict) for arod_list in self.pt_los['arod_list']]
         unique_fare_options = set(fare_options)
         cheapest_breakdown_dict = dict()
-        for fo in unique_fare_options: 
+        for fo in unique_fare_options:
             breakdown_options = fares.get_breakdown_options(
-                fo, transfers, price, 
-                irrelevant_consecutive_fares=irrelevant_consecutive_fares, 
-                consecutive=consecutive
+                fo, transfers, price, irrelevant_consecutive_fares=irrelevant_consecutive_fares, consecutive=consecutive
             )
             cheapest_breakdown = fares.get_cheapest_breakdown(breakdown_options)
             cheapest_breakdown_dict[fo] = cheapest_breakdown
@@ -789,16 +753,10 @@ class AnalysisModel(summarymodel.SummaryModel):
             self.compute_od_fares()
 
         if route_fares:
-            self.compute_route_fares(
-                consecutive=consecutive, 
-                irrelevant_consecutive_fares=irrelevant_consecutive_fares,
-            )
+            self.compute_route_fares(consecutive=consecutive, irrelevant_consecutive_fares=irrelevant_consecutive_fares)
 
         values = self.pt_los[['route_fares', 'od_fares']].values
-        self.pt_los['price'] = [
-            sum(route_fares.values()) + sum(od_fares.values())
-            for route_fares, od_fares in values
-        ]
+        self.pt_los['price'] = [sum(route_fares.values()) + sum(od_fares.values()) for route_fares, od_fares in values]
 
         if not keep_intermediate_results:
             del self.pt_los['arod_list']
@@ -808,12 +766,14 @@ class AnalysisModel(summarymodel.SummaryModel):
     def generate_production_attraction_densities(self, volume_columns=None):
         if volume_columns is None:
             volume_columns = list(self.volumes.columns)
-        prod = self.volumes[list(set(volume_columns + ['origin', 'destination']))].groupby(
-            'origin', as_index=False
-        ).sum()
-        attr = self.volumes[list(set(volume_columns + ['origin', 'destination']))].groupby(
-            'destination', as_index=False
-        ).sum()
+        prod = (
+            self.volumes[list(set(volume_columns + ['origin', 'destination']))].groupby('origin', as_index=False).sum()
+        )
+        attr = (
+            self.volumes[list(set(volume_columns + ['origin', 'destination']))]
+            .groupby('destination', as_index=False)
+            .sum()
+        )
         # Add geometry
         prod = gpd.GeoDataFrame(
             prod.rename(columns={'origin': 'zone_id'}).merge(
@@ -833,7 +793,6 @@ class AnalysisModel(summarymodel.SummaryModel):
         self.production = prod
         self.attraction = attr
 
-
     node_gdfs = ['nodes', 'road_nodes']
     link_gdfs = ['road_links', 'zone_to_transit', 'zone_to_road', 'road_to_transit', 'footpaths', 'links']
 
@@ -841,7 +800,7 @@ class AnalysisModel(summarymodel.SummaryModel):
         """
         Add elevation columns in node-type gdfs and elevation + grade columns in link-type gdfs
         Requires elevation raster in epsg 4326 on the given perimeter.
-        Wordwide elevation data at 30m resolution from SRTM (https://www2.jpl.nasa.gov/srtm/) can be downloaded here: 
+        Wordwide elevation data at 30m resolution from SRTM (https://www2.jpl.nasa.gov/srtm/) can be downloaded here:
             https://dwtkns.com/srtm30m/
         It works well with Firefox (currently not working witch Chrome), and requires a nasa Earthdata login.
         """
@@ -859,9 +818,9 @@ class AnalysisModel(summarymodel.SummaryModel):
             nodes = self.__getattribute__(attribute)
             temp = gpd.GeoDataFrame(nodes).set_crs(self.epsg).copy()
             temp = temp.to_crs(epsg=4326)
-            
-            # format and query
-            temp[['x', 'y']] = [(g.xy[0][0],  g.xy[1][0]) for g in temp.geometry.values]
+
+            # format and query
+            temp[['x', 'y']] = [(g.xy[0][0], g.xy[1][0]) for g in temp.geometry.values]
             z = dict(elevation.query_raster(temp[['x', 'y']], filepath, band=1, method=method))
 
             # add attribute
@@ -875,5 +834,5 @@ class AnalysisModel(summarymodel.SummaryModel):
             except AttributeError:
                 pass
             links['elevation'] = links['b'].map(node_elevation) - links['a'].map(node_elevation)
-            
+
             links['grade'] = links['elevation'] / links.geometry.apply(lambda x: x.length)

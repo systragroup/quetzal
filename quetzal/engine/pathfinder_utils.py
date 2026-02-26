@@ -10,6 +10,7 @@ from typing import Optional
 import fast_dijkstra as fd
 import polars as pl
 from quetzal.engine.lazy_path import LosPaths
+from quetzal.engine.fast_utils import get_all_paths
 
 
 # Wrapper to split the indices (destination) into parallel batchs and compute the shortest path on each batchs.
@@ -482,24 +483,25 @@ def paths_from_edges(
         mask = pl.DataFrame({'origin': [od[0] for od in od_set], 'destination': [od[1] for od in od_set]})  # for late
         df = df.join(mask, on=['origin', 'destination'], how='semi')  # drop rows not in od_set
 
-    odl = df.to_pandas()
-    odl['length'] -= penalty
-    odl = odl.loc[odl['length'] < np.inf]
-
-    if reverse:
-        odl[['origin', 'destination']] = odl[['destination', 'origin']]
+    los = df.to_pandas()
+    los['length'] -= penalty
+    los = los.loc[los['length'] < np.inf]
 
     if lazy_paths:
         los_paths = LosPaths(predecessors, node_index, sources, reverse)
-        odl.path = los_paths
-        odl['path'] = los_paths
+        los.path = los_paths
+        los['path'] = los_paths
 
     else:
-        od_list = odl[['origin', 'destination']].values
-        path = get_reversed_path if reverse else get_path
-        paths = [tuple(index_node[i] for i in path(predecessors, source_index[o], node_index[d])) for o, d in od_list]
-        odl['path'] = paths
-    return odl
+        odl = los[['origin', 'destination']].values
+        od_sparse_list = np.stack([[*map(source_index.get, odl[:, 0])], [*map(node_index.get, odl[:, 1])]], axis=1)
+        los['path'] = get_all_paths(od_sparse_list, predecessors, index_node, reverse)
+        # los['hash'] = get_all_paths_hash
+
+    if reverse:
+        los[['origin', 'destination']] = los[['destination', 'origin']]
+
+    return los
 
 
 def adjacency_matrix(links, ntlegs, footpaths, ntlegs_penalty=1e9, boarding_time=None, alighting_time=None):
