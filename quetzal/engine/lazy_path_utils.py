@@ -1,59 +1,20 @@
 import numpy as np
 import numba as nb
 import numpy.typing as npt
-
-
-@nb.njit()
-def get_path_3d(predecessors, i, j, s, reverse=False):
-    path = []
-    k = j
-    while k != -9999:
-        path.append(k)
-        k = predecessors[s, i, k]
-    if reverse:
-        return path
-    else:
-        return path[::-1]
+from quetzal.engine.fast_utils import get_path
 
 
 @nb.njit(parallel=True)
-def compute_path_lengths(od_list, predecessors):
-    # return the length of each path in predecessor.
-    n = len(od_list)
-    lengths = np.zeros(n, dtype=np.int32)
-    for i in nb.prange(n):
-        o, d, s = od_list[i]
-        path = get_path_3d(predecessors, o, d, s)
-        lengths[i] = len(path)
-    return lengths
-
-
-@nb.njit(parallel=True)
-def get_flat_path(od_list, predecessors, offsets, reverse=False) -> np.ndarray:
-    # get all paths as a single flat array.
-    n = len(od_list)
-    total_len = offsets[-1]
-    flat_paths = np.zeros(total_len, dtype=np.int32)
-    for i in nb.prange(n):
-        o, d, s = od_list[i]
-        path = get_path_3d(predecessors, o, d, s, reverse)
-        start = offsets[i]
-        for j in range(len(path)):
-            flat_paths[start + j] = path[j]
-    return flat_paths
-
-
-@nb.njit(parallel=True)
-def get_paths_hash(od_list, predecessors) -> np.ndarray:
-    # get all paths as a single flat array.
+def get_paths_hash(od_list, predecessors, reverse=False) -> np.ndarray:
+    # get a single hash per paths (boost hash_combine)
     n = len(od_list)
     hash_list = np.empty(n, dtype=np.int64)
     for i in nb.prange(n):
-        o, d, s = od_list[i]
-        path = get_path_3d(predecessors, o, d, s)
+        o, d = od_list[i]
+        path = get_path(predecessors, o, d, reverse)
         h = 0
         for x in path:
-            h ^= hash(x) + 0x9E3779B9 + (h << 6) + (h >> 2)  # boost::hash_combine
+            h ^= hash(x) + 0x9E3779B9 + (h << 6) + (h >> 2)
         hash_list[i] = h
 
     return hash_list
@@ -65,29 +26,6 @@ def sum_jagged_array(flat_paths, offsets):
     for i in nb.prange(len(offsets) - 1):
         row_sums[i] = flat_paths[offsets[i] : offsets[i + 1]].sum()
     return row_sums
-
-
-def remap_predecessor(full_pred, full_dict, pruned_pred, pruned_dict):
-    pruned_pred = pruned_pred.copy()
-    pruned_to_full = {k: full_dict[v] for k, v in pruned_dict.items()}
-
-    # create a lookup table :  prune to full index
-    pruned_to_full_map = np.empty(pruned_pred.shape[1], dtype=np.int32)
-    full_indexes = np.array(list(pruned_to_full.values()))
-    pruned_indexes = np.array(list(pruned_to_full.keys()))
-    pruned_to_full_map[pruned_indexes] = full_indexes
-
-    # remap value in pruned_predecessor to the one in full_pred
-    mask = pruned_pred != -9999  # need to mask if we want to keep -9999,else it will look at index -9999 in lut
-    pruned_pred[mask] = pruned_to_full_map[pruned_pred[mask]]
-
-    # reorder rows to the full predecessor indexing. (and shape it as the full_pred)
-    new_predecessor = np.full_like(full_pred, -9999, dtype=np.int32)
-    new_predecessor[:, full_indexes] = pruned_pred[:, pruned_indexes]
-
-    # assert full_paths.source_index == pruned_paths.source_index, 'TODO need to remap source too.'
-
-    return new_predecessor
 
 
 @nb.njit(parallel=True)
