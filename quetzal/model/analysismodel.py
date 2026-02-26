@@ -352,6 +352,9 @@ class AnalysisModel(summarymodel.SummaryModel):
             footpaths = self.footpaths
             access = self.zone_to_transit
         if lazy_path:
+            links = self.links
+            if 'boarding_time' not in links.columns:
+                links['boarding_time'] = boarding_time
             analysis_nodes = pd.concat([self.nodes, self.road_nodes]) if walk_on_road else self.nodes
             self.pt_los = lazy_analysis_pt_time(
                 lazy_path=self.lazy_path,
