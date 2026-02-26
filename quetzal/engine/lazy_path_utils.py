@@ -28,13 +28,6 @@ def compute_path_lengths(od_list, predecessors):
     return lengths
 
 
-def compute_offsets(lengths):
-    # compute offset with lengths
-    offsets = np.zeros(len(lengths), dtype=np.int64)
-    offsets[1:] = np.cumsum(lengths)
-    return offsets
-
-
 @nb.njit(parallel=True)
 def get_flat_path(od_list, predecessors, offsets, reverse=False) -> np.ndarray:
     # get all paths as a single flat array.

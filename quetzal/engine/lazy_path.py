@@ -14,7 +14,7 @@ from quetzal.engine.lazy_path_utils import (
 import pandas as pd
 
 
-class LosPaths:
+class LazyPaths:
     def __init__(self, predecessors, node_index: Dict[str, int], sources: List[str], reverse: bool = False) -> int:
         # TODO: append predecessor to stay 2d? this way we can reuse the same functions.
         # just need to change source_index. thi also allow us to have different source per pathfinder Session.
@@ -50,8 +50,8 @@ class LosPaths:
 
     def _get_jagged_int_path(self, od_index_list: np.ndarray):
         lengths = compute_path_lengths(od_index_list, self.predecessors)
-        offsets, total_len = compute_offsets(lengths)
-        flat_paths = get_flat_path(od_index_list, self.predecessors, offsets, total_len, self.reverse)
+        offsets = compute_offsets(lengths)
+        flat_paths = get_flat_path(od_index_list, self.predecessors, offsets, self.reverse)
         return flat_paths, offsets
 
     #
@@ -90,7 +90,7 @@ class LosPaths:
         return sum_jagged_array(flat_paths, offsets)
 
 
-def concat_lazy_los(los_list) -> tuple[pd.DataFrame, LosPaths]:
+def concat_lazy_los(los_list) -> tuple[pd.DataFrame, LazyPaths]:
     # concat Lazy_paths object in a single one
     # remove lazy_paths of los
     # add a lazy_session.
@@ -115,7 +115,7 @@ def get_vertex_type_dict(links, nodes, centroids) -> Dict[str, int]:
 
 
 def lazy_analysis_pt_los(
-    lazy_path: LosPaths,
+    lazy_path: LazyPaths,
     pt_los: pd.DataFrame,
     links,
     nodes,
@@ -159,7 +159,7 @@ def lazy_analysis_pt_los(
     return pt_los
 
 
-def lazy_analysis_pt_time(lazy_path: LosPaths, pt_los: pd.DataFrame, links, nodes, centroids, access, footpaths):
+def lazy_analysis_pt_time(lazy_path: LazyPaths, pt_los: pd.DataFrame, links, nodes, centroids, access, footpaths):
     #
     # create a lookup table for the vertex type
     vertex_type = get_vertex_type_dict(links, nodes, centroids)
