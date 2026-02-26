@@ -28,6 +28,27 @@ def remap_int_array(arr: npt.NDArray[np.int_], mapper: dict[int, Any]) -> npt.ND
     return lut[arr]
 
 
+def get_lut_mat_from_edges(edges: npt.NDArray, node_index: dict[str, int]) -> npt.NDArray:
+    # return a Matrix where mat[a,b] = time
+    row = np.array([*map(node_index.get, [e[0] for e in edges])], dtype=np.int32)
+    col = np.array([*map(node_index.get, [e[1] for e in edges])], dtype=np.int32)
+    data = [e[2] for e in edges]
+    mat = np.zeros((row.max() + 1, col.max() + 1))
+    mat[row, col] = data
+    return mat
+
+
+@nb.jit(parallel=True)
+def apply_lut_mat(path_of_tuple, lut_mat):
+    # like remap_int_array but
+    out = np.zeros(len(path_of_tuple))
+    N = len(path_of_tuple)
+    for i in nb.prange(N):
+        a, b = path_of_tuple[i]
+        out[i] = lut_mat[a, b]
+    return out
+
+
 @nb.njit(locals={'predecessors': nb.int32[:, ::1], 'i': nb.int32, 'j': nb.int32})
 def get_path(predecessors, i, j, reverse=False):
     path = []

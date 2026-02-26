@@ -8,6 +8,8 @@ from quetzal.engine.fast_utils import (
     get_path,
     compute_path_lengths,
     get_flat_path,
+    get_lut_mat_from_edges,
+    apply_lut_mat,
 )
 from quetzal.engine.lazy_path_utils import get_paths_hash, sum_jagged_array, analysis_flat_path
 
@@ -25,7 +27,7 @@ class LazyPaths:
         self.source_offset = {0: 0}  # {session_id: offset}
 
     def __repr__(self):
-        return f'Lazy paths with {self.predecessors.shape[0]} sessions'
+        return f'Lazy paths with {len(self.source_offset.keys())} sessions'
 
     def __hash__(self):
         return id(self)
@@ -180,7 +182,9 @@ def lazy_analysis_pt_los(
     return pt_los
 
 
-def lazy_analysis_pt_time(lazy_path: LazyPaths, pt_los: pd.DataFrame, links, nodes, centroids, access, footpaths):
+def lazy_analysis_pt_time(
+    lazy_path: LazyPaths, pt_los: pd.DataFrame, links, nodes, centroids, access, footpaths, boarding_time=None
+):
     #
     # create a lookup table for the vertex type
     vertex_type = get_vertex_type_dict(links, nodes, centroids)
@@ -196,9 +200,35 @@ def lazy_analysis_pt_time(lazy_path: LazyPaths, pt_los: pd.DataFrame, links, nod
     res = analysis_flat_path(flat_paths, offsets, vertex_lut, includes)
 
     for name, _path, _offset in res:
+        if name == 'ntlegs':
+            edges = access[['a', 'b', 'time']].values
+            lut_mat = get_lut_mat_from_edges(edges, node_index)  # we have path of tuple. need a matrix as mapper
+            path_of_vals = apply_lut_mat(_path, lut_mat)
+            pt_los['access_time'] = sum_jagged_array(path_of_vals, _offset)
+
+        if name == 'footpaths':
+            edges = footpaths[['a', 'b', 'time']].values
+            lut_mat = get_lut_mat_from_edges(edges, node_index)  # we have path of tuple. need a matrix as mapper
+            path_of_vals = apply_lut_mat(_path, lut_mat)
+            pt_los['footpath_time'] = sum_jagged_array(path_of_vals, _offset)
+
         if name == 'link_path':
             d = links['time'].to_dict()
             d = {node_index.get(k): v for k, v in d.items()}
-            result = remap_int_array(_path, d)
-            pt_los['in_vehicle_time'] = [result[_offset[i] : _offset[i + 1]].sum() for i in range(len(_offset) - 1)]
+            path_of_vals = remap_int_array(_path, d)
+            pt_los['in_vehicle_time'] = sum_jagged_array(path_of_vals, _offset)
+
+        if name == 'boarding_links':
+            d = links['headway'].to_dict()
+            d = {node_index.get(k): v / 2 for k, v in d.items()}  # ehadway /2
+            path_of_vals = remap_int_array(_path, d)
+            pt_los['waiting_time'] = sum_jagged_array(path_of_vals, _offset)
+
+            d = links['boarding_time'].to_dict()
+            d = {node_index.get(k): v for k, v in d.items()}
+            path_of_vals = remap_int_array(_path, d)
+            pt_los['boarding_time'] = sum_jagged_array(path_of_vals, _offset)
+
+        # cols = ['access_time', 'footpath_time', 'in_vehicle_time', 'waiting_time', 'boarding_time']
+        # pt_los['time'] = pt_los[cols].T.sum()
     return pt_los
