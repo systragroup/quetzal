@@ -55,7 +55,7 @@ def compute_path_lengths(od_list, predecessors):
 
 def compute_offsets(lengths):
     # compute offset with lengths
-    offsets = np.zeros(len(lengths), dtype=np.int64)
+    offsets = np.zeros(len(lengths) + 1, dtype=np.int64)
     offsets[1:] = np.cumsum(lengths)
     return offsets
 

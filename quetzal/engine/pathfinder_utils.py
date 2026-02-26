@@ -9,7 +9,7 @@ from typing import Optional
 
 import fast_dijkstra as fd
 import polars as pl
-from quetzal.engine.lazy_path import LosPaths
+from quetzal.engine.lazy_path import LazyPaths
 from quetzal.engine.fast_utils import get_all_paths
 
 
@@ -488,7 +488,7 @@ def paths_from_edges(
     los = los.loc[los['length'] < np.inf]
 
     if lazy_paths:
-        los_paths = LosPaths(predecessors, node_index, sources, reverse)
+        los_paths = LazyPaths(predecessors, node_index, sources, reverse)
         los.path = los_paths
         los['path'] = los_paths
 

@@ -7,7 +7,7 @@ from quetzal.engine import engine
 from quetzal.engine.graph_utils import combine_edges, expand_path
 from quetzal.engine.pathfinder_utils import paths_from_edges, link_edge_array, sparse_matrix_with_access_penalty
 from quetzal.engine.pathfinder_utils import get_first_and_last, get_all, pruned_matrix, efficient_od_sets
-from quetzal.engine.lazy_path import concat_lazy_los, LosPaths
+from quetzal.engine.lazy_path import concat_lazy_los, LazyPaths
 
 
 class PublicPathFinder:
@@ -16,7 +16,7 @@ class PublicPathFinder:
         self.links = engine.graph_links(model.links.copy())
         self.csgraph = None
         self.node_index = None
-        self.lazy_path: LosPaths = None
+        self.lazy_path: LazyPaths = None
 
         if walk_on_road:
             road_links = model.road_links.copy()
