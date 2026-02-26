@@ -8,8 +8,8 @@ from quetzal.engine.fast_utils import (
     get_path,
     compute_path_lengths,
     get_flat_path,
-    get_lut_mat_from_edges,
-    apply_lut_mat,
+    get_numba_tuple_dict,
+    remap_tuple_array,
 )
 from quetzal.engine.lazy_path_utils import get_paths_hash, sum_jagged_array, analysis_flat_path
 
@@ -201,15 +201,15 @@ def lazy_analysis_pt_time(
 
     for name, _path, _offset in res:
         if name == 'ntlegs':
-            edges = access[['a', 'b', 'time']].values
-            lut_mat = get_lut_mat_from_edges(edges, node_index)  # we have path of tuple. need a matrix as mapper
-            path_of_vals = apply_lut_mat(_path, lut_mat)
+            d = access.set_index(['a', 'b'])['time'].to_dict()
+            d = get_numba_tuple_dict(d, node_index)
+            path_of_vals = remap_tuple_array(_path, d)
             pt_los['access_time'] = sum_jagged_array(path_of_vals, _offset)
 
         if name == 'footpaths':
-            edges = footpaths[['a', 'b', 'time']].values
-            lut_mat = get_lut_mat_from_edges(edges, node_index)  # we have path of tuple. need a matrix as mapper
-            path_of_vals = apply_lut_mat(_path, lut_mat)
+            d = footpaths.set_index(['a', 'b'])['time'].to_dict()
+            d = get_numba_tuple_dict(d, node_index)
+            path_of_vals = remap_tuple_array(_path, d)
             pt_los['footpath_time'] = sum_jagged_array(path_of_vals, _offset)
 
         if name == 'link_path':
@@ -229,6 +229,6 @@ def lazy_analysis_pt_time(
             path_of_vals = remap_int_array(_path, d)
             pt_los['boarding_time'] = sum_jagged_array(path_of_vals, _offset)
 
-        # cols = ['access_time', 'footpath_time', 'in_vehicle_time', 'waiting_time', 'boarding_time']
-        # pt_los['time'] = pt_los[cols].T.sum()
+    cols = ['access_time', 'footpath_time', 'in_vehicle_time', 'waiting_time', 'boarding_time']
+    pt_los['time'] = pt_los[cols].T.sum()
     return pt_los

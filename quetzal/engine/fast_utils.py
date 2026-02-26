@@ -28,24 +28,22 @@ def remap_int_array(arr: npt.NDArray[np.int_], mapper: dict[int, Any]) -> npt.ND
     return lut[arr]
 
 
-def get_lut_mat_from_edges(edges: npt.NDArray, node_index: dict[str, int]) -> npt.NDArray:
-    # return a Matrix where mat[a,b] = time
-    row = np.array([*map(node_index.get, [e[0] for e in edges])], dtype=np.int32)
-    col = np.array([*map(node_index.get, [e[1] for e in edges])], dtype=np.int32)
-    data = [e[2] for e in edges]
-    mat = np.zeros((row.max() + 1, col.max() + 1))
-    mat[row, col] = data
-    return mat
+def get_numba_tuple_dict(tuple_dict: dict[tuple[str, str], float], node_index):
+    # return a numba dict with key tuple(int,int) and value float64.
+    numba_dict = nb.typed.Dict.empty(key_type=nb.types.UniTuple(nb.types.int32, 2), value_type=nb.types.float64)
+    for key, value in tuple_dict.items():
+        numba_dict[(node_index[key[0]], node_index[key[1]])] = value
+    return numba_dict
 
 
-@nb.jit(parallel=True)
-def apply_lut_mat(path_of_tuple, lut_mat):
-    # like remap_int_array but
-    out = np.zeros(len(path_of_tuple))
-    N = len(path_of_tuple)
+@nb.jit()
+def remap_tuple_array(arr: npt.NDArray[np.int_], mapper: dict[tuple[int, int], float]) -> npt.NDArray[np.float64]:
+    # return a numba dict with key tuple(int,int) and value float64.
+    out = np.zeros(len(arr))
+    N = len(arr)
     for i in nb.prange(N):
-        a, b = path_of_tuple[i]
-        out[i] = lut_mat[a, b]
+        a, b = arr[i]
+        out[i] = mapper.get((a, b))
     return out
 
 
