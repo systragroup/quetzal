@@ -22,10 +22,24 @@ def get_paths_hash(od_list, predecessors, reverse=False) -> np.ndarray:
 
 @nb.njit()
 def sum_jagged_array(flat_paths, offsets):
-    row_sums = np.zeros(len(offsets) - 1, dtype=flat_paths.dtype)
+    out = np.zeros(len(offsets) - 1, dtype=flat_paths.dtype)
     for i in nb.prange(len(offsets) - 1):
-        row_sums[i] = flat_paths[offsets[i] : offsets[i + 1]].sum()
-    return row_sums
+        start = offsets[i]
+        end = offsets[i + 1]
+        out[i] = flat_paths[start:end].sum()
+    return out
+
+
+@nb.njit()
+def min_jagged_array(flat_paths, offsets, default=0):
+    out = np.full(len(offsets) - 1, default, dtype=flat_paths.dtype)
+    for i in nb.prange(len(offsets) - 1):
+        start = offsets[i]
+        end = offsets[i + 1]
+        if end > start:
+            sub_path = flat_paths[start:end]
+            out[i] = min(sub_path)
+    return out
 
 
 @nb.njit(parallel=True)
