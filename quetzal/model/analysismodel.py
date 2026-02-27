@@ -9,7 +9,8 @@ from quetzal.model import model, summarymodel
 from syspy.spatial import geometries
 from syspy.syspy_utils import neighbors
 from tqdm import tqdm
-from quetzal.engine.lazy_path import lazy_analysis_pt_los, lazy_analysis_pt_time
+
+from quetzal.analysis import lazy_analysis
 
 
 def read_hdf(filepath):
@@ -29,6 +30,17 @@ log = model.log
 
 
 class AnalysisModel(summarymodel.SummaryModel):
+    def _get_vertex_type_dict(self, walk_on_road=False) -> dict[str, int]:
+        # integer for for faster analysis. return fict {str_index:node_type} with node_type = 1|2|3
+        # {1: centroid, 2: nodes, 3: links}
+        analysis_nodes = pd.concat([self.nodes, self.road_nodes]) if walk_on_road else self.nodes
+        vertex_sets = {1: set(self.zones.index), 2: set(analysis_nodes.index), 3: set(self.links.index)}
+        vertex_type = {}
+        for vtype, vset in vertex_sets.items():
+            for v in vset:
+                vertex_type[v] = vtype
+        return vertex_type
+
     def _aggregate(self, nb_clusters, cluster_column=None, volume_column='volume_pt'):
         """
         Aggregates a model (in order to perform optimization)
@@ -130,7 +142,7 @@ class AnalysisModel(summarymodel.SummaryModel):
             self.agg._build_pivot_stack_matrix(constrained_links, linprog_kwargs, **kwargs)
             self._disaggregate()
 
-    def analysis_pt_route_type(self, hierarchy):
+    def analysis_pt_route_type(self, hierarchy, lazy_path=False):
         """Builds 'route_type' in pt_los based on 'route_types' and hierarchy.
         Each path in pt_los has an attribute route_types which regroups all the modes used in the path.
         This functions builds the 'route_type' which is the principal mode of the path based on the hierarchy of modes.
@@ -148,16 +160,22 @@ class AnalysisModel(summarymodel.SummaryModel):
         """
         route_type_dict = self.links['route_type'].to_dict()
 
-        def higher_route_type(route_types):
-            for mode in hierarchy:
-                if mode in route_types:
-                    return mode
-            return hierarchy[-1]
+        if lazy_path:
+            res = lazy_analysis.lazy_analysis_pt_route_type(self.lazy_path, self.pt_los, route_type_dict, hierarchy)
+            self.pt_los['route_type'] = res
+        else:
 
-        self.pt_los['route_types'] = self.pt_los['link_path'].apply(
-            lambda p: tuple(sorted({route_type_dict[l] for l in p}))
-        )
-        self.pt_los['route_type'] = self.pt_los['route_types'].apply(higher_route_type)
+            def higher_route_type(route_types):
+                for mode in hierarchy:
+                    if mode in route_types:
+                        return mode
+                return hierarchy[-1]
+
+            self.pt_los['route_types'] = self.pt_los['link_path'].apply(
+                lambda p: tuple(sorted({route_type_dict[l] for l in p}))
+            )
+            self.pt_los['route_type'] = self.pt_los['route_types'].apply(higher_route_type)
+
         try:
             self.pr_los['route_types'] = self.pr_los['link_path_transit'].apply(
                 lambda p: ('car',) + tuple(sorted({route_type_dict[l] for l in p}))
@@ -190,18 +208,14 @@ class AnalysisModel(summarymodel.SummaryModel):
         self.car_los = los
 
     def analysis_pt_los(self, walk_on_road=False, lazy_path=False, **kwargs):
-        analysis_nodes = pd.concat([self.nodes, self.road_nodes]) if walk_on_road else self.nodes
         if lazy_path:
-            self.pt_los = lazy_analysis_pt_los(
-                lazy_path=self.lazy_path,
-                pt_los=self.pt_los,
-                links=self.links,
-                nodes=analysis_nodes,
-                centroids=self.zones,
-                **kwargs,
+            vertex_type = self._get_vertex_type_dict(walk_on_road=walk_on_road)
+            self.pt_los = lazy_analysis.lazy_analysis_pt_los(
+                lazy_path=self.lazy_path, pt_los=self.pt_los, vertex_type=vertex_type, **kwargs
             )
 
         else:
+            analysis_nodes = pd.concat([self.nodes, self.road_nodes]) if walk_on_road else self.nodes
             self.pt_los = analysis.path_analysis_od_matrix(
                 od_matrix=self.pt_los, links=self.links, nodes=analysis_nodes, centroids=self.zones
             )
@@ -355,13 +369,12 @@ class AnalysisModel(summarymodel.SummaryModel):
             links = self.links
             if 'boarding_time' not in links.columns:
                 links['boarding_time'] = boarding_time
-            analysis_nodes = pd.concat([self.nodes, self.road_nodes]) if walk_on_road else self.nodes
-            self.pt_los = lazy_analysis_pt_time(
+            vertex_type = self._get_vertex_type_dict(walk_on_road=walk_on_road)
+            self.pt_los = lazy_analysis.lazy_analysis_pt_time(
                 lazy_path=self.lazy_path,
                 pt_los=self.pt_los,
+                vertext_type=vertex_type,
                 links=self.links,
-                nodes=analysis_nodes,
-                centroids=self.zones,
                 access=access,
                 footpaths=footpaths,
             )

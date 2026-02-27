@@ -8,10 +8,8 @@ from quetzal.engine.fast_utils import (
     get_path,
     compute_path_lengths,
     get_flat_path,
-    get_numba_tuple_dict,
-    remap_tuple_array,
 )
-from quetzal.engine.lazy_path_utils import get_paths_hash, sum_jagged_array, analysis_flat_path
+from quetzal.engine.lazy_path_utils import get_paths_hash, sum_jagged_array
 
 
 class LazyPaths:
@@ -126,109 +124,3 @@ def concat_lazy_los(los_list) -> tuple[pd.DataFrame, LazyPaths]:
         lazy_path.append(obj.predecessors, obj.index_node, session_id)
     pt_los = pt_los.drop(columns='path')
     return pt_los, lazy_path
-
-
-def get_vertex_type_dict(links, nodes, centroids) -> Dict[str, int]:
-    vertex_sets = {1: set(centroids.index), 2: set(nodes.index), 3: set(links.index)}
-    vertex_type = {}
-    for vtype, vset in vertex_sets.items():
-        for v in vset:
-            vertex_type[v] = vtype
-    return vertex_type
-
-
-def lazy_analysis_pt_los(
-    lazy_path: LazyPaths,
-    pt_los: pd.DataFrame,
-    links,
-    nodes,
-    centroids,
-    includes=[
-        'link_path',
-        'node_path',
-        'boardings',
-        'alightings',
-        'boarding_links',
-        'alighting_links',
-        'ntlegs',
-        'footpaths',
-        'transfers',
-        'all_walk',
-        'ntransfers',
-    ],
-):
-
-    vertex_type = get_vertex_type_dict(links, nodes, centroids)
-    # create a lookup table for the vertex type
-    index_node = lazy_path.index_node
-    vertex_type = {k: np.int16(vertex_type[v]) for k, v in index_node.items()}
-    vertex_lut = dict_to_lut(vertex_type)
-
-    flat_paths, offsets = lazy_path.get_all_paths(pt_los, remap=False, flat=True)
-
-    res = analysis_flat_path(flat_paths, offsets, vertex_lut, includes)
-
-    for name, _path, _offset in res:
-        _path = remap_int_array(_path, index_node)
-        if name in ['ntlegs', 'footpaths']:  # we have a list of tuple for those
-            _path = [tuple(el) for el in _path]
-        # stack to a list of list for pandas
-        pt_los[name] = [_path[_offset[i] : _offset[i + 1]] for i in range(len(_offset) - 1)]
-    # other values
-    if ('all_walk' in includes) & ('link_path' in includes):
-        pt_los['all_walk'] = pt_los['link_path'].apply(lambda p: len(p) == 0)
-    if ('ntransfers' in includes) & ('boarding_links' in includes):
-        pt_los['ntransfers'] = pt_los['boarding_links'].apply(lambda x: max(len(x) - 1, 0))
-    return pt_los
-
-
-def lazy_analysis_pt_time(
-    lazy_path: LazyPaths, pt_los: pd.DataFrame, links, nodes, centroids, access, footpaths, boarding_time=None
-):
-    #
-    # create a lookup table for the vertex type
-    vertex_type = get_vertex_type_dict(links, nodes, centroids)
-    index_node = lazy_path.index_node
-    node_index = lazy_path.node_index
-    vertex_type = {k: np.int16(vertex_type[v]) for k, v in index_node.items()}
-    vertex_lut = dict_to_lut(vertex_type)
-
-    flat_paths, offsets = lazy_path.get_all_paths(pt_los, remap=False, flat=True)
-
-    includes = ['link_path', 'boarding_links', 'ntlegs', 'footpaths']
-
-    res = analysis_flat_path(flat_paths, offsets, vertex_lut, includes)
-
-    for name, _path, _offset in res:
-        if name == 'ntlegs':
-            d = access.set_index(['a', 'b'])['time'].to_dict()
-            d = get_numba_tuple_dict(d, node_index)
-            path_of_vals = remap_tuple_array(_path, d)
-            pt_los['access_time'] = sum_jagged_array(path_of_vals, _offset)
-
-        if name == 'footpaths':
-            d = footpaths.set_index(['a', 'b'])['time'].to_dict()
-            d = get_numba_tuple_dict(d, node_index)
-            path_of_vals = remap_tuple_array(_path, d)
-            pt_los['footpath_time'] = sum_jagged_array(path_of_vals, _offset)
-
-        if name == 'link_path':
-            d = links['time'].to_dict()
-            d = {node_index.get(k): v for k, v in d.items()}
-            path_of_vals = remap_int_array(_path, d)
-            pt_los['in_vehicle_time'] = sum_jagged_array(path_of_vals, _offset)
-
-        if name == 'boarding_links':
-            d = links['headway'].to_dict()
-            d = {node_index.get(k): v / 2 for k, v in d.items()}  # ehadway /2
-            path_of_vals = remap_int_array(_path, d)
-            pt_los['waiting_time'] = sum_jagged_array(path_of_vals, _offset)
-
-            d = links['boarding_time'].to_dict()
-            d = {node_index.get(k): v for k, v in d.items()}
-            path_of_vals = remap_int_array(_path, d)
-            pt_los['boarding_time'] = sum_jagged_array(path_of_vals, _offset)
-
-    cols = ['access_time', 'footpath_time', 'in_vehicle_time', 'waiting_time', 'boarding_time']
-    pt_los['time'] = pt_los[cols].T.sum()
-    return pt_los
