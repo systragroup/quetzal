@@ -1,7 +1,10 @@
-## [FUTURE] (2026-02-16)
+## [FUTURE] (2026-03-02)
 ## WIP
 * engine.fast_utils.py
 * start adding new way to compute paths and store it in LOS using numba, polars, jagged array and pyarrow.
+
+# Features
+* add option to raise exception when calling parallel_call_notebook (raise_errors=True). this way, Launcher execution stop when there is an error in any period.
 
 ## Changes
 * road_pathfinder: add the option to add zone_to_road in the expanded links. its not use in the wrapper as of today.
