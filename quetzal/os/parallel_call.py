@@ -221,7 +221,7 @@ def parallel_call_python(
         suffix = arg if errout_suffix else ''
         suffix += '_' + process_name
         mode = 'r'
-        with open(stderr_path.replace('.txt', '_' + suffix + '.txt'), mode) as stderr:
+        with open(stderr_path.replace('.txt', '_' + suffix + '.txt'), mode, encoding='latin') as stderr:
             content = stderr.read()
             if 'Error' in content and 'end_of_notebook' not in content:
                 print('subprocess **{} {}** terminated with an error.'.format(i, arg))
