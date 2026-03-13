@@ -32,7 +32,7 @@ def split_cwd_and_file(path):
     return cwd, path_list[-1]
 
 
-def parallel_call_jobs(jobs, mode='w', leave=False, workers=1, sleep=1, raise_errors=False):
+def parallel_call_jobs(jobs, mode='w', workers=1, sleep=1, raise_errors=False):
     popens = {}
     for i, file, arg, stdout_file, stderr_file in jobs:
         cwd, file = split_cwd_and_file(file)
@@ -58,15 +58,9 @@ def parallel_call_jobs(jobs, mode='w', leave=False, workers=1, sleep=1, raise_er
                         p.wait()
                         p.terminate()
         time.sleep(sleep)
-
     for i, file, arg, stdout_file, stderr_file in jobs:
         cwd, file = split_cwd_and_file(file)
         subprocess_name = str(file) + str(i)
-        if not leave:
-            try:
-                os.remove(os.path.join(cwd, file))
-            except FileNotFoundError:
-                pass
         with open(stderr_file, 'r', encoding='latin') as stderr:
             content = stderr.read()
             if 'Error' in content and 'end_of_notebook' not in content:
@@ -88,7 +82,6 @@ def parallel_call_notebooks(
     return_jobs=False,
     raise_errors=False,
 ):
-
     start = time.time()
     all_jobs = []
     files = []
@@ -102,13 +95,11 @@ def parallel_call_notebooks(
             convertNotebook(notebook, file)
             if freeze_support:
                 add_freeze_support(file)
-
     # Call parallel_call_python for each (notebook, arg) pair
     for i in range(len(arg_list)):
         file = files[i]
         arg = arg_list[i]
         process_name = file.split('/')[-1].split('.')[0]
-
         jobs = parallel_call_python(
             file,
             [arg],  # Pass arg as a single-item list
@@ -118,13 +109,18 @@ def parallel_call_notebooks(
             sleep=sleep,
             errout_suffix=errout_suffix,
             process_name=process_name,
-            leave=leave,
             return_jobs=True,
             raise_errors=raise_errors,
         )
         if jobs:
-            all_jobs.extend(jobs)
-
+            all_jobs.extend(jobs)    
+    # Clean up generated Python files if leave=False
+    if not leave:
+        for file in files:
+            try:
+                os.remove(file)
+            except FileNotFoundError:
+                pass
     end = time.time()
     print('Total: {} seconds'.format(int(end - start)))
     if return_jobs:
@@ -162,9 +158,8 @@ def parallel_call_notebook(
         convertNotebook(notebook, file)
     if freeze_support:
         add_freeze_support(file)
-
     process_name = file.split('/')[-1].split('.')[0]
-    return parallel_call_python(
+    jobs = parallel_call_python(
         file,
         arg_list,
         stdout_path=stdout_path,
@@ -173,10 +168,16 @@ def parallel_call_notebook(
         sleep=sleep,
         errout_suffix=errout_suffix,
         process_name=process_name,
-        leave=leave,
         return_jobs=return_jobs,
         raise_errors=raise_errors,
-    )
+    )    
+    # Clean up generated Python file if leave=False
+    if not leave:
+        try:
+            os.remove(file)
+        except FileNotFoundError:
+            pass    
+    return jobs
 
 
 def parallel_call_python(
@@ -188,14 +189,12 @@ def parallel_call_python(
     sleep=0,
     errout_suffix=False,
     process_name='process',
-    leave=False,
     return_jobs=False,
     raise_errors=False,
 ):
     start = time.time()
     jobs = []
     mode = 'w' if errout_suffix else 'a+'
-
     supported_characters = string.ascii_lowercase + string.ascii_uppercase + string.digits + '-_'
     for i in range(len(arg_list)):
         arg = arg_list[i]
@@ -213,8 +212,7 @@ def parallel_call_python(
         stdout_file = stdout_path.replace('.txt', '_' + suffix + '.txt')
         stderr_file = stderr_path.replace('.txt', '_' + suffix + '.txt')
         jobs.append([i, file, arg, stdout_file, stderr_file])
-
-    parallel_call_jobs(jobs, mode=mode, leave=leave, workers=workers, sleep=sleep, raise_errors=raise_errors)
+    parallel_call_jobs(jobs, mode=mode, workers=workers, sleep=sleep, raise_errors=raise_errors)
     end = time.time()
     print(int(end - start), 'seconds')
     if return_jobs:
