@@ -198,15 +198,13 @@ def parallel_call_python(
     supported_characters = string.ascii_lowercase + string.ascii_uppercase + string.digits + '-_'
     for i in range(len(arg_list)):
         arg = arg_list[i]
-        suffix = ''
+        suffix = str(i)
         if errout_suffix:
             try:
                 temp = json.loads(arg)
-                suffix = '_'.join(temp.values())
+                suffix += '_'.join(temp.values())
             except (json.JSONDecodeError, TypeError):
-                suffix = str(arg)
-        else:
-            suffix = str(i)
+                suffix += str(arg)
         suffix += '_' + process_name
         suffix = ''.join([s for s in suffix if s in supported_characters])
         stdout_file = stdout_path.replace('.txt', '_' + suffix + '.txt')
