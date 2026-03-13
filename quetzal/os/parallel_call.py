@@ -32,7 +32,7 @@ def split_cwd_and_file(path):
     return cwd, path_list[-1]
 
 
-def parallel_call_jobs(jobs, mode='w', leave=False, workers=1, sleep=1, raise_errors=False):
+def parallel_call_jobs(jobs, mode='w', workers=1, sleep=1, raise_errors=False):
     popens = {}
     for i, file, arg, stdout_file, stderr_file in jobs:
         cwd, file = split_cwd_and_file(file)
@@ -58,15 +58,9 @@ def parallel_call_jobs(jobs, mode='w', leave=False, workers=1, sleep=1, raise_er
                         p.wait()
                         p.terminate()
         time.sleep(sleep)
-
     for i, file, arg, stdout_file, stderr_file in jobs:
         cwd, file = split_cwd_and_file(file)
         subprocess_name = str(file) + str(i)
-        if not leave:
-            try:
-                os.remove(os.path.join(cwd, file))
-            except FileNotFoundError:
-                pass
         with open(stderr_file, 'r', encoding='latin') as stderr:
             content = stderr.read()
             if 'Error' in content and 'end_of_notebook' not in content:
@@ -88,10 +82,10 @@ def parallel_call_notebooks(
     return_jobs=False,
     raise_errors=False,
 ):
-
     start = time.time()
-    jobs = []
+    all_jobs = []
     files = []
+    # Convert all notebooks to Python files
     for notebook in notebook_list:
         file = notebook.replace('.ipynb', '.py')
         files.append(file)
@@ -101,30 +95,36 @@ def parallel_call_notebooks(
             convertNotebook(notebook, file)
             if freeze_support:
                 add_freeze_support(file)
-
-    mode = 'w' if errout_suffix else 'a+'
-
-    supported_characters = string.ascii_lowercase + string.ascii_uppercase + string.digits + '-_'
+    # Call parallel_call_python for each (notebook, arg) pair
     for i in range(len(arg_list)):
+        file = files[i]
         arg = arg_list[i]
-        suffix = ''
-        if errout_suffix:
+        process_name = file.split('/')[-1].split('.')[0]
+        jobs = parallel_call_python(
+            file,
+            [arg],  # Pass arg as a single-item list
+            stdout_path=stdout_path,
+            stderr_path=stderr_path,
+            workers=workers,
+            sleep=sleep,
+            errout_suffix=errout_suffix,
+            process_name=process_name,
+            return_jobs=True,
+            raise_errors=raise_errors,
+        )
+        if jobs:
+            all_jobs.extend(jobs)    
+    # Clean up generated Python files if leave=False
+    if not leave:
+        for file in files:
             try:
-                temp = json.loads(arg)
-                suffix = '_'.join(temp.values())
-            except (json.JSONDecodeError, TypeError):
-                suffix = str(arg)
-        suffix += '_' + files[i].split('/')[-1].split('.')[0]
-        suffix = ''.join([s for s in suffix if s in supported_characters])
-        stdout_file = stdout_path.replace('.txt', '_' + suffix + '.txt')
-        stderr_file = stderr_path.replace('.txt', '_' + suffix + '.txt')
-        jobs.append([i, files[i], arg, stdout_file, stderr_file])
-
-    parallel_call_jobs(jobs, mode=mode, leave=leave, workers=workers, sleep=sleep, raise_errors=raise_errors)
+                os.remove(file)
+            except FileNotFoundError:
+                pass
     end = time.time()
-    print(int(end - start), 'seconds')
+    print('Total: {} seconds'.format(int(end - start)))
     if return_jobs:
-        return jobs
+        return all_jobs
 
 
 def convertNotebook(notebookPath, modulePath):
@@ -152,39 +152,32 @@ def parallel_call_notebook(
     return_jobs=False,
     raise_errors=False,
 ):
-
-    start = time.time()
-    jobs = []
     os.system('jupyter nbconvert --to python %s' % notebook)
     file = notebook.replace('.ipynb', '.py')
     if not os.path.exists(file):  # jupyter nb convert failed, for instance, jupyter is not recognized
         convertNotebook(notebook, file)
     if freeze_support:
         add_freeze_support(file)
-
-    mode = 'w' if errout_suffix else 'a+'
-
-    supported_characters = string.ascii_lowercase + string.ascii_uppercase + string.digits + '-_'
-    for i in range(len(arg_list)):
-        arg = arg_list[i]
-        suffix = ''
-        if errout_suffix:
-            try:
-                temp = json.loads(arg)
-                suffix = '_'.join(temp.values())
-            except (json.JSONDecodeError, TypeError):
-                suffix = str(arg)
-        suffix += '_' + file.split('/')[-1].split('.')[0]
-        suffix = ''.join([s for s in suffix if s in supported_characters])
-        stdout_file = stdout_path.replace('.txt', '_' + suffix + '.txt')
-        stderr_file = stderr_path.replace('.txt', '_' + suffix + '.txt')
-        jobs.append([i, file, arg, stdout_file, stderr_file])
-
-    parallel_call_jobs(jobs, mode=mode, leave=leave, workers=workers, sleep=sleep, raise_errors=raise_errors)
-    end = time.time()
-    print(int(end - start), 'seconds')
-    if return_jobs:
-        return jobs
+    process_name = file.split('/')[-1].split('.')[0]
+    jobs = parallel_call_python(
+        file,
+        arg_list,
+        stdout_path=stdout_path,
+        stderr_path=stderr_path,
+        workers=workers,
+        sleep=sleep,
+        errout_suffix=errout_suffix,
+        process_name=process_name,
+        return_jobs=return_jobs,
+        raise_errors=raise_errors,
+    )    
+    # Clean up generated Python file if leave=False
+    if not leave:
+        try:
+            os.remove(file)
+        except FileNotFoundError:
+            pass    
+    return jobs
 
 
 def parallel_call_python(
@@ -196,36 +189,32 @@ def parallel_call_python(
     sleep=0,
     errout_suffix=False,
     process_name='process',
+    return_jobs=False,
+    raise_errors=False,
 ):
-    popens = {}
-    notebook = file
-
+    start = time.time()
+    jobs = []
+    mode = 'w' if errout_suffix else 'a+'
+    supported_characters = string.ascii_lowercase + string.ascii_uppercase + string.digits + '-_'
     for i in range(len(arg_list)):
         arg = arg_list[i]
-        suffix = arg if errout_suffix else ''
+        suffix = str(i)
+        if errout_suffix:
+            try:
+                temp = json.loads(arg)
+                suffix += '_'.join(temp.values())
+            except (json.JSONDecodeError, TypeError):
+                suffix += str(arg)
         suffix += '_' + process_name
-        mode = 'w' if errout_suffix else 'a+'
-        # print(i, arg)
-        with open(stdout_path.replace('.txt', '_' + suffix + '.txt'), mode) as stdout:
-            with open(stderr_path.replace('.txt', '_' + suffix + '.txt'), mode) as stderr:
-                popens[i] = Popen(['python', file, arg], stdout=stdout, stderr=stderr)
-                if (i + 1) % workers == 0 or (i + 1) == len(arg_list):
-                    # print('waiting')
-                    for p in popens.values():
-                        p.wait()
-                        p.terminate()
-        time.sleep(sleep)
-
-    for i in range(len(arg_list)):
-        arg = arg_list[i]
-        suffix = arg if errout_suffix else ''
-        suffix += '_' + process_name
-        mode = 'r'
-        with open(stderr_path.replace('.txt', '_' + suffix + '.txt'), mode, encoding='latin') as stderr:
-            content = stderr.read()
-            if 'Error' in content and 'end_of_notebook' not in content:
-                print('subprocess **{} {}** terminated with an error.'.format(i, arg))
-    return popens
+        suffix = ''.join([s for s in suffix if s in supported_characters])
+        stdout_file = stdout_path.replace('.txt', '_' + suffix + '.txt')
+        stderr_file = stderr_path.replace('.txt', '_' + suffix + '.txt')
+        jobs.append([i, file, arg, stdout_file, stderr_file])
+    parallel_call_jobs(jobs, mode=mode, workers=workers, sleep=sleep, raise_errors=raise_errors)
+    end = time.time()
+    print(int(end - start), 'seconds')
+    if return_jobs:
+        return jobs
 
 
 def parallel_call_subprocess(
