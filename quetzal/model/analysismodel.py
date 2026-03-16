@@ -373,7 +373,7 @@ class AnalysisModel(summarymodel.SummaryModel):
             self.pt_los = lazy_analysis.lazy_analysis_pt_time(
                 lazy_path=self.lazy_path,
                 pt_los=self.pt_los,
-                vertext_type=vertex_type,
+                vertex_type=vertex_type,
                 links=self.links,
                 access=access,
                 footpaths=footpaths,

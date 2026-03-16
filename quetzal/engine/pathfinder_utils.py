@@ -104,7 +104,7 @@ def simple_routing(origin, destination, links, weight_col='time', **kwargs):
     return simple_edge_routing(edges, origin, destination, **kwargs)
 
 
-@nb.njit(locals={'predecessors': nb.int32[:, ::1], 'i': nb.int32, 'j': nb.int32})
+@nb.njit(locals={'predecessors': nb.int32[:, ::1], 'i': nb.int32, 'j': nb.int32}, cache=True)
 def get_path(predecessors, i, j):
     path = []
     k = j
@@ -114,7 +114,7 @@ def get_path(predecessors, i, j):
     return path[::-1]
 
 
-@nb.njit()
+@nb.njit(cache=True)
 def get_reversed_path(predecessors, i, j):
     path = [j]
     k = j
@@ -125,7 +125,7 @@ def get_reversed_path(predecessors, i, j):
     return path[:-1]
 
 
-@nb.njit()
+@nb.njit(cache=True)
 def get_node_path(predecessors, i, j):
     # remove zones nodes (first and last one)
     return get_path(predecessors, i, j)[1:-1]

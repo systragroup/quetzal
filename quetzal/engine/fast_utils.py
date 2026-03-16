@@ -28,6 +28,9 @@ def remap_int_array(arr: npt.NDArray[np.int_], mapper: dict[int, Any]) -> npt.ND
     return lut[arr]
 
 
+# method 1: take a tuple dict and remap.
+
+
 def get_numba_tuple_dict(tuple_dict: dict[tuple[str, str], float], node_index):
     # return a numba dict with key tuple(int,int) and value float64.
     numba_dict = nb.typed.Dict.empty(key_type=nb.types.UniTuple(nb.types.int32, 2), value_type=nb.types.float64)
@@ -36,7 +39,7 @@ def get_numba_tuple_dict(tuple_dict: dict[tuple[str, str], float], node_index):
     return numba_dict
 
 
-@nb.jit()
+@nb.njit(cache=True)
 def remap_tuple_array(arr: npt.NDArray[np.int_], mapper: dict[tuple[int, int], float]) -> npt.NDArray[np.float64]:
     # return a numba dict with key tuple(int,int) and value float64.
     out = np.zeros(len(arr))
@@ -47,7 +50,40 @@ def remap_tuple_array(arr: npt.NDArray[np.int_], mapper: dict[tuple[int, int], f
     return out
 
 
-@nb.njit(locals={'predecessors': nb.int32[:, ::1], 'i': nb.int32, 'j': nb.int32})
+# method 2: take edges, convert to int and remap tuple to a big int.
+# this can be cache.
+
+
+# @nb.njit(cache=True)
+# def _get_numba_tuple_dict(a, b, v):
+#     # return a numba dict with key tuple(int,int) and value float64.
+#     numba_dict = nb.typed.Dict.empty(key_type=nb.types.int64, value_type=nb.types.float64)
+#     for i in range(len(a)):
+#         # encode tuple
+#         key = (1_000_000 * a[i]) + b[i]
+#         numba_dict[key] = v[i]
+#     return numba_dict
+
+
+# def get_numba_tuple_dict(edges, node_index):
+#     a = [*map(node_index.get, edges[:, 0])]
+#     b = [*map(node_index.get, edges[:, 1])]
+#     v = [*edges[:, 2]]
+#     return _get_numba_tuple_dict(a, b, v)
+
+
+# @nb.njit(cache=True)
+# def remap_tuple_array(arr: npt.NDArray[np.int_], mapper: dict[tuple[int, int], float]) -> npt.NDArray[np.float64]:
+#     # return a numba dict with key tuple(int,int) and value float64.
+#     out = np.zeros(len(arr))
+#     N = len(arr)
+#     for i in nb.prange(N):
+#         a, b = arr[i]
+#         out[i] = mapper.get(1_000_000 * a + b)
+#     return out
+
+
+@nb.njit(locals={'predecessors': nb.int32[:, ::1], 'i': nb.int32, 'j': nb.int32}, cache=True)
 def get_path(predecessors, i, j, reverse=False):
     path = []
     k = j
@@ -60,7 +96,7 @@ def get_path(predecessors, i, j, reverse=False):
         return path[::-1]
 
 
-@nb.njit(parallel=True)
+@nb.njit(parallel=True, cache=True)
 def compute_path_lengths(od_list, predecessors):
     # return the length of each path in predecessor.
     n = len(od_list)
@@ -79,7 +115,7 @@ def compute_offsets(lengths):
     return offsets
 
 
-@nb.njit(parallel=True)
+@nb.njit(parallel=True, cache=True)
 def get_flat_path(od_list, predecessors, offsets, reverse=False) -> npt.NDArray:
     # get all paths as a single flat array.
     n = len(od_list)

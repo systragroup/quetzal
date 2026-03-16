@@ -4,7 +4,7 @@ import numpy.typing as npt
 from quetzal.engine.fast_utils import get_path
 
 
-@nb.njit(parallel=True)
+@nb.njit(parallel=True, cache=True)
 def get_paths_hash(od_list, predecessors, reverse=False) -> np.ndarray:
     # get a single hash per paths (boost hash_combine)
     n = len(od_list)
@@ -20,7 +20,7 @@ def get_paths_hash(od_list, predecessors, reverse=False) -> np.ndarray:
     return hash_list
 
 
-@nb.njit()
+@nb.njit(cache=True)
 def sum_jagged_array(flat_paths, offsets):
     out = np.zeros(len(offsets) - 1, dtype=flat_paths.dtype)
     for i in nb.prange(len(offsets) - 1):
@@ -30,7 +30,7 @@ def sum_jagged_array(flat_paths, offsets):
     return out
 
 
-@nb.njit()
+@nb.njit(cache=True)
 def min_jagged_array(flat_paths, offsets, default=0):
     out = np.full(len(offsets) - 1, default, dtype=flat_paths.dtype)
     for i in nb.prange(len(offsets) - 1):
@@ -42,7 +42,7 @@ def min_jagged_array(flat_paths, offsets, default=0):
     return out
 
 
-@nb.njit(parallel=True)
+@nb.njit(parallel=True, cache=True)
 def get_mask_offsets(offsets, mask):
     N = len(offsets)
     lengths = np.zeros(N, dtype=np.int32)
