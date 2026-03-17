@@ -113,7 +113,7 @@ def parallel_call_notebooks(
             raise_errors=raise_errors,
         )
         if jobs:
-            all_jobs.extend(jobs)    
+            all_jobs.extend(jobs)
     # Clean up generated Python files if leave=False
     if not leave:
         for file in files:
@@ -158,7 +158,6 @@ def parallel_call_notebook(
         convertNotebook(notebook, file)
     if freeze_support:
         add_freeze_support(file)
-    process_name = file.split('/')[-1].split('.')[0]
     jobs = parallel_call_python(
         file,
         arg_list,
@@ -167,16 +166,15 @@ def parallel_call_notebook(
         workers=workers,
         sleep=sleep,
         errout_suffix=errout_suffix,
-        process_name=process_name,
         return_jobs=return_jobs,
         raise_errors=raise_errors,
-    )    
+    )
     # Clean up generated Python file if leave=False
     if not leave:
         try:
             os.remove(file)
         except FileNotFoundError:
-            pass    
+            pass
     return jobs
 
 
@@ -188,27 +186,30 @@ def parallel_call_python(
     workers=2,
     sleep=0,
     errout_suffix=False,
-    process_name='process',
     return_jobs=False,
     raise_errors=False,
 ):
     start = time.time()
     jobs = []
     mode = 'w' if errout_suffix else 'a+'
+    process_name = file.split('/')[-1].split('.')[0]
     supported_characters = string.ascii_lowercase + string.ascii_uppercase + string.digits + '-_'
     for i in range(len(arg_list)):
         arg = arg_list[i]
-        suffix = str(i)
+
         if errout_suffix:
             try:
                 temp = json.loads(arg)
-                suffix += '_'.join(temp.values())
+                suffix = '_'.join(temp.values())
             except (json.JSONDecodeError, TypeError):
                 suffix += str(arg)
-        suffix += '_' + process_name
+        else:
+            suffix = f'{i}_'
+        suffix += process_name
         suffix = ''.join([s for s in suffix if s in supported_characters])
-        stdout_file = stdout_path.replace('.txt', '_' + suffix + '.txt')
-        stderr_file = stderr_path.replace('.txt', '_' + suffix + '.txt')
+        stdout_file = stdout_path.replace('.txt', f'_{suffix}.txt')
+        stderr_file = stderr_path.replace('.txt', f'_{suffix}.txt')
+        print(stderr_file)
         jobs.append([i, file, arg, stdout_file, stderr_file])
     parallel_call_jobs(jobs, mode=mode, workers=workers, sleep=sleep, raise_errors=raise_errors)
     end = time.time()
