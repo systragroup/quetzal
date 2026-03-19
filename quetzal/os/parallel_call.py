@@ -93,13 +93,12 @@ def parallel_call_notebooks(
             os.system('jupyter nbconvert --to python %s' % notebook)
         if not os.path.exists(file):  # jupyter nb convert failed, for instance, jupyter is not recognized
             convertNotebook(notebook, file)
-            if freeze_support:
-                add_freeze_support(file)
+        if freeze_support:
+            add_freeze_support(file)
     # Call parallel_call_python for each (notebook, arg) pair
     for i in range(len(arg_list)):
         file = files[i]
         arg = arg_list[i]
-        process_name = file.split('/')[-1].split('.')[0]
         jobs = parallel_call_python(
             file,
             [arg],  # Pass arg as a single-item list
@@ -108,7 +107,6 @@ def parallel_call_notebooks(
             workers=workers,
             sleep=sleep,
             errout_suffix=errout_suffix,
-            process_name=process_name,
             return_jobs=True,
             raise_errors=raise_errors,
         )
@@ -178,6 +176,26 @@ def parallel_call_notebook(
     return jobs
 
 
+def extract_alphanumeric_parts(val):
+    '''Extract alphanumeric characters from nested dict/list structure without recursion.'''
+    result = []
+    stack = [val]
+
+    while stack:
+        item = stack.pop(0)
+        if isinstance(item, dict):
+            stack.extend(item.values())
+        elif isinstance(item, list):
+            stack.extend(item)
+        elif isinstance(item, (str, int, float)):
+            s = str(item)
+            filtered = ''.join(c for c in s if c.isalnum())
+            if filtered:
+                result.append(filtered)
+
+    return ''.join(result)
+
+
 def parallel_call_python(
     file,
     arg_list,
@@ -193,25 +211,37 @@ def parallel_call_python(
     jobs = []
     mode = 'w' if errout_suffix else 'a+'
     process_name = file.split('/')[-1].split('.')[0]
-    supported_characters = string.ascii_lowercase + string.ascii_uppercase + string.digits + '-_'
+    supported_characters = (
+        string.ascii_lowercase + string.ascii_uppercase + string.digits + '-_'
+    )
     for i in range(len(arg_list)):
         arg = arg_list[i]
-
+        suffix = ''
         if errout_suffix:
             try:
                 temp = json.loads(arg)
-                suffix = '_'.join(temp.values())
+                if isinstance(temp, dict):
+                    parts = []
+                    for val in temp.values():
+                        part = extract_alphanumeric_parts(val)
+                        if part:
+                            parts.append(part)
+                    suffix = '_'.join(parts) if parts else str(i)
+                else:
+                    suffix = extract_alphanumeric_parts(temp) or str(i)
             except (json.JSONDecodeError, TypeError):
-                suffix += str(arg)
+                suffix = extract_alphanumeric_parts(arg) or str(i)
         else:
-            suffix = f'{i}_'
-        suffix += process_name
+            suffix = f'{i}'
+        suffix += '_' + process_name
         suffix = ''.join([s for s in suffix if s in supported_characters])
         stdout_file = stdout_path.replace('.txt', f'_{suffix}.txt')
         stderr_file = stderr_path.replace('.txt', f'_{suffix}.txt')
         print(stderr_file)
         jobs.append([i, file, arg, stdout_file, stderr_file])
-    parallel_call_jobs(jobs, mode=mode, workers=workers, sleep=sleep, raise_errors=raise_errors)
+    parallel_call_jobs(
+        jobs, mode=mode, workers=workers, sleep=sleep, raise_errors=raise_errors
+    )
     end = time.time()
     print(int(end - start), 'seconds')
     if return_jobs:
