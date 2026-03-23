@@ -5,6 +5,7 @@ import time
 import uuid
 from subprocess import Popen
 import string
+from typing import Any
 
 import nbformat
 from nbconvert import PythonExporter
@@ -176,8 +177,8 @@ def parallel_call_notebook(
     return jobs
 
 
-def extract_alphanumeric_parts(val):
-    '''Extract alphanumeric characters from nested dict/list structure without recursion.'''
+def extract_alphanumeric_parts(val: Any) -> list[str]:
+    """Extract alphanumeric characters from nested dict/list structure without recursion."""
     result = []
     stack = [val]
 
@@ -193,7 +194,7 @@ def extract_alphanumeric_parts(val):
             if filtered:
                 result.append(filtered)
 
-    return ''.join(result)
+    return result
 
 
 def parallel_call_python(
@@ -211,26 +212,17 @@ def parallel_call_python(
     jobs = []
     mode = 'w' if errout_suffix else 'a+'
     process_name = file.split('/')[-1].split('.')[0]
-    supported_characters = (
-        string.ascii_lowercase + string.ascii_uppercase + string.digits + '-_'
-    )
+    supported_characters = string.ascii_lowercase + string.ascii_uppercase + string.digits + '-_'
     for i in range(len(arg_list)):
         arg = arg_list[i]
         suffix = ''
         if errout_suffix:
             try:
                 temp = json.loads(arg)
-                if isinstance(temp, dict):
-                    parts = []
-                    for val in temp.values():
-                        part = extract_alphanumeric_parts(val)
-                        if part:
-                            parts.append(part)
-                    suffix = '_'.join(parts) if parts else str(i)
-                else:
-                    suffix = extract_alphanumeric_parts(temp) or str(i)
+                parts = extract_alphanumeric_parts(temp)
+                suffix = '_'.join(parts) if parts else str(i)
             except (json.JSONDecodeError, TypeError):
-                suffix = extract_alphanumeric_parts(arg) or str(i)
+                suffix = '_'.join(extract_alphanumeric_parts(arg)) or str(i)
         else:
             suffix = f'{i}'
         suffix += '_' + process_name
@@ -239,9 +231,7 @@ def parallel_call_python(
         stderr_file = stderr_path.replace('.txt', f'_{suffix}.txt')
         print(stderr_file)
         jobs.append([i, file, arg, stdout_file, stderr_file])
-    parallel_call_jobs(
-        jobs, mode=mode, workers=workers, sleep=sleep, raise_errors=raise_errors
-    )
+    parallel_call_jobs(jobs, mode=mode, workers=workers, sleep=sleep, raise_errors=raise_errors)
     end = time.time()
     print(int(end - start), 'seconds')
     if return_jobs:
