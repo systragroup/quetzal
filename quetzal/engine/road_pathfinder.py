@@ -377,6 +377,15 @@ def msa_roadpathfinder(
         links_to_sparse = {v: k for k, v in _tmp_dict.items()}
         tracker_plugin.init(links_sparse_index=links.index, links_to_sparse=links_to_sparse)
 
+    # pred origins and odv for each segments fro quick access as it doesnt change between iteration
+    segment_origins = {}
+    segment_odv = {}
+    for seg in segments:
+        segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
+        odv = segment_volumes[['origin_sparse', 'destination_sparse', seg]].values
+        segment_origins[seg] = origins
+        segment_odv[seg] = odv
+
     relgap = np.inf
     relgap_list = []
     print('it  |  Phi    |  Rel Gap (%)') if log else None
@@ -387,13 +396,12 @@ def msa_roadpathfinder(
         #
 
         for seg in segments:
-            segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
-            odv = segment_volumes[['origin_sparse', 'destination_sparse', seg]].values
-
+            origins = segment_origins[seg]
+            odv = segment_odv[seg]
             segment_links = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
             _, pred = shortest_path(segment_links, (seg, 'cost'), index, origins, num_cores=num_cores)
 
-            links[(seg, 'auxiliary_flow')] = assign_volume_parallel(odv, pred, ab_volumes.copy())
+            links[(seg, 'auxiliary_flow')] = assign_volume_parallel(odv, pred, ab_volumes.copy(), num_cores)
 
             if tracker_plugin():
                 tracker_plugin.assign(ab_volumes, odv, pred, seg, i)
@@ -562,6 +570,15 @@ def expanded_roadpathfinder(
     if tracker_plugin():
         tracker_plugin.init(links_sparse_index=links.index, links_to_sparse=index)
 
+    # pred origins and odv for each segments fro quick access as it doesnt change between iteration
+    segment_origins = {}
+    segment_odv = {}
+    for seg in segments:
+        segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
+        odv = segment_volumes[['origin_sparse', 'destination_sparse', seg]].values
+        segment_origins[seg] = origins
+        segment_odv[seg] = odv
+
     relgap = np.inf
     relgap_list = []
     print('it  |  Phi    |  Rel Gap (%)') if log else None
@@ -572,9 +589,8 @@ def expanded_roadpathfinder(
         #
         for seg in segments:
             # filter links to allowed segment
-            segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
-            odv = segment_volumes[['origin_sparse', 'destination_sparse', seg]].values
-
+            origins = segment_origins[seg]
+            odv = segment_odv[seg]
             segment_links = expanded_links[expanded_links['segments'].apply(lambda x: seg in x)]
             _, pred = shortest_path(segment_links, (seg, 'cost'), index, origins, num_cores=num_cores)
             # assign volume
