@@ -116,35 +116,32 @@ def get_relgap(links: pd.DataFrame, segments: list[str]) -> float:
     return 100 * (flow_cost - aux_cost) / flow_cost
 
 
-@nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)  # parallel=> not thread safe. do not!
-def assign_volume_parallel(odv, predecessors, volumes, num_cores=1):
-    # volumes is a numba dict with all the key initialized
-    if num_cores == 1:
-        return assign_volume(odv, predecessors, volumes)
+@nb.njit(locals={'predecessors': nb.int32[:, ::1], 'lut': nb.int32[:, ::1]}, parallel=True)
+def assign_volume_parallel(odv, predecessors, lut, num_cores=1):
+    # lut is a lookup table (matrix) nodes to link [i,j]=>link.
     nb.set_num_threads(num_cores)
+    nlen = len(lut)
     odv_mat = np.array_split(odv, num_cores)
-    volumes_mat = [volumes.copy() for _ in range(num_cores)]
+    volumes_mat = np.zeros((num_cores, nlen))
     for j in nb.prange(num_cores):
-        assign_volume(odv_mat[j], predecessors, volumes_mat[j])
-    for d in volumes_mat:
-        for k in d:
-            volumes[k] += d[k]
+        assign_volume(odv_mat[j], predecessors, volumes_mat[j], lut)
 
-    return volumes
+    return volumes_mat.sum(axis=0)
 
 
-@nb.njit(locals={'predecessors': nb.int32[:, ::1]})  # parallel=> not thread safe. do not!
-def assign_volume(odv, predecessors, volumes):
-    # volumes is a numba dict with all the key initialized
-    for i in range(len(odv)):  # nb.prange(len(odv)):
+@nb.njit(locals={'predecessors': nb.int32[:, ::1], 'lut': nb.int32[:, ::1]})
+def assign_volume(odv, predecessors, volumes, lut):
+    # volumes is an array. index of links. lut is a lookup table (matrix) nodes to link [i,j]=>link.
+
+    for i in range(len(odv)):
         origin = odv[i, 0]
         destination = odv[i, 1]
         v = odv[i, 2]
         if v > 0:
             path = get_node_path(predecessors, origin, destination)
-            path = list(zip(path[:-1], path[1:]))
-            for key in path:
-                volumes[key] += v
+            for j in range(len(path) - 1):
+                index = lut[path[j], path[j + 1]]  # get links
+                volumes[index] += v
     return volumes
 
 
@@ -219,20 +216,14 @@ def get_derivative(plinks: pl.DataFrame, vdf, cost_functions, segments, h=0.001,
 
 
 @nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)  # parallel=> not thread safe. do not!
-def assign_volume_on_links_parallel(odv, predecessors, volumes, num_cores=1):
-    # volumes is a numba dict with all the key initialized
-    if num_cores == 1:
-        return assign_volume_on_links(odv, predecessors, volumes)
+def assign_volume_on_links_parallel(odv, predecessors, nlen, num_cores=1):
     nb.set_num_threads(num_cores)
     odv_mat = np.array_split(odv, num_cores)
-    volumes_mat = [volumes.copy() for _ in range(num_cores)]
+    volumes_mat = np.zeros((num_cores, nlen))
     for j in nb.prange(num_cores):
         assign_volume_on_links(odv_mat[j], predecessors, volumes_mat[j])
-    for d in volumes_mat:
-        for k in d:
-            volumes[k] += d[k]
 
-    return volumes
+    return volumes_mat.sum(axis=0)
 
 
 @nb.njit(locals={'predecessors': nb.int32[:, ::1]})  # parallel=> not thread safe. do not!
@@ -243,7 +234,7 @@ def assign_volume_on_links(odv, predecessors, volumes):
         destination = odv[i, 1]
         v = odv[i, 2]
         if v > 0:
-            # our nodes are alreadt links in the original Graph
+            # our nodes are already links in the original Graph
             path = get_node_path(predecessors, origin, destination)
             for key in path:
                 volumes[key] += v

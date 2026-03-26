@@ -362,9 +362,12 @@ def msa_roadpathfinder(
     links['sparse_b'] = links['b'].apply(lambda x: index.get(x))
     links = links.reset_index().set_index(['sparse_a', 'sparse_b'])
 
-    # init numba dict with (a, b, base_flow)
-    # in the volumes assignment, start with base_flow (ex: network preloaded with buses on road)
-    ab_volumes = init_ab_volumes(links.index)
+    # make lut
+    tup_to_index = {tup: i for i, tup in enumerate(links.index)}
+    lut = np.empty((len(links), len(links)), dtype=np.int32)
+    for tup, i in tup_to_index.items():
+        lut[tup] = i
+
     # initialization
     links['jam_time'] = jam_time(to_polars(links), vdf, 'flow', time_col=time_col)
     for seg in segments:
@@ -373,6 +376,8 @@ def msa_roadpathfinder(
     # init track links
 
     if tracker_plugin():
+        # only use for tracker. should change tracker to not use ab_volumes
+        ab_volumes = init_ab_volumes(links.index)  # index is a,b here
         _tmp_dict = links['index'].to_dict()
         links_to_sparse = {v: k for k, v in _tmp_dict.items()}
         tracker_plugin.init(links_sparse_index=links.index, links_to_sparse=links_to_sparse)
@@ -401,7 +406,7 @@ def msa_roadpathfinder(
             segment_links = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
             _, pred = shortest_path(segment_links, (seg, 'cost'), index, origins, num_cores=num_cores)
 
-            links[(seg, 'auxiliary_flow')] = assign_volume_parallel(odv, pred, ab_volumes.copy(), num_cores)
+            links[(seg, 'auxiliary_flow')] = assign_volume_parallel(odv, pred, lut, num_cores)
 
             if tracker_plugin():
                 tracker_plugin.assign(ab_volumes, odv, pred, seg, i)
@@ -554,10 +559,8 @@ def expanded_roadpathfinder(
     links = links[~links['sparse_index'].isnull()]
     links = links.reset_index().set_index('sparse_index')  # keep index as column
     links.index = links.index.astype(int)
+    nlen = max(links.index) + 1  # use in assigment. links may drop some index because we drop zones
 
-    # init numba dict with (links, 0)
-    ab_volumes = init_numba_volumes(links.index)
-    tracker_plugin.value = links
     # initialization time
     links['jam_time'] = jam_time(to_polars(links), vdf, 'flow', time_col=time_col)
     for seg in segments:
@@ -568,6 +571,8 @@ def expanded_roadpathfinder(
 
     # init track links
     if tracker_plugin():
+        # only use for tracker. should change tracker to not use ab_volumes
+        ab_volumes = init_numba_volumes(links.index)
         tracker_plugin.init(links_sparse_index=links.index, links_to_sparse=index)
 
     # pred origins and odv for each segments fro quick access as it doesnt change between iteration
@@ -594,7 +599,8 @@ def expanded_roadpathfinder(
             segment_links = expanded_links[expanded_links['segments'].apply(lambda x: seg in x)]
             _, pred = shortest_path(segment_links, (seg, 'cost'), index, origins, num_cores=num_cores)
             # assign volume
-            links[(seg, 'auxiliary_flow')] = assign_volume_on_links_parallel(odv, pred, ab_volumes.copy(), num_cores)
+            volumes_arr = assign_volume_on_links_parallel(odv, pred, nlen, num_cores)
+            links[(seg, 'auxiliary_flow')] = volumes_arr[links.index]  # links index may be not sorted are missing
             if tracker_plugin():
                 tracker_plugin.assign(ab_volumes, odv, pred, seg, i)
 
