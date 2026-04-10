@@ -11,15 +11,11 @@ from functools import wraps
 import warnings
 
 
-
 def deprecated_method(method):
     @wraps(method)
     def decorated(self, *args, **kwargs):
         message = 'Deprecated: replaced by %s' % method.__name__
-        warnings.warn(
-            message,
-            DeprecationWarning
-        )
+        warnings.warn(message, DeprecationWarning)
         print(message)
         return method(self, *args, **kwargs)
 
@@ -51,6 +47,7 @@ def geodataframe_place_holder(geom_type, prefix=None):
         i = 0
     return gpd.GeoDataFrame(pd.DataFrame([geo], columns=['geometry'], index=[i]))
 
+
 def rename_duplicate_stops(g, sep='_circular-fix_'):
     stop_set = {}
     u_ab = []
@@ -62,13 +59,13 @@ def rename_duplicate_stops(g, sep='_circular-fix_'):
         else:
             ab[1] = b + sep + str(stop_set[b])
             count = stop_set[b]
-        
+
         if a not in stop_set.keys():
             ab[0] = a
             stop_set.update({a: 0})
         else:
             ab[0] = a + sep + str(stop_set[a])
-            stop_set.update({a: count+1})
+            stop_set.update({a: count + 1})
 
         u_ab.append(ab)
 
@@ -76,11 +73,12 @@ def rename_duplicate_stops(g, sep='_circular-fix_'):
 
     return g
 
+
 def fix_circular_lines(links, nodes, on='trip_id', sep='_circular-fix_'):
     links = links.groupby(on).apply(rename_duplicate_stops, sep='_circular-fix_')
     # add new nodes
-    c_nodes = links[links['a'].apply(lambda x: sep in x )]['a']
-    c_nodes = c_nodes.append(links[links['b'].apply(lambda x: sep in x )]['b']).drop_duplicates()
+    c_nodes = links[links['a'].apply(lambda x: sep in x)]['a']
+    c_nodes = c_nodes.append(links[links['b'].apply(lambda x: sep in x)]['b']).drop_duplicates()
 
     c_nodes_geom = nodes.loc[c_nodes.apply(lambda x: x.split(sep)[0]).values]
     c_nodes_geom.index = c_nodes.values
@@ -90,7 +88,6 @@ def fix_circular_lines(links, nodes, on='trip_id', sep='_circular-fix_'):
 
 
 class IntegrityModel:
-
     def __init__(self, debug=False, walk_on_road=False, epsg=None, coordinates_unit=None, **kwargs):
 
         self.parameters = {}
@@ -101,12 +98,10 @@ class IntegrityModel:
         self.segments = ['all']
 
     def integrity_test_collision(
-        self,
-        sets=('links', 'nodes', 'zones', 'road_links', 'road_nodes'),
-        type_sensitive=True
+        self, sets=('links', 'nodes', 'zones', 'road_links', 'road_nodes'), type_sensitive=True
     ):
         """
-            * requires: links, nodes, zones
+        * requires: links, nodes, zones
         """
         if not type_sensitive:
             tuples = [(key, list(self.__getattribute__(key).index)) for key in sets]
@@ -139,13 +134,10 @@ class IntegrityModel:
                         raise AssertionError(message)
         if not type_sensitive:
             self.integrity_test_str_collision()
-        
-    def integrity_test_str_collision(
-        self,
-        sets=('links', 'nodes', 'zones', 'road_links', 'road_nodes')
-    ):
+
+    def integrity_test_str_collision(self, sets=('links', 'nodes', 'zones', 'road_links', 'road_nodes')):
         """
-            * requires: links, nodes, zones
+        * requires: links, nodes, zones
         """
         tuples = [(key, [str(i) for i in list(self.__getattribute__(key).index)]) for key in sets]
 
@@ -154,7 +146,7 @@ class IntegrityModel:
                 duplicates = list_duplicates(left_list)
                 assert len(duplicates) <= 0
             except AssertionError:
-                message = "Warning: str duplicates in %s.index" % (left)
+                message = 'Warning: str duplicates in %s.index' % (left)
                 print(message)
 
             left_set = set(left_list)
@@ -166,16 +158,13 @@ class IntegrityModel:
                         ilength = len(intersection)
                         assert ilength == 0
                     except AssertionError:
-                        message = "Warning: str values are shared between %s and %s indexes" % (left, right)
+                        message = 'Warning: str values are shared between %s and %s indexes' % (left, right)
                         print(message)
 
-    def integrity_fix_collision(
-        self,
-        prefixes={'nodes': 'node_', 'links': 'link_', 'zones': 'zone_'}
-    ):
+    def integrity_fix_collision(self, prefixes={'nodes': 'node_', 'links': 'link_', 'zones': 'zone_'}):
         """
-            * requires: links, nodes, zones
-            * builds: links, nodes, zones
+        * requires: links, nodes, zones
+        * builds: links, nodes, zones
         """
         try:
             self.integrity_test_collision()
@@ -187,13 +176,10 @@ class IntegrityModel:
             except AssertionError:
                 self._add_type_prefixes(prefixes)
 
-    def _add_type_prefixes(
-        self,
-        prefixes={'nodes': 'node_', 'links': 'link_', 'zones': 'zone_'}
-    ):
+    def _add_type_prefixes(self, prefixes={'nodes': 'node_', 'links': 'link_', 'zones': 'zone_'}):
         """
-            * requires: links, nodes, zones
-            * builds: links, nodes, zones
+        * requires: links, nodes, zones
+        * builds: links, nodes, zones
         """
         for key in prefixes.keys():
             attribute = self.__getattribute__(key)
@@ -207,7 +193,7 @@ class IntegrityModel:
                     self.__setattr__(key, label_links(link_like, prefixes['nodes']))
                 except (AttributeError, KeyError):  # KeyError: 'a'
                     print('can not add prefixes on table: ', key)
-        
+
         if 'road_nodes' in prefixes.keys():
             for key in ['road_links']:
                 try:
@@ -218,8 +204,8 @@ class IntegrityModel:
 
     def integrity_test_sequences(self):
         """
-            * requires: links
-            * builds: broken_sequences
+        * requires: links
+        * builds: broken_sequences
         """
         links = self.links.copy().sort_values('link_sequence')
         broken_sequences = []
@@ -228,10 +214,10 @@ class IntegrityModel:
             broken = tuple(subset['a'])[1:] != tuple(subset['b'])[:-1]
             if broken:
                 broken_sequences.append(trip_id)
-            message = "some lines have a broken pattern \n"
-            message += "ex : the following pattern is broken: a->b, b->c, d->e "
-            message += " because it misses the c->d link \n"
-            message += "broken lines: " + str(broken_sequences)
+            message = 'some lines have a broken pattern \n'
+            message += 'ex : the following pattern is broken: a->b, b->c, d->e '
+            message += ' because it misses the c->d link \n'
+            message += 'broken lines: ' + str(broken_sequences)
 
         self.broken_sequences = broken_sequences
         assert len(broken_sequences) == 0, message
@@ -243,8 +229,8 @@ class IntegrityModel:
 
     def integrity_fix_sequences(self):
         """
-            * requires: links
-            * builds: links
+        * requires: links
+        * builds: links
         """
         try:
             self.integrity_test_sequences()
@@ -277,19 +263,19 @@ class IntegrityModel:
             if start.max() > 1 or end.max() > 1:
                 circular_lines.append(trip_id)
 
-            message = "some lines stop many time at the same stop (circular) \n"
-            message += "ex : the following pattern is circular : a->b, b->c, c->d, d->b, b->f "
-            message += " because it stops twice in b \n"
-            message += "circular lines: " + str(circular_lines)
+            message = 'some lines stop many time at the same stop (circular) \n'
+            message += 'ex : the following pattern is circular : a->b, b->c, c->d, d->b, b->f '
+            message += ' because it stops twice in b \n'
+            message += 'circular lines: ' + str(circular_lines)
 
         self.circular_lines = circular_lines
         assert len(circular_lines) == 0, message
 
     def integrity_fix_circular_lines(self, method='drop', sep='_circular-fix_'):
         """
-            * requires: links, nodes
-            * builds: links, nodes
-            Either drop circular lines (method='drop') or create node duplicates (method='duplicate')
+        * requires: links, nodes
+        * builds: links, nodes
+        Either drop circular lines (method='drop') or create node duplicates (method='duplicate')
         """
         try:
             self.integrity_test_circular_lines()
@@ -298,13 +284,12 @@ class IntegrityModel:
                 is_circular = self.links['trip_id'].isin(self.circular_lines)
                 self.links = self.links.loc[~is_circular]
                 print('dropped circular lines: ' + str(self.circular_lines))
-            elif method=='duplicate':
+            elif method == 'duplicate':
                 self.links, self.nodes = fix_circular_lines(self.links, self.nodes, sep=sep)
-    
 
     def integrity_test_isolated_roads(self):
         """
-            * requires: road_links
+        * requires: road_links
         """
         g = nx.Graph()
         g.add_edges_from(self.road_links[['a', 'b']].values)
@@ -329,19 +314,19 @@ class IntegrityModel:
             if len(path_dict) < cutoff:
                 dead_ends.append(node)
 
-        message = "some directional road_links are dead-ends \n"
-        message += "ex 1 : if their is an a->b link and their is no link leaving b; b is a dead-nodes \n"
-        message += "ex 2 : in the given network (a->b, b->c, c->d, b->a) both c and d are dead-nodes \n"
+        message = 'some directional road_links are dead-ends \n'
+        message += 'ex 1 : if their is an a->b link and their is no link leaving b; b is a dead-nodes \n'
+        message += 'ex 2 : in the given network (a->b, b->c, c->d, b->a) both c and d are dead-nodes \n'
         message += "because you can not reach 'a' from them \n"
-        message += "the dead-rank of d is 0, the dead rank of c is 1 \n"
-        message += "dead-nodes: " + str(dead_ends)
+        message += 'the dead-rank of d is 0, the dead rank of c is 1 \n'
+        message += 'dead-nodes: ' + str(dead_ends)
 
         self.dead_ends = dead_ends
         assert len(dead_ends) == 0, message
 
     def integrity_test_nodeset_consistency(self):
         """
-            * requires: nodes, links
+        * requires: nodes, links
         """
 
         try:
@@ -390,7 +375,7 @@ class IntegrityModel:
 
     def integrity_test_road_nodeset_consistency(self):
         """
-            * requires: nodes, links
+        * requires: nodes, links
         """
         missing_road_nodes = self.road_link_nodeset() - self.road_nodeset()
 
@@ -402,12 +387,12 @@ class IntegrityModel:
 
     def integrity_test_road_duplicated_ab_links(self):
         msg = 'there is duplicated road links (same a,b for a link)'
-        assert not self.road_links.set_index(['a','b']).index.has_duplicates, msg
+        assert not self.road_links.set_index(['a', 'b']).index.has_duplicates, msg
 
     def integrity_fix_road_duplicated_ab_links(self, by='length', ascending=True):
         """
-            clean ab duplicates, keeping first after sorting by / ascending
-            (default = sort by length and keep shortest link)
+        clean ab duplicates, keeping first after sorting by / ascending
+        (default = sort by length and keep shortest link)
         """
         rl = self.road_links.sort_values(by, ascending=ascending)
         to_drop = rl[rl.duplicated(subset=['a', 'b'], keep='first')].index
@@ -419,16 +404,12 @@ class IntegrityModel:
         self.nodes = self.nodes.loc[list(self.link_nodeset())]
         try:
             self.integrity_fix_road_nodeset_consistency()
-        except KeyError:  # 'a'
+        except (KeyError, AttributeError):  # 'a'
             pass
 
-    def integrity_fix_road_nodeset_consistency(self): 
-        self.road_links = self.road_links.loc[
-            self.road_links['a'].isin(self.road_nodeset())
-        ]
-        self.road_links = self.road_links.loc[
-            self.road_links['b'].isin(self.road_nodeset())
-        ]
+    def integrity_fix_road_nodeset_consistency(self):
+        self.road_links = self.road_links.loc[self.road_links['a'].isin(self.road_nodeset())]
+        self.road_links = self.road_links.loc[self.road_links['b'].isin(self.road_nodeset())]
         self.road_nodes = self.road_nodes.loc[list(self.road_link_nodeset())]
 
     def integrity_test_road_network(self, cutoff=10):
@@ -454,17 +435,14 @@ class IntegrityModel:
         try:
             self.integrity_test_road_network()
         except AssertionError:
-            self.integrity_fix_road_network(
-                cutoff=cutoff,
-                recursive_depth=recursive_depth - 1
-            )
+            self.integrity_fix_road_network(cutoff=cutoff, recursive_depth=recursive_depth - 1)
 
     def integrity_test_duplicate_volumes(self):
         """
-            * requires: volumes
+        * requires: volumes
         """
         if hasattr(self, 'volumes') and self.volumes is not None:
-            assert(self.volumes.set_index(['origin', 'destination']).index.is_unique), 'Volumes contain duplicate values'
+            assert self.volumes.set_index(['origin', 'destination']).index.is_unique, 'Volumes contain duplicate values'
 
     def integrity_fix_duplicate_volumes(self):
         if hasattr(self, 'volumes') and self.volumes is not None:
@@ -475,18 +453,17 @@ class IntegrityModel:
         errors='ignore' can be passed
         """
         integrity_test_methods = [
-            m for m in list(dir(self))
-            if ('integrity_test_' in m) and ('integrity_test_all' not in m)
+            m for m in list(dir(self)) if ('integrity_test_' in m) and ('integrity_test_all' not in m)
         ]
         for name in integrity_test_methods:
             try:
                 try:
                     self.__getattribute__(name)()
                     if verbose:
-                        print("\x1b[32mpassed\x1b[0m:", name)
+                        print('\x1b[32mpassed\x1b[0m:', name)
                 except AssertionError as e:
                     if verbose:
-                        print("\x1b[1;31mfailed\x1b[0m:", name)
+                        print('\x1b[1;31mfailed\x1b[0m:', name)
                     if errors != 'ignore':
                         raise e
             except Exception as e:  # broad exception
