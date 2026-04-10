@@ -1,9 +1,4 @@
-## [FUTURE] (2026-03-02)
-
-## WIP
-
-* engine.fast_utils.py
-* start adding new way to compute paths and store it in LOS using numba, polars, jagged array and pyarrow.
+## [3.4.0] (2026-04-10)
 
 ## Features
 
@@ -27,6 +22,10 @@
 * build-system: Use Poetry as build system instead of autodiscovery.
 * CSA: Force string conversion of zone_to_ransit indexes when building connections
 * integrity_fix_nodeset_consistency: skip road_nodes if no road_links in the model.
+
+## WIP
+* engine.fast_utils.py
+* start adding new way to compute paths and store it in LOS using numba, polars, jagged array and pyarrow. 
 
 ## [3.3.0] (2026-02-04)
 
