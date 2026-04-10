@@ -7,17 +7,17 @@ import pandas as pd
 from tqdm import tqdm
 
 
-def rank_paths(paths, by='utility'):
+def rank_paths(paths, by="utility"):
     assert paths[by].isnull().sum() == 0
 
-    columns = ['origin', 'destination', 'route_type']
+    columns = ["origin", "destination", "route_type"]
     sorted_paths = paths.sort_values(by=columns + [by], ascending=True)
 
     flat = []
     for i in sorted_paths.groupby(columns)[by].count():
         flat += list(range(i))
 
-    sorted_paths['rank'] = flat
+    sorted_paths["rank"] = flat
     return sorted_paths
 
 
@@ -52,29 +52,29 @@ def plot_nests(nests):
     pos = {}
     levels = [0] * (max(lengths.values()) + 1)
     for key, x in lengths.items():
-        pos[key] = [levels[x], - x]
+        pos[key] = [levels[x], -x]
         levels[x] += 1
 
     plot = plt.axes()
     nx.draw(
         g,
         pos=pos,
-        node_color='white',
+        node_color="white",
         alpha=1,
         node_size=1000,
         arrows=False,
-        edge_color='green',
+        edge_color="green",
         font_size=15,
-        font_weight='normal',
+        font_weight="normal",
         labels={k: k for k in g.nodes},
-        axes=plot
+        axes=plot,
     )
     return plot
 
 
 def nested_logit_from_paths(
     paths,
-    od_cols=['origin', 'destination'],
+    od_cols=["origin", "destination"],
     mode_nests=None,
     phi=None,
     verbose=False,
@@ -85,9 +85,9 @@ def nested_logit_from_paths(
     return_od_tables=True,
     symmetric=False,
 ):
-    paths['index'] = paths.index
+    paths["index"] = paths.index
     paths.set_index(od_cols[0], drop=False, inplace=True)
-    paths.index.name = 'index'
+    paths.index.name = "index"
     planner = paths
 
     index = list(set(planner.index))
@@ -107,17 +107,19 @@ def nested_logit_from_paths(
         results = []
         with ProcessPoolExecutor(max_workers=workers) as executor:
             for group in tqdm(groups):
-                results.append(executor.submit(
-                    one_block_nested_logit_from_paths,
-                    planner.loc[group].set_index('index'),
-                    phi=phi,
-                    mode_nests=mode_nests,
-                    od_cols=od_cols,
-                    decimals=decimals,
-                    n_paths_max=n_paths_max,
-                    return_od_tables=return_od_tables,
-                    symmetric=symmetric,
-                ))
+                results.append(
+                    executor.submit(
+                        one_block_nested_logit_from_paths,
+                        planner.loc[group].set_index("index"),
+                        phi=phi,
+                        mode_nests=mode_nests,
+                        od_cols=od_cols,
+                        decimals=decimals,
+                        n_paths_max=n_paths_max,
+                        return_od_tables=return_od_tables,
+                        symmetric=symmetric,
+                    )
+                )
 
         paths_list = []
         mode_utilities_list = []
@@ -139,7 +141,7 @@ def nested_logit_from_paths(
         mp_list = []
         for group in tqdm(groups):
             p, mu, mp = one_block_nested_logit_from_paths(
-                planner.loc[group].set_index('index'),
+                planner.loc[group].set_index("index"),
                 phi=phi,
                 mode_nests=mode_nests,
                 od_cols=od_cols,
@@ -159,20 +161,20 @@ def nested_logit_from_paths(
 
 def one_block_nested_logit_from_paths(
     paths,
-    od_cols=['origin', 'destination'],
+    od_cols=["origin", "destination"],
     mode_nests=None,
     phi=None,
     verbose=False,
     decimals=None,  # minimum probability
     n_paths_max=None,
     return_od_tables=True,
-    symmetric=False
+    symmetric=False,
 ):
-    if 'segment' not in paths.columns:
-        paths['segment'] = 'all'
+    if "segment" not in paths.columns:
+        paths["segment"] = "all"
 
     if mode_nests is None:
-        mode_nests = {'root': list(set(paths['route_type']))}
+        mode_nests = {"root": list(set(paths["route_type"]))}
 
     g = nx.DiGraph(mode_nests)
     root = [n for n in g.nodes if g.in_degree(n) == 0][0]
@@ -189,29 +191,28 @@ def one_block_nested_logit_from_paths(
             parent = list(nx.neighbors(g.reverse(), mode))[0]
             phi[mode] = recursive_phi(parent)
             return phi[mode]
+
     phi = {n: recursive_phi(n) for n in g.nodes}
 
     ascending_modes = []
-    depth = max(g.out_degree(n) for n in g.nodes)
+    depth = max(lengths.values())
     for degree in range(depth, -1, -1):
         leaf_modes = [n for n in g.nodes if lengths[n] == degree]
         ascending_modes += leaf_modes
     descending_modes = list(reversed(ascending_modes))
 
     # rank_utilities
-    paths['rank'] = paths.groupby(
-        od_cols + ['route_type', 'segment']
-    )['utility'].rank('first', ascending=False)
-    paths['rank'] = paths['rank'].astype(int)
+    paths["rank"] = paths.groupby(od_cols + ["route_type", "segment"])["utility"].rank(
+        "first", ascending=False
+    )
+    paths["rank"] = paths["rank"].astype(int)
     if n_paths_max is not None:
-        paths = paths.loc[paths['rank'] <= n_paths_max]
-    stack = paths.set_index(
-        od_cols + ['route_type', 'segment', 'rank']
-    )['utility']
-    rank_utilities = stack.unstack(['route_type', 'rank'])
+        paths = paths.loc[paths["rank"] <= n_paths_max]
+    stack = paths.set_index(od_cols + ["route_type", "segment", "rank"])["utility"]
+    rank_utilities = stack.unstack(["route_type", "rank"])
     rank_utilities.fillna(-np.inf, inplace=True)
     mode_utilities = pd.DataFrame(index=rank_utilities.index)
-    mode_utilities.columns.name = 'route_type'
+    mode_utilities.columns.name = "route_type"
 
     # initialize all utilities at -inf
     for mode in ascending_modes:
@@ -221,32 +222,26 @@ def one_block_nested_logit_from_paths(
     # aggregate rank_utilities
     for mode in list(rank_utilities.columns.levels[0]):
         if verbose:
-            print('path utilities', mode, phi[mode], '->', mode)
-        mode_utilities[mode] = nest_utility(
-            rank_utilities[mode],
-            phi[mode]
-        )
+            print("path utilities", mode, phi[mode], "->", mode)
+        mode_utilities[mode] = nest_utility(rank_utilities[mode], phi[mode])
 
     # propagate utilities to higher modes (bottom -> up)
     for mode in ascending_modes:
         children = list(nx.neighbors(g, mode))
         if len(children):
             if verbose:
-                print('mode utilities', children, phi[mode], '->', mode)
-            mode_utilities[mode] = nest_utility(
-                mode_utilities[children],
-                phi=phi[mode]
-            )
+                print("mode utilities", children, phi[mode], "->", mode)
+            mode_utilities[mode] = nest_utility(mode_utilities[children], phi=phi[mode])
     mode_utilities = mode_utilities[descending_modes]
-    
+
     if symmetric:
         reversed_utilities = mode_utilities.swaplevel(0, 1)
-        reversed_utilities.index.names = od_cols + ['segment']
+        reversed_utilities.index.names = od_cols + ["segment"]
         mode_utilities = mode_utilities.add(reversed_utilities) / 2
 
     # initialize probabilities
     mode_probabilities = pd.DataFrame(index=rank_utilities.index)
-    mode_probabilities.columns.name = 'route_type'
+    mode_probabilities.columns.name = "route_type"
 
     # propagate probabilities
     mode_probabilities[descending_modes[0]] = 1  # root mode
@@ -254,14 +249,12 @@ def one_block_nested_logit_from_paths(
         children = list(nx.neighbors(g, mode))
         if len(children):
             if verbose:
-                print('mode probabilities', mode, phi[mode], '->', children)
+                print("mode probabilities", mode, phi[mode], "->", children)
             partial = nest_probabilities(
-                utilities=mode_utilities[children],
-                phi=phi[mode]
+                utilities=mode_utilities[children], phi=phi[mode]
             )
             mode_probabilities[children] = partial.multiply(
-                mode_probabilities[mode],
-                axis='index'
+                mode_probabilities[mode], axis="index"
             )
 
     mode_probabilities = mode_probabilities[descending_modes].fillna(0)
@@ -270,11 +263,8 @@ def one_block_nested_logit_from_paths(
     rank_probabilities = rank_utilities.copy()
     for mode in list(rank_utilities.columns.levels[0]):
         if verbose:
-            print('path probabilities', mode, phi[mode], '->', mode)
-        rank_probabilities[mode] = nest_probabilities(
-            rank_utilities[mode],
-            phi[mode]
-        )
+            print("path probabilities", mode, phi[mode], "->", mode)
+        rank_probabilities[mode] = nest_probabilities(rank_utilities[mode], phi[mode])
 
     # merge assignment probablities on paths
     if decimals is not None:
@@ -283,29 +273,29 @@ def one_block_nested_logit_from_paths(
         rounded = rank_probabilities
     rounded = rounded.replace(0, np.nan)
     rank_probabilities_s = rounded.stack().stack()
-    rank_probabilities_s.name = 'assignment_share'
+    rank_probabilities_s.name = "assignment_share"
 
     mode_probabilities_s = mode_probabilities.stack()
     mode_probabilities_s = mode_probabilities_s.loc[mode_probabilities_s > 0]
-    mode_probabilities_s.name = 'modal_split_share'
+    mode_probabilities_s.name = "modal_split_share"
 
     merged = pd.merge(
         rank_probabilities_s.reset_index(),
         mode_probabilities_s.reset_index(),
-        on=od_cols + ['route_type', 'segment']
+        on=od_cols + ["route_type", "segment"],
     )
-    merged['probability'] = merged['assignment_share'] * merged['modal_split_share']
+    merged["probability"] = merged["assignment_share"] * merged["modal_split_share"]
 
-    merge_columns = od_cols + ['route_type', 'segment', 'rank']
+    merge_columns = od_cols + ["route_type", "segment", "rank"]
 
-    paths['index'] = paths.index
+    paths["index"] = paths.index
     paths = pd.merge(
-        paths.drop('probability', axis=1, errors='ignore'),
-        merged[merge_columns + ['probability']],
+        paths.drop("probability", axis=1, errors="ignore"),
+        merged[merge_columns + ["probability"]],
         on=merge_columns,
-        suffixes=['_old', ''],
-        how='left'
-    ).set_index('index')
+        suffixes=["_old", ""],
+        how="left",
+    ).set_index("index")
     if not return_od_tables:
         mode_utilities = pd.DataFrame()
         mode_probabilities = pd.DataFrame()

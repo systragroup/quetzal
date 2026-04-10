@@ -12,7 +12,9 @@ def time_footpaths(links, footpaths):
     left = pd.merge(
         links[['b', 'arrival_time']],
         footpaths[['a', 'b', 'duration', 'model_index']],
-        left_on='b', right_on='a', suffixes=['_link', '']
+        left_on='b',
+        right_on='a',
+        suffixes=['_link', ''],
     )
 
     left['ready_time'] = left['arrival_time'] + left['duration']
@@ -52,7 +54,9 @@ def time_footpaths(links, footpaths):
     transfers = pd.merge_asof(
         left[['a', 'b', 'key', 'arrival_time', 'duration', 'model_index']],
         right[['departure_time', 'key']],
-        on='key', direction='forward', tolerance=1e6
+        on='key',
+        direction='forward',
+        tolerance=1e6,
     )
     # END MERGE GROUPBY
 
@@ -64,10 +68,9 @@ def time_footpaths(links, footpaths):
     transfers.sort_values('arrival_time', ascending=False, inplace=True)
     transfers = transfers.groupby(['a', 'b', 'departure_time'], as_index=False).first()
 
-    transfers[['departure_time', 'arrival_time']] = transfers[
-        ['arrival_time', 'departure_time']]
-    transfers['str'] = transfers['model_index'].astype(str) 
-    transfers['str'] += '_'+  transfers['departure_time'].astype(str) 
+    transfers[['departure_time', 'arrival_time']] = transfers[['arrival_time', 'departure_time']]
+    transfers['str'] = transfers['model_index'].astype(str)
+    transfers['str'] += '_' + transfers['departure_time'].astype(str)
     transfers['str'] += '_' + transfers['arrival_time'].astype(str)
     transfers['csa_index'] = 'footpath_' + transfers['str']
     transfers['trip_id'] = 'footpath_trip_' + transfers['str']
@@ -75,7 +78,7 @@ def time_footpaths(links, footpaths):
     return transfers[columns]
 
 
-def time_zone_to_transit(links, zone_to_transit, reindex=False,step = None):
+def time_zone_to_transit(links, zone_to_transit, reindex=False, step=None):
     ztt = zone_to_transit
     ztt['model_index'] = ztt.index
     # access
@@ -83,7 +86,9 @@ def time_zone_to_transit(links, zone_to_transit, reindex=False,step = None):
     df = pd.merge(
         left[['a', 'b', 'time', 'model_index']],
         links[['a', 'b', 'departure_time']],
-        left_on='b', right_on='a', suffixes=['_ztt', '_link']
+        left_on='b',
+        right_on='a',
+        suffixes=['_ztt', '_link'],
     )
     df['arrival_time'] = df['departure_time']
     df['departure_time'] = df['arrival_time'] - df['time']
@@ -97,7 +102,9 @@ def time_zone_to_transit(links, zone_to_transit, reindex=False,step = None):
     df = pd.merge(
         ztt[['a', 'b', 'time', 'model_index']],
         links[['a', 'b', 'arrival_time']],
-        left_on='a', right_on='b', suffixes=['_ztt', '_link']
+        left_on='a',
+        right_on='b',
+        suffixes=['_ztt', '_link'],
     )
     df['departure_time'] = df['arrival_time']
     df['arrival_time'] = df['departure_time'] + df['time']
@@ -111,23 +118,17 @@ def time_zone_to_transit(links, zone_to_transit, reindex=False,step = None):
     if reindex:
         df['csa_index'] = 'ztt_' + df['str'].astype(str)
     else:
-        df['csa_index'] = 'ztt_' + df['model_index'] + '_' + df['str'].astype(str)
+        df['csa_index'] = 'ztt_' + df['model_index'].astype(str) + '_' + df['str'].astype(str)
 
     df['trip_id'] = 'ztt_trip_' + df['str'].astype(str)
     if step is not None:
-        df["departure_time_round"] = df["departure_time"]//(step)
-        df = df.sort_values(by = "departure_time")
-        df = df.drop_duplicates(["a","b","departure_time_round","direction"])
+        df['departure_time_round'] = df['departure_time'] // (step)
+        df = df.sort_values(by='departure_time')
+        df = df.drop_duplicates(['a', 'b', 'departure_time_round', 'direction'])
     return df[['a', 'b', 'departure_time', 'arrival_time', 'trip_id', 'csa_index', 'model_index', 'direction']]
 
 
-def csa_profile(
-    connections,
-    target,
-    stop_set=None,
-    Ttrip=None,
-):
-
+def csa_profile(connections, target, stop_set=None, Ttrip=None):
     if stop_set is None:
         stop_set = {c['a'] for c in connections}.union({c['b'] for c in connections})
     if Ttrip is None:
@@ -194,18 +195,13 @@ def trip_bit(t, c_in, c_out, trip_connections):
     return trip[left:right]
 
 
-def path_to_boarding_links_and_boarding_path(
-    csa_path,
-    connection_trip,
-    trip_connections
-):
+def path_to_boarding_links_and_boarding_path(csa_path, connection_trip, trip_connections):
     link_path = []
     trips = set()
     boarding_links = []
 
     for i in range(len(csa_path) - 2):
-
-        c_in, c_out = csa_path[i: i + 2]
+        c_in, c_out = csa_path[i : i + 2]
 
         try:
             trip_in = connection_trip[c_in]
@@ -227,10 +223,14 @@ def pathfinder(
     time_expended_zone_to_transit,
     pseudo_connections,
     zone_set,
-    min_transfer_time=0, time_interval=None, cutoff=np.inf,
-    targets=None, workers=1, od_set=None,step = None
+    min_transfer_time=0,
+    time_interval=None,
+    cutoff=np.inf,
+    targets=None,
+    workers=1,
+    od_set=None,
+    step=None,
 ):
-
     targets = list(set(targets))
     if workers > 1:
         results = {}
@@ -238,10 +238,7 @@ def pathfinder(
         if len(targets) % workers > 0:
             chunksize += 1
         slices = [[i * chunksize, (i + 1) * chunksize] for i in range(workers)]
-        target_slices = [
-            targets[s[0]: min(s[1], len(targets))]
-            for s in slices
-        ]
+        target_slices = [targets[s[0] : min(s[1], len(targets))] for s in slices]
 
         with ProcessPoolExecutor(max_workers=workers) as executor:
             for i in range(workers):
@@ -255,7 +252,7 @@ def pathfinder(
                     time_interval=time_interval,
                     cutoff=cutoff,
                     workers=1,
-                    od_set=od_set
+                    od_set=od_set,
                 )
         to_return = pd.concat([r.result() for r in results.values()])
         return to_return.reset_index(drop=True)
@@ -311,17 +308,14 @@ def pathfinder(
         if slice_end == 0:
             ti_connections = decreasing_departure_connections[-slice_start:]
         else:
-            ti_connections = decreasing_departure_connections[-slice_start: -slice_end]
+            ti_connections = decreasing_departure_connections[-slice_start:-slice_end]
 
         forbidden = all_egress - egress_by_zone[target]
         if od_set is not None:
             forbidden.update(all_access - access_by_target[target])
         connections = [c for c in ti_connections if c['csa_index'] not in forbidden]
 
-        profile, predecessor = csa_profile(
-            connections, target=target,
-            stop_set=stop_set, Ttrip=Ttrip_inf.copy()
-        )
+        profile, predecessor = csa_profile(connections, target=target, stop_set=stop_set, Ttrip=Ttrip_inf.copy())
         predecessor.update({i: 'root' for i in egress_index})
 
         for source, source_profile in profile.items():
@@ -333,10 +327,6 @@ def pathfinder(
                 pareto.append((source, target, departure, arrival, c, path))
 
     pt_los = pd.DataFrame(
-        pareto,
-        columns=[
-            'origin', 'destination',
-            'departure_time', 'arrival_time', 'last_connection', 'csa_path'
-        ]
+        pareto, columns=['origin', 'destination', 'departure_time', 'arrival_time', 'last_connection', 'csa_path']
     )
     return pt_los
