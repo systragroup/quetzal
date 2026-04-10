@@ -26,6 +26,7 @@
 * step_logit: When sorting the logit nests, we were iterating over the maximum number of children (out_degrees) instead of the mode_nests depth.
 * build-system: Use Poetry as build system instead of autodiscovery.
 * CSA: Force string conversion of zone_to_ransit indexes when building connections
+* integrity_fix_nodeset_consistency: skip road_nodes if no road_links in the model.
 
 ## [3.3.0] (2026-02-04)
 
