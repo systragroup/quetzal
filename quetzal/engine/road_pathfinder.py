@@ -132,7 +132,7 @@ def concat_connectors_to_roads(road_links, zone_to_road, segments, time_col='tim
     if aon:
         columns = ['a', 'b', time_col]
         links = pd.concat([road_links[columns], zone_to_road[columns]])
-        links.index = links.index.astype(str)
+        # links.index = links.index.astype(str)
         return links
     else:
         if 'vdf' not in road_links.columns:
@@ -143,7 +143,7 @@ def concat_connectors_to_roads(road_links, zone_to_road, segments, time_col='tim
             road_links['segments'] = [set(segments) for _ in range(len(road_links))]
 
         links = pd.concat([road_links, zone_to_road])
-        links.index = links.index.astype(str)
+        # links.index = links.index.astype(str)
 
         links['flow'] = 0
         links['auxiliary_flow'] = 0
@@ -550,7 +550,7 @@ def expanded_roadpathfinder(
     expanded_links = expanded_links.reset_index().set_index(['sparse_a', 'sparse_b'])
 
     # turn penalties to sparse index tuple dict {(0,1): turn_penalty}
-    turn_penalties = {(index[k], index[v]): turn_penalty for k, values in turn_penalties.items() for v in values}
+    turn_penalties = {(index.get(k), index.get(v)): turn_penalty for k, ls in turn_penalties.items() for v in ls}
     expanded_links['turn_penalty'] = expanded_links.index.map(turn_penalties).fillna(0)
 
     # add sparse index to links

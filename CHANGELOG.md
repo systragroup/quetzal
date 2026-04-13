@@ -1,3 +1,9 @@
+## [3.4.1] (2026-04-13)
+
+## bug fixes
+* road_pathfinder: do not force index to string when using expanded_path
+* road_pathfinder: accept turn_penalties on missing links without throwing an error.
+
 ## [3.4.0] (2026-04-10)
 
 ## Features
