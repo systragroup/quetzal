@@ -75,7 +75,7 @@ def shift_loadedlinks_alightings(load_df, load_columns=['load'], alighting_colum
     last.index += 1
 
     # Shift alightings
-    load_df = load_df.append(last).reset_index(drop=True)
+    load_df =  pd.concat([load_df, last]).reset_index(drop=True)
     temp_a = load_df[alighting_columns].copy()
     temp_a.index += 1
     load_df[alighting_columns] = temp_a
