@@ -353,9 +353,9 @@ def merge_on_connector(
     """
     # init the pt_los df (each od)
     df = pd.DataFrame(od_set, columns=['origin', 'destination'])
-
+    # TODO  have a way to select columns to merge. we could want to groupby mode_type_egress for example
     zone_to_transit = zone_to_transit[['a', 'b', 'time', 'route_type', 'model_index']]
-    for col in ['route_type', 'model_index']:  #
+    for col in ['route_type', 'model_index']:  # convert to category before merge: save memory.
         zone_to_transit[col] = zone_to_transit[col].astype('category')
 
     # merge access connector
@@ -363,7 +363,6 @@ def merge_on_connector(
     df = df.drop(columns='a').rename(columns={'b': 'stop_access'})
 
     # merge egress connector
-    # TODO rename _access _egress
     df = df.merge(zone_to_transit, left_on='destination', right_on='b', suffixes=['_access', '_egress'])
     df = df.drop(columns='b').rename(columns={'a': 'stop_egress'})
 
