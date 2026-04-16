@@ -4,6 +4,7 @@ from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+import numba as nb
 
 
 def time_footpaths(links, footpaths):
@@ -219,18 +220,7 @@ def path_to_boarding_links_and_boarding_path(csa_path, connection_trip, trip_con
     return link_path, boarding_links
 
 
-def pathfinder(
-    time_expended_zone_to_transit,
-    pseudo_connections,
-    zone_set,
-    min_transfer_time=0,
-    time_interval=None,
-    cutoff=np.inf,
-    targets=None,
-    workers=1,
-    od_set=None,
-    step=None,
-):
+def pathfinder(pseudo_connections, zone_set, time_interval=None, cutoff=np.inf, targets=None, workers=1, od_set=None):
     targets = list(set(targets))
     if workers > 1:
         results = {}
@@ -245,10 +235,8 @@ def pathfinder(
                 results[i] = executor.submit(
                     pathfinder,
                     targets=target_slices[i],
-                    time_expended_zone_to_transit=time_expended_zone_to_transit,
                     pseudo_connections=pseudo_connections,
                     zone_set=zone_set,
-                    min_transfer_time=min_transfer_time,
                     time_interval=time_interval,
                     cutoff=cutoff,
                     workers=1,
@@ -302,8 +290,8 @@ def pathfinder(
     for target in tqdm(targets):
         # BUILD CONNECTIONS
         start, end = time_interval[0], time_interval[1] + cutoff
-        slice_end = bisect.bisect_left(departure_times, start)
         end = max([t for t in egress_time_dict[target] if t <= end] + [0])
+        slice_end = bisect.bisect_left(departure_times, start)
         slice_start = bisect.bisect_right(departure_times, end)
         if slice_end == 0:
             ti_connections = decreasing_departure_connections[-slice_start:]
@@ -330,3 +318,114 @@ def pathfinder(
         pareto, columns=['origin', 'destination', 'departure_time', 'arrival_time', 'last_connection', 'csa_path']
     )
     return pt_los
+
+
+def pathfinder_on_stops(pseudo_connections):
+    targets = list(pseudo_connections['b'].unique())
+    stop_set = set(pseudo_connections['a']).union(set(pseudo_connections['b']))
+    Ttrip_inf = {t: float('inf') for t in set(pseudo_connections['trip_id'])}
+    columns = ['a', 'b', 'departure_time', 'arrival_time', 'csa_index', 'trip_id']
+    decreasing_departure_connections = pseudo_connections[columns].to_dict(orient='records')
+
+    pareto = []
+    for target in targets:
+        ti_connections = decreasing_departure_connections
+        connections = [c for c in ti_connections]
+        profile, predecessor = csa_profile(connections, target=target, stop_set=stop_set, Ttrip=Ttrip_inf.copy())
+        for source, source_profile in profile.items():
+            for departure, arrival, c in source_profile:
+                path = get_path(predecessor, c)
+                pareto.append((source, target, departure, arrival, path))
+
+    pt_los = pd.DataFrame(pareto, columns=['origin', 'destination', 'departure_time', 'arrival_time', 'csa_path'])
+    return pt_los
+
+
+def merge_on_connector(
+    pt_los: pd.DataFrame, zone_to_transit: pd.DataFrame, od_set: list[tuple], groupby=['origin', 'destination']
+):
+    # init the pt_los df (each od)
+    df = pd.DataFrame(od_set, columns=['origin', 'destination'])
+
+    zone_to_transit = zone_to_transit[['a', 'b', 'time', 'route_type']]
+    for col in ['route_type']:  #
+        zone_to_transit[col] = zone_to_transit[col].astype('category')
+
+    # merge access connector
+    df = df.merge(zone_to_transit, left_on='origin', right_on='a')
+    df = df.drop(columns='a').rename(columns={'b': 'stop_origin'})
+
+    # merge egress connector
+    # TODO rename _access _egress
+    df = df.merge(zone_to_transit, left_on='destination', right_on='b', suffixes=['_origin', '_destination'])
+    df = df.drop(columns='b').rename(columns={'a': 'stop_destination'})
+
+    # convert to category before merge. this save a lot of memory
+    for col in ['origin', 'destination', 'stop_origin', 'stop_destination']:
+        df[col] = df[col].astype('category')
+    for col in ['origin', 'destination']:
+        pt_los[col] = pt_los[col].astype('category')
+
+    # merge stop to stop csa on OD
+    pt_los = pt_los.rename(columns={'origin': 'stop_origin', 'destination': 'stop_destination'})
+    df = df.merge(pt_los, on=['stop_origin', 'stop_destination'])
+
+    # compute actal time ()
+    df['departure_time'] = df['departure_time'] - df['time_origin']
+    df['arrival_time'] = df['arrival_time'] + df['time_destination']
+
+    # group data for the pareto by group [['origin', 'destination']]
+    df['pareto_group'] = df.groupby(groupby, group_keys=False).ngroup()
+    df = df.sort_values('pareto_group')
+
+    # filter big los with pareto
+    mask = pareto_per_groups(df['departure_time'].values, df['arrival_time'].values, df['pareto_group'].values)
+    df = df.iloc[mask]
+
+    return df  # this is pt_los
+
+
+def pareto(departures: np.ndarray, arrivals: np.ndarray) -> np.ndarray[bool]:
+    """
+    sort departures and arrivals then apply pareto.
+    """
+    order = np.lexsort((arrivals, -departures))
+    return _pareto_sweep(arrivals, order)
+
+
+@nb.njit()
+def _pareto_sweep(arrivals: np.ndarray, order: np.ndarray) -> np.ndarray[bool]:
+    """
+    order = np.lexsort((arrivals, -departures))
+    """
+    keep = np.full(len(arrivals), False)
+    best_arr = np.inf
+
+    for i in order:
+        if arrivals[i] < best_arr:
+            keep[i] = True
+            best_arr = arrivals[i]
+
+    return keep
+
+
+def compute_offset(groups):
+    changes = np.where(groups[1:] != groups[:-1])[0]
+    offsets = np.concatenate(([0], changes, [len(groups)]))
+    return offsets
+
+
+def pareto_per_groups(all_departures: np.ndarray, all_arrivals: np.ndarray, groups: np.ndarray) -> np.ndarray[bool]:
+    """
+    Data must be sorted by groups (df = df.sort_values("group"), or continious by groups
+    """
+    # we have long array labels with groups. get offset (start:end) opf each groups
+    pareto_mask = np.full(len(all_departures), False)
+    offsets = compute_offset(groups)
+    for i in range(len(offsets) - 1):
+        start = offsets[i]
+        end = offsets[i + 1]
+        arrival = all_arrivals[start:end]
+        departure = all_departures[start:end]
+        pareto_mask[start:end] = pareto(arrival, departure)
+    return pareto_mask

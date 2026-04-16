@@ -42,10 +42,7 @@ def read_zippedpickles(folder, *args, **kwargs):
 
 
 def get_alighting_links(link_path, link_trip_dict):
-    try:
-        if len(link_path) == 0:
-            return []
-    except TypeError:  # object of type 'float' has no len()
+    if len(link_path) == 0:
         return []
     alighting_links = []
     trip = link_trip_dict[link_path[0]]
@@ -58,6 +55,21 @@ def get_alighting_links(link_path, link_trip_dict):
         former_link = link
     alighting_links.append(link)
     return alighting_links
+
+
+def get_boarding_links(link_path, trip_dict):
+    if len(link_path) == 0:
+        return []
+    prev_link = link_path[0]
+    res = [prev_link]
+    prev_trip = trip_dict.get(prev_link)
+    for curr_link in link_path[1:]:
+        curr_trip = trip_dict.get(curr_link)
+        if curr_trip != prev_trip:
+            res.append(curr_link)
+        prev_link = curr_link
+        prev_trip = curr_trip
+    return res
 
 
 class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
@@ -131,6 +143,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         workers=1,
         reindex=True,
         step=None,
+        on_stop=False,
     ):
         """Performs public transport pathfinder for connection scan models.
 
@@ -164,25 +177,42 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
                 reindex=reindex,
                 step=step,
             )
-        seta = set(self.time_expended_zone_to_transit['a'])
-        setb = set(self.time_expended_zone_to_transit['b'])
-        zone_set = set(self.zones.index).intersection(seta).intersection(setb)
-        targets = zone_set if targets is None else set(targets).intersection(zone_set)
 
-        self.pt_los = csa.pathfinder(
-            time_expended_zone_to_transit=self.time_expended_zone_to_transit,
-            pseudo_connections=self.pseudo_connections,
-            zone_set=zone_set,
-            targets=targets,
-            od_set=od_set,
-            min_transfer_time=min_transfer_time,
-            time_interval=time_interval,
-            cutoff=cutoff,
-            workers=workers,
-            step=step,
-        )
+        if on_stop:
+            # remove zone to road in pseudo. dont need them.
+            self.pseudo_connections = self.pseudo_connections[self.pseudo_connections['direction'] != 'access']
+            self.pseudo_connections = self.pseudo_connections[self.pseudo_connections['direction'] != 'egress']
+            pt_los_on_stop = csa.pathfinder_on_stops(pseudo_connections=self.pseudo_connections)
 
-    def analysis_paths(self, workers=1, alighting_links=True, alightings=True, keep_connection_path=False):
+            zones = self.zones.index
+
+            od_set = [(o, d) for o in zones for d in zones if o != d]
+            self.pt_los = csa.merge_on_connector(
+                pt_los=pt_los_on_stop,
+                zone_to_transit=self.zone_to_transit,
+                od_set=od_set,
+                groupby=['origin', 'destination'],
+            )
+
+        else:
+            seta = set(self.time_expended_zone_to_transit['a'])
+            setb = set(self.time_expended_zone_to_transit['b'])
+            zone_set = set(self.zones.index).intersection(seta).intersection(setb)
+            targets = zone_set if targets is None else set(targets).intersection(zone_set)
+
+            self.pt_los = csa.pathfinder(
+                pseudo_connections=self.pseudo_connections,
+                zone_set=zone_set,
+                targets=targets,
+                od_set=od_set,
+                time_interval=time_interval,
+                cutoff=cutoff,
+                workers=workers,
+            )
+
+    def analysis_paths(
+        self, workers=1, alighting_links=True, alightings=True, keep_connection_path=False, on_stop=False
+    ):
         """
 
         Parameters
@@ -201,6 +231,8 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         selfpt_los :
             add columns link_path, boarding_links, ntransfers, boardings, alighting_links, alightings
         """
+        if on_stop:
+            return self.analysis_paths_on_stop(boardings=True, alightings=alighting_links | alightings)
         pseudo_connections = self.pseudo_connections
         clean = pseudo_connections[['csa_index', 'trip_id']].dropna()
         clean.sort_values(by='csa_index', inplace=True)
@@ -255,3 +287,34 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             df['alightings'] = [[linkb[a] for a in al] for al in df['alighting_links']]
 
         self.pt_los = df
+
+    def analysis_paths_on_stop(self, boardings=True, alightings=True):
+        pseudo_connections = self.pseudo_connections
+        # pseudo_connections = pseudo_connections[pseudo_connections['direction'] != 'access']
+        # pseudo_connections = pseudo_connections[pseudo_connections['direction'] != 'egress']
+
+        pt_los = self.pt_los
+
+        model_index_dict = pseudo_connections.set_index('csa_index')['model_index'].to_dict()
+        pt_los['path'] = pt_los['csa_path'].apply(lambda ls: [*map(model_index_dict.get, ls)])
+
+        links_set = set(pseudo_connections['link_index'].dropna().values)
+        pt_los['link_path'] = pt_los['path'].apply(lambda ls: [x for x in ls if x in links_set])
+
+        trip_dict = self.links['trip_id'].to_dict()
+
+        if boardings:
+            pt_los['boarding_links'] = pt_los['link_path'].apply(get_boarding_links, trip_dict=trip_dict)
+
+            pt_los['ntransfers'] = pt_los['boarding_links'].apply(lambda b: len(b) - 1)
+            pt_los['ntransfers'] = np.clip(pt_los['ntransfers'], 0, a_max=None)
+
+            linka = self.links['a'].to_dict()
+            pt_los['boardings'] = pt_los['boarding_links'].apply(lambda ls: [*map(linka.get, ls)])
+        if alightings:
+            pt_los['alighting_links'] = pt_los['link_path'].apply(get_alighting_links, link_trip_dict=trip_dict)
+
+            linkb = self.links['b'].to_dict()
+            pt_los['alightings'] = pt_los['alighting_links'].apply(lambda ls: [*map(linkb.get, ls)])
+
+        self.pt_los = pt_los

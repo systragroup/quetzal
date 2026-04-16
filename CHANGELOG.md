@@ -2,6 +2,9 @@
 ## bug fixes
 shift_loadedlinks_alighting fix append on df
 
+## Features
+  csa: add csa_pathfinder on stops
+
 ## [3.4.1] (2026-04-13)
 
 ## bug fixes
