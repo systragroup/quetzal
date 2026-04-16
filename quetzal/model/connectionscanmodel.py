@@ -144,6 +144,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         reindex=True,
         step=None,
         on_stop=False,
+        groupby=['origin', 'destination'],
     ):
         """Performs public transport pathfinder for connection scan models.
 
@@ -166,6 +167,11 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             _description_, by
         reindex : bool, optional, default True
             _description_, by
+        on_stop : bool, optional, default False
+            perform csa on stops and add od connection
+        groupby : list[str] default ['origin', 'destination']
+            if on_stop is True, perform pareto on each groupby
+
         """
         time_interval = time_interval if time_interval is not None else self.time_interval
 
@@ -188,10 +194,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
 
             od_set = [(o, d) for o in zones for d in zones if o != d]
             self.pt_los = csa.merge_on_connector(
-                pt_los=pt_los_on_stop,
-                zone_to_transit=self.zone_to_transit,
-                od_set=od_set,
-                groupby=['origin', 'destination'],
+                pt_los=pt_los_on_stop, zone_to_transit=self.zone_to_transit, od_set=od_set, groupby=groupby
             )
 
         else:
@@ -297,20 +300,23 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
 
         model_index_dict = pseudo_connections.set_index('csa_index')['model_index'].to_dict()
         pt_los['path'] = pt_los['csa_path'].apply(lambda ls: [*map(model_index_dict.get, ls)])
+        # add origin and destination to path
+        pt_los['path'] = [[o] + p + [d] for o, p, d in pt_los[['origin', 'path', 'destination']].values]
 
         links_set = set(pseudo_connections['link_index'].dropna().values)
         pt_los['link_path'] = pt_los['path'].apply(lambda ls: [x for x in ls if x in links_set])
 
         trip_dict = self.links['trip_id'].to_dict()
 
+        pt_los['boarding_links'] = pt_los['link_path'].apply(get_boarding_links, trip_dict=trip_dict)
+
+        pt_los['ntransfers'] = pt_los['boarding_links'].apply(lambda b: len(b) - 1)
+        pt_los['ntransfers'] = np.clip(pt_los['ntransfers'], 0, a_max=None)
         if boardings:
-            pt_los['boarding_links'] = pt_los['link_path'].apply(get_boarding_links, trip_dict=trip_dict)
-
-            pt_los['ntransfers'] = pt_los['boarding_links'].apply(lambda b: len(b) - 1)
-            pt_los['ntransfers'] = np.clip(pt_los['ntransfers'], 0, a_max=None)
-
             linka = self.links['a'].to_dict()
             pt_los['boardings'] = pt_los['boarding_links'].apply(lambda ls: [*map(linka.get, ls)])
+        else:
+            pt_los = pt_los.drop(columns=['boarding_links'])
         if alightings:
             pt_los['alighting_links'] = pt_los['link_path'].apply(get_alighting_links, link_trip_dict=trip_dict)
 

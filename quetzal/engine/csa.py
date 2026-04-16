@@ -344,6 +344,11 @@ def pathfinder_on_stops(pseudo_connections):
 def merge_on_connector(
     pt_los: pd.DataFrame, zone_to_transit: pd.DataFrame, od_set: list[tuple], groupby=['origin', 'destination']
 ):
+    """
+    groupby=['origin', 'destination'] for pareto groups. can add route_type_access, route_type_egress
+    stop_egress
+
+    """
     # init the pt_los df (each od)
     df = pd.DataFrame(od_set, columns=['origin', 'destination'])
 
@@ -353,26 +358,26 @@ def merge_on_connector(
 
     # merge access connector
     df = df.merge(zone_to_transit, left_on='origin', right_on='a')
-    df = df.drop(columns='a').rename(columns={'b': 'stop_origin'})
+    df = df.drop(columns='a').rename(columns={'b': 'stop_access'})
 
     # merge egress connector
     # TODO rename _access _egress
-    df = df.merge(zone_to_transit, left_on='destination', right_on='b', suffixes=['_origin', '_destination'])
-    df = df.drop(columns='b').rename(columns={'a': 'stop_destination'})
+    df = df.merge(zone_to_transit, left_on='destination', right_on='b', suffixes=['_access', '_egress'])
+    df = df.drop(columns='b').rename(columns={'a': 'stop_egress'})
 
     # convert to category before merge. this save a lot of memory
-    for col in ['origin', 'destination', 'stop_origin', 'stop_destination']:
+    for col in ['origin', 'destination', 'stop_access', 'stop_egress']:
         df[col] = df[col].astype('category')
     for col in ['origin', 'destination']:
         pt_los[col] = pt_los[col].astype('category')
 
     # merge stop to stop csa on OD
-    pt_los = pt_los.rename(columns={'origin': 'stop_origin', 'destination': 'stop_destination'})
-    df = df.merge(pt_los, on=['stop_origin', 'stop_destination'])
+    pt_los = pt_los.rename(columns={'origin': 'stop_access', 'destination': 'stop_egress'})
+    df = df.merge(pt_los, on=['stop_access', 'stop_egress'])
 
-    # compute actal time ()
-    df['departure_time'] = df['departure_time'] - df['time_origin']
-    df['arrival_time'] = df['arrival_time'] + df['time_destination']
+    # compute actal time with access and egress
+    df['departure_time'] = df['departure_time'] - df['time_access']
+    df['arrival_time'] = df['arrival_time'] + df['time_egress']
 
     # group data for the pareto by group [['origin', 'destination']]
     df['pareto_group'] = df.groupby(groupby, group_keys=False).ngroup()
