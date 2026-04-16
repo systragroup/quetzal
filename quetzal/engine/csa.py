@@ -345,15 +345,17 @@ def merge_on_connector(
     pt_los: pd.DataFrame, zone_to_transit: pd.DataFrame, od_set: list[tuple], groupby=['origin', 'destination']
 ):
     """
-    groupby=['origin', 'destination'] for pareto groups. can add route_type_access, route_type_egress
+    takes the pt_los station to station, and merge on all the zone_to_road and apply pareto to each group in groupby
+    pt_los : csa pt_los station station.
+    groupby = ['origin', 'destination']: for pareto groups. can add route_type_access, route_type_egress
     stop_egress
 
     """
     # init the pt_los df (each od)
     df = pd.DataFrame(od_set, columns=['origin', 'destination'])
 
-    zone_to_transit = zone_to_transit[['a', 'b', 'time', 'route_type']]
-    for col in ['route_type']:  #
+    zone_to_transit = zone_to_transit[['a', 'b', 'time', 'route_type', 'model_index']]
+    for col in ['route_type', 'model_index']:  #
         zone_to_transit[col] = zone_to_transit[col].astype('category')
 
     # merge access connector
@@ -371,7 +373,7 @@ def merge_on_connector(
     for col in ['origin', 'destination']:
         pt_los[col] = pt_los[col].astype('category')
 
-    # merge stop to stop csa on OD
+    # merge station to station csa on OD
     pt_los = pt_los.rename(columns={'origin': 'stop_access', 'destination': 'stop_egress'})
     df = df.merge(pt_los, on=['stop_access', 'stop_egress'])
 
@@ -386,6 +388,11 @@ def merge_on_connector(
     # filter big los with pareto
     mask = pareto_per_groups(df['departure_time'].values, df['arrival_time'].values, df['pareto_group'].values)
     df = df.iloc[mask]
+
+    # add access and egress ntlegs. usefull to create a complete path (and drop dup later)
+    df['access'] = [*zip(df['origin'], df['model_index_access'])]
+    df['egress'] = [*zip(df['destination'], df['model_index_egress'])]
+    df = df.drop(columns=['model_index_access', 'model_index_egress'])
 
     return df  # this is pt_los
 
