@@ -126,9 +126,16 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             )
 
     def sample_volumes(
-        self, bidimentional_sampling=False, fit_sums=True, sample_weight=1, sample_size=None, inplace=True, **kwargs
+        self,
+        index_cols=['origin', 'destination'],
+        bidimentional_sampling=False,
+        fit_sums=True,
+        sample_weight=1,
+        sample_size=None,
+        inplace=True,
+        **kwargs,
     ):
-        od_volumes = self.volumes.set_index(['origin', 'destination'])
+        od_volumes = self.volumes.set_index(index_cols)
         # remove segments without volumes.
         columns = od_volumes.columns[od_volumes.sum(axis=0) > 0]
 
@@ -564,12 +571,15 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         los['volume'] = np.nansum(values, axis=1)
 
         if time_expanded:
-            los_volumes = self.te_los.groupby('path_id')[['volume'] + segments].sum()
-            path_id_list = list(self.los['path_id'])
-            volume_values = los_volumes.reindex(path_id_list).fillna(0).values
-            for c in los_volumes.columns:
-                self.los[c] = np.nan  # create_columns
-            self.los.loc[:, los_volumes.columns] = volume_values
+            try:
+                los_volumes = self.te_los.groupby('path_id')[['volume'] + segments].sum()
+                path_id_list = list(self.los['path_id'])
+                volume_values = los_volumes.reindex(path_id_list).fillna(0).values
+                for c in los_volumes.columns:
+                    self.los[c] = np.nan  # create_columns
+                self.los.loc[:, los_volumes.columns] = volume_values
+            except KeyError:
+                pass
 
     def step_assignment(
         self,
