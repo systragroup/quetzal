@@ -12,7 +12,7 @@ from shapely import get_coordinates
 from sklearn.neighbors import NearestNeighbors
 
 from quetzal.engine.fast_utils import get_path
-from quetzal.engine.pathfinder_utils import fast_dijkstra, sparse_matrix
+from quetzal.engine.pathfinder_utils import sparse_matrix
 from quetzal.engine.road_pathfinder import links_to_expanded_links
 from quetzal.os.parallel_call import parallel_executor
 from syspy.spatial.spatial import add_geometry_coordinates, plot_lineStrings
@@ -548,6 +548,7 @@ def Mapmatching(
 
     # Cree le link graph
     csgraph, link_index = sparse_matrix(expanded_links[['from_link', 'to_link', 'edge_cost']].values)
+    reversed_link_index = {v: k for k, v in link_index.items()}
 
     # mapping entre road et links. Crée un link virtuel par defaut pour les routes sans link
     candidat_links['link_a'] = candidat_links['road_a'].apply(
@@ -746,24 +747,10 @@ def Mapmatching(
     if routing:
         road_id_path = [x[1] for x in path]
         df_path = pd.DataFrame(road_id_path[1:], columns=['road_id'])
-
-        expanded_links = links_to_expanded_links(links.links, u_turns=False)
-
-        # expanded_links has no `path_prob`; use link length as edge cost.
-        length_by_link = links.links.set_index('index')['length'].to_dict()
-        expanded_links['edge_cost'] = expanded_links['to_link'].map(length_by_link)
-        expanded_links['edge_cost'] = expanded_links['edge_cost'].fillna(
-            expanded_links['from_link'].map(length_by_link)
-        )
-        expanded_links['edge_cost'] = expanded_links['edge_cost'].fillna(1.0)
-
-        csgraph, index = sparse_matrix(expanded_links[['from_link', 'to_link', 'edge_cost']].values)
-        reversed_index = {v: k for k, v in index.items()}
-
         df_path['road_key'] = df_path['road_id'].map(lambda x: links.links_index_dict.get(x, f'rlink_{int(x)}'))
 
         # Map matched road keys to sparse indices and drop unresolved endpoints.
-        df_path['from'] = df_path['road_key'].map(index)
+        df_path['from'] = df_path['road_key'].map(link_index)
         df_path['to'] = df_path['from'].shift(-1)
         routing_pairs = df_path[['from', 'to']].dropna().astype(int)
 
@@ -776,10 +763,10 @@ def Mapmatching(
         path_list = []
         for origin, destination in routing_pairs[['from', 'to']].values:
             if origin == destination:
-                path_list.append([reversed_index.get(origin)])
+                path_list.append([reversed_link_index.get(origin)])
                 continue
             path_idx = get_path(routing_predecessors, origin_pos[origin], destination)
-            path_list.append([*map(reversed_index.get, path_idx)])
+            path_list.append([*map(reversed_link_index.get, path_idx)])
 
         node_mat = pd.DataFrame()
         node_mat['road_link_list'] = path_list
