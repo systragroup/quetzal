@@ -686,27 +686,18 @@ def Mapmatching(
 
     # Dijkstra on the road network from node = indices to every other nodes.
     # From b to a.
-    pseudo_dist_matrix, pseudo_predecessors = dijkstra(
+    _, pseudo_predecessors = dijkstra(
         csgraph=pseudo_mat, directed=True, indices=pseudo_node_index[first_node], return_predecessors=True, limit=np.inf
     )
 
-    pseudo_dist_matrix = pd.DataFrame(pseudo_dist_matrix)
-
-    # pseudo_dist_matrix = pseudo_dist_matrix.rename(columns=pseudo_index_node)
-    pseudo_dist_matrix.index = pseudo_dist_matrix.index.map(pseudo_index_node)
-    pseudo_dist_matrix
-
-    pseudo_predecessors = pd.DataFrame(pseudo_predecessors)
-    pseudo_predecessors.index = pseudo_predecessors.index.map(pseudo_index_node)
-    pseudo_predecessors[0] = pseudo_predecessors[0].map(pseudo_index_node)
-
-    last_value = last_node
+    last_value = pseudo_node_index[last_node]
     path = [last_value]
     for i in range(len(candidat_links['ix_one'].unique())):
-        last_value = pseudo_predecessors.loc[last_value][0]
+        last_value = pseudo_predecessors[last_value]
         path.append(last_value)
     # path is a list of tuple (ix_one, road_id_b, road_b_offset). start at -1 and finish at 1 too many. (virtual nodes)
     # (0, 2485, 217.73975081147978)
+    path = [pseudo_index_node[p] for p in path]
     path.reverse()
 
     val = pd.DataFrame(path, columns=['index', 'road_id', 'offset']).set_index('index')[1:]
