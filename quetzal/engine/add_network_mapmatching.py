@@ -551,12 +551,12 @@ def Mapmatching(
     reversed_link_index = {v: k for k, v in link_index.items()}
 
     # mapping entre road et links. Crée un link virtuel par defaut pour les routes sans link
-    candidat_links['link_a'] = candidat_links['road_a'].apply(
-        lambda x: links.links_index_dict.get(x, f'rlink_{int(x)}')
-    )
-    candidat_links['link_b'] = candidat_links['road_b'].apply(
-        lambda x: links.links_index_dict.get(x, f'rlink_{int(x)}')
-    )
+    candidate_link_a = candidat_links['road_a'].map(links.links_index_dict)
+    candidate_link_b = candidat_links['road_b'].map(links.links_index_dict)
+    fallback_link_a = 'rlink_' + candidat_links['road_a'].astype(int).astype(str)
+    fallback_link_b = 'rlink_' + candidat_links['road_b'].astype(int).astype(str)
+    candidat_links['link_a'] = candidate_link_a.where(candidate_link_a.notna(), fallback_link_a)
+    candidat_links['link_b'] = candidate_link_b.where(candidate_link_b.notna(), fallback_link_b)
 
     # mapping link et graph index. Nan par défaut.
     candidat_links['from_sparse'] = candidat_links['link_a'].map(link_index)
@@ -674,7 +674,7 @@ def Mapmatching(
 
         # add penality of 1 per km over the limit.
         # candidat_links= candidat_links[candidat_links['speed']<MAX_SPEED]
-        candidat_links['path_prob'] += candidat_links['speed'].apply(lambda x: np.log10(max(x - MAX_SPEED, 1)))
+        candidat_links['path_prob'] += np.log10(np.maximum(candidat_links['speed'] - MAX_SPEED, 1))
 
     # tous les liens avec les noeuds virtuels (start finish) ont une prob constante (1 par defaut).
     ind = candidat_links['ix_one'] == -1
@@ -691,11 +691,7 @@ def Mapmatching(
     # candidat_links['b'] = candidat_links['ix_one'].apply(lambda x :dict_point_link.get(x)).astype(str)+'_'+candidat_links['road_b'].astype(str)  #+'_b'
     candidat_links['a'] = list(zip(candidat_links['ix_one'], candidat_links['road_a'], candidat_links['road_a_offset']))
     candidat_links['b'] = list(
-        zip(
-            candidat_links['ix_one'].apply(lambda x: dict_point_link.get(x)),
-            candidat_links['road_b'],
-            candidat_links['road_b_offset'],
-        )
+        zip(candidat_links['ix_one'].map(dict_point_link), candidat_links['road_b'], candidat_links['road_b_offset'])
     )
     first_node = candidat_links.iloc[0]['a']
     last_node = candidat_links.iloc[-1]['b']
@@ -716,7 +712,7 @@ def Mapmatching(
 
     pseudo_predecessors = pd.DataFrame(pseudo_predecessors)
     pseudo_predecessors.index = pseudo_predecessors.index.map(pseudo_index_node)
-    pseudo_predecessors[0] = pseudo_predecessors[0].apply(lambda x: pseudo_index_node.get(x))
+    pseudo_predecessors[0] = pseudo_predecessors[0].map(pseudo_index_node)
 
     last_value = last_node
     path = [last_value]
@@ -747,7 +743,9 @@ def Mapmatching(
     if routing:
         road_id_path = [x[1] for x in path]
         df_path = pd.DataFrame(road_id_path[1:], columns=['road_id'])
-        df_path['road_key'] = df_path['road_id'].map(lambda x: links.links_index_dict.get(x, f'rlink_{int(x)}'))
+        df_path['road_key'] = df_path['road_id'].map(links.links_index_dict)
+        fallback_road_key = 'rlink_' + df_path['road_id'].astype(int).astype(str)
+        df_path['road_key'] = df_path['road_key'].where(df_path['road_key'].notna(), fallback_road_key)
 
         # Map matched road keys to sparse indices and drop unresolved endpoints.
         df_path['from'] = df_path['road_key'].map(link_index)
