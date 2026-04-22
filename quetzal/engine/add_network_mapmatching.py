@@ -147,7 +147,7 @@ def nearest(one, links, radius=False):
     if radius:
         indices = indices.explode('index_nn')
 
-    indices['index_nn'] = indices['index_nn'].apply(lambda x: links.knn_dict.get(x))
+    indices['index_nn'] = indices['index_nn'].map(links.knn_dict)
 
     return indices
 
@@ -196,7 +196,7 @@ def get_candidat_links(gps_track, links, method):
             print(len(unfound_points), 'unfound with radius. use KNN for those')
             index_dict = {i: k for i, k in enumerate(unfound_points)}
             temp_candidat = nearest(gps_track.loc[unfound_points], links, radius=False).drop(columns=['rank'])
-            temp_candidat['ix_one'] = temp_candidat['ix_one'].apply(lambda x: index_dict.get(x))
+            temp_candidat['ix_one'] = temp_candidat['ix_one'].map(index_dict)
             candidat_links = pd.concat([candidat_links, temp_candidat]).sort_values('ix_one').reset_index(drop=True)
 
     return candidat_links.drop_duplicates(['ix_one', 'index_nn'])
@@ -477,8 +477,8 @@ def Mapmatching(
 
     candidat_links = get_candidat_links(gps_track, links, method=nearest_method)
 
-    candidat_links['road_geom_arr'] = candidat_links['index_nn'].apply(lambda x: links.geom_dict_arr.get(x))
-    candidat_links['gps_geom_arr'] = candidat_links['ix_one'].apply(lambda x: gps_dict_arr.get(x))
+    candidat_links['road_geom_arr'] = candidat_links['index_nn'].map(links.geom_dict_arr)
+    candidat_links['gps_geom_arr'] = candidat_links['ix_one'].map(gps_dict_arr)
 
     # Add gps distance to road.
     candidat_links['distance'] = point_to_line_distance(candidat_links['gps_geom_arr'], candidat_links['road_geom_arr'])
@@ -492,8 +492,8 @@ def Mapmatching(
     candidat_links = candidat_links.reset_index().drop(columns=['index'])
 
     # Add offset
-    candidat_links['road_geom'] = candidat_links['index_nn'].apply(lambda x: links.geom_dict.get(x))
-    candidat_links['gps_geom'] = candidat_links['ix_one'].apply(lambda x: gps_dict.get(x))
+    candidat_links['road_geom'] = candidat_links['index_nn'].map(links.geom_dict)
+    candidat_links['gps_geom'] = candidat_links['ix_one'].map(gps_dict)
     candidat_links['offset'] = project(candidat_links['road_geom'], candidat_links['gps_geom'], normalized=False)
     dict_distance = candidat_links.set_index(['ix_one', 'index_nn'])['distance'].to_dict()
 
@@ -572,7 +572,7 @@ def Mapmatching(
         origins = routing_pairs['from_sparse'].unique().tolist()
 
         # Dijkstra sur le graphe de liens
-        dist_matrix = fast_dijkstra(csgraph=csgraph, indices=origins, return_predecessors=False, limit=dijkstra_limit)
+        dist_matrix = dijkstra(csgraph=csgraph, indices=origins, return_predecessors=False, limit=dijkstra_limit)
         dist_matrix = pd.DataFrame(dist_matrix, index=origins)
 
         # Filtre pour ne garder que les destinations
@@ -599,7 +599,9 @@ def Mapmatching(
         routing_pairs2 = candidat_links.loc[unfound_mask, ['from_sparse', 'to_sparse']].astype(int)
         origins2 = routing_pairs2['from_sparse'].unique().tolist()
 
-        dist_matrix2 = fast_dijkstra(csgraph=csgraph, indices=origins2, return_predecessors=False, limit=np.inf)
+        dist_matrix2 = dijkstra(
+            csgraph=csgraph, directed=True, indices=origins2, return_predecessors=False, limit=np.inf
+        )
         dist_matrix2 = pd.DataFrame(dist_matrix2, index=origins2)
 
         destinations2 = routing_pairs2['to_sparse'].unique().tolist()
@@ -621,7 +623,7 @@ def Mapmatching(
     # Calcul probabilité
     # ======================================================
 
-    candidat_links['length'] = candidat_links['road_a'].apply(lambda x: links.length_dict.get(x))
+    candidat_links['length'] = candidat_links['road_a'].map(links.length_dict)
 
     candidat_links['dijkstra'] = (
         candidat_links['dijkstra']
@@ -643,7 +645,7 @@ def Mapmatching(
     )  # .fillna(5)
 
     # applique la distance entre les point gps a vers b
-    candidat_links['gps_distance'] = candidat_links['ix_one'].apply(lambda x: gps_dist_dict.get(x))  # .fillna(3)
+    candidat_links['gps_distance'] = candidat_links['ix_one'].map(gps_dist_dict)  # .fillna(3)
 
     # path prob
     candidat_links['path_prob'] = emission_logprob(candidat_links['distance_to_road'], SIGMA, POWER)
@@ -652,14 +654,14 @@ def Mapmatching(
     )
 
     if (turn_penalty == True) and ('bearing_dict' in links.__dict__.keys()):
-        candidat_links['angle'] = candidat_links['road_a'].apply(lambda x: links.bearing_dict.get(x)) - candidat_links[
-            'road_b'
-        ].apply(lambda x: links.bearing_dict.get(x))
+        candidat_links['angle'] = candidat_links['road_a'].map(links.bearing_dict) - candidat_links['road_b'].map(
+            links.bearing_dict
+        )
         candidat_links['path_prob'] += turning_penalty_logprob(candidat_links['angle'], BETA)
 
     if speed_limit:
         # (dist/1000)/(time/1000/3600) # speed in kmh
-        candidat_links['gps_time'] = candidat_links['ix_one'].apply(lambda x: timestamp_dict.get(x, 0)) / 1000 / 3600
+        candidat_links['gps_time'] = candidat_links['ix_one'].map(timestamp_dict).fillna(0) / 1000 / 3600
         candidat_links['speed'] = (candidat_links['dijkstra'] / 1000) / (candidat_links['gps_time'])
 
         # correction, on ne veut pas filtrer les chemins qui sont le meme link.
@@ -766,8 +768,8 @@ def Mapmatching(
         routing_pairs = df_path[['from', 'to']].dropna().astype(int)
 
         routing_origins = routing_pairs['from'].unique().tolist()
-        _, routing_predecessors = fast_dijkstra(
-            csgraph=csgraph, indices=routing_origins, return_predecessors=True, limit=np.inf
+        _, routing_predecessors = dijkstra(
+            csgraph=csgraph, directed=True, indices=routing_origins, return_predecessors=True, limit=np.inf
         )
         origin_pos = {origin: i for i, origin in enumerate(routing_origins)}
 
