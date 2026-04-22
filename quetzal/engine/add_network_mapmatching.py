@@ -509,13 +509,12 @@ def Mapmatching(
     candidat_links = candidat_links.sort_index()  # sorting by index
 
     # dict of each linked point (ix_one). if pts 10 is NaN, point 9 will be linked to point 11
-    dict_point_link = dict(
-        zip(list(candidat_links['ix_one'].unique())[:-1], list(candidat_links['ix_one'].unique())[1:])
-    )
+    ix_one_unique = candidat_links['ix_one'].unique()
+    dict_point_link = dict(zip(ix_one_unique[:-1], ix_one_unique[1:]))
 
-    candidat_links = candidat_links.groupby('ix_one').agg(list)
-    candidat_links = candidat_links.rename(columns={'index_nn': 'road_a'})
-    candidat_links = candidat_links.reset_index()
+    candidat_links = (
+        candidat_links.groupby('ix_one', sort=False)['index_nn'].agg(list).rename('road_a').reset_index()
+    )
 
     candidat_links['road_b'] = candidat_links['road_a'].shift(-1)  # .fillna(0)
     # remove last line (last node is virtual and linked to no one.)
