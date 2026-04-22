@@ -484,12 +484,11 @@ def Mapmatching(
     candidat_links['distance'] = point_to_line_distance(candidat_links['gps_geom_arr'], candidat_links['road_geom_arr'])
 
     candidat_links.sort_values(['ix_one', 'distance'], inplace=True)
-    len_list = candidat_links.groupby('ix_one')['index_nn'].agg(len).values
-    ranks = [i for length in len_list for i in range(length)]
-    candidat_links['actual_rank'] = ranks
-    candidat_links = candidat_links.loc[candidat_links['actual_rank'] < n_neighbors]
-    candidat_links = candidat_links[candidat_links['distance'] < distance_max]
-    candidat_links = candidat_links.reset_index().drop(columns=['index'])
+    candidat_links['actual_rank'] = candidat_links.groupby('ix_one').cumcount()
+    candidat_links = candidat_links.loc[
+        (candidat_links['actual_rank'] < n_neighbors) & (candidat_links['distance'] < distance_max)
+    ]
+    candidat_links = candidat_links.reset_index(drop=True)
 
     # Add offset
     candidat_links['road_geom'] = candidat_links['index_nn'].map(links.geom_dict)
