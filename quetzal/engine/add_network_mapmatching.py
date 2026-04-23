@@ -425,6 +425,238 @@ def Multi_Mapmatching(
     return vals, node_lists, unmatched_trip
 
 
+def _prepare_mapmatching_context(gps_track, dijkstra_limit, speed_limit):
+    if dijkstra_limit is None:
+        dijkstra_limit = add_geometry_coordinates(gps_track)[['x_geometry', 'y_geometry']].std().mean() / 2
+
+    gps_dict = gps_track['geometry'].to_dict()
+    gps_dict_arr = {key: item.coords[0] for key, item in gps_dict.items()}
+    gps_dist_dict = gps_track['geometry'].distance(gps_track.shift(-1)).to_dict()
+
+    timestamp_dict = None
+    if speed_limit:
+        convert_timestamp(gps_track)
+        timestamp_dict = (gps_track['timestamp'].shift(-1) - gps_track['timestamp']).to_dict()
+
+    return dijkstra_limit, gps_dict, gps_dict_arr, gps_dist_dict, timestamp_dict
+
+
+def _prepare_candidate_links(gps_track, links, gps_dict, gps_dict_arr, nearest_method, n_neighbors, distance_max):
+    candidat_links = get_candidat_links(gps_track, links, method=nearest_method)
+
+    candidat_links['road_geom_arr'] = candidat_links['index_nn'].map(links.geom_dict_arr)
+    candidat_links['gps_geom_arr'] = candidat_links['ix_one'].map(gps_dict_arr)
+    candidat_links['distance'] = point_to_line_distance(candidat_links['gps_geom_arr'], candidat_links['road_geom_arr'])
+
+    candidat_links.sort_values(['ix_one', 'distance'], inplace=True)
+    candidat_links['actual_rank'] = candidat_links.groupby('ix_one').cumcount()
+    candidat_links = candidat_links.loc[
+        (candidat_links['actual_rank'] < n_neighbors) & (candidat_links['distance'] < distance_max)
+    ]
+    candidat_links = candidat_links.reset_index(drop=True)
+
+    candidat_links['road_geom'] = candidat_links['index_nn'].map(links.geom_dict)
+    candidat_links['gps_geom'] = candidat_links['ix_one'].map(gps_dict)
+    candidat_links['offset'] = project(candidat_links['road_geom'], candidat_links['gps_geom'], normalized=False)
+    dict_distance = candidat_links.set_index(['ix_one', 'index_nn'])['distance'].to_dict()
+
+    candidat_links['index_nn'] = list(zip(candidat_links['index_nn'], candidat_links['offset']))
+    candidat_links = candidat_links.drop(
+        columns=['road_geom', 'gps_geom', 'road_geom_arr', 'gps_geom_arr', 'offset', 'distance', 'actual_rank']
+    )
+
+    candidat_links.loc[len(candidat_links)] = [candidat_links['ix_one'].max() + 1, candidat_links['index_nn'].iloc[-1]]
+    candidat_links.loc[-1] = [-1, candidat_links['index_nn'].iloc[0]]
+    candidat_links.index = candidat_links.index + 1
+    candidat_links = candidat_links.sort_index()
+
+    ix_one_unique = candidat_links['ix_one'].unique()
+    dict_point_link = dict(zip(ix_one_unique[:-1], ix_one_unique[1:]))
+
+    candidat_links = candidat_links.groupby('ix_one', sort=False)['index_nn'].agg(list).rename('road_a').reset_index()
+    candidat_links['road_b'] = candidat_links['road_a'].shift(-1)
+    candidat_links = candidat_links.iloc[:-1]
+    candidat_links = candidat_links.explode(column='road_a').explode(column='road_b').reset_index(drop=True)
+
+    candidat_links[['road_a', 'road_a_offset']] = pd.DataFrame(
+        candidat_links['road_a'].tolist(), index=candidat_links.index
+    )
+    candidat_links[['road_b', 'road_b_offset']] = pd.DataFrame(
+        candidat_links['road_b'].tolist(), index=candidat_links.index
+    )
+
+    return candidat_links, dict_distance, dict_point_link
+
+
+def _build_link_graph(links):
+    expanded_links = links_to_expanded_links(links.links, u_turns=False)
+    csgraph, link_index = sparse_matrix(expanded_links[['from_link', 'to_link', 'length']].values)
+    reversed_link_index = {v: k for k, v in link_index.items()}
+    return csgraph, link_index, reversed_link_index
+
+
+def _lookup_sparse_dijkstra_values(routing_pairs, dist_matrix, origin_sparse_indices):
+    dist_matrix = np.atleast_2d(dist_matrix)
+    origin_pos = {origin: i for i, origin in enumerate(origin_sparse_indices)}
+    from_sparse = routing_pairs['from_sparse'].to_numpy()
+    to_sparse = routing_pairs['to_sparse'].to_numpy()
+    row_index = np.fromiter((origin_pos[x] for x in from_sparse), dtype=np.int32, count=len(from_sparse))
+    dijkstra_values = dist_matrix[row_index, to_sparse]
+    dijkstra_values[np.isinf(dijkstra_values)] = np.nan
+    return dijkstra_values
+
+
+def _compute_link_dijkstra_distances(candidat_links, links, csgraph, link_index, dijkstra_limit):
+    candidat_links['link_a_label'] = candidat_links['road_a'].map(links.links_index_dict)
+    candidat_links['link_b_label'] = candidat_links['road_b'].map(links.links_index_dict)
+    candidat_links['from_sparse'] = candidat_links['link_a_label'].map(link_index)
+    candidat_links['to_sparse'] = candidat_links['link_b_label'].map(link_index)
+
+    valid_pairs = candidat_links[['from_sparse', 'to_sparse']].notna().all(axis=1)
+    routing_pairs = candidat_links.loc[valid_pairs, ['from_sparse', 'to_sparse']].astype(int)
+
+    origin_labels = candidat_links.loc[valid_pairs, 'link_a_label'].unique()
+    origin_sparse_indices = [link_index[label] for label in origin_labels]
+    dist_matrix = dijkstra(
+        csgraph=csgraph, indices=origin_sparse_indices, return_predecessors=False, limit=dijkstra_limit
+    )
+    candidat_links.loc[valid_pairs, 'dijkstra'] = _lookup_sparse_dijkstra_values(
+        routing_pairs, dist_matrix, origin_sparse_indices
+    )
+
+    unfound_mask = valid_pairs & candidat_links['dijkstra'].isna()
+    if unfound_mask.any():
+        remaining_routing_pairs = candidat_links.loc[unfound_mask, ['from_sparse', 'to_sparse']].astype(int)
+        remaining_origins = remaining_routing_pairs['from_sparse'].unique()
+        dist_matrix2 = dijkstra(
+            csgraph=csgraph, directed=True, indices=remaining_origins, return_predecessors=False, limit=np.inf
+        )
+        candidat_links.loc[unfound_mask, 'dijkstra'] = _lookup_sparse_dijkstra_values(
+            remaining_routing_pairs, dist_matrix2, remaining_origins
+        )
+
+    return candidat_links.drop(columns=['link_a_label', 'link_b_label', 'from_sparse', 'to_sparse'])
+
+
+def _compute_probability_scores(
+    candidat_links,
+    links,
+    dict_distance,
+    gps_dist_dict,
+    speed_limit,
+    timestamp_dict,
+    turn_penalty,
+    MAX_SPEED,
+    SIGMA,
+    BETA,
+    POWER,
+    DIFF,
+):
+    candidat_links['length'] = candidat_links['road_a'].map(links.length_dict)
+    candidat_links['dijkstra'] = (
+        candidat_links['dijkstra']
+        + candidat_links['length']
+        - candidat_links['road_a_offset']
+        + candidat_links['road_b_offset']
+    )
+
+    same_road = candidat_links['road_a'] == candidat_links['road_b']
+    candidat_links.loc[same_road, 'dijkstra'] = (
+        candidat_links.loc[same_road, 'road_b_offset'] - candidat_links.loc[same_road, 'road_a_offset']
+    )
+    candidat_links = candidat_links.drop(columns='length')
+
+    candidat_links['distance_to_road'] = candidat_links.set_index(['ix_one', 'road_a']).index.map(dict_distance.get)
+    candidat_links['gps_distance'] = candidat_links['ix_one'].map(gps_dist_dict)
+    candidat_links['path_prob'] = emission_logprob(candidat_links['distance_to_road'], SIGMA, POWER)
+    candidat_links['path_prob'] += transition_logprob(
+        candidat_links['dijkstra'], candidat_links['gps_distance'], BETA, DIFF
+    )
+
+    if turn_penalty and ('bearing_dict' in links.__dict__.keys()):
+        candidat_links['angle'] = candidat_links['road_a'].map(links.bearing_dict) - candidat_links['road_b'].map(
+            links.bearing_dict
+        )
+        candidat_links['path_prob'] += turning_penalty_logprob(candidat_links['angle'], BETA)
+
+    if speed_limit:
+        candidat_links['gps_time'] = candidat_links['ix_one'].map(timestamp_dict).fillna(0) / 1000 / 3600
+        candidat_links['speed'] = (candidat_links['dijkstra'] / 1000) / candidat_links['gps_time']
+        candidat_links.loc[same_road, 'speed'] = 0
+        candidat_links.loc[candidat_links['gps_time'] == 0, 'speed'] = 0
+        candidat_links['path_prob'] += np.log10(np.maximum(candidat_links['speed'] - MAX_SPEED, 1))
+
+    start_mask = candidat_links['ix_one'] == -1
+    end_mask = candidat_links['ix_one'] == candidat_links['ix_one'].max()
+    candidat_links.loc[start_mask, 'path_prob'] = 1
+    candidat_links.loc[end_mask, 'path_prob'] = 1
+    return candidat_links
+
+
+def _decode_mapmatching_path(candidat_links, dict_point_link):
+    candidat_links['a'] = list(zip(candidat_links['ix_one'], candidat_links['road_a'], candidat_links['road_a_offset']))
+    candidat_links['b'] = list(
+        zip(candidat_links['ix_one'].map(dict_point_link), candidat_links['road_b'], candidat_links['road_b_offset'])
+    )
+    first_node = candidat_links.iloc[0]['a']
+    last_node = candidat_links.iloc[-1]['b']
+
+    pseudo_mat, pseudo_node_index = sparse_matrix(candidat_links[['a', 'b', 'path_prob']].values.tolist())
+    pseudo_index_node = {v: k for k, v in pseudo_node_index.items()}
+    _, pseudo_predecessors = dijkstra(
+        csgraph=pseudo_mat, directed=True, indices=pseudo_node_index[first_node], return_predecessors=True, limit=np.inf
+    )
+
+    last_value = pseudo_node_index[last_node]
+    path = [last_value]
+    for i in range(len(candidat_links['ix_one'].unique())):
+        last_value = pseudo_predecessors[last_value]
+        path.append(last_value)
+    path = [pseudo_index_node[p] for p in path]
+    path.reverse()
+
+    val = pd.DataFrame(path, columns=['index', 'road_id', 'offset']).set_index('index')[1:]
+    val['road_id_b'] = val['road_id'].shift(-1)
+    val['offset_b'] = val['offset'].shift(-1)
+    val = val[:-1]
+    val = val.rename(columns={'road_id': 'road_id_a', 'offset': 'offset_a'})
+
+    dijkstra_dict = candidat_links.set_index(['ix_one', 'road_a', 'road_b'], drop=False)['dijkstra'].to_dict()
+    val['length'] = val.set_index([val.index, 'road_id_a', 'road_id_b']).index.map(dijkstra_dict.get)
+    return path, val
+
+
+def _build_routing_output(path, links, link_index, reversed_link_index, csgraph):
+    road_id_path = pd.Series([x[1] for x in path[1:]], dtype='object')
+    road_key = road_id_path.map(links.links_index_dict)
+    fallback_road_key = 'rlink_' + road_id_path.astype(int).astype(str)
+    road_key = road_key.where(road_key.notna(), fallback_road_key)
+
+    from_sparse = road_key.map(link_index)
+    from_values = from_sparse.iloc[:-1].to_numpy()
+    to_values = from_sparse.iloc[1:].to_numpy()
+    valid_pairs = pd.notna(from_values) & pd.notna(to_values)
+    routing_pairs = np.column_stack((from_values[valid_pairs], to_values[valid_pairs])).astype(np.int32)
+
+    routing_origins = np.unique(routing_pairs[:, 0])
+    _, routing_predecessors = dijkstra(
+        csgraph=csgraph, directed=True, indices=routing_origins, return_predecessors=True, limit=np.inf
+    )
+    origin_pos = {origin: i for i, origin in enumerate(routing_origins)}
+
+    path_list = []
+    for origin, destination in routing_pairs:
+        if origin == destination:
+            path_list.append([reversed_link_index.get(origin)])
+            continue
+        path_idx = get_path(routing_predecessors, origin_pos[origin], destination)
+        path_list.append([*map(reversed_link_index.get, path_idx)])
+
+    node_mat = pd.DataFrame()
+    node_mat['road_link_list'] = path_list
+    return node_mat, path_list
+
+
 def Mapmatching(
     gps_track: pd.DataFrame,
     links: RoadLinks,
@@ -458,233 +690,29 @@ def Mapmatching(
     Weight : 1/2 * 1/SIGMA**2 * (proj dist)**2 + 1/BETA * abs(dijkstra_dist - as_the_crow_flies_dist)
     """
 
-    if dijkstra_limit is None:
-        dijkstra_limit = add_geometry_coordinates(gps_track)[['x_geometry', 'y_geometry']].std().mean() / 2
-
-    gps_dict = gps_track['geometry'].to_dict()
-    gps_dict_arr = {key: item.coords[0] for key, item in gps_dict.items()}
-    # GPS point distance to next point.
-    gps_dist_dict = gps_track['geometry'].distance(gps_track.shift(-1)).to_dict()
-
-    if speed_limit:
-        convert_timestamp(gps_track)
-        timestamp_dict = (gps_track['timestamp'].shift(-1) - gps_track['timestamp']).to_dict()
-        # (dist/1000)/(time/1000/3600) # speed in kmh
-
-    # ======================================================
-    # Nearest roads and data preparation
-    # ======================================================
-
-    candidat_links = get_candidat_links(gps_track, links, method=nearest_method)
-
-    candidat_links['road_geom_arr'] = candidat_links['index_nn'].map(links.geom_dict_arr)
-    candidat_links['gps_geom_arr'] = candidat_links['ix_one'].map(gps_dict_arr)
-
-    # Add gps distance to road.
-    candidat_links['distance'] = point_to_line_distance(candidat_links['gps_geom_arr'], candidat_links['road_geom_arr'])
-
-    candidat_links.sort_values(['ix_one', 'distance'], inplace=True)
-    candidat_links['actual_rank'] = candidat_links.groupby('ix_one').cumcount()
-    candidat_links = candidat_links.loc[
-        (candidat_links['actual_rank'] < n_neighbors) & (candidat_links['distance'] < distance_max)
-    ]
-    candidat_links = candidat_links.reset_index(drop=True)
-
-    # Add offset
-    candidat_links['road_geom'] = candidat_links['index_nn'].map(links.geom_dict)
-    candidat_links['gps_geom'] = candidat_links['ix_one'].map(gps_dict)
-    candidat_links['offset'] = project(candidat_links['road_geom'], candidat_links['gps_geom'], normalized=False)
-    dict_distance = candidat_links.set_index(['ix_one', 'index_nn'])['distance'].to_dict()
-
-    # make tuple with road index and offset.
-    candidat_links['index_nn'] = list(zip(candidat_links['index_nn'], candidat_links['offset']))
-    candidat_links = candidat_links.drop(
-        columns=['road_geom', 'gps_geom', 'road_geom_arr', 'gps_geom_arr', 'offset', 'distance', 'actual_rank']
+    dijkstra_limit, gps_dict, gps_dict_arr, gps_dist_dict, timestamp_dict = _prepare_mapmatching_context(
+        gps_track, dijkstra_limit, speed_limit
     )
-
-    # add virtual nodes start and end.
-    candidat_links.loc[len(candidat_links)] = [candidat_links['ix_one'].max() + 1, candidat_links['index_nn'].iloc[-1]]
-    candidat_links.loc[-1] = [-1, candidat_links['index_nn'].iloc[0]]
-    candidat_links.index = candidat_links.index + 1  # shifting index
-    candidat_links = candidat_links.sort_index()  # sorting by index
-
-    # dict of each linked point (ix_one). if pts 10 is NaN, point 9 will be linked to point 11
-    ix_one_unique = candidat_links['ix_one'].unique()
-    dict_point_link = dict(zip(ix_one_unique[:-1], ix_one_unique[1:]))
-
-    candidat_links = candidat_links.groupby('ix_one', sort=False)['index_nn'].agg(list).rename('road_a').reset_index()
-
-    candidat_links['road_b'] = candidat_links['road_a'].shift(-1)  # .fillna(0)
-    # remove last line (last node is virtual and linked to no one.)
-    candidat_links = candidat_links.iloc[:-1]
-
-    # df.explode(column='A').explode(column='B')
-    candidat_links = candidat_links.explode(column='road_a').explode(column='road_b').reset_index(drop=True)
-
-    # unpack tuple road_ID, offset
-    candidat_links[['road_a', 'road_a_offset']] = pd.DataFrame(
-        candidat_links['road_a'].tolist(), index=candidat_links.index
+    candidat_links, dict_distance, dict_point_link = _prepare_candidate_links(
+        gps_track, links, gps_dict, gps_dict_arr, nearest_method, n_neighbors, distance_max
     )
-    candidat_links[['road_b', 'road_b_offset']] = pd.DataFrame(
-        candidat_links['road_b'].tolist(), index=candidat_links.index
+    csgraph, link_index, reversed_link_index = _build_link_graph(links)
+    candidat_links = _compute_link_dijkstra_distances(candidat_links, links, csgraph, link_index, dijkstra_limit)
+    candidat_links = _compute_probability_scores(
+        candidat_links,
+        links,
+        dict_distance,
+        gps_dist_dict,
+        speed_limit,
+        timestamp_dict,
+        turn_penalty,
+        MAX_SPEED,
+        SIGMA,
+        BETA,
+        POWER,
+        DIFF,
     )
-
-    # ======================================================
-    # DIJKSTRA sur graph de liens
-    # ======================================================
-
-    # Creation de la liste des liens étendus (link_a, link_b) pour faire le dijkstra sur les liens.
-    expanded_links = links_to_expanded_links(links.links, u_turns=False)
-
-    # Cree le sparse link graph
-    csgraph, link_index = sparse_matrix(expanded_links[['from_link', 'to_link', 'length']].values)
-    reversed_link_index = {v: k for k, v in link_index.items()}
-
-    candidat_links['link_a_label'] = candidat_links['road_a'].map(links.links_index_dict)
-    candidat_links['link_b_label'] = candidat_links['road_b'].map(links.links_index_dict)
-    candidat_links['from_sparse'] = candidat_links['link_a_label'].map(link_index)
-    candidat_links['to_sparse'] = candidat_links['link_b_label'].map(link_index)
-
-    valid_pairs = candidat_links[['from_sparse', 'to_sparse']].notna().all(axis=1)
-    routing_pairs = candidat_links.loc[valid_pairs, ['from_sparse', 'to_sparse']].astype(int)
-
-    origin = list(candidat_links.loc[valid_pairs, 'link_a_label'].unique())
-    origin_sparse_indices = [link_index[x] for x in origin]
-
-    dist_matrix = dijkstra(
-        csgraph=csgraph, indices=origin_sparse_indices, return_predecessors=False, limit=dijkstra_limit
-    )
-
-    # 5x faster than using pd dataframes for dist_matrix lookup.
-    origin_pos = {origin: i for i, origin in enumerate(origin_sparse_indices)}
-    from_sparse = routing_pairs['from_sparse'].to_numpy()
-    to_sparse = routing_pairs['to_sparse'].to_numpy()
-    row_index = np.fromiter((origin_pos[x] for x in from_sparse), dtype=np.int32)
-    dijkstra_values = dist_matrix[row_index, to_sparse]
-    dijkstra_values[np.isinf(dijkstra_values)] = np.nan
-    candidat_links.loc[valid_pairs, 'dijkstra'] = dijkstra_values
-
-    unfound_mask = valid_pairs & candidat_links['dijkstra'].isna()
-    if unfound_mask.any():
-        remaining_routing_pairs = candidat_links.loc[unfound_mask, ['from_sparse', 'to_sparse']].astype(int)
-        remaining_origins = remaining_routing_pairs['from_sparse'].unique()
-
-        dist_matrix2 = dijkstra(
-            csgraph=csgraph, directed=True, indices=remaining_origins, return_predecessors=False, limit=np.inf
-        )
-        dist_matrix2 = np.atleast_2d(dist_matrix2)
-        remaining_origin_pos = {origin: i for i, origin in enumerate(remaining_origins)}
-
-        from_sparse2 = remaining_routing_pairs['from_sparse'].to_numpy()
-        to_sparse2 = remaining_routing_pairs['to_sparse'].to_numpy()
-        row_index2 = np.fromiter((remaining_origin_pos[x] for x in from_sparse2), dtype=np.int32)
-        dijkstra_values2 = dist_matrix2[row_index2, to_sparse2]
-        dijkstra_values2[np.isinf(dijkstra_values2)] = np.nan
-        candidat_links.loc[unfound_mask, 'dijkstra'] = dijkstra_values2
-
-    candidat_links = candidat_links.drop(columns=['link_a_label', 'link_b_label', 'from_sparse', 'to_sparse'])
-
-    # ======================================================
-    # Calcul probabilité
-    # ======================================================
-
-    candidat_links['length'] = candidat_links['road_a'].map(links.length_dict)
-
-    candidat_links['dijkstra'] = (
-        candidat_links['dijkstra']
-        + candidat_links['length']
-        - candidat_links['road_a_offset']
-        + candidat_links['road_b_offset']
-    )
-    cond = candidat_links['road_a'] == candidat_links['road_b']
-    candidat_links.loc[cond, 'dijkstra'] = (
-        candidat_links.loc[cond, 'road_b_offset'] - candidat_links.loc[cond, 'road_a_offset']
-    )
-    candidat_links = candidat_links.drop(columns='length')
-
-    # candidat_links['dijkstra'] = np.abs(candidat_links['dijkstra'])
-
-    # applique la distance réelle entre la route et le point GPS.
-    candidat_links['distance_to_road'] = candidat_links.set_index(['ix_one', 'road_a']).index.map(
-        dict_distance.get
-    )  # .fillna(5)
-
-    # applique la distance entre les point gps a vers b
-    candidat_links['gps_distance'] = candidat_links['ix_one'].map(gps_dist_dict)  # .fillna(3)
-
-    # path prob
-    candidat_links['path_prob'] = emission_logprob(candidat_links['distance_to_road'], SIGMA, POWER)
-    candidat_links['path_prob'] += transition_logprob(
-        candidat_links['dijkstra'], candidat_links['gps_distance'], BETA, DIFF
-    )
-
-    if turn_penalty and ('bearing_dict' in links.__dict__.keys()):
-        candidat_links['angle'] = candidat_links['road_a'].map(links.bearing_dict) - candidat_links['road_b'].map(
-            links.bearing_dict
-        )
-        candidat_links['path_prob'] += turning_penalty_logprob(candidat_links['angle'], BETA)
-
-    if speed_limit:
-        # (dist/1000)/(time/1000/3600) # speed in kmh
-        candidat_links['gps_time'] = candidat_links['ix_one'].map(timestamp_dict).fillna(0) / 1000 / 3600
-        candidat_links['speed'] = (candidat_links['dijkstra'] / 1000) / (candidat_links['gps_time'])
-
-        # correction, on ne veut pas filtrer les chemins qui sont le meme link.
-        # si une route est en U par exemple, deux points peuvent se matche tres loins
-        # en routing sur la meme route et la vitesse devient > max.
-        candidat_links.loc[candidat_links['road_a'] == candidat_links['road_b'], 'speed'] = 0
-        # dont drop virtual nodes and observation at the same exact time (speed = inf)
-        candidat_links.loc[candidat_links['gps_time'] == 0, 'speed'] = 0
-
-        # add penality of 1 per km over the limit.
-        # candidat_links= candidat_links[candidat_links['speed']<MAX_SPEED]
-        candidat_links['path_prob'] += np.log10(np.maximum(candidat_links['speed'] - MAX_SPEED, 1))
-
-    # tous les liens avec les noeuds virtuels (start finish) ont une prob constante (1 par defaut).
-    ind = candidat_links['ix_one'] == -1
-    candidat_links.loc[ind, 'path_prob'] = 1
-
-    ind = candidat_links['ix_one'] == candidat_links['ix_one'].max()
-    candidat_links.loc[ind, 'path_prob'] = 1
-
-    # ======================================================
-    # Dijkstra sur pseudo graph
-    # ======================================================
-
-    # candidat_links['a'] = candidat_links['ix_one'].astype(str)+'_'+candidat_links['road_a'].astype(str)  #+'_a'
-    # candidat_links['b'] = candidat_links['ix_one'].apply(lambda x :dict_point_link.get(x)).astype(str)+'_'+candidat_links['road_b'].astype(str)  #+'_b'
-    candidat_links['a'] = list(zip(candidat_links['ix_one'], candidat_links['road_a'], candidat_links['road_a_offset']))
-    candidat_links['b'] = list(
-        zip(candidat_links['ix_one'].map(dict_point_link), candidat_links['road_b'], candidat_links['road_b_offset'])
-    )
-    first_node = candidat_links.iloc[0]['a']
-    last_node = candidat_links.iloc[-1]['b']
-    pseudo_mat, pseudo_node_index = sparse_matrix(candidat_links[['a', 'b', 'path_prob']].values.tolist())
-    pseudo_index_node = {v: k for k, v in pseudo_node_index.items()}
-
-    # Dijkstra on the road network from node = indices to every other nodes.
-    # From b to a.
-    _, pseudo_predecessors = dijkstra(
-        csgraph=pseudo_mat, directed=True, indices=pseudo_node_index[first_node], return_predecessors=True, limit=np.inf
-    )
-
-    last_value = pseudo_node_index[last_node]
-    path = [last_value]
-    for i in range(len(candidat_links['ix_one'].unique())):
-        last_value = pseudo_predecessors[last_value]
-        path.append(last_value)
-    # path is a list of tuple (ix_one, road_id_b, road_b_offset). start at -1 and finish at 1 too many. (virtual nodes)
-    # (0, 2485, 217.73975081147978)
-    path = [pseudo_index_node[p] for p in path]
-    path.reverse()
-
-    val = pd.DataFrame(path, columns=['index', 'road_id', 'offset']).set_index('index')[1:]
-    val['road_id_b'] = val['road_id'].shift(-1)
-    val['offset_b'] = val['offset'].shift(-1)
-    val = val[:-1]
-    val = val.rename(columns={'road_id': 'road_id_a', 'offset': 'offset_a'})
-    dijkstra_dict = candidat_links.set_index(['ix_one', 'road_a', 'road_b'], drop=False)['dijkstra'].to_dict()
-    val['length'] = val.set_index([val.index, 'road_id_a', 'road_id_b']).index.map(dijkstra_dict.get)
+    path, val = _decode_mapmatching_path(candidat_links, dict_point_link)
 
     if plot:
         f, ax = plt.subplots(figsize=(10, 10))
@@ -696,34 +724,7 @@ def Mapmatching(
     # Reconstruction du routing
     # ======================================================
     if routing:
-        road_id_path = pd.Series([x[1] for x in path[1:]], dtype='object')
-        road_key = road_id_path.map(links.links_index_dict)
-        fallback_road_key = 'rlink_' + road_id_path.astype(int).astype(str)
-        road_key = road_key.where(road_key.notna(), fallback_road_key)
-
-        # Map matched road keys to sparse indices and drop unresolved endpoints.
-        from_sparse = road_key.map(link_index)
-        from_values = from_sparse.iloc[:-1].to_numpy()
-        to_values = from_sparse.iloc[1:].to_numpy()
-        valid_pairs = pd.notna(from_values) & pd.notna(to_values)
-        routing_pairs = np.column_stack((from_values[valid_pairs], to_values[valid_pairs])).astype(np.int32)
-
-        routing_origins = np.unique(routing_pairs[:, 0])
-        _, routing_predecessors = dijkstra(
-            csgraph=csgraph, directed=True, indices=routing_origins, return_predecessors=True, limit=np.inf
-        )
-        origin_pos = {origin: i for i, origin in enumerate(routing_origins)}
-
-        path_list = []
-        for origin, destination in routing_pairs:
-            if origin == destination:
-                path_list.append([reversed_link_index.get(origin)])
-                continue
-            path_idx = get_path(routing_predecessors, origin_pos[origin], destination)
-            path_list.append([*map(reversed_link_index.get, path_idx)])
-
-        node_mat = pd.DataFrame()
-        node_mat['road_link_list'] = path_list
+        node_mat, path_list = _build_routing_output(path, links, link_index, reversed_link_index, csgraph)
 
         if plot:
             f, ax = plt.subplots(figsize=(10, 10))
