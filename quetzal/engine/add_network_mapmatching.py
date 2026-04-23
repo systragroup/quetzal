@@ -495,7 +495,7 @@ def _build_link_graph(links):
     return csgraph, link_index, reversed_link_index
 
 
-def _lookup_sparse_dijkstra_values(routing_pairs, dist_matrix, origin_sparse_indices):
+def _get_sparse_dijkstra_values(routing_pairs, dist_matrix, origin_sparse_indices):
     dist_matrix = np.atleast_2d(dist_matrix)
     origin_pos = {origin: i for i, origin in enumerate(origin_sparse_indices)}
     from_sparse = routing_pairs['from_sparse'].to_numpy()
@@ -520,7 +520,7 @@ def _compute_link_dijkstra_distances(candidat_links, links, csgraph, link_index,
     dist_matrix = dijkstra(
         csgraph=csgraph, indices=origin_sparse_indices, return_predecessors=False, limit=dijkstra_limit
     )
-    candidat_links.loc[valid_pairs, 'dijkstra'] = _lookup_sparse_dijkstra_values(
+    candidat_links.loc[valid_pairs, 'dijkstra'] = _get_sparse_dijkstra_values(
         routing_pairs, dist_matrix, origin_sparse_indices
     )
 
@@ -531,7 +531,7 @@ def _compute_link_dijkstra_distances(candidat_links, links, csgraph, link_index,
         dist_matrix2 = dijkstra(
             csgraph=csgraph, directed=True, indices=remaining_origins, return_predecessors=False, limit=np.inf
         )
-        candidat_links.loc[unfound_mask, 'dijkstra'] = _lookup_sparse_dijkstra_values(
+        candidat_links.loc[unfound_mask, 'dijkstra'] = _get_sparse_dijkstra_values(
             remaining_routing_pairs, dist_matrix2, remaining_origins
         )
 
