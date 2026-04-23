@@ -708,7 +708,7 @@ def Mapmatching(
         valid_pairs = pd.notna(from_values) & pd.notna(to_values)
         routing_pairs = np.column_stack((from_values[valid_pairs], to_values[valid_pairs])).astype(np.int32)
 
-        routing_origins = routing_pairs['from'].unique().tolist()
+        routing_origins = np.unique(routing_pairs[:, 0])
         _, routing_predecessors = dijkstra(
             csgraph=csgraph, directed=True, indices=routing_origins, return_predecessors=True, limit=np.inf
         )
