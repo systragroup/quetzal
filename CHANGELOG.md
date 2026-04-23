@@ -1,9 +1,12 @@
 ## [future] (2026-04-15)
 ## bug fixes
-shift_loadedlinks_alighting fix append on df
+* shift_loadedlinks_alighting fix append on df
 
 ## Features
-  csa: add csa_pathfinder on stops
+*  csa: add csa_pathfinder on stops
+
+## optimization
+* Logit: up to 2x faster and uses less memory using  pd.category and numpy
 
 ## [3.4.1] (2026-04-13)
 
