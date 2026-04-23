@@ -540,8 +540,8 @@ def Mapmatching(
     csgraph, link_index = sparse_matrix(expanded_links[['from_link', 'to_link', 'length']].values)
     reversed_link_index = {v: k for k, v in link_index.items()}
 
-    candidat_links['link_a_label'] = candidat_links['link_a'].map(links.links_index_dict)
-    candidat_links['link_b_label'] = candidat_links['link_b'].map(links.links_index_dict)
+    candidat_links['link_a_label'] = candidat_links['road_a'].map(links.links_index_dict)
+    candidat_links['link_b_label'] = candidat_links['road_b'].map(links.links_index_dict)
     candidat_links['from_sparse'] = candidat_links['link_a_label'].map(link_index)
     candidat_links['to_sparse'] = candidat_links['link_b_label'].map(link_index)
 
@@ -582,7 +582,7 @@ def Mapmatching(
         dijkstra_values2[np.isinf(dijkstra_values2)] = np.nan
         candidat_links.loc[unfound_mask, 'dijkstra'] = dijkstra_values2
 
-    candidat_links = candidat_links.drop(columns=['link_a', 'link_b', 'from_sparse', 'to_sparse'])
+    candidat_links = candidat_links.drop(columns=['link_a_label', 'link_b_label', 'from_sparse', 'to_sparse'])
 
     # ======================================================
     # Calcul probabilité
