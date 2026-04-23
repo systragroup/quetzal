@@ -512,9 +512,7 @@ def Mapmatching(
     ix_one_unique = candidat_links['ix_one'].unique()
     dict_point_link = dict(zip(ix_one_unique[:-1], ix_one_unique[1:]))
 
-    candidat_links = (
-        candidat_links.groupby('ix_one', sort=False)['index_nn'].agg(list).rename('road_a').reset_index()
-    )
+    candidat_links = candidat_links.groupby('ix_one', sort=False)['index_nn'].agg(list).rename('road_a').reset_index()
 
     candidat_links['road_b'] = candidat_links['road_a'].shift(-1)  # .fillna(0)
     # remove last line (last node is virtual and linked to no one.)
@@ -538,66 +536,48 @@ def Mapmatching(
     # Creation de la liste des liens étendus (link_a, link_b) pour faire le dijkstra sur les liens.
     expanded_links = links_to_expanded_links(links.links, u_turns=False)
 
-    # Length comme cout de chemin. Si pas de length, 1.
-    length_by_link = links.links.set_index('index')['length'].to_dict()
-    expanded_links['edge_cost'] = expanded_links['to_link'].map(length_by_link)
-    expanded_links['edge_cost'] = expanded_links['edge_cost'].fillna(expanded_links['from_link'].map(length_by_link))
-    expanded_links['edge_cost'] = expanded_links['edge_cost'].fillna(1.0)
-
-    # Cree le link graph
-    csgraph, link_index = sparse_matrix(expanded_links[['from_link', 'to_link', 'edge_cost']].values)
+    # Cree le sparse link graph
+    csgraph, link_index = sparse_matrix(expanded_links[['from_link', 'to_link', 'length']].values)
     reversed_link_index = {v: k for k, v in link_index.items()}
 
-    # mapping entre road et links. Crée un link virtuel par defaut pour les routes sans link
-    candidate_link_a = candidat_links['road_a'].map(links.links_index_dict)
-    candidate_link_b = candidat_links['road_b'].map(links.links_index_dict)
-    fallback_link_a = 'rlink_' + candidat_links['road_a'].astype(int).astype(str)
-    fallback_link_b = 'rlink_' + candidat_links['road_b'].astype(int).astype(str)
-    candidat_links['link_a'] = candidate_link_a.where(candidate_link_a.notna(), fallback_link_a)
-    candidat_links['link_b'] = candidate_link_b.where(candidate_link_b.notna(), fallback_link_b)
+    candidat_links['link_a_label'] = candidat_links['link_a'].map(links.links_index_dict)
+    candidat_links['link_b_label'] = candidat_links['link_b'].map(links.links_index_dict)
+    candidat_links['from_sparse'] = candidat_links['link_a_label'].map(link_index)
+    candidat_links['to_sparse'] = candidat_links['link_b_label'].map(link_index)
 
-    # mapping link et graph index. Nan par défaut.
-    candidat_links['from_sparse'] = candidat_links['link_a'].map(link_index)
-    candidat_links['to_sparse'] = candidat_links['link_b'].map(link_index)
-
-    # Initialise la colonne de distance Dijkstra à NaN.
-    candidat_links['dijkstra'] = np.nan
-
-    # Identifie les paires de liens valides pour le Dijkstra (celles qui ont un mapping vers le graphe de lien)
     valid_pairs = candidat_links[['from_sparse', 'to_sparse']].notna().all(axis=1)
+    routing_pairs = candidat_links.loc[valid_pairs, ['from_sparse', 'to_sparse']].astype(int)
 
-    if valid_pairs.any():
-        routing_pairs = candidat_links.loc[valid_pairs, ['from_sparse', 'to_sparse']].astype(int)
-        origins = routing_pairs['from_sparse'].unique()
+    origin = list(candidat_links.loc[valid_pairs, 'link_a_label'].unique())
+    origin_sparse_indices = [link_index[x] for x in origin]
 
-        # Dijkstra sur le graphe de liens
-        dist_matrix = dijkstra(csgraph=csgraph, indices=origins, return_predecessors=False, limit=dijkstra_limit)
-        dist_matrix = np.atleast_2d(dist_matrix)
-        origin_pos = {origin: i for i, origin in enumerate(origins)}
+    dist_matrix = dijkstra(
+        csgraph=csgraph, indices=origin_sparse_indices, return_predecessors=False, limit=dijkstra_limit
+    )
 
-        from_sparse = routing_pairs['from_sparse'].to_numpy()
-        to_sparse = routing_pairs['to_sparse'].to_numpy()
-        row_index = np.fromiter((origin_pos[x] for x in from_sparse), dtype=np.int32, count=len(from_sparse))
-        dijkstra_values = dist_matrix[row_index, to_sparse]
-        dijkstra_values[np.isinf(dijkstra_values)] = np.nan
-        candidat_links.loc[valid_pairs, 'dijkstra'] = dijkstra_values
+    # 5x faster than using pd dataframes for dist_matrix lookup.
+    origin_pos = {origin: i for i, origin in enumerate(origin_sparse_indices)}
+    from_sparse = routing_pairs['from_sparse'].to_numpy()
+    to_sparse = routing_pairs['to_sparse'].to_numpy()
+    row_index = np.fromiter((origin_pos[x] for x in from_sparse), dtype=np.int32)
+    dijkstra_values = dist_matrix[row_index, to_sparse]
+    dijkstra_values[np.isinf(dijkstra_values)] = np.nan
+    candidat_links.loc[valid_pairs, 'dijkstra'] = dijkstra_values
 
-    # si des pair origine detination n'ont pas été trouvé dans le routing limité
-    # on refait un Dijktra sans limite avec ces origin (noeud b).
     unfound_mask = valid_pairs & candidat_links['dijkstra'].isna()
     if unfound_mask.any():
-        routing_pairs2 = candidat_links.loc[unfound_mask, ['from_sparse', 'to_sparse']].astype(int)
-        origins2 = routing_pairs2['from_sparse'].unique()
+        remaining_routing_pairs = candidat_links.loc[unfound_mask, ['from_sparse', 'to_sparse']].astype(int)
+        remaining_origins = remaining_routing_pairs['from_sparse'].unique()
 
         dist_matrix2 = dijkstra(
-            csgraph=csgraph, directed=True, indices=origins2, return_predecessors=False, limit=np.inf
+            csgraph=csgraph, directed=True, indices=remaining_origins, return_predecessors=False, limit=np.inf
         )
         dist_matrix2 = np.atleast_2d(dist_matrix2)
-        origin_pos2 = {origin: i for i, origin in enumerate(origins2)}
+        remaining_origin_pos = {origin: i for i, origin in enumerate(remaining_origins)}
 
-        from_sparse2 = routing_pairs2['from_sparse'].to_numpy()
-        to_sparse2 = routing_pairs2['to_sparse'].to_numpy()
-        row_index2 = np.fromiter((origin_pos2[x] for x in from_sparse2), dtype=np.int32, count=len(from_sparse2))
+        from_sparse2 = remaining_routing_pairs['from_sparse'].to_numpy()
+        to_sparse2 = remaining_routing_pairs['to_sparse'].to_numpy()
+        row_index2 = np.fromiter((remaining_origin_pos[x] for x in from_sparse2), dtype=np.int32)
         dijkstra_values2 = dist_matrix2[row_index2, to_sparse2]
         dijkstra_values2[np.isinf(dijkstra_values2)] = np.nan
         candidat_links.loc[unfound_mask, 'dijkstra'] = dijkstra_values2
@@ -638,7 +618,7 @@ def Mapmatching(
         candidat_links['dijkstra'], candidat_links['gps_distance'], BETA, DIFF
     )
 
-    if (turn_penalty == True) and ('bearing_dict' in links.__dict__.keys()):
+    if turn_penalty and ('bearing_dict' in links.__dict__.keys()):
         candidat_links['angle'] = candidat_links['road_a'].map(links.bearing_dict) - candidat_links['road_b'].map(
             links.bearing_dict
         )
@@ -716,16 +696,17 @@ def Mapmatching(
     # Reconstruction du routing
     # ======================================================
     if routing:
-        road_id_path = [x[1] for x in path]
-        df_path = pd.DataFrame(road_id_path[1:], columns=['road_id'])
-        df_path['road_key'] = df_path['road_id'].map(links.links_index_dict)
-        fallback_road_key = 'rlink_' + df_path['road_id'].astype(int).astype(str)
-        df_path['road_key'] = df_path['road_key'].where(df_path['road_key'].notna(), fallback_road_key)
+        road_id_path = pd.Series([x[1] for x in path[1:]], dtype='object')
+        road_key = road_id_path.map(links.links_index_dict)
+        fallback_road_key = 'rlink_' + road_id_path.astype(int).astype(str)
+        road_key = road_key.where(road_key.notna(), fallback_road_key)
 
         # Map matched road keys to sparse indices and drop unresolved endpoints.
-        df_path['from'] = df_path['road_key'].map(link_index)
-        df_path['to'] = df_path['from'].shift(-1)
-        routing_pairs = df_path[['from', 'to']].dropna().astype(int)
+        from_sparse = road_key.map(link_index)
+        from_values = from_sparse.iloc[:-1].to_numpy()
+        to_values = from_sparse.iloc[1:].to_numpy()
+        valid_pairs = pd.notna(from_values) & pd.notna(to_values)
+        routing_pairs = np.column_stack((from_values[valid_pairs], to_values[valid_pairs])).astype(np.int32)
 
         routing_origins = routing_pairs['from'].unique().tolist()
         _, routing_predecessors = dijkstra(
@@ -734,7 +715,7 @@ def Mapmatching(
         origin_pos = {origin: i for i, origin in enumerate(routing_origins)}
 
         path_list = []
-        for origin, destination in routing_pairs[['from', 'to']].values:
+        for origin, destination in routing_pairs:
             if origin == destination:
                 path_list.append([reversed_link_index.get(origin)])
                 continue
