@@ -165,7 +165,7 @@ def _preparation(mode_nests: dict[str, list[str]], phi: dict[str, float]):
     phi = {n: recursive_phi(n) for n in g.nodes}
 
     ascending_modes = []
-    depth = max(g.out_degree(n) for n in g.nodes)
+    depth = 10  # max(g.out_degree(n) for n in g.nodes)
     for degree in range(depth, -1, -1):
         leaf_modes = [n for n in g.nodes if lengths[n] == degree]
         ascending_modes += leaf_modes
@@ -199,13 +199,13 @@ def one_block_nested_logit_from_paths(
     # set to category for a boost in performance (memory and speed)
     for name in [*od_cols, 'segment']:
         paths[name] = paths[name].astype('category')
-    modes_dtype = pd.CategoricalDtype(categories=ascending_modes)
+    modes_dtype = pd.CategoricalDtype(categories=set([*ascending_modes, *route_types]))
     paths['route_type'] = paths['route_type'].astype(modes_dtype)
 
     # get ranks
     paths = paths.sort_values(by=[*od_cols, 'route_type', 'segment'])
-    paths['rank'] = paths.groupby([*od_cols, 'route_type', 'segment'])['utility'].rank('first', ascending=False)
-    paths['rank'] = paths['rank'].astype(int).astype('category')
+    paths['rank'] = paths.groupby([*od_cols, 'route_type', 'segment']).cumcount() + 1
+    paths['rank'] = paths['rank'].astype(np.int32)
 
     if n_paths_max is not None:
         paths = paths.loc[paths['rank'] <= n_paths_max]

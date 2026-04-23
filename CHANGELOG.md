@@ -6,7 +6,7 @@
 *  csa: add csa_pathfinder on stops
 
 ## optimization
-* Logit: up to 2x faster and uses less memory using  pd.category and numpy
+* Logit: up to 2x faster and uses less memory using  pd.category and numpy. rank not sorted anymore.
 
 ## [3.4.1] (2026-04-13)
 
