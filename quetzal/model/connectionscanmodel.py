@@ -239,14 +239,10 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         pseudo_connections = self.pseudo_connections
         clean = pseudo_connections[['csa_index', 'trip_id']].dropna()
         clean.sort_values(by='csa_index', inplace=True)
-        trip_connections = {}
-        for trip, connection in clean[['trip_id', 'csa_index']].values:
-            try:
-                trip_connections[trip].append(connection)
-            except KeyError:
-                trip_connections[trip] = [connection]
 
+        trip_connections = clean.groupby('trip_id')['csa_index'].agg(list).to_dict()
         connection_trip = clean.set_index('csa_index')['trip_id'].to_dict()
+
         df = self.pt_los
         paths = list(df['csa_path'])
         kwargs = {'trip_connections': trip_connections, 'connection_trip': connection_trip}
@@ -298,8 +294,18 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
 
         pt_los = self.pt_los
 
+        clean = pseudo_connections[['csa_index', 'trip_id']].dropna()
+        clean.sort_values(by='csa_index', inplace=True)
+
+        trip_connections = clean.groupby('trip_id')['csa_index'].agg(list).to_dict()
+        connection_trip = clean.set_index('csa_index')['trip_id'].to_dict()
+
+        pt_los['path'] = pt_los['csa_path'].apply(
+            lambda ls: csa.get_full_csa_path(ls, connection_trip, trip_connections)
+        )
+
         model_index_dict = pseudo_connections.set_index('csa_index')['model_index'].to_dict()
-        pt_los['path'] = pt_los['csa_path'].apply(lambda ls: [*map(model_index_dict.get, ls)])
+        pt_los['path'] = pt_los['path'].apply(lambda ls: [*map(model_index_dict.get, ls)])
         # could add origin and destination and access to path. but slow and not usefull
         # pt_los['path'] = [list(o) + p + list(d) for o, p, d in pt_los[['access', 'path', 'egress']].values]
 

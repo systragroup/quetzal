@@ -220,6 +220,22 @@ def path_to_boarding_links_and_boarding_path(csa_path, connection_trip, trip_con
     return link_path, boarding_links
 
 
+def get_full_csa_path(path, connection_trip, trip_connections):
+    full_path = []
+    for j in range(len(path) - 1):
+        c_in = path[j]
+        c_out = path[j + 1]
+        trip_in = connection_trip[c_in]
+        trip_out = connection_trip[c_out]
+        full_path.append(c_in)
+        if trip_in == trip_out:
+            # first value already append
+            bit = trip_bit(trip_in, c_in, c_out, trip_connections)[1:]
+            full_path += bit
+    full_path.append(path[-1])
+    return full_path
+
+
 def pathfinder(pseudo_connections, zone_set, time_interval=None, cutoff=np.inf, targets=None, workers=1, od_set=None):
     targets = list(set(targets))
     if workers > 1:
@@ -381,16 +397,15 @@ def merge_on_connector(
     df['arrival_time'] = df['arrival_time'] + df['time_egress']
 
     # group data for the pareto by group [['origin', 'destination']]
-    df = df.sort_values(by=groupby, kind='stable').reset_index(drop=True)
-    df['pareto_group'] = df.groupby(groupby, sort=True, group_keys=False).ngroup()
+    df['pareto_group'] = df.groupby(groupby, group_keys=False).ngroup()
+    df = df.sort_values('pareto_group')
 
     # filter big los with pareto
     mask = pareto_per_groups(df['departure_time'].values, df['arrival_time'].values, df['pareto_group'].values)
     df = df.iloc[mask]
 
     # add access and egress ntlegs. usefull to create a complete path (and drop dup later)
-    df['access'] = [*zip(df['origin'], df['model_index_access'])]
-    df['egress'] = [*zip(df['destination'], df['model_index_egress'])]
+    df['ntlegs'] = [*zip(df['model_index_egress'], df['model_index_access'])]
     df = df.drop(columns=['model_index_access', 'model_index_egress'])
 
     return df  # this is pt_los
@@ -421,7 +436,7 @@ def _pareto_sweep(arrivals: np.ndarray, order: np.ndarray) -> np.ndarray[bool]:
 
 
 def compute_offset(groups):
-    changes = np.where(groups[1:] != groups[:-1])[0]
+    changes = np.where(groups[1:] != groups[:-1])[0] + 1
     offsets = np.concatenate(([0], changes, [len(groups)]))
     return offsets
 
