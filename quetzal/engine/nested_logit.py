@@ -79,55 +79,42 @@ def nested_logit_from_paths(
     return_od_tables=True,
     symmetric=False,
 ):
-    paths['index'] = paths.index
-    paths.set_index(od_cols[0], drop=False, inplace=True)
-    paths.index.name = 'index'
-    planner = paths
-
-    index = list(set(planner.index))
-    groups = np.array_split(index, nchunks)
+    groups_col = od_cols[0]  # split by origin so each tasks have all of the paths for a given origin.
+    origins = list(paths[groups_col].unique())
+    groups = np.array_split(origins, nchunks)
 
     if workers > 1:
-        # print('%i workers' % workers)
-
         results = []
         with ProcessPoolExecutor(max_workers=workers) as executor:
             for group in tqdm(groups):
-                results.append(
-                    executor.submit(
-                        one_block_nested_logit_from_paths,
-                        planner.loc[group].set_index('index'),
-                        phi=phi,
-                        mode_nests=mode_nests,
-                        od_cols=od_cols,
-                        decimals=decimals,
-                        n_paths_max=n_paths_max,
-                        return_od_tables=return_od_tables,
-                        symmetric=symmetric,
-                    )
+                chunk = paths[paths[groups_col].isin(group)]
+                print(len(chunk))
+                p = executor.submit(
+                    one_block_nested_logit_from_paths,
+                    chunk,
+                    phi=phi,
+                    mode_nests=mode_nests,
+                    od_cols=od_cols,
+                    decimals=decimals,
+                    n_paths_max=n_paths_max,
+                    return_od_tables=return_od_tables,
+                    symmetric=symmetric,
                 )
+                results.append(p)
 
-        paths_list = []
-        mode_utilities_list = []
-        mode_probabilities_list = []
-
-        for i in range(len(results)):
-            t = results.pop().result()
-            paths_list.append(t[0])
-            mode_utilities_list.append(t[1])
-            mode_probabilities_list.append(t[2])
-
-        paths = pd.concat(paths_list)
-        mode_utilities = pd.concat(mode_utilities_list)
-        mode_probabilities = pd.concat(mode_probabilities_list)
+        results = [res.result() for res in results]
+        paths = pd.concat([res[0] for res in results])
+        mode_utilities = pd.concat([res[1] for res in results])
+        mode_probabilities = pd.concat([res[2] for res in results])
 
     else:
         p_list = []
         mu_list = []
         mp_list = []
         for group in tqdm(groups):
+            chunk = paths[paths[groups_col].isin(group)]
             p, mu, mp = one_block_nested_logit_from_paths(
-                planner.loc[group].set_index('index'),
+                chunk,
                 phi=phi,
                 mode_nests=mode_nests,
                 od_cols=od_cols,
