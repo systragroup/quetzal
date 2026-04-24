@@ -42,10 +42,10 @@ def nest_probabilities(utilities: np.ndarray, phi: float) -> np.ndarray:
 def plot_nests(nests):
     g = nx.DiGraph(nests)
     root = [n for n in g.nodes if g.in_degree(n) == 0][0]
-    lengths = nx.single_source_shortest_path_length(g, root)
+    depths = nx.single_source_shortest_path_length(g, root)
     pos = {}
-    levels = [0] * (max(lengths.values()) + 1)
-    for key, x in lengths.items():
+    levels = [0] * (max(depths.values()) + 1)
+    for key, x in depths.items():
         pos[key] = [levels[x], -x]
         levels[x] += 1
 
@@ -148,7 +148,7 @@ def nested_logit_from_paths(
 def _preparation(mode_nests: dict[str, list[str]], phi: dict[str, float]):
     g = nx.DiGraph(mode_nests)
     root = [n for n in g.nodes if g.in_degree(n) == 0][0]
-    lengths = nx.single_source_shortest_path_length(g, root)
+    depths = nx.single_source_shortest_path_length(g, root)
 
     if phi is None:
         phi = {mode: 1 for mode in g.nodes}
@@ -165,9 +165,8 @@ def _preparation(mode_nests: dict[str, list[str]], phi: dict[str, float]):
     phi = {n: recursive_phi(n) for n in g.nodes}
 
     ascending_modes = []
-    depth = 10  # max(g.out_degree(n) for n in g.nodes)
-    for degree in range(depth, -1, -1):
-        leaf_modes = [n for n in g.nodes if lengths[n] == degree]
+    for degree in range(max(depths.values()), -1, -1):
+        leaf_modes = [n for n in g.nodes if depths[n] == degree]
         ascending_modes += leaf_modes
     neighbors = {}
     for mode in ascending_modes:

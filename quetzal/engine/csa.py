@@ -381,8 +381,8 @@ def merge_on_connector(
     df['arrival_time'] = df['arrival_time'] + df['time_egress']
 
     # group data for the pareto by group [['origin', 'destination']]
-    df['pareto_group'] = df.groupby(groupby, group_keys=False).ngroup()
-    df = df.sort_values('pareto_group')
+    df = df.sort_values(by=groupby, kind='stable').reset_index(drop=True)
+    df['pareto_group'] = df.groupby(groupby, sort=True, group_keys=False).ngroup()
 
     # filter big los with pareto
     mask = pareto_per_groups(df['departure_time'].values, df['arrival_time'].values, df['pareto_group'].values)
@@ -438,5 +438,5 @@ def pareto_per_groups(all_departures: np.ndarray, all_arrivals: np.ndarray, grou
         end = offsets[i + 1]
         arrival = all_arrivals[start:end]
         departure = all_departures[start:end]
-        pareto_mask[start:end] = pareto(arrival, departure)
+        pareto_mask[start:end] = pareto(departure, arrival)
     return pareto_mask
