@@ -356,11 +356,19 @@ def Parallel_Mapmatching(
     """
     **kwargs : see Mapmatching args
     """
-    trip_list = gps_tracks[by].unique()
-    if num_cores > len(trip_list):
-        num_cores = max(len(trip_list), 1)
-    chunk_length = round(len(trip_list) / num_cores)
-    # Split the list into four sub-lists
+    trip_sizes = gps_tracks.groupby(by).size()
+    unmatched_trip = trip_sizes[trip_sizes < 2].index.tolist()
+    trip_list = trip_sizes[trip_sizes >= 2].index.to_numpy()
+
+    if len(trip_list) == 0:
+        return gpd.GeoDataFrame(), gpd.GeoDataFrame(), unmatched_trip
+
+    num_cores = max(1, int(num_cores))
+    num_cores = min(num_cores, len(trip_list))
+    if len(trip_list) < 4 * num_cores:
+        num_cores = max(1, len(trip_list) // 4)
+
+    chunk_length = int(np.ceil(len(trip_list) / num_cores))
     chunks = [trip_list[j : j + chunk_length] for j in range(0, len(trip_list), chunk_length)]
     chunk_gps_tracks = [gps_tracks[gps_tracks[by].isin(trips)] for trips in chunks]
 
@@ -369,9 +377,9 @@ def Parallel_Mapmatching(
         Multi_Mapmatching, num_workers=len(chunks), parallel_kwargs={'gps_tracks': chunk_gps_tracks}, **kwargs
     )
 
-    vals = pd.concat([res[0] for res in results])
-    node_lists = pd.concat([res[1] for res in results])
-    unmatched_trip = []
+    vals = pd.concat([res[0] for res in results]) if results else gpd.GeoDataFrame()
+    node_lists = pd.concat([res[1] for res in results]) if results else gpd.GeoDataFrame()
+    unmatched_trip.extend([trip for res in results for trip in res[2]])
     return vals, node_lists, unmatched_trip
 
 
