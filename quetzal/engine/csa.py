@@ -189,48 +189,23 @@ def get_path(predecessor, source, maxiter=1000):
             return path[:-1]
 
 
-def trip_bit(t, c_in, c_out, trip_connections):
-    trip = trip_connections[t]
-    left = bisect.bisect_left(trip, c_in)
-    right = bisect.bisect_left(trip, c_out)
-    return trip[left:right]
+def trip_bit(c_in: int, c_out: int, trip_connections: list[int]):
+    left = bisect.bisect_left(trip_connections, c_in)
+    right = bisect.bisect_left(trip_connections, c_out)
+    return trip_connections[left:right]
 
 
-def path_to_boarding_links_and_boarding_path(csa_path, connection_trip, trip_connections):
-    link_path = []
-    trips = set()
-    boarding_links = []
-
-    for i in range(len(csa_path) - 2):
-        c_in, c_out = csa_path[i : i + 2]
-
-        try:
-            trip_in = connection_trip[c_in]
-            link_path.append(c_in)
-            if trip_in not in trips:
-                trips.add(trip_in)
-                boarding_links.append(c_in)
-            assert trip_in == connection_trip[c_out]
-            link_path += trip_bit(connection_trip[c_in], c_in, c_out, trip_connections)
-        except (KeyError, AssertionError):
-            pass
-        link_path.append(c_out)
-
-    link_path = list(dict.fromkeys(link_path))
-    return link_path, boarding_links
-
-
-def get_full_csa_path(path, connection_trip, trip_connections):
+def get_full_csa_path(path, trip_dict, trip_connections):
     full_path = []
     for j in range(len(path) - 1):
         c_in = path[j]
         c_out = path[j + 1]
-        trip_in = connection_trip[c_in]
-        trip_out = connection_trip[c_out]
+        trip_in = trip_dict[c_in]
+        trip_out = trip_dict[c_out]
         full_path.append(c_in)
         if trip_in == trip_out:
             # first value already append
-            bit = trip_bit(trip_in, c_in, c_out, trip_connections)[1:]
+            bit = trip_bit(c_in, c_out, trip_connections.get(trip_in))[1:]
             full_path += bit
     full_path.append(path[-1])
     return full_path
@@ -336,7 +311,7 @@ def pathfinder(pseudo_connections, zone_set, time_interval=None, cutoff=np.inf, 
     return pt_los
 
 
-def pathfinder_on_stops(pseudo_connections):
+def pathfinder_on_stops(pseudo_connections: pd.DataFrame):
     targets = list(pseudo_connections['b'].unique())
     stop_set = set(pseudo_connections['a']).union(set(pseudo_connections['b']))
     Ttrip_inf = {t: float('inf') for t in set(pseudo_connections['trip_id'])}
@@ -405,7 +380,7 @@ def merge_on_connector(
     df = df.iloc[mask]
 
     # add access and egress ntlegs. usefull to create a complete path (and drop dup later)
-    df['ntlegs'] = [*zip(df['model_index_egress'], df['model_index_access'])]
+    df['ntlegs'] = [*zip(df['model_index_access'], df['model_index_egress'])]
     df = df.drop(columns=['model_index_access', 'model_index_egress'])
 
     return df  # this is pt_los
@@ -435,7 +410,7 @@ def _pareto_sweep(arrivals: np.ndarray, order: np.ndarray) -> np.ndarray[bool]:
     return keep
 
 
-def compute_offset(groups):
+def compute_offset(groups: np.ndarray) -> np.ndarray:
     changes = np.where(groups[1:] != groups[:-1])[0] + 1
     offsets = np.concatenate(([0], changes, [len(groups)]))
     return offsets
