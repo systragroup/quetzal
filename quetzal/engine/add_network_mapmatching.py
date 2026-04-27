@@ -618,7 +618,10 @@ def _decode_mapmatching_path(candidat_links, dict_point_link):
     val = pd.DataFrame(path, columns=['index', 'road_id', 'offset']).set_index('index')[1:]
     val['road_id_b'] = val['road_id'].shift(-1)
     val['offset_b'] = val['offset'].shift(-1)
-    val = val[:-1]
+
+    # Drop synthetic terminal node transition; no next GPS point for final observation.
+    last_real_index = max(dict_point_link.keys()) - 1
+    val = val[val.index <= last_real_index]
     val = val.rename(columns={'road_id': 'road_id_a', 'offset': 'offset_a'})
 
     dijkstra_dict = candidat_links.set_index(['ix_one', 'road_a', 'road_b'], drop=False)['dijkstra'].to_dict()
@@ -627,7 +630,8 @@ def _decode_mapmatching_path(candidat_links, dict_point_link):
 
 
 def _build_routing_output(path, links, link_index, reversed_link_index, csgraph):
-    road_id_path = pd.Series([x[1] for x in path[1:]], dtype='object')
+    # Path contains synthetic start/end nodes; routing is only between real GPS observations.
+    road_id_path = pd.Series([x[1] for x in path[1:-1]], dtype='object')
     road_key = road_id_path.map(links.links_index_dict)
     fallback_road_key = 'rlink_' + road_id_path.astype(int).astype(str)
     road_key = road_key.where(road_key.notna(), fallback_road_key)
