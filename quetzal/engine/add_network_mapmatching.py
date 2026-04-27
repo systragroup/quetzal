@@ -371,8 +371,8 @@ def Parallel_Mapmatching(
 
     num_cores = max(1, int(num_cores))
     num_cores = min(num_cores, len(trip_list))
-    if len(trip_list) < 4 * num_cores:
-        num_cores = max(1, len(trip_list) // 4)
+    if len(trip_list) < 2 * num_cores:
+        num_cores = max(1, len(trip_list) // 2)
 
     chunk_length = int(np.ceil(len(trip_list) / num_cores))
     chunks = [trip_list[j : j + chunk_length] for j in range(0, len(trip_list), chunk_length)]
@@ -523,7 +523,25 @@ def _get_sparse_dijkstra_values(routing_pairs, dist_matrix, origin_sparse_indice
     return dijkstra_values
 
 
-def _compute_link_dijkstra_distances(candidat_links, links, csgraph, link_index, dijkstra_limit):
+def _chunked_dijkstra_assign(candidat_links, csgraph, routing_pairs, limit, batch_size):
+    origins = routing_pairs['from_sparse'].unique()
+    for batch_start in range(0, len(origins), batch_size):
+        batch_origins = origins[batch_start : batch_start + batch_size]
+        batch_pairs = routing_pairs[routing_pairs['from_sparse'].isin(batch_origins)]
+        if batch_pairs.empty:
+            continue
+        dist_matrix = dijkstra(
+            csgraph=csgraph, directed=True, indices=batch_origins, return_predecessors=False, limit=limit
+        )
+        values = _get_sparse_dijkstra_values(batch_pairs, dist_matrix, batch_origins)
+        row_idx = batch_pairs.index
+        candidat_links.loc[row_idx, 'dijkstra'] = values
+    return candidat_links
+
+
+def _compute_link_dijkstra_distances(
+    candidat_links, links, csgraph, link_index, dijkstra_limit, dijkstra_batch_size=32
+):
     candidat_links['link_a_label'] = candidat_links['road_a'].map(links.links_index_dict)
     candidat_links['link_b_label'] = candidat_links['road_b'].map(links.links_index_dict)
     candidat_links['from_sparse'] = candidat_links['link_a_label'].map(link_index)
@@ -531,26 +549,18 @@ def _compute_link_dijkstra_distances(candidat_links, links, csgraph, link_index,
 
     valid_pairs = candidat_links[['from_sparse', 'to_sparse']].notna().all(axis=1)
     routing_pairs = candidat_links.loc[valid_pairs, ['from_sparse', 'to_sparse']].astype(int)
-
-    origin_labels = candidat_links.loc[valid_pairs, 'link_a_label'].unique()
-    origin_sparse_indices = [link_index[label] for label in origin_labels]
-    dist_matrix = dijkstra(
-        csgraph=csgraph, indices=origin_sparse_indices, return_predecessors=False, limit=dijkstra_limit
-    )
-    candidat_links.loc[valid_pairs, 'dijkstra'] = _get_sparse_dijkstra_values(
-        routing_pairs, dist_matrix, origin_sparse_indices
-    )
+    if not routing_pairs.empty:
+        batch_size = max(1, int(dijkstra_batch_size))
+        candidat_links = _chunked_dijkstra_assign(candidat_links, csgraph, routing_pairs, dijkstra_limit, batch_size)
 
     unfound_mask = valid_pairs & candidat_links['dijkstra'].isna()
     if unfound_mask.any():
         remaining_routing_pairs = candidat_links.loc[unfound_mask, ['from_sparse', 'to_sparse']].astype(int)
-        remaining_origins = remaining_routing_pairs['from_sparse'].unique()
-        dist_matrix2 = dijkstra(
-            csgraph=csgraph, directed=True, indices=remaining_origins, return_predecessors=False, limit=np.inf
-        )
-        candidat_links.loc[unfound_mask, 'dijkstra'] = _get_sparse_dijkstra_values(
-            remaining_routing_pairs, dist_matrix2, remaining_origins
-        )
+        if not remaining_routing_pairs.empty:
+            batch_size = max(1, int(dijkstra_batch_size))
+            candidat_links = _chunked_dijkstra_assign(
+                candidat_links, csgraph, remaining_routing_pairs, np.inf, batch_size
+            )
 
     return candidat_links.drop(columns=['link_a_label', 'link_b_label', 'from_sparse', 'to_sparse'])
 
@@ -693,6 +703,7 @@ def Mapmatching(
     SIGMA: float = 4.07,
     BETA: float = 3,
     POWER: float = 2,
+    dijkstra_batch_size: int = 32,
     DIFF=True,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
@@ -718,7 +729,9 @@ def Mapmatching(
         gps_track, links, gps_dict, gps_dict_arr, nearest_method, n_neighbors, distance_max
     )
     csgraph, link_index, reversed_link_index = links.csgraph, links.link_index, links.reversed_link_index
-    candidat_links = _compute_link_dijkstra_distances(candidat_links, links, csgraph, link_index, dijkstra_limit)
+    candidat_links = _compute_link_dijkstra_distances(
+        candidat_links, links, csgraph, link_index, dijkstra_limit, dijkstra_batch_size=dijkstra_batch_size
+    )
     candidat_links = _compute_probability_scores(
         candidat_links,
         links,
