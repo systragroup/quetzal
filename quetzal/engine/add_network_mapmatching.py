@@ -260,6 +260,7 @@ class RoadLinks:
 
         self.get_sparse_matrix()
         self.get_dict()
+        self.build_link_graph()
         if on_centroid:
             self.fit_nearest_centroid()
         else:
@@ -268,6 +269,11 @@ class RoadLinks:
     def get_sparse_matrix(self):
         self.mat, self.node_index = sparse_matrix(self.links[['a', 'b', 'length']].values)
         self.index_node = {v: k for k, v in self.node_index.items()}
+
+    def build_link_graph(self):
+        expanded_links = links_to_expanded_links(self.links, u_turns=False)
+        self.csgraph, self.link_index = sparse_matrix(expanded_links[['from_link', 'to_link', 'length']].values)
+        self.reversed_link_index = {v: k for k, v in self.link_index.items()}
 
     def get_dict(self):
         # create dict of road network parameters
@@ -711,7 +717,7 @@ def Mapmatching(
     candidat_links, dict_distance, dict_point_link = _prepare_candidate_links(
         gps_track, links, gps_dict, gps_dict_arr, nearest_method, n_neighbors, distance_max
     )
-    csgraph, link_index, reversed_link_index = _build_link_graph(links)
+    csgraph, link_index, reversed_link_index = links.csgraph, links.link_index, links.reversed_link_index
     candidat_links = _compute_link_dijkstra_distances(candidat_links, links, csgraph, link_index, dijkstra_limit)
     candidat_links = _compute_probability_scores(
         candidat_links,
