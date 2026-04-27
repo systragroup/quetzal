@@ -386,8 +386,8 @@ def Multi_Mapmatching(
         Paul Newson and John Krumm 2009
     """
 
-    vals = gpd.GeoDataFrame()
-    node_lists = gpd.GeoDataFrame()
+    vals_list = []
+    node_lists_list = []
     unmatched_trip = []
     trip_id_list = gps_tracks[by].unique()
     it = 0
@@ -403,25 +403,28 @@ def Multi_Mapmatching(
 
         if len(gps_track) < 2:  # cannot mapmatch less than 2 points.
             unmatched_trip.append(trip_id)
-        else:
-            res = Mapmatching(gps_track, road_links, **kwargs)
-            if isinstance(res, tuple):  # if return 2 values (routing=True)
-                val = res[0]
-                node_list = res[1]
-            else:
-                val = res
-                node_list = gpd.GeoDataFrame()
+            continue
 
-            # add the by column to every data
-            val[by] = trip_id
-            node_list[by] = trip_id
-            # apply input index
-            val.index = val.index.map(gps_index_dict)
-            node_list.index = node_list.index.map(gps_index_dict)
-            vals = pd.concat([vals, val])
-            node_lists = pd.concat([node_lists, node_list])
+        res = Mapmatching(gps_track, road_links, **kwargs)
+        if isinstance(res, tuple):  # if return 2 values (routing=True)
+            val = res[0]
+            node_list = res[1]
+        else:
+            val = res
+            node_list = gpd.GeoDataFrame()
+
+        # add the by column to every data
+        val[by] = trip_id
+        node_list[by] = trip_id
+        # apply input index
+        val.index = val.index.map(gps_index_dict)
+        node_list.index = node_list.index.map(gps_index_dict)
+        vals_list.append(val)
+        node_lists_list.append(node_list)
 
     print(f'{len(trip_id_list)} / {len(trip_id_list)}')
+    vals = pd.concat(vals_list) if vals_list else gpd.GeoDataFrame()
+    node_lists = pd.concat(node_lists_list) if node_lists_list else gpd.GeoDataFrame()
     return vals, node_lists, unmatched_trip
 
 
