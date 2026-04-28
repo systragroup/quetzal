@@ -333,13 +333,19 @@ def pathfinder_on_stops(pseudo_connections: pd.DataFrame):
 
 
 def merge_on_connector(
-    pt_los: pd.DataFrame, zone_to_transit: pd.DataFrame, od_set: list[tuple], groupby=['origin', 'destination']
+    pt_los: pd.DataFrame,
+    zone_to_transit: pd.DataFrame,
+    od_set: list[tuple],
+    groupby=['origin', 'destination'],
+    walk_penalty=1,
 ):
     """
     takes the pt_los station to station, and merge on all the zone_to_road and apply pareto to each group in groupby
     pt_los : csa pt_los station station.
     groupby = ['origin', 'destination']: for pareto groups. can add route_type_access, route_type_egress
     stop_egress
+    walk_penalty : float, optional, default 1
+            penalty to be applied on access/egress and footpath time for the pareto filter
 
     """
     # init the pt_los df (each od)
@@ -371,17 +377,23 @@ def merge_on_connector(
     df['departure_time'] = df['departure_time'] - df['time_access']
     df['arrival_time'] = df['arrival_time'] + df['time_egress']
 
+    # compute a pseudo time with access and egress time penalty
+    df['pseudo_departure_time'] = df['departure_time'] - df['time_access'] * (walk_penalty - 1)
+    df['pseudo_arrival_time'] = df['arrival_time'] + df['time_egress'] * (walk_penalty - 1)
+
     # group data for the pareto by group [['origin', 'destination']]
     df['pareto_group'] = df.groupby(groupby, group_keys=False).ngroup()
     df = df.sort_values('pareto_group')
 
     # filter big los with pareto
-    mask = pareto_per_groups(df['departure_time'].values, df['arrival_time'].values, df['pareto_group'].values)
+    mask = pareto_per_groups(
+        df['pseudo_departure_time'].values, df['pseudo_arrival_time'].values, df['pareto_group'].values
+    )
     df = df.iloc[mask]
 
     # add access and egress ntlegs. usefull to create a complete path (and drop dup later)
     df['ntlegs'] = [*zip(df['model_index_access'], df['model_index_egress'])]
-    df = df.drop(columns=['model_index_access', 'model_index_egress'])
+    df = df.drop(columns=['model_index_access', 'model_index_egress', 'pseudo_departure_time', 'pseudo_arrival_time'])
 
     return df  # this is pt_los
 

@@ -145,6 +145,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         step=None,
         on_stop=False,
         groupby=['origin', 'destination'],
+        walk_penalty=1.0,
     ):
         """Performs public transport pathfinder for connection scan models.
 
@@ -171,6 +172,8 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             perform csa on stops and add od connection
         groupby : list[str] default ['origin', 'destination']
             if on_stop is True, perform pareto on each groupby
+        walk_penalty : float, optional, default 1
+            penalty to be applied on access/egress and footpath time for the pareto filter
 
         """
         time_interval = time_interval if time_interval is not None else self.time_interval
@@ -194,7 +197,11 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             od_set = [(o, d) for o in zones for d in zones if o != d]
 
             self.pt_los = csa.merge_on_connector(
-                pt_los=pt_los_on_stop, zone_to_transit=self.zone_to_transit, od_set=od_set, groupby=groupby
+                pt_los=pt_los_on_stop,
+                zone_to_transit=self.zone_to_transit,
+                od_set=od_set,
+                groupby=groupby,
+                walk_penalty=walk_penalty,
             )
 
         else:
