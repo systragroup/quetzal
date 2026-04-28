@@ -172,7 +172,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             perform csa on stops and add od connection
         groupby : list[str] default ['origin', 'destination']
             if on_stop is True, perform pareto on each groupby
-        walk_penalty : float, optional, default 1
+        walk_penalty : float (>=1), optional, default 1 (1 = no penalty)
             penalty to be applied on access/egress and footpath time for the pareto filter
 
         """
@@ -192,6 +192,10 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             self.pseudo_connections = self.pseudo_connections[self.pseudo_connections['direction'] != 'access']
             self.pseudo_connections = self.pseudo_connections[self.pseudo_connections['direction'] != 'egress']
             pt_los_on_stop = csa.pathfinder_on_stops(pseudo_connections=self.pseudo_connections)
+
+            pt_los_on_stop['footpath_time'] = csa.get_footpaths_time(
+                pt_los=pt_los_on_stop, pseudo_connections=self.pseudo_connections, footpaths=self.footpaths
+            )
 
             zones = self.zones.index
             od_set = [(o, d) for o in zones for d in zones if o != d]

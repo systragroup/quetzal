@@ -332,6 +332,14 @@ def pathfinder_on_stops(pseudo_connections: pd.DataFrame):
     return pt_los
 
 
+def get_footpaths_time(pt_los: pd.DataFrame, pseudo_connections: pd.DataFrame, footpaths: pd.DataFrame) -> pd.Series:
+    footpaths_set = set(footpaths['model_index'])
+    pseudo_footpaths = pseudo_connections[pseudo_connections['model_index'].isin(footpaths_set)]
+    pseudo_footpaths['time'] = pseudo_footpaths['arrival_time'] - pseudo_footpaths['departure_time']
+    footpaths_time_dict = pseudo_footpaths.set_index('csa_index')['time'].to_dict()
+    return pt_los['csa_path'].apply(lambda ls: sum([footpaths_time_dict.get(x, 0) for x in ls]))
+
+
 def merge_on_connector(
     pt_los: pd.DataFrame,
     zone_to_transit: pd.DataFrame,
@@ -344,24 +352,26 @@ def merge_on_connector(
     pt_los : csa pt_los station station.
     groupby = ['origin', 'destination']: for pareto groups. can add route_type_access, route_type_egress
     stop_egress
-    walk_penalty : float, optional, default 1
+    walk_penalty : float >= 1, optional, default 1 (1 = no penaly)
             penalty to be applied on access/egress and footpath time for the pareto filter
 
     """
-    # init the pt_los df (each od)
-    df = pd.DataFrame(od_set, columns=['origin', 'destination'])
+
     # TODO  have a way to select columns to merge. we could want to groupby mode_type_egress for example
-    zone_to_transit = zone_to_transit[['a', 'b', 'time', 'route_type', 'model_index']]
+    ztt_cols = ['a', 'b', 'time', 'route_type', 'model_index']
     for col in ['route_type', 'model_index']:  # convert to category before merge: save memory.
         zone_to_transit[col] = zone_to_transit[col].astype('category')
+    access = zone_to_transit[zone_to_transit['direction'] == 'access'][ztt_cols]
+    egress = zone_to_transit[zone_to_transit['direction'] == 'eggress'][ztt_cols]
+    # rename before merging. this is faster than renamming and dropping after when df is big.
+    access = access.rename(columns={'a': 'origin', 'b': 'stop_access'})
+    egress = egress.rename(columns={'b': 'destination', 'a': 'stop_egress'})
 
-    # merge access connector
-    df = df.merge(zone_to_transit, left_on='origin', right_on='a')
-    df = df.drop(columns='a').rename(columns={'b': 'stop_access'})
-
-    # merge egress connector
-    df = df.merge(zone_to_transit, left_on='destination', right_on='b', suffixes=['_access', '_egress'])
-    df = df.drop(columns='b').rename(columns={'a': 'stop_egress'})
+    # init the pt_los df (each od)
+    df = pd.DataFrame(od_set, columns=['origin', 'destination'])
+    # merge access and egress connector
+    df = df.merge(access, on='origin')
+    df = df.merge(egress, on='destination', suffixes=['_access', '_egress'])
 
     # convert to category before merge. this save a lot of memory
     for col in ['origin', 'destination', 'stop_access', 'stop_egress']:
@@ -379,7 +389,7 @@ def merge_on_connector(
 
     # compute a pseudo time with access and egress time penalty
     df['pseudo_departure_time'] = df['departure_time'] - df['time_access'] * (walk_penalty - 1)
-    df['pseudo_arrival_time'] = df['arrival_time'] + df['time_egress'] * (walk_penalty - 1)
+    df['pseudo_arrival_time'] = df['arrival_time'] + (df['time_egress'] + df['footpath_time']) * (walk_penalty - 1)
 
     # group data for the pareto by group [['origin', 'destination']]
     df['pareto_group'] = df.groupby(groupby, group_keys=False).ngroup()
