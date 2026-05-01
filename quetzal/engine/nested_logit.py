@@ -88,7 +88,6 @@ def nested_logit_from_paths(
         with ProcessPoolExecutor(max_workers=workers) as executor:
             for group in tqdm(groups):
                 chunk = paths[paths[groups_col].isin(group)]
-                print(len(chunk))
                 p = executor.submit(
                     one_block_nested_logit_from_paths,
                     chunk,
