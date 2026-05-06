@@ -161,7 +161,7 @@ def _preparation(mode_nests: dict[str, list[str]], phi: dict[str, float]):
 
 
 def one_block_nested_logit_from_paths(
-    paths,
+    paths: pd.DataFrame,
     od_cols=['origin', 'destination'],
     mode_nests=None,
     phi=None,
@@ -188,7 +188,7 @@ def one_block_nested_logit_from_paths(
     paths['route_type'] = paths['route_type'].astype(modes_dtype)
 
     # get ranks
-    paths = paths.sort_values(by=[*od_cols, 'route_type', 'segment'])
+    paths = paths.sort_values(by=[*od_cols, 'route_type', 'segment', 'utility'], ascending=False)
     paths['rank'] = paths.groupby([*od_cols, 'route_type', 'segment']).cumcount() + 1
     paths['rank'] = paths['rank'].astype(np.int32)
 
