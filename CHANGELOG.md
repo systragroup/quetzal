@@ -1,13 +1,15 @@
-## [future] (2026-04-27)
+## [3.5.0] (2026-05-06)
 ## bug fixes
 * shift_loadedlinks_alighting fix append on df
+* parallel_call : force the python env of the launcher for the subprocesses.
 
 ## Features
 * csa: add csa_pathfinder on stops
 * csa: refactor analysis_paths() to use new on_stop methods
+* analysis_pt_time : added link_time_col='time' argument. so in_vehicle_time can be computed with any col
 
 ## optimization
-* Logit: up to 2x faster and uses less memory using  pd.category and numpy. rank not sorted anymore.
+* Logit: up to 2x faster and uses less memory using  pd.category and numpy.
 
 ## [3.4.1] (2026-04-13)
 
