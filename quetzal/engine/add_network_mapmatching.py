@@ -419,7 +419,13 @@ def Multi_Mapmatching(
             unmatched_trip.append(trip_id)
             continue
 
-        res = Mapmatching(gps_track, road_links, **kwargs)
+        try:
+            res = Mapmatching(gps_track, road_links, **kwargs)
+        except (ValueError, IndexError) as e:
+            print(f'Trip {trip_id} skipped: {e}')
+            unmatched_trip.append(trip_id)
+            continue
+
         if isinstance(res, tuple):  # if return 2 values (routing=True)
             val = res[0]
             node_list = res[1]
@@ -471,6 +477,12 @@ def _prepare_candidate_links(gps_track, links, gps_dict, gps_dict_arr, nearest_m
         (candidat_links['actual_rank'] < n_neighbors) & (candidat_links['distance'] < distance_max)
     ]
     candidat_links = candidat_links.reset_index(drop=True)
+
+    if candidat_links.empty:
+        raise ValueError(
+            f'No candidate road links found within distance_max={distance_max}m for any GPS point. '
+            'Trip cannot be mapmatched. Consider increasing distance_max or radius_search.'
+        )
 
     candidat_links['road_geom'] = candidat_links['index_nn'].map(links.geom_dict)
     candidat_links['gps_geom'] = candidat_links['ix_one'].map(gps_dict)
