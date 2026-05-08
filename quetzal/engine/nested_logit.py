@@ -21,6 +21,22 @@ def rank_paths(paths, by='utility'):
     return sorted_paths
 
 
+def rank_and_filter_paths(
+    paths: pd.DataFrame,
+    od_cols=['origin', 'destination'],
+    by='utility',
+    n_paths_max=None,
+):
+    paths = paths.sort_values(by=[*od_cols, 'route_type', 'segment', by], ascending=False)
+    paths['rank'] = paths.groupby([*od_cols, 'route_type', 'segment']).cumcount() + 1
+    paths['rank'] = paths['rank'].astype(np.int32)
+
+    if n_paths_max is not None:
+        paths = paths.loc[paths['rank'] <= n_paths_max]
+
+    return paths
+
+
 def nest_utility(utilities, phi=1):
     if phi == 0:
         phi = 1
@@ -30,6 +46,15 @@ def nest_utility(utilities, phi=1):
     return composite_utility
 
 
+def incremental_nest_utility(
+    delta_utilities: pd.DataFrame | pd.Series,
+    probabilities: pd.DataFrame | pd.Series,
+):
+    addents = np.exp(delta_utilities) * probabilities.divide(probabilities.sum(axis=1), axis=0)
+    composite_delta_utility = np.log(addents.sum(axis=1, skipna=True))
+    return composite_delta_utility
+
+
 def nest_probabilities(utilities: np.ndarray, phi: float) -> np.ndarray:
     if phi == 0:
         phi = 1
@@ -37,6 +62,17 @@ def nest_probabilities(utilities: np.ndarray, phi: float) -> np.ndarray:
     tot = np.sum(exp_mat, axis=1).reshape(-1, 1)
 
     return exp_mat / tot
+
+
+def incremental_nest_probability(
+    delta_utilities: pd.DataFrame | pd.Series,
+    probabilities: pd.DataFrame | pd.Series,
+):
+    cond_probabilities = probabilities.divide(probabilities.sum(axis=1), axis=0)
+    addents = np.exp(delta_utilities) * cond_probabilities
+    denum = (addents).sum(axis=1, skipna=True)
+    new_probabilities = np.exp(delta_utilities) * cond_probabilities.divide(denum, axis=0)
+    return new_probabilities
 
 
 def rank_and_mode_utilities(paths, ascending_modes, route_types, phi, od_cols=['origin', 'destination'], verbose=True):
@@ -62,26 +98,6 @@ def symmetrize_utilities(utilities: pd.DataFrame | pd.Series):
     reversed_utilities = utilities.swaplevel(0, 1)
     reversed_utilities.index.names = utilities.index.names
     return utilities.add(reversed_utilities) / 2
-
-
-def nest_delta_utility(
-    delta_utilities: pd.DataFrame | pd.Series,
-    probabilities: pd.DataFrame | pd.Series,
-):
-    addents = np.exp(delta_utilities) * probabilities.divide(probabilities.sum(axis=1), axis=1)
-    composite_delta_utility = np.log(addents.sum(axis=1, skipna=True))
-    return composite_delta_utility
-
-
-def incremental_probability(
-    delta_utilities: pd.DataFrame | pd.Series,
-    probabilities: pd.DataFrame | pd.Series,
-):
-    cond_probabilities = probabilities.divide(probabilities.sum(axis=1), axis=1)
-    addents = np.exp(delta_utilities) * cond_probabilities
-    denum = (addents).sum(axis=1, skipna=True)
-    new_probabilities = np.exp(delta_utilities) * cond_probabilities.divide(denum, axis=0)
-    return new_probabilities
 
 
 def plot_nests(nests):
@@ -248,22 +264,21 @@ def one_block_nested_logit_from_paths(
     modes_dtype = pd.CategoricalDtype(categories=set([*ascending_modes, *route_types]))
     paths['route_type'] = paths['route_type'].astype(modes_dtype)
 
-    # get ranks
-    paths = paths.sort_values(by=[*od_cols, 'route_type', 'segment', 'utility'], ascending=False)
-    paths['rank'] = paths.groupby([*od_cols, 'route_type', 'segment']).cumcount() + 1
-    paths['rank'] = paths['rank'].astype(np.int32)
-
-    if n_paths_max is not None:
-        paths = paths.loc[paths['rank'] <= n_paths_max]
+    # get ranks and filter n_paths_max
+    paths = rank_and_filter_paths(paths, od_cols=od_cols, n_paths_max=n_paths_max)
 
     #
-    # rank utilities and probabilities
+    # rank utilities and initialize probabilities
     #
     rank_utilities, mode_utilities = rank_and_mode_utilities(
         paths, ascending_modes, route_types, phi, od_cols=od_cols, verbose=verbose
     )
 
+    mode_probabilities = pd.DataFrame(index=rank_utilities.index)
+    mode_probabilities.columns.name = 'route_type'
+
     if incremental:
+        ref_paths = rank_and_filter_paths(ref_paths, od_cols=od_cols, n_paths_max=n_paths_max)
         _, ref_mode_utilities = rank_and_mode_utilities(
             ref_paths, ascending_modes, route_types, phi, od_cols=od_cols, verbose=verbose
         )
@@ -273,43 +288,37 @@ def one_block_nested_logit_from_paths(
         for mode in route_types:
             mode_utilities[mode] -= ref_mode_utilities[mode]  # Delta utilities
 
+        ref_probabilities.set_index(mode_probabilities.index.names, inplace=True)
+
+    if symmetric:
+        mode_utilities = symmetrize_utilities(mode_utilities)
+
+    mode_utilities = mode_utilities.clip(clip, -clip)
+
     # propagate utilities to higher modes (bottom -> up) (leaf => root)
     for mode in ascending_modes:
         children = neighbors.get(mode, [])
         if len(children):
             print('mode utilities', children, phi[mode], '->', mode) if verbose else None
-            mode_utilities[mode] = nest_utility(mode_utilities[children].values, phi=phi[mode])
+            if incremental:
+                mode_utilities[mode] = incremental_nest_utility(mode_utilities[children], ref_probabilities[children])
+            else:  # Direct Logit
+                mode_utilities[mode] = nest_utility(mode_utilities[children].values, phi=phi[mode])
+
     mode_utilities = mode_utilities[descending_modes]
-
-    if symmetric:
-        mode_utilities = symmetrize_utilities(mode_utilities)
-
-    mode_utilities.clip(clip, -clip)
 
     #
     #  mode probability
     #
+    #  propagate probabilities
 
-    # initialize probabilities
-    mode_probabilities = pd.DataFrame(index=rank_utilities.index)
-    mode_probabilities.columns.name = 'route_type'
-
-    if incremental:
-        # Composite delta utility
-        ref_probabilities.set_index(mode_probabilities.index.names, inplace=True)
-        for mode in ascending_modes:
-            children = neighbors.get(mode, [])
-            if len(children):
-                mode_utilities[mode] = nest_delta_utility(mode_utilities[children], ref_probabilities[children])
-
-    # propagate probabilities
     mode_probabilities[descending_modes[0]] = 1  # root mode
     for mode in descending_modes:
         children = neighbors.get(mode, [])
         if len(children):
             print('mode probabilities', mode, phi[mode], '->', children) if verbose else None
             if incremental:
-                partial = incremental_probability(mode_utilities[children], ref_probabilities[children])
+                partial = incremental_nest_probability(mode_utilities[children], ref_probabilities[children])
             else:
                 partial = nest_probabilities(utilities=mode_utilities[children].values, phi=phi[mode])
             mode_probabilities[children] = mode_probabilities[[mode]].values * partial
