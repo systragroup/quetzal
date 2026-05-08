@@ -9,7 +9,7 @@ from collections import namedtuple
 
 # need to name the class the same as the namedTuple name for pickle.
 TrackedArrays = namedtuple('TrackedArrays', 'iteration seg volumes')
-TrackedWeight = namedtuple('TrackedWeight', 'iteration phi beta relgap')
+TrackedWeight = namedtuple('TrackedWeight', 'iteration phi beta')
 
 
 class TupleTracker(Tracker):
@@ -42,8 +42,8 @@ class TupleTracker(Tracker):
 
         self.tracked_mat.append(TrackedArrays(it, seg, np.array(volumes)))
 
-    def add_weights(self, phi, beta, relgap, it):
-        self.weights.append(TrackedWeight(iteration=it, phi=phi, beta=beta, relgap=relgap))
+    def add_weights(self, phi, beta, it):
+        self.weights.append(TrackedWeight(iteration=it, phi=phi, beta=beta))
 
     def merge(self) -> pd.DataFrame:
         # apply frank wolfe for each iteration on each segments

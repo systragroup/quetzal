@@ -4,7 +4,7 @@ from collections import namedtuple
 
 # need to name the class the same as the namedTuple name for pickle.
 TrackedAssign = namedtuple('TrackedAssign', 'ab_volumes odv pred seg it')
-TrackedWeight = namedtuple('TrackedWeight', 'iteration phi beta relgap')
+TrackedWeight = namedtuple('TrackedWeight', 'iteration phi beta')
 
 
 class TestTracker(Tracker):
@@ -30,8 +30,8 @@ class TestTracker(Tracker):
         # just save everything.
         self.tracked_mat.append(TrackedAssign(ab_volumes, odv, pred, seg, it))
 
-    def add_weights(self, phi, beta, relgap, it):
-        self.weights.append(TrackedWeight(iteration=it, phi=phi, beta=beta, relgap=relgap))
+    def add_weights(self, phi, beta, it):
+        self.weights.append(TrackedWeight(iteration=it, phi=phi, beta=beta))
 
     def merge(self):
         pass

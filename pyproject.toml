@@ -46,6 +46,7 @@ fast-dijkstra = "*"
 [tool.poetry.group.dev.dependencies]
 twine = "^6.2.0"
 pip-chill = "*"
+jupytext = "^1.19.1"
 
 [build-system]
 requires = ["poetry-core>=2.0.0"]

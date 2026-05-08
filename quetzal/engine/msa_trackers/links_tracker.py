@@ -8,7 +8,7 @@ from collections import namedtuple
 
 # need to name the class the same as the namedTuple name for pickle.
 TrackedVolume = namedtuple('TrackedVolume', 'iteration seg mat row_labels col_labels')
-TrackedWeight = namedtuple('TrackedWeight', 'iteration phi beta relgap')
+TrackedWeight = namedtuple('TrackedWeight', 'iteration phi beta ')
 
 
 class LinksTracker(Tracker):
@@ -41,8 +41,8 @@ class LinksTracker(Tracker):
         cols_labels = self.track_links_list
         self.tracked_mat.append(TrackedVolume(it, seg, sparse_mat, rows_labels, cols_labels))
 
-    def add_weights(self, phi, beta, relgap, it):
-        self.weights.append(TrackedWeight(iteration=it, phi=phi, beta=beta, relgap=relgap))
+    def add_weights(self, phi, beta, it):
+        self.weights.append(TrackedWeight(iteration=it, phi=phi, beta=beta))
 
     def merge(self) -> Dict[str, pd.DataFrame]:
         # apply frank wolfe for each iteration on each segments
@@ -66,7 +66,7 @@ def _mat_to_df(mat_data):
     return pd.DataFrame(mat_data.mat.toarray(), index=mat_data.row_labels, columns=mat_data.col_labels)
 
 
-def apply_biconjugated_frank_wolfe(mat_datas, phi_dict, beta_dict):
+def apply_biconjugated_frank_wolfe(mat_datas: List[TrackedVolume], phi_dict: dict, beta_dict: dict):
     flow = pd.DataFrame()
     sk_1 = pd.DataFrame()
     sk_2 = pd.DataFrame()

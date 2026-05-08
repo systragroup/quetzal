@@ -21,7 +21,7 @@ class Tracker(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def add_weights(self, phi, beta, relgap, it):
+    def add_weights(self, phi, beta, it):
         pass
 
     @abc.abstractmethod

@@ -1,3 +1,11 @@
+## [FUTURE] (2026-05-07)
+## bug fixes
+* road_pathfinder: compute relgap with AON flow and not with the BFW flow.
+
+## Changes
+* add jupytext as dev dependencies.
+* remove relgap in roadPathfinder tracker plugins as its not used and already saved in the model attributes.
+
 ## [3.5.0] (2026-05-06)
 ## bug fixes
 * shift_loadedlinks_alighting fix append on df

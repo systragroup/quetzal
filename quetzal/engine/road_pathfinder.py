@@ -382,7 +382,7 @@ def msa_roadpathfinder(
         links_to_sparse = {v: k for k, v in _tmp_dict.items()}
         tracker_plugin.init(links_sparse_index=links.index, links_to_sparse=links_to_sparse)
 
-    # pred origins and odv for each segments fro quick access as it doesnt change between iteration
+    # pred origins and odv for each segments for quick access as it doesnt change between iteration
     segment_origins = {}
     segment_odv = {}
     for seg in segments:
@@ -393,6 +393,8 @@ def msa_roadpathfinder(
 
     relgap = np.inf
     relgap_list = []
+    phi = 1  # first iteration is AON
+    beta = [1, 0, 0]  # bfw coefficients
     print('it  |  Phi    |  Rel Gap (%)') if log else None
     # note: first iteration i == 0 is AON to initialized.
     for i in range(maxiters + 1):
@@ -413,12 +415,20 @@ def msa_roadpathfinder(
 
         flow_cols = [(seg, 'auxiliary_flow') for seg in segments] + ['base_flow']
         links['auxiliary_flow'] = links[flow_cols].sum(axis=1)
+
+        #
+        # Get relGap with AON flow
+        #
+        if i > 0:  # Skip first iteration (AON and relgap = -inf)
+            relgap = get_relgap(links, segments)
+            relgap_list.append(relgap)
+            print(f'{i:2}  |  {phi:.3f}  |  {relgap:.8f} ') if log else None
+
         #
         # find Phi, and BFW auxiliary flow modification
         #
         if i == 0:
-            phi = 1  # first iteration is AON
-            beta = [1, 0, 0]
+            pass
         elif method == 'bfw':  # if biconjugate: takes the 2 last direction
             links['derivative'] = get_derivative(to_polars(links), vdf, cost_functions, segments, time_col=time_col)
             if i > 2:
@@ -432,6 +442,9 @@ def msa_roadpathfinder(
             phi = find_phi(to_polars(links), segments, vdf, cost_functions, bounds=(0, max_phi), time_col=time_col)
         else:  # msa
             phi = 1 / (i + 2)
+
+        if tracker_plugin():
+            tracker_plugin.add_weights(phi, beta, i)
         #
         # Update flow and jam_time (frank-wolfe)
         #
@@ -441,22 +454,12 @@ def msa_roadpathfinder(
         links['flow'] = links[flow_cols].sum(axis=1)
 
         #
-        # Get relGap. Skip first iteration (AON and relgap = -inf)
-        #
-        if i > 0:
-            relgap = get_relgap(links, segments)
-            relgap_list.append(relgap)
-            print(f'{i:2}  |  {phi:.3f}  |  {relgap:.8f} ') if log else None
-
-        if tracker_plugin():
-            tracker_plugin.add_weights(phi, beta, relgap, i)
-
-        #
         # Update Time on links
         #
         links['jam_time'] = jam_time(to_polars(links), vdf, 'flow', time_col=time_col)
         for seg in segments:
             links[(seg, 'cost')] = apply_segment_cost(links, cost_functions.get(seg))
+
         # skip first iteration (AON asignment) as relgap in -inf
         if relgap <= tolerance:
             print('tolerance reached') if log else None
@@ -586,6 +589,8 @@ def expanded_roadpathfinder(
 
     relgap = np.inf
     relgap_list = []
+    phi = 1  # first iteration is AON
+    beta = [1, 0, 0]  # bfw coefficients
     print('it  |  Phi    |  Rel Gap (%)') if log else None
     # note: first iteration i == 0 is AON to initialized.
     for i in range(maxiters + 1):
@@ -608,18 +613,24 @@ def expanded_roadpathfinder(
         links['auxiliary_flow'] = links[auxiliary_flow_cols].sum(axis=1)  # for phi and relgap
 
         #
+        # Get relGap with AON flow
+        #
+        if i > 0:  # Skip first iteration (AON and relgap = -inf)
+            relgap = get_relgap(links, segments)
+            relgap_list.append(relgap)
+            print(f'{i:2}  |  {phi:.3f}  |  {relgap:.8f}') if log else None
+
+        #
         # find Phi, and BFW auxiliary flow modification
         #
 
         if i == 0:
-            phi = 1  # first iteration is AON
-            beta = [1, 0, 0]
+            pass
         elif method == 'bfw':  # if biconjugate: takes the 2 last direction
             links['derivative'] = get_derivative(to_polars(links), vdf, cost_functions, segments, time_col=time_col)
             if i > 2:
                 beta = find_beta(links, phi, segments)  # this is the previous phi (phi_-1)
             links = get_bfw_auxiliary_flow(links, beta, segments)
-
             links['auxiliary_flow'] = links[auxiliary_flow_cols].sum(axis=1)
             max_phi = 1 / i**0.5  # limit search space
             phi = find_phi(to_polars(links), segments, vdf, cost_functions, bounds=(0, max_phi), time_col=time_col)
@@ -629,6 +640,8 @@ def expanded_roadpathfinder(
         else:  # msa
             phi = 1 / (i + 2)
 
+        if tracker_plugin():
+            tracker_plugin.add_weights(phi, beta, i)
         #
         # Update flow on links
         #
@@ -638,18 +651,6 @@ def expanded_roadpathfinder(
 
         flow_cols = [(seg, 'flow') for seg in segments] + ['base_flow']
         links['flow'] = links[flow_cols].sum(axis=1)
-
-        #
-        # Get relGap. Skip first iteration (AON and relgap = -inf)
-        #
-
-        if i > 0:
-            relgap = get_relgap(links, segments)
-            relgap_list.append(relgap)
-            print(f'{i:2}  |  {phi:.3f}  |  {relgap:.8f} ') if log else None
-
-        if tracker_plugin():
-            tracker_plugin.add_weights(phi, beta, relgap, i)
 
         #
         # Update Time on links

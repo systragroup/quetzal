@@ -107,7 +107,8 @@ def find_phi(plinks: pl.DataFrame, segments, vdf, cost_functions, maxiter=10, to
 
 def get_relgap(links: pd.DataFrame, segments: list[str]) -> float:
     # modelling transport eq 11.11. SUM currentFlow x currentCost - SUM AONFlow x currentCost / SUM currentFlow x currentCost
-    # NOTE: base_flow is ignored now while it was considered before. they dont move and they dont have cost, so I think its ok
+    # As we want AON here, we compute this after the shortest path, before we change auxiliary_flow with the BFW direction
+    # NOTE: base_flow is ignored here. they dont move and they dont have cost.
     flow_cost = 0
     aux_cost = 0
     for seg in segments:
