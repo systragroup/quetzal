@@ -1150,6 +1150,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         workers=1,
         keep_od_tables=True,
         symmetric=False,
+        incremental=False,
+        clip=np.inf,
     ):
         """Performs the nested logit : compute the probabilities per segment of the paths in self.los
         after having computed the utilities with function analysis_mode_utility.
@@ -1191,23 +1193,36 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         """
         # concatenate paths
         od_cols = ['origin', 'destination']
-        if time_expanded:
-            od_cols.append('wished_departure_time')
+
+        def segment_paths(los, segments, od_cols=['origin', 'destination']):
+            to_concat = []
+            for segment in segments:
+                keep_columns = od_cols + ['route_type', (segment, 'utility')]
+                paths = los[keep_columns]
+                paths.rename(columns={(segment, 'utility'): 'utility'}, inplace=True)
+                paths = paths.dropna(subset=['utility'])
+                paths['segment'] = segment
+                to_concat.append(paths)
+            return pd.concat(to_concat)
+
+        if time_expanded & incremental:
+            raise NotImplementedError
+
         if symmetric & (nchunks > 1):
             raise Exception('symmetric utility unspported for nchunks > 1')
-        to_concat = []
-        for segment in self.segments:
-            keep_columns = od_cols + ['route_type', (segment, 'utility')]
-            if time_expanded:
-                paths = self.te_los[keep_columns]
-            else:
-                paths = self.los[keep_columns]
 
-            paths.rename(columns={(segment, 'utility'): 'utility'}, inplace=True)
-            paths = paths.dropna(subset=['utility'])
-            paths['segment'] = segment
-            to_concat.append(paths)
-        segmented_paths = pd.concat(to_concat)
+        if time_expanded:
+            od_cols.append('wished_departure_time')
+            segmented_paths = segment_paths(self.te_los.copy(), self.segments, od_cols=od_cols)
+        else:
+            segmented_paths = segment_paths(self.los.copy(), self.segments, od_cols=od_cols)
+
+        if incremental:
+            ref_paths = segment_paths(self.ref_los.copy(), self.segments, od_cols=od_cols)
+            ref_probabilities = self.ref_probabilities.copy()
+        else:
+            ref_paths = None
+            ref_probabilities = None
 
         try:
             # all the segments can be proccessed together
@@ -1235,6 +1250,10 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 workers=workers,
                 return_od_tables=keep_od_tables,
                 symmetric=symmetric,
+                clip=clip,
+                incremental=incremental,
+                ref_paths=ref_paths,
+                ref_probabilities=ref_probabilities,
             )
 
         except AssertionError:
@@ -1255,6 +1274,10 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                     decimals=decimals,
                     n_paths_max=n_paths_max,
                     symmetric=symmetric,
+                    clip=clip,
+                    incremental=incremental,
+                    ref_paths=ref_paths,
+                    ref_probabilities=ref_probabilities,
                 )
                 p_list.append(p)
                 mu_list.append(mu)
