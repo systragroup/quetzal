@@ -1,4 +1,4 @@
-## [FUTURE] (2026-05-07)
+## [3.5.1] (2026-05-07)
 ## bug fixes
 * road_pathfinder: compute relgap with AON flow and not with the BFW flow.
 
