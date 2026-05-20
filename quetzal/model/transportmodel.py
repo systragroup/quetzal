@@ -1102,7 +1102,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 rt: get_combined_mode_utility(rt, how=how, mode_utility=mode_utility)
                 for rt in logit_los['route_types'].unique()
             }
-            logit_los['mode_utility'] = logit_los['route_types'].map(rtu.get)
+            logit_los['mode_utility'] = logit_los['route_types'].map(rtu.get).astype(float)
 
         utility_values = self.utility_values[segment].to_dict()
         u = 0

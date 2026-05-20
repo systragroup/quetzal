@@ -1,3 +1,7 @@
+## [FUTURE] (2026-05-20)
+## bug fixes
+* analysis_mode_utility: force mode_utility to be a float, route_type as pd.Category was causing issues sometime computing the mode_utility
+
 ## [3.5.1] (2026-05-07)
 ## bug fixes
 * road_pathfinder: compute relgap with AON flow and not with the BFW flow.
