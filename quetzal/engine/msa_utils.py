@@ -2,7 +2,7 @@ from typing import List, Tuple, Dict, Union
 import pandas as pd
 import polars as pl
 import numpy as np
-from quetzal.engine.pathfinder_utils import get_node_path, fast_dijkstra
+from quetzal.engine.pathfinder_utils import get_node_path, get_path, fast_dijkstra
 
 import numba as nb
 from scipy.sparse import csr_matrix
@@ -139,7 +139,7 @@ def assign_volume(odv, predecessors, volumes, lut):
         destination = odv[i, 1]
         v = odv[i, 2]
         if v > 0:
-            path = get_node_path(predecessors, origin, destination)
+            path = get_path(predecessors, origin, destination)
             for j in range(len(path) - 1):
                 index = lut[path[j], path[j + 1]]  # get links
                 volumes[index] += v

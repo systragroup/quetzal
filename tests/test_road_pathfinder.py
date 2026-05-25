@@ -17,7 +17,13 @@ zones = pd.DataFrame({'id': ['z1', 'z2']})
 zones.index = zones['id']
 zones.index.name = 'index'
 
-volumes = pd.DataFrame({'origin': ['z1', 'z2'], 'destination': ['z2', 'z1'], 'car': [150, 100]})
+volumes = pd.DataFrame(
+    {
+        'origin': ['z1', 'z2'],
+        'destination': ['z2', 'z1'],
+        'car': [150, 100],
+    }
+)
 volumes.index.name = 'index'
 
 zone_to_road = pd.DataFrame(
@@ -132,6 +138,7 @@ class TestRoadPathfinder(unittest.TestCase):
         expected_columns = [
             'a',
             'b',
+            'ntleg_penalty',
             'vdf',
             'segments',
             'flow',
@@ -142,6 +149,7 @@ class TestRoadPathfinder(unittest.TestCase):
         ]
         for col in expected_columns:
             self.assertIn(col, network.columns)
+        self.assertTrue(1e9 in network['ntleg_penalty'].values)
 
     def test_init_network_aon(self):
         method = 'aon'
@@ -152,7 +160,7 @@ class TestRoadPathfinder(unittest.TestCase):
         expected_len = len(self.sm.road_links) + len(self.sm.zone_to_road)
         self.assertEqual(len(network), expected_len)
 
-        expected_columns = ['a', 'b', 'time']
+        expected_columns = ['a', 'b', 'ntleg_penalty', 'time']
         for col in expected_columns:
             self.assertIn(col, network.columns)
 
@@ -203,6 +211,11 @@ class TestRoadPathfinder(unittest.TestCase):
             expected_path_2 = ['z2', 'c', 'b', 'a', 'z1']
             self.assertEqual(car_los['path'][1], expected_path_2)
 
+            # zone to road should have some volumes
+            # zone to roads bolumes should match demand.
+            self.assertEqual(links[links.index.get_level_values(0) == 'z1'][('car', 'flow')].sum(), 150)
+            self.assertEqual(links[links.index.get_level_values(0) == 'z2'][('car', 'flow')].sum(), 100)
+
     def test_msa_pathfinder_0_iters(self):
         for method in ['bfw', 'msa', 'fw']:
             links, car_los, relgap = self._get_msa_roadpathfinder(method=method, maxiters=0)
@@ -245,6 +258,10 @@ class TestRoadPathfinder(unittest.TestCase):
             expected_path_2 = ['z2', 'c', 'b', 'a', 'z1']
             self.assertEqual(car_los['path'][1], expected_path_2)
 
+            # zone to roads bolumes should match demand.
+            self.assertEqual(links[links.index.get_level_values(0) == 'z1'][('car', 'flow')].sum(), 150)
+            self.assertEqual(links[links.index.get_level_values(0) == 'z2'][('car', 'flow')].sum(), 100)
+
     def test_expanded_pathfinder_track_link(self):
         index_dict = self.sm.road_links.reset_index().set_index(['a', 'b'])['index'].to_dict()
 
@@ -269,7 +286,6 @@ class TestRoadPathfinder(unittest.TestCase):
         link = index_dict.get(('b', 'd'))
         assert self.sm.road_links.loc[link, 'a'] == 'b'
         assert self.sm.road_links.loc[link, 'b'] == 'd'
-        print(link)
         tracker_plugin = LinksTracker([link])
         links, car_los, relgap = self._get_expanded_roadpathfinder(tracker_plugin=tracker_plugin, keep_connectors=True)
         # expected_path = ['z1', 'a', 'b', 'd', 'e', 'z2']
