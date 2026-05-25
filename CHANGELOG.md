@@ -1,4 +1,11 @@
-## [FUTURE] (2026-05-20)
+## [3.6.0] (2026-05-25)
+
+## Features
+* RoadPathfinder: can now compute volumes on zone_to_road with arg: keep_connectors=True with all available methods
+
+## Changes
+* RoadPathfinder: remove ntleg penalty from args (force to 1e9) remove zone_penalty.
+
 ## bug fixes
 * analysis_mode_utility: force mode_utility to be a float, route_type as pd.Category was causing issues sometime computing the mode_utility
 
