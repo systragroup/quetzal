@@ -181,7 +181,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         turn_penalties: Optional[Dict[str, List[str]]] = None,
         num_cores: int = 1,
         return_car_los=True,
-        assign_on_connectors=False,
+        assign_on_connectors=True,
         **kwargs,
     ) -> None:
         """Performs road assignment with or without capacity constraint, depending on the method used
