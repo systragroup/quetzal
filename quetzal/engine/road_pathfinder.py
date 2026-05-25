@@ -30,9 +30,7 @@ def to_polars(df):
     return pl.DataFrame(df.drop(columns=['geometry'], errors='ignore'))
 
 
-def init_network(
-    sm, method='aon', segments=['car'], time_col='time', access_time='time', ntleg_penalty=10e9, log=False
-):
+def init_network(sm, method='aon', segments=['car'], time_col='time', access_time='time', log=False):
     """
     Initialize the road network for the pathfinder.
     return links and zone_to_road concat with the correct columns
@@ -46,9 +44,9 @@ def init_network(
     aon = method == 'aon'
 
     test_zone_to_road_network(road_links, zone_to_road)
-    zone_to_road = zone_to_road_preparation(zone_to_road, segments, time_col, access_time, ntleg_penalty, aon, log)
+    zone_to_road = _zone_to_road_preparation(zone_to_road, segments, time_col, access_time, aon, log)
     # create DataFrame with road_links and zone to road
-    network = concat_connectors_to_roads(road_links, zone_to_road, segments, time_col, aon, log)
+    network = _concat_connectors_to_roads(road_links, zone_to_road, segments, time_col, aon, log)
 
     # assert_links_are_polars_compatible
     to_polars(network)  # just to try
@@ -111,12 +109,10 @@ def test_zone_to_road_volumes(volumes, zone_to_road):
         )
 
 
-def zone_to_road_preparation(
-    zone_to_road, segments, time_col='time', access_time='time', ntleg_penalty=1e9, aon=False, log=False
-):
+def _zone_to_road_preparation(zone_to_road, segments, time_col='time', access_time='time', aon=False, log=False):
     # prepare zone_to_road_links to the same format as road_links
     zone_to_road = zone_to_road.copy()
-    zone_to_road[time_col] = zone_to_road[access_time] + ntleg_penalty
+    zone_to_road[time_col] = zone_to_road[access_time]
     if not aon:
         if 'vdf' not in zone_to_road.columns:
             print("vdf not found in zone_to_road columns. Values set to 'free_flow'") if log else None
@@ -128,9 +124,11 @@ def zone_to_road_preparation(
     return zone_to_road
 
 
-def concat_connectors_to_roads(road_links, zone_to_road, segments, time_col='time', aon=False, log=False):
+def _concat_connectors_to_roads(road_links, zone_to_road, segments, time_col='time', aon=False, log=False):
+    road_links['ntleg_penalty'] = 0
+    zone_to_road['ntleg_penalty'] = 1e9
     if aon:
-        columns = ['a', 'b', time_col]
+        columns = ['a', 'b', 'ntleg_penalty', time_col]
         links = pd.concat([road_links[columns], zone_to_road[columns]])
         # links.index = links.index.astype(str)
         return links
@@ -184,11 +182,11 @@ def test_cost_functions(links: pd.DataFrame, cost_functions: dict):
             print(links.iloc[loc].index)
 
 
-def get_car_los(volumes, links, index, zones, weight_col, num_cores=1):
+def get_car_los(volumes, links, index, zones, weight_cols, num_cores=1):
     """get the car los paths for the given volumes and links"""
     reversed_index = {v: k for k, v in index.items()}
     car_los = volumes[['origin', 'destination', 'origin_sparse', 'destination_sparse']]
-    _, predecessors = shortest_path(links, weight_col, index, zones, num_cores=num_cores)
+    _, predecessors = shortest_path(links, weight_cols, index, zones, num_cores=num_cores)
     odlist = list(zip(car_los['origin_sparse'].values, car_los['destination_sparse'].values))
 
     path_dict = {}
@@ -203,22 +201,17 @@ def get_car_los(volumes, links, index, zones, weight_col, num_cores=1):
     return car_los
 
 
-def get_car_los_time(car_los, links, zone_to_road, time_col='jam_time', access_time='time'):
+def get_car_los_time(car_los, time_dict: dict[tuple, float]):
     """
     Calculate the time for each path in car_los with on the road_links and zone_to_road.
     params:
-        time_col: time column in road_links
-        access_time: time column in zone_to_road
+        car_los:
+        time_dict: links.set_index(['a', 'b'])['jam_time].to_dict()) with connectors
     return:
          car_los with [time, gtime, edge_path] columns
     """
     car_los['edge_path'] = car_los['path'].apply(lambda ls: list(zip(ls, ls[1:])))
-
-    time_dict = {}
-    time_dict.update(links.set_index(['a', 'b'])[time_col].to_dict())
-    time_dict.update(zone_to_road.set_index(['a', 'b'])[access_time].to_dict())
     car_los['time'] = car_los['edge_path'].apply(lambda ls: sum([*map(time_dict.get, ls)]))
-
     car_los.loc[car_los['origin'] == car_los['destination'], 'time'] = 0.0
     car_los['gtime'] = car_los['time']
     return car_los
@@ -249,7 +242,55 @@ def links_to_expanded_links(links_with_zone_to_road: gpd.GeoDataFrame, u_turns=F
     return expanded_links
 
 
-def expanded_path_to_nodes(path: List[str], links_to_nodes_dict: Dict[str, Tuple[str, str]]) -> List[str]:
+def fix_zone_to_road(ex_links: gpd.GeoDataFrame, links: gpd.geodataframe, keep_connectors=False) -> gpd.GeoDataFrame:
+    """
+    remove links that go through zones and zone-to-zone links.
+    if keep_connectors=False:
+        change zone_to_road expanded links to only the zone index.
+    else:
+        add virtual connectors to zone_to_road.
+    """
+    access = links[links['direction'] == 'access']
+    egress = links[links['direction'] == 'eggress']
+    zones_set = set(access['a']).union(set(egress['b']))
+    # remove links that go through zones.
+    ex_links = ex_links[~ex_links['mid_node'].isin(zones_set)]
+    # remove zone to zone links.
+    ex_links = ex_links[~(ex_links['from_node'].isin(zones_set) & ex_links['to_node'].isin(zones_set))]
+    # we need to add a virtual zone to keep the connectors, else, we dont wont know which zone to road is used
+    if keep_connectors:
+        # add virtual links to connect zones to its zone_to_road
+        access = access.reset_index().rename(columns={'index': 'to_link', 'a': 'from_link', 'b': 'to_node'})
+        access['mid_node'] = access['from_link']
+        access['from_node'] = 'virtual'
+
+        egress = egress.reset_index().rename(columns={'index': 'from_link', 'b': 'to_link', 'a': 'from_node'})
+        egress['mid_node'] = egress['to_link']
+        egress['to_node'] = 'virtual'
+
+        connectors = pd.concat([access, egress])
+        connectors.reset_index(drop=True)
+        connectors.index = 'ztr_' + connectors.index.astype(str)
+
+        # only apply ntleg_penalty to new virtual connectors.
+        ex_links['ntleg_penalty'] = 0
+        # connectors['ntleg_penalty'] = 1e9  # value aleady in the connectors
+
+        ex_links = pd.concat([ex_links, connectors])
+    else:
+        # rename zone-to-link
+        cond = ex_links['from_node'].isin(zones_set)
+        ex_links.loc[cond, 'from_link'] = ex_links.loc[cond, 'from_node']
+        # rename link-to-zone
+        cond = ex_links['to_node'].isin(zones_set)
+        ex_links.loc[cond, 'to_link'] = ex_links.loc[cond, 'to_node']
+
+    return ex_links
+
+
+def expanded_path_to_nodes(
+    path: List[str], links_to_nodes_dict: Dict[str, Tuple[str, str]], add_zones=True
+) -> List[str]:
     """
     Convert a path of links to a path of nodes, removing duplicate nodes from overlaps.
     First and last elements are zones. The rest are link IDs.
@@ -257,51 +298,27 @@ def expanded_path_to_nodes(path: List[str], links_to_nodes_dict: Dict[str, Tuple
     """
     if len(path) <= 2:
         return path  # just zone-to-zone, no links
+    nodes_path = _expanded_path_to_nodes(path, links_to_nodes_dict)
+    if add_zones:
+        # we dont have zone_to_roads in the paths.need to add the zones back
+        return [path[0], *nodes_path, path[-1]]  # origin and destination (zones)
+    else:
+        return nodes_path
 
-    nodes = [path[0]]  # origin (zone)
-    nodes.append(links_to_nodes_dict.get(path[1])[0])  # first node a
+
+def _expanded_path_to_nodes(path: List[str], links_to_nodes_dict: Dict[str, Tuple[str, str]]) -> List[str]:
+    """
+    Convert a path of links to a path of nodes, removing duplicate nodes from overlaps.
+    First and last elements are zones. The rest are link IDs.
+    Example: ['zone1', 'link1', 'link2', 'zone2'] => ['zone1', 'node1', 'node2', 'node3', 'zone2']
+    """
+    if len(path) <= 2:
+        return path  # just zone-to-zone, no links
+    nodes = [links_to_nodes_dict.get(path[1])[0]]  # first node a
     for link_id in path[1:-1]:
         node_b = links_to_nodes_dict.get(link_id)[1]
         nodes.append(node_b)  # only append the new one
-    nodes.append(path[-1])  # destination (zone)
     return nodes
-
-
-def fix_zone_to_road(
-    expanded_links: gpd.GeoDataFrame, volumes: gpd.geodataframe, create_zone_to_road=False
-) -> gpd.GeoDataFrame:
-    """
-    change zone_to_road expanded links to only the zone index.
-    Usefull to do routing on zones when the graph is on links.
-    Also, remove links that go through zones and zone-to-zone links.
-    """
-    links = expanded_links.copy()
-    zones_set = set(volumes['origin']).union(set(volumes['destination']))
-    # remove links that go through zones.
-    links = links[~links['mid_node'].isin(zones_set)]
-    # remove zone to zone links.
-    links = links[~(links['from_node'].isin(zones_set) & links['to_node'].isin(zones_set))]
-    if create_zone_to_road:
-        # add virtual links to connect zones to its zone_to_road
-        cond = links['from_node'].isin(zones_set)
-        access = links.loc[cond]
-        access['to_link'] = access['from_link']
-        access['from_link'] = access['from_node']
-
-        cond = links['to_node'].isin(zones_set)
-        eggress = links.loc[cond]
-        eggress['from_link'] = eggress['to_link']
-        eggress['to_link'] = eggress['to_node']
-        links = pd.concat([links, access, eggress])
-    else:
-        # rename zone-to-link
-        cond = links['from_node'].isin(zones_set)
-        links.loc[cond, 'from_link'] = links.loc[cond, 'from_node']
-        # rename link-to-zone
-        cond = links['to_node'].isin(zones_set)
-        links.loc[cond, 'to_link'] = links.loc[cond, 'to_node']
-
-    return links
 
 
 def aon_roadpathfinder(links, volumes, time_col='time', num_cores=1):
@@ -312,7 +329,7 @@ def aon_roadpathfinder(links, volumes, time_col='time', num_cores=1):
     # sparsify volumes keys
     volumes, origins = get_sparse_volumes(volumes, index)
 
-    return get_car_los(volumes, links, index, origins, time_col, num_cores)
+    return get_car_los(volumes, links, index, origins, [time_col], num_cores)
 
 
 def msa_roadpathfinder(
@@ -406,7 +423,8 @@ def msa_roadpathfinder(
             origins = segment_origins[seg]
             odv = segment_odv[seg]
             segment_links = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
-            _, pred = shortest_path(segment_links, (seg, 'cost'), index, origins, num_cores=num_cores)
+            weight_cols = [(seg, 'cost'), 'ntleg_penalty']
+            _, pred = shortest_path(segment_links, weight_cols, index, origins, num_cores)
 
             links[(seg, 'auxiliary_flow')] = assign_volume_parallel(odv, pred, lut, num_cores)
 
@@ -482,7 +500,8 @@ def msa_roadpathfinder(
             # filter links to allowed segment
             segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
             segment_links = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
-            temp_los = get_car_los(segment_volumes, segment_links, index, origins, (seg, 'cost'), num_cores)
+            weight_cols = [(seg, 'cost'), 'ntleg_penalty']
+            temp_los = get_car_los(segment_volumes, segment_links, index, origins, weight_cols, num_cores)
             temp_los['segment'] = seg
             car_los = pd.concat([car_los, temp_los], ignore_index=True)
 
@@ -501,12 +520,12 @@ def expanded_roadpathfinder(
     tolerance=0.01,
     log=False,
     time_col='time',
-    zone_penalty=10e9,
     turn_penalty=10e3,
     tracker_plugin: LinksTracker = LinksTracker(),
     turn_penalties={},
     cost_functions=None,
     return_car_los=True,
+    keep_connectors=False,
     num_cores=1,
 ):
     """
@@ -525,6 +544,7 @@ def expanded_roadpathfinder(
     turn_penalties: dict of turn penalties {from_link: [to_link]}
     cost_functions : if None return dict {seg:'jam_time'} for each segments.
     return_car_los: return car los
+    keep_connectors: will affect volumes on connectors too
     num_cores = 1 : for parallelization.
     """
     # vdf keys  must be string for polars
@@ -541,9 +561,10 @@ def expanded_roadpathfinder(
     #
 
     expanded_links = links_to_expanded_links(links, u_turns=False)
-    expanded_links = fix_zone_to_road(expanded_links, volumes)
+    expanded_links = fix_zone_to_road(expanded_links, links, keep_connectors=keep_connectors)
     expanded_links = expanded_links.rename(columns={'from_link': 'a', 'to_link': 'b'})
-    expanded_links = expanded_links[['a', 'b', 'from_node', 'mid_node', 'to_node', time_col, 'segments']]
+    expanded_links = expanded_links[['a', 'b', 'ntleg_penalty', time_col, 'segments']]
+    # print(expanded_links)
 
     # reindex links to sparse indexes
     index = build_index(expanded_links[['a', 'b']].values)
@@ -569,8 +590,7 @@ def expanded_roadpathfinder(
     for seg in segments:
         links[(seg, 'cost')] = apply_segment_cost(links, cost_functions.get(seg))
         _dict = links[(seg, 'cost')].to_dict()
-        expanded_links[(seg, 'cost')] = expanded_links['sparse_index'].apply(lambda x: _dict.get(x, zone_penalty))
-        expanded_links[(seg, 'cost')] += expanded_links['turn_penalty']
+        expanded_links[(seg, 'cost')] = expanded_links['sparse_index'].apply(lambda x: _dict.get(x, 0))
 
     # init track links
     if tracker_plugin():
@@ -602,7 +622,8 @@ def expanded_roadpathfinder(
             origins = segment_origins[seg]
             odv = segment_odv[seg]
             segment_links = expanded_links[expanded_links['segments'].apply(lambda x: seg in x)]
-            _, pred = shortest_path(segment_links, (seg, 'cost'), index, origins, num_cores=num_cores)
+            weight_cols = [(seg, 'cost'), 'ntleg_penalty', 'turn_penalty']
+            _, pred = shortest_path(segment_links, weight_cols, index, origins, num_cores)
             # assign volume
             volumes_arr = assign_volume_on_links_parallel(odv, pred, nlen, num_cores)
             links[(seg, 'auxiliary_flow')] = volumes_arr[links.index]  # links index may be not sorted are missing
@@ -660,8 +681,7 @@ def expanded_roadpathfinder(
         for seg in segments:
             links[(seg, 'cost')] = apply_segment_cost(links, cost_functions.get(seg))
             _dict = links[(seg, 'cost')].to_dict()
-            expanded_links[(seg, 'cost')] = expanded_links['sparse_index'].apply(lambda x: _dict.get(x, zone_penalty))
-            expanded_links[(seg, 'cost')] += expanded_links['turn_penalty']
+            expanded_links[(seg, 'cost')] = expanded_links['sparse_index'].apply(lambda x: _dict.get(x, 0))
 
         # skip first iteration (AON asignment) as relgap in -inf
         if relgap <= tolerance:
@@ -685,12 +705,15 @@ def expanded_roadpathfinder(
             # filter links to allowed segment
             segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
             segment_links = expanded_links[expanded_links['segments'].apply(lambda x: seg in x)]
-            temp_los = get_car_los(segment_volumes, segment_links, index, origins, (seg, 'cost'), num_cores)
+            weight_cols = [(seg, 'cost'), 'ntleg_penalty', 'turn_penalty']
+            temp_los = get_car_los(segment_volumes, segment_links, index, origins, weight_cols, num_cores)
             temp_los['segment'] = seg
             car_los = pd.concat([car_los, temp_los], ignore_index=True)
 
         # change path of links to path of nodes
-        links_to_nodes_dict = {v: k for k, v in links['index'].to_dict().items()}
-        car_los['path'] = car_los['path'].apply(lambda ls: expanded_path_to_nodes(ls, links_to_nodes_dict))
+        links_to_nodes = {v: k for k, v in links['index'].to_dict().items()}
+        car_los['path'] = car_los['path'].apply(
+            lambda ls: expanded_path_to_nodes(ls, links_to_nodes, add_zones=not keep_connectors)
+        )
 
     return links, car_los, relgap_list

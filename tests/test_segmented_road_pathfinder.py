@@ -61,8 +61,7 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
         tolerance = 0.01
         time_column = 'time'
         access_time = 'time'
-        ntleg_penalty = 100
-        network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
+        network = init_network(self.sm, method, segments, time_column, access_time)
         volumes = init_volumes(self.sm)
         links, car_los, relgap_list = msa_roadpathfinder(
             network,
@@ -84,8 +83,7 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
         tolerance = 0.1
         time_column = 'time'
         access_time = 'time'
-        ntleg_penalty = 100
-        network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
+        network = init_network(self.sm, method, segments, time_column, access_time)
         volumes = init_volumes(self.sm)
         links, car_los, relgap_list = expanded_roadpathfinder(
             network,
@@ -97,7 +95,6 @@ class TestSegmentedRoadPathfinder(unittest.TestCase):
             vdf=vdf,
             log=False,
             time_col=time_column,
-            zone_penalty=ntleg_penalty,
             num_cores=num_cores,
             **kwargs,
         )

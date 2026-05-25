@@ -17,7 +17,13 @@ zones = pd.DataFrame({'id': ['z1', 'z2']})
 zones.index = zones['id']
 zones.index.name = 'index'
 
-volumes = pd.DataFrame({'origin': ['z1', 'z2'], 'destination': ['z2', 'z1'], 'car': [150, 100]})
+volumes = pd.DataFrame(
+    {
+        'origin': ['z1', 'z2'],
+        'destination': ['z2', 'z1'],
+        'car': [150, 100],
+    }
+)
 volumes.index.name = 'index'
 
 zone_to_road = pd.DataFrame(
@@ -68,8 +74,7 @@ class TestRoadPathfinder(unittest.TestCase):
         segments = []
         time_column = 'time'
         access_time = 'time'
-        ntleg_penalty = 100
-        network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
+        network = init_network(self.sm, method, segments, time_column, access_time)
         volumes = init_volumes(self.sm)
         car_los = aon_roadpathfinder(network, volumes, time_column, num_cores)
         return car_los
@@ -79,8 +84,7 @@ class TestRoadPathfinder(unittest.TestCase):
         segments = ['car']
         time_column = 'time'
         access_time = 'time'
-        ntleg_penalty = 100
-        network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
+        network = init_network(self.sm, method, segments, time_column, access_time)
         volumes = init_volumes(self.sm)
         links, car_los, relgap_list = msa_roadpathfinder(
             network,
@@ -103,8 +107,7 @@ class TestRoadPathfinder(unittest.TestCase):
         segments = ['car']
         time_column = 'time'
         access_time = 'time'
-        ntleg_penalty = 100
-        network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
+        network = init_network(self.sm, method, segments, time_column, access_time)
         volumes = init_volumes(self.sm)
         links, car_los, relgap_list = expanded_roadpathfinder(
             network,
@@ -116,7 +119,6 @@ class TestRoadPathfinder(unittest.TestCase):
             vdf=vdf,
             log=False,
             time_col=time_column,
-            zone_penalty=ntleg_penalty,
             num_cores=num_cores,
             **kwargs,
         )
@@ -128,8 +130,7 @@ class TestRoadPathfinder(unittest.TestCase):
         segments = ['car']
         time_column = 'time'
         access_time = 'time'
-        ntleg_penalty = 100
-        network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
+        network = init_network(self.sm, method, segments, time_column, access_time)
 
         expected_len = len(self.sm.road_links) + len(self.sm.zone_to_road)
         self.assertEqual(len(network), expected_len)
@@ -137,6 +138,7 @@ class TestRoadPathfinder(unittest.TestCase):
         expected_columns = [
             'a',
             'b',
+            'ntleg_penalty',
             'vdf',
             'segments',
             'flow',
@@ -147,18 +149,18 @@ class TestRoadPathfinder(unittest.TestCase):
         ]
         for col in expected_columns:
             self.assertIn(col, network.columns)
+        self.assertTrue(1e9 in network['ntleg_penalty'].values)
 
     def test_init_network_aon(self):
         method = 'aon'
         segments = []
         time_column = 'time'
         access_time = 'time'
-        ntleg_penalty = 100
-        network = init_network(self.sm, method, segments, time_column, access_time, ntleg_penalty)
+        network = init_network(self.sm, method, segments, time_column, access_time)
         expected_len = len(self.sm.road_links) + len(self.sm.zone_to_road)
         self.assertEqual(len(network), expected_len)
 
-        expected_columns = ['a', 'b', 'time']
+        expected_columns = ['a', 'b', 'ntleg_penalty', 'time']
         for col in expected_columns:
             self.assertIn(col, network.columns)
 
@@ -193,7 +195,9 @@ class TestRoadPathfinder(unittest.TestCase):
 
     def test_get_car_los_time(self):
         car_los = self._get_aon_los()
-        car_los = get_car_los_time(car_los, self.sm.road_links, self.sm.zone_to_road, 'time', 'time')
+        _rlinks = pd.concat([self.sm.road_links, self.sm.zone_to_road])
+        time_dict = _rlinks.set_index(['a', 'b'])['time'].to_dict()
+        car_los = get_car_los_time(car_los, time_dict)
 
         self.assertEqual(car_los['time'][0], 207)
         self.assertEqual(car_los['time'][1], 206)
@@ -206,6 +210,11 @@ class TestRoadPathfinder(unittest.TestCase):
 
             expected_path_2 = ['z2', 'c', 'b', 'a', 'z1']
             self.assertEqual(car_los['path'][1], expected_path_2)
+
+            # zone to road should have some volumes
+            # zone to roads bolumes should match demand.
+            self.assertEqual(links[links.index.get_level_values(0) == 'z1'][('car', 'flow')].sum(), 150)
+            self.assertEqual(links[links.index.get_level_values(0) == 'z2'][('car', 'flow')].sum(), 100)
 
     def test_msa_pathfinder_0_iters(self):
         for method in ['bfw', 'msa', 'fw']:
@@ -240,6 +249,19 @@ class TestRoadPathfinder(unittest.TestCase):
             expected_path_2 = ['z2', 'c', 'b', 'a', 'z1']
             self.assertEqual(car_los['path'][1], expected_path_2)
 
+    def test_expanded_pathfinder_with_connectors_assignment(self):
+        for method in ['bfw', 'msa', 'fw']:
+            links, car_los, relgap = self._get_expanded_roadpathfinder(method=method, keep_connectors=True)
+            expected_path_1 = ['z1', 'a', 'b', 'd', 'e', 'z2']
+            self.assertEqual(car_los['path'][0], expected_path_1)
+
+            expected_path_2 = ['z2', 'c', 'b', 'a', 'z1']
+            self.assertEqual(car_los['path'][1], expected_path_2)
+
+            # zone to roads bolumes should match demand.
+            self.assertEqual(links[links.index.get_level_values(0) == 'z1'][('car', 'flow')].sum(), 150)
+            self.assertEqual(links[links.index.get_level_values(0) == 'z2'][('car', 'flow')].sum(), 100)
+
     def test_expanded_pathfinder_track_link(self):
         index_dict = self.sm.road_links.reset_index().set_index(['a', 'b'])['index'].to_dict()
 
@@ -251,6 +273,24 @@ class TestRoadPathfinder(unittest.TestCase):
         # expected_path = ['z1', 'a', 'b', 'd', 'e', 'z2']
         expected_link_path = [*map(index_dict.get, [('a', 'b'), ('b', 'd'), ('d', 'e')])]
 
+        merged = tracker_plugin.merge()['car']
+        found_path = merged[merged[link] == 150].index.tolist()
+
+        self.assertEqual(expected_link_path, found_path)
+
+    def test_expanded_pathfinder_track_link_with_connectors_assignment(self):
+        index_dict = (
+            pd.concat([self.sm.road_links, self.sm.zone_to_road]).reset_index().set_index(['a', 'b'])['index'].to_dict()
+        )
+
+        link = index_dict.get(('b', 'd'))
+        assert self.sm.road_links.loc[link, 'a'] == 'b'
+        assert self.sm.road_links.loc[link, 'b'] == 'd'
+        tracker_plugin = LinksTracker([link])
+        links, car_los, relgap = self._get_expanded_roadpathfinder(tracker_plugin=tracker_plugin, keep_connectors=True)
+        # expected_path = ['z1', 'a', 'b', 'd', 'e', 'z2']
+        # its not ordered here. just a list of links
+        expected_link_path = [*map(index_dict.get, [('a', 'b'), ('b', 'd'), ('d', 'e'), ('z1', 'a'), ('e', 'z2')])]
         merged = tracker_plugin.merge()['car']
         found_path = merged[merged[link] == 150].index.tolist()
 
