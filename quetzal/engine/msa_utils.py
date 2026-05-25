@@ -31,10 +31,10 @@ def get_sparse_matrix(edges, index):
 
 
 def shortest_path(
-    links: pd.DataFrame, weight_col: str, index: dict[str, int], origins: list[int], num_cores: int
+    links: pd.DataFrame, weight_cols: list[str], index: dict[str, int], origins: list[int], num_cores: int
 ) -> Tuple[np.ndarray, np.ndarray]:
     # from  df index(a,b) and weight col, return predecessor.
-    edges = links[weight_col].reset_index().values  # build the edges again, useless
+    edges = links[weight_cols].sum(axis=1).reset_index().values  # build the edges again, useless
     csgraph = get_sparse_matrix(edges, index=index)
     # shortest path
     weight_matrix, predecessors = fast_dijkstra(

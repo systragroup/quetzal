@@ -13,7 +13,13 @@ volumes = pd.DataFrame({'origin': ['p'], 'destination': ['q'], 'car': [1000]})
 volumes.index.name = 'index'
 
 zone_to_road = pd.DataFrame(
-    {'a': ['p', 'b'], 'b': ['a', 'q'], 'time': [10, 10], 'length': [10, 10], 'direction': ['access', 'eggress']}
+    {
+        'a': ['p', 'b'],
+        'b': ['a', 'q'],
+        'time': [10, 10],
+        'length': [10, 10],
+        'direction': ['access', 'eggress'],
+    }
 )
 zone_to_road.index = 'zr_' + zone_to_road.index.astype(str)
 zone_to_road.index.name = 'index'
@@ -82,8 +88,7 @@ class TestFrankWolfe(unittest.TestCase):
             self.assertAlmostEqual(links.loc[key, 'flow'], expected_flow, places=0)
             self.assertAlmostEqual(links.loc[key, 'jam_time'], expected_jam_time, places=1)
 
-    def _get_expanded_roadpathfinder(self, maxiters=10, method='bfw'):
-        tolerance = 10e-6
+    def _get_expanded_roadpathfinder(self, maxiters=10, method='bfw', tolerance=10e-6, **kwargs):
         segments = ['car']
         time_column = 'time'
         access_time = 'time'
@@ -100,11 +105,12 @@ class TestFrankWolfe(unittest.TestCase):
             time_col=time_column,
             num_cores=num_cores,
             log=False,
+            **kwargs,
         )
         return links, car_los, relgap_list
 
-    def _test_expanded_pathfinder_with_method(self, method):
-        links, car_los, relgap = self._get_expanded_roadpathfinder(method=method)
+    def _test_expanded_pathfinder_with_method(self, **kwargs):
+        links, car_los, relgap = self._get_expanded_roadpathfinder(**kwargs)
         expected_flows = {('a', 'm1'): 358.329, ('a', 'm2'): 464.514, ('a', 'm3'): 177.157}
         expected_jam_time = 25.456
         for key, expected_flow in expected_flows.items():
@@ -136,6 +142,19 @@ class TestFrankWolfe(unittest.TestCase):
 
     def test_fw_expanded_pathfinder(self):
         self._test_expanded_pathfinder_with_method(method='fw')
+
+    def test_bfw_expanded_pathfinder_with_connector_assignment(self):
+        method = 'bfw'
+        keep_connectors = True
+        links, car_los, relgap = self._get_expanded_roadpathfinder(method=method, keep_connectors=keep_connectors)
+        expected_flows = {('a', 'm1'): 358.329, ('a', 'm2'): 464.514, ('a', 'm3'): 177.157}
+        expected_jam_time = 25.456
+        for key, expected_flow in expected_flows.items():
+            self.assertAlmostEqual(links.loc[key, 'flow'], expected_flow, places=0)
+            self.assertAlmostEqual(links.loc[key, 'jam_time'], expected_jam_time, places=1)
+        # assert zones to roads have all the flows
+        self.assertAlmostEqual(links.loc[('p', 'a'), 'flow'], 1000, places=0)
+        self.assertAlmostEqual(links.loc[('b', 'q'), 'flow'], 1000, places=0)
 
     @unittest.skip('msa will fail affectation cause its not good')
     def test_msa_expanded_pathfinder(self):

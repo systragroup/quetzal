@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 from typing import Dict, List, Literal, Optional
 from quetzal.analysis import analysis
 from quetzal.engine import engine, nested_logit
@@ -62,6 +63,9 @@ log = model.log
 
 
 class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
+    road_links: gpd.GeoDataFrame
+    zone_to_road: gpd.GeoDataFrame
+
     @track_args
     def step_distribution(self, segmented=False, deterrence_matrix=None, **od_volume_from_zones_kwargs):
         """Function performing distribution of flows with doubly constrained algorithm,
@@ -175,9 +179,9 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         od_set: Optional[Dict] = None,
         tracker_plugin: LinksTracker = LinksTracker(),
         turn_penalties: Optional[Dict[str, List[str]]] = None,
-        ntleg_penalty: float = 10e9,
         num_cores: int = 1,
         return_car_los=True,
+        assign_on_connectors=False,
         **kwargs,
     ) -> None:
         """Performs road assignment with or without capacity constraint, depending on the method used
@@ -214,8 +218,6 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             set of od to use - may be used to reduce computation time
             for example, the od_set is the set of od for which there is a volume in self.volumes
 
-        ntleg_penalty : float, optional, default 1e9
-            ntleg penality for access time
         turn_penalties : dict, optional, default None
             dictionary of turn penalties for the road links
             ex: {'rlink_0', ['rlink_4']}
@@ -230,12 +232,16 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         return_car_los:
             compute and return self.car_los
 
+        assign_on_connectors:
+            return assignment on self.zone_to_roads (flows, costs, jam_time)
+
         **kwargs :  see msa_roadpathfinder()
             vdf={'default_bpr': default_bpr, 'free_flow': free_flow},
             method='bfw',
             maxiters=10,
             tolerance=0.01,
             log=False,
+
 
             turn_penality for expanded.
 
@@ -263,17 +269,19 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             print(method, ' not supported. use msa, fw, bfw or aon')
             return
 
-        network = init_network(self, method, segments, time_column, access_time, ntleg_penalty)
+        network = init_network(self, method, segments, time_column, access_time)
         volumes = init_volumes(self, od_set)
 
         if method == 'aon':
             self.car_los = aon_roadpathfinder(network, volumes, time_column, num_cores)
-            self.car_los = get_car_los_time(self.car_los, self.road_links, self.zone_to_road, 'time', 'time')
+            _rlinks = pd.concat([self.road_links, self.zone_to_road])
+            time_dict = _rlinks.set_index(['a', 'b'])['time'].to_dict()
+            self.car_los = get_car_los_time(self.car_los, time_dict)
             return
 
         # elif method in ['msa', 'fw', 'bfw']:
         if turn_penalties is None:
-            links, car_los, rel_gap = msa_roadpathfinder(
+            loaded_links, car_los, rel_gap = msa_roadpathfinder(
                 network,
                 volumes,
                 segments=segments,
@@ -285,7 +293,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 **kwargs,
             )
         else:
-            links, car_los, rel_gap = expanded_roadpathfinder(
+            loaded_links, car_los, rel_gap = expanded_roadpathfinder(
                 network,
                 volumes,
                 segments=segments,
@@ -295,25 +303,45 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 turn_penalties=turn_penalties,
                 num_cores=num_cores,
                 return_car_los=return_car_los,
+                keep_connectors=assign_on_connectors,
                 **kwargs,
             )
+        time_dict = loaded_links['jam_time'].to_dict()
+        if not assign_on_connectors:
+            # need to add zone_to_road to time_dict, as they are not return by the roadPathfinder in that case.
+            time_dict.update(self.zone_to_road.set_index(['a', 'b'])[access_time].to_dict())
 
-        time_dict = links['jam_time'].to_dict()
-        self.road_links['jam_time'] = self.road_links.set_index(['a', 'b']).index.map(time_dict.get)
-        self.road_links['jam_speed'] = self.road_links['length'] / self.road_links['jam_time'] * 3.6
+        _rlinks = self.road_links.copy()
+        _connectors = self.zone_to_road.copy()
 
-        volume_dict = links['flow'].to_dict()
-        self.road_links['flow'] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
+        # if assign_on_connectors:
+        #     # concat both to assign flow, time, cost in 1 operation. split after
+        #     _rlinks = pd.concat([_rlinks, self.zone_to_road])
+
+        _rlinks['jam_time'] = _rlinks.set_index(['a', 'b']).index.map(time_dict.get)
+        _rlinks['jam_speed'] = _rlinks['length'] / _rlinks['jam_time'] * 3.6
+        _connectors['jam_time'] = _connectors.set_index(['a', 'b']).index.map(time_dict.get)
+        _connectors['jam_speed'] = _connectors['length'] / _connectors['jam_time'] * 3.6
+
+        volume_dict = loaded_links['flow'].to_dict()
+        _rlinks['flow'] = _rlinks.set_index(['a', 'b']).index.map(volume_dict.get)
+        _connectors['flow'] = _connectors.set_index(['a', 'b']).index.map(volume_dict.get)
+
         for seg in segments:
-            volume_dict = links[(seg, 'flow')].to_dict()
-            self.road_links[(seg, 'flow')] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
+            volume_dict = loaded_links[(seg, 'flow')].to_dict()
+            _rlinks[(seg, 'flow')] = _rlinks.set_index(['a', 'b']).index.map(volume_dict.get)
+            _connectors[(seg, 'flow')] = _connectors.set_index(['a', 'b']).index.map(volume_dict.get)
         for seg in segments:
-            cost_dict = links[(seg, 'cost')].to_dict()
-            self.road_links[(seg, 'cost')] = self.road_links.set_index(['a', 'b']).index.map(cost_dict.get)
-
+            cost_dict = loaded_links[(seg, 'cost')].to_dict()
+            _rlinks[(seg, 'cost')] = _rlinks.set_index(['a', 'b']).index.map(cost_dict.get)
+            _connectors[(seg, 'cost')] = _connectors.set_index(['a', 'b']).index.map(cost_dict.get)
         if return_car_los:
-            car_los = get_car_los_time(car_los, self.road_links, self.zone_to_road, 'jam_time', 'time')
+            car_los = get_car_los_time(car_los, time_dict)
             self.car_los = car_los
+
+        self.road_links = _rlinks
+        if assign_on_connectors:
+            self.zone_to_road = _connectors
         self.relgap = rel_gap
 
     @track_args
