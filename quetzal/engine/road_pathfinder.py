@@ -328,8 +328,8 @@ def aon_roadpathfinder(links, volumes, time_col='time', num_cores=1):
     links = links.set_index(['sparse_a', 'sparse_b'])
     # sparsify volumes keys
     volumes, origins = get_sparse_volumes(volumes, index)
-
-    return get_car_los(volumes, links, index, origins, [time_col], num_cores)
+    weight_cols = [time_col, 'ntleg_penalty']
+    return get_car_los(volumes, links, index, origins, weight_cols, num_cores)
 
 
 def msa_roadpathfinder(

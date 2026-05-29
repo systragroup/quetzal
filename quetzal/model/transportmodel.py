@@ -169,7 +169,6 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         else:
             return volumes
 
-    @track_args
     def step_road_pathfinder(
         self,
         method: Literal['bfw', 'fw', 'msa', 'aon'] = 'bfw',
@@ -274,8 +273,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         if method == 'aon':
             self.car_los = aon_roadpathfinder(network, volumes, time_column, num_cores)
-            _rlinks = pd.concat([self.road_links, self.zone_to_road])
-            time_dict = _rlinks.set_index(['a', 'b'])['time'].to_dict()
+            time_dict = network.set_index(['a', 'b'])[time_column].to_dict()
             self.car_los = get_car_los_time(self.car_los, time_dict)
             return
 

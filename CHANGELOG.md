@@ -1,5 +1,8 @@
-## [3.6.0] (2026-05-25)
+## [FUTURE] (2026-05-29)
+## bug fixes
+* AON RoadPathfinder. uses time_columns and acces_time to do the pathfinder and the car_los time col
 
+## [3.6.0] (2026-05-25)
 ## Features
 * RoadPathfinder: can now compute volumes on zone_to_road with arg: keep_connectors=True with all available methods
 
