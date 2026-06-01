@@ -185,15 +185,24 @@ def _get_links_inbetween(a: str, b: str, trip_links: pl.DataFrame) -> list[str]:
 
 
 def distribute_commons_on_links(
-    links: pd.DataFrame, common_trips: pd.DataFrame, cols=['boardings', 'alightings', 'volume'], keep_common=False
+    links: pd.DataFrame,
+    common_trips: pd.DataFrame,
+    all_cols=['volume'],
+    first_cols=['boardings'],
+    last_cols=['alightings'],
+    keep_common=False,
 ):
-    # distribute volumes, baordings, aligthings
-    # from common to normal links
+    """
+    distribute volumes, boardings, aligthings
+    from common to normal links.
+    when multiple links makes 1 common_link, boardings apply on first, alightings on last.
+    """
 
     # we have common_link : [[links], [links]] # first list is each trip. second is the merge of links (fill gap)
     common_links = common_trips[['index_list', 'trip_id_list', 'trip_id']]
     # add each common_link volume to the df
     # we also need the common_link headway (to weight each trip in the common trip later)
+    cols = [*all_cols, *first_cols, *last_cols]
     common_links = common_links.merge(links[[*cols, 'headway']], left_index=True, right_index=True).reset_index()
     # explode to have common_link: [links]. so each row is a trip that get a portion of the volume
     common_links = common_links.explode(['trip_id_list', 'index_list'])
@@ -204,21 +213,38 @@ def distribute_commons_on_links(
     common_links['trip_headway'] = common_links['trip_id_list'].apply(headway_dict.get)
     # Weight = combined_headway*(1/headway)
     common_links['weight'] = common_links['headway'] / common_links['trip_headway']
+    # add boarding weigths?
 
     # now we have each Trip weight for each common links. we can explode.
+
     # The volume for Gap links is still weight X volume for each link
-    common_links = common_links.explode('index_list')
-    for col in cols:
-        common_links[col] = common_links[col] * common_links['weight']
+    common_links = common_links.drop(columns=['index'])
+    all_links = common_links.explode('index_list').rename(columns={'index_list': 'index'})
+    # for boardings: only apply on first.
+    first_links = common_links.copy()
+    first_links['index'] = first_links['index_list'].apply(lambda ls: ls[0])
+    # for alightings: only aply on last
+    last_links = common_links.copy()
+    last_links['index'] = last_links['index_list'].apply(lambda ls: ls[-1])
+
+    for col in all_cols:
+        all_links[col] = all_links[col] * all_links['weight']
+
+    for col in first_cols:
+        first_links[col] = first_links[col] * first_links['weight']
+
+    for col in last_cols:
+        last_links[col] = last_links[col] * last_links['weight']
 
     # then sum on the links. (we can ahve multiple common links using the same link)
-    common_links = common_links.groupby('index_list')[cols].agg(sum)
-    common_links.index.name = 'index'
-
+    all_links = all_links.groupby('index')[all_cols].agg(sum)
+    first_links = first_links.groupby('index')[first_cols].agg(sum)
+    last_links = last_links.groupby('index')[last_cols].agg(sum)
     # apply to links
     if not keep_common:
         links = links[~links['is_common']]
 
-    links[cols] = links[cols].add(common_links[cols], fill_value=0)
-
+    links[all_cols] = links[all_cols].add(all_links[all_cols], fill_value=0)
+    links[first_cols] = links[first_cols].add(first_links[first_cols], fill_value=0)
+    links[last_cols] = links[last_cols].add(last_links[last_cols], fill_value=0)
     return links
