@@ -2,6 +2,10 @@
 ## bug fixes
 * AON RoadPathfinder. uses time_columns and acces_time to do the pathfinder and the car_los time col
 * distribute_commons_on_links: only put boardings on first links and alightings on last link (when there is multiple link merge together to create a common_link, not between trips) 
+* preparation_footpaths: if length=0: dont do any foothpaths
+
+## Changes
+* road_pathfinder: allow zone-to-zone in the expanded graph.
 
 ## [3.6.0] (2026-05-25)
 ## Features
