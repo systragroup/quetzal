@@ -242,13 +242,17 @@ def links_to_expanded_links(links_with_zone_to_road: gpd.GeoDataFrame, u_turns=F
     return expanded_links
 
 
-def fix_zone_to_road(ex_links: gpd.GeoDataFrame, links: gpd.geodataframe, keep_connectors=False) -> gpd.GeoDataFrame:
+def fix_zone_to_road(
+    ex_links: gpd.GeoDataFrame, links: gpd.geodataframe, keep_connectors=False, keep_zone_to_zone=True
+) -> gpd.GeoDataFrame:
     """
     remove links that go through zones and zone-to-zone links.
     if keep_connectors=False:
         change zone_to_road expanded links to only the zone index.
     else:
         add virtual connectors to zone_to_road.
+
+    keep_zone_to_zone: keep links skipping road network. if 2 zones are connected with the same node for example
     """
     access = links[links['direction'] == 'access']
     egress = links[links['direction'] == 'eggress']
@@ -256,7 +260,8 @@ def fix_zone_to_road(ex_links: gpd.GeoDataFrame, links: gpd.geodataframe, keep_c
     # remove links that go through zones.
     ex_links = ex_links[~ex_links['mid_node'].isin(zones_set)]
     # remove zone to zone links.
-    ex_links = ex_links[~(ex_links['from_node'].isin(zones_set) & ex_links['to_node'].isin(zones_set))]
+    if not keep_zone_to_zone:
+        ex_links = ex_links[~(ex_links['from_node'].isin(zones_set) & ex_links['to_node'].isin(zones_set))]
     # we need to add a virtual zone to keep the connectors, else, we dont wont know which zone to road is used
     if keep_connectors:
         # add virtual links to connect zones to its zone_to_road

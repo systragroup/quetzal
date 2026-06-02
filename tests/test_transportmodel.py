@@ -89,6 +89,7 @@ class TestTransportModel(unittest.TestCase):
             'access_time': 'time',
             'turn_penalties': None,
             'return_car_los': True,
+            'assign_on_connectors': True,
         }
         for method in ['aon', 'bfw', 'msa', 'fw']:
             sm.step_road_pathfinder(method=method, **kwargs)
