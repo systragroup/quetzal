@@ -22,6 +22,7 @@ def simplify_road_network(sm, resolution=8, to_keep_indices=[], keep_reversed=Tr
     perimeter = perimeter_df.geometry.values[0]
     # build zoning
     zones = polygon_to_h3_zones_gdf(perimeter, resolution)
+    print("nzones:", len(zones))
 
     # check n zones
     if not force:
@@ -33,28 +34,33 @@ def simplify_road_network(sm, resolution=8, to_keep_indices=[], keep_reversed=Tr
     volumes = pd.DataFrame(
         index=pd.MultiIndex.from_product([zones.index, zones.index]),
         data=np.ones(len(zones.index)**2),
-        columns=["volume"]
+        columns=["volume_car"]
     )
     sm.volumes = volumes.reset_index().rename(columns={"level_0": "origin", "level_1": "destination"})
-    sm.preparation_ntlegs(zone_to_road=True, road_to_transit=True)
+    sm.preparation_ntlegs(zone_to_road=True, road_to_transit=False, zone_to_transit=False)
 
     # run pathfinder and assignment
-    print("run pathfinder")
-    sm.step_road_pathfinder(method='aon')
-    sm.los = sm.car_los
-    sm.car_los[("volume", "probability")] = 1
-    sm.segments=["volume"]
-    print("run assigmnent")
-    sm.step_assignment(road=True)
+    # print("run pathfinder")
+    # sm.step_road_pathfinder(method='aon')
+    # sm.los = sm.car_los
+    # sm.car_los[("volume", "probability")] = 1
+    # sm.segments=["volume"]
+    # print("run assigmnent")
+    # sm.step_assignment(road=True)
+    sm.step_road_pathfinder(method="aon")
 
     # Filter road_links
     print("filter")
+    vol_indices = []
+    for v in sm.car_los["link_path"]:
+        vol_indices+=v
+
     keep_loc = sm.road_links.index.isin(to_keep_indices)
-    volume_loc = sm.road_links[("volume", "car")]>0
+    volume_loc = sm.road_links.index.isin(vol_indices)
     keep_loc = (keep_loc) | (volume_loc)
     if keep_reversed:
         ## force add reversed links for link to keep
-        reversed_loc = sm.road_links.loc[(keep_loc)|(sm.road_links[("volume", "car")]>0)].index
+        reversed_loc = sm.road_links.loc[(keep_loc)|(volume_loc)].index
         reversed_to_add_loc = []
         for x in reversed_loc:
             reversed_to_add_loc += [x.split("_r")[0], x.split("_r")[0] + "_r"]
