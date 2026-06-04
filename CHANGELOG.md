@@ -6,6 +6,7 @@
 
 ## Changes
 * road_pathfinder: allow zone-to-zone in the expanded graph.
+* distribute_commons_on_links: can add a seceondary weight: usefull for capacitated assignment
 
 ## [3.6.0] (2026-05-25)
 ## Features

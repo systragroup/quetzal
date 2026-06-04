@@ -3,6 +3,7 @@ import polars as pl
 import numpy as np
 from syspy.spatial.geometries import line_list_to_polyline
 from itertools import chain
+from typing import Optional
 
 
 def find_common_sets(links: pd.DataFrame) -> list[frozenset]:
@@ -191,11 +192,26 @@ def distribute_commons_on_links(
     first_cols=['boardings'],
     last_cols=['alightings'],
     keep_common=False,
+    secondary_weight: Optional[str] = None,
 ):
     """
-    distribute volumes, boardings, aligthings
-    from common to normal links.
+    distribute volumes, boardings, alightings from common to normal links.
+    distribution is weighted with Headway and secondary weight if provided.
     when multiple links makes 1 common_link, boardings apply on first, alightings on last.
+    ex: common_link1 = [link1, link2, link3] from trip1 and [link100] from trip2
+        trip1 and trip2 have the same headway, so the common_volume (100) is distributed 50/50.
+        we add 50 to link1, link2, link3 and link100. however, if there are boardings (let say 100)
+        on the common links. we only want to add  50 boardings to link1 and link100. not link2 and link3.
+    Parameters
+    ----------
+    links: sm.links
+    common_trips : sm.common_trips
+    all_cols: columns to distribute on all links
+    first_cols: column to distribute on the first link only
+    last_cols: column to distribute on the last link only
+    keep_common: delete common_links from links if False, their volume is distributed. should drop.
+    secondary_weight: add another weight (not just the headway). should be greater than 0.
+        W_i = Wh_i * Ws_i / sum(Wh_i * Ws_i). where Wh is the headway weight and Ws the secondary weight
     """
 
     # we have common_link : [[links], [links]] # first list is each trip. second is the merge of links (fill gap)
@@ -213,7 +229,15 @@ def distribute_commons_on_links(
     common_links['trip_headway'] = common_links['trip_id_list'].apply(headway_dict.get)
     # Weight = combined_headway*(1/headway)
     common_links['weight'] = common_links['headway'] / common_links['trip_headway']
-    # add boarding weigths?
+    # can add a secondary weight: like bpr of (volume/capacity).
+    # this hep to move people on lines with less peoples that have similar headways.
+    if secondary_weight is not None:
+        _dict = links[secondary_weight].to_dict()
+        common_links['secondary_weight'] = common_links['index_list'].apply(lambda ls: _dict.get(ls[0], 1))
+        common_links['weight'] *= common_links['secondary_weight']
+
+        tot_weight = common_links.groupby('index')['weight'].sum().to_dict()
+        common_links['weight'] = common_links['weight'] / common_links['index'].apply(tot_weight.get)
 
     # now we have each Trip weight for each common links. we can explode.
 
@@ -240,7 +264,6 @@ def distribute_commons_on_links(
     all_links = all_links.groupby('index')[all_cols].agg(sum)
     first_links = first_links.groupby('index')[first_cols].agg(sum)
     last_links = last_links.groupby('index')[last_cols].agg(sum)
-    # apply to links
     if not keep_common:
         links = links[~links['is_common']]
 
