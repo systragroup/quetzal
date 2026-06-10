@@ -139,7 +139,7 @@ def create_common_links(
     # create links
     #
 
-    common_links = common_trips.drop(columns=['trip_id_list'])
+    common_links = common_trips[['a', 'b', 'trip_id', 'link_sequence', 'index_list']]
     common_links = common_links.explode('index_list')
 
     common_links['to_sum'] = range(0, len(common_links))
