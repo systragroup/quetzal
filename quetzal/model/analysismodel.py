@@ -317,6 +317,7 @@ class AnalysisModel(summarymodel.SummaryModel):
         walk_on_road=False,
         time_only=False,
         link_time_col='time',
+        waiting_time_expr='headway / 2',
     ):
         """
         boarding_time:
@@ -330,6 +331,8 @@ class AnalysisModel(summarymodel.SummaryModel):
             'time', 'access_time', 'footpath_time', 'waiting_time', 'boarding_time', 'in_vehicle_time'
         link_time_col:
             'time' chose the column in self.links used to compute in_vehicle_time
+        waiting_time_expr:
+            'headway / 2'. how to compute waiting time from links. self.links.eval('headway / 2')
 
         return self.pt_los
         """
@@ -362,19 +365,19 @@ class AnalysisModel(summarymodel.SummaryModel):
             access = self.zone_to_transit
 
         d = access.set_index(['a', 'b'])['time'].to_dict()
-        self.pt_los['access_time'] = self.pt_los['ntlegs'].apply(lambda l: sum([d[t] for t in l]))
+        self.pt_los['access_time'] = self.pt_los['ntlegs'].apply(lambda ls: sum([d[t] for t in ls]))
 
         d = footpaths.set_index(['a', 'b'])['time'].to_dict()
-        self.pt_los['footpath_time'] = self.pt_los['footpaths'].apply(lambda l: sum([d[t] for t in l]))
+        self.pt_los['footpath_time'] = self.pt_los['footpaths'].apply(lambda ls: sum([d[t] for t in ls]))
 
         d = self.links[link_time_col].to_dict()
-        self.pt_los['in_vehicle_time'] = self.pt_los['link_path'].apply(lambda l: sum([d[t] for t in l]))
-        d = self.links['headway'].to_dict()
-        self.pt_los['waiting_time'] = self.pt_los['boarding_links'].apply(lambda l: sum([d[t] / 2 for t in l]))
+        self.pt_los['in_vehicle_time'] = self.pt_los['link_path'].apply(lambda ls: sum([d[t] for t in ls]))
+        d = self.links.eval(waiting_time_expr).to_dict()
+        self.pt_los['waiting_time'] = self.pt_los['boarding_links'].apply(lambda ls: sum([d[t] for t in ls]))
 
         if 'boarding_time' in self.links.columns:
             d = self.links['boarding_time'].to_dict()
-            self.pt_los['boarding_time'] = self.pt_los['boarding_links'].apply(lambda l: sum([d[t] for t in l]))
+            self.pt_los['boarding_time'] = self.pt_los['boarding_links'].apply(lambda ls: sum([d[t] for t in ls]))
         else:
             self.pt_los['boarding_time'] = self.pt_los['boarding_links'].apply(lambda t: len(t) * boarding_time)
 

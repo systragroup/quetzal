@@ -8,6 +8,7 @@
 ## Changes
 * road_pathfinder: allow zone-to-zone in the expanded graph.
 * distribute_commons_on_links: can add a seceondary weight: usefull for capacitated assignment
+* analysis_pt_time: add waiting_time_expr= 'headway / 2'. whith this you can specify a 'waiting_time' column.
 
 ## [3.6.0] (2026-05-25)
 ## Features
