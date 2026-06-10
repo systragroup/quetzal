@@ -1,13 +1,17 @@
 import json
+import multiprocessing
 import os
 import shutil
+import string
 import time
 import uuid
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import Manager, Pipe, Process, Queue
 from subprocess import Popen
-import string
 from typing import Any
 
 import nbformat
+import numpy as np
 from nbconvert import PythonExporter
 
 
@@ -127,7 +131,6 @@ def parallel_call_notebooks(
 
 
 def convertNotebook(notebookPath, modulePath):
-
     with open(notebookPath) as fh:
         nb = nbformat.reads(fh.read(), nbformat.NO_CONVERT)
 
@@ -276,11 +279,6 @@ def parallel_call_subprocess(
     return results
 
 
-from concurrent.futures import ProcessPoolExecutor
-from multiprocessing import Process, Queue, Manager, Pipe
-import numpy as np
-
-
 def parallel_executor(function, method='pool', num_workers: int = 1, parallel_kwargs: dict = {}, **kwargs):
     """
     function:
@@ -416,3 +414,36 @@ def process_pipe_executor(function, num_workers=1, parallel_kwargs={}, **kwargs)
 
     # Convert the manager list to a regular list for easier access
     return results
+
+
+def pool_imap_unordered_executor(
+    function, iterable, num_workers=1, initializer=None, initargs=(), chunksize=1, context='fork'
+):
+    """Wrapping imap_unordered to be able to handle single core processing"""
+    iterable = list(iterable)
+    if len(iterable) == 0:
+        return []
+
+    num_workers = max(1, min(int(num_workers), len(iterable)))
+    if num_workers == 1:
+        if initializer is not None:
+            initializer(*initargs)
+        return [function(item) for item in iterable]
+
+    ctx = multiprocessing.get_context(context)
+    with ctx.Pool(processes=num_workers, initializer=initializer, initargs=initargs) as pool:
+        return list(pool.imap_unordered(function, iterable, chunksize=chunksize))
+
+
+_shared_worker_state = {}
+
+
+def shared_state_worker_init(state):
+    """Called once per worker: store shared objects in process globals, avoiding per-task pickling."""
+    global _shared_worker_state
+    _shared_worker_state = state
+
+
+def get_worker_state(key):
+    """Access a value stored by shared_state_worker_init in the current worker process."""
+    return _shared_worker_state[key]

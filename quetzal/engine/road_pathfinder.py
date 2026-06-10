@@ -227,11 +227,16 @@ def get_car_los_time(car_los, links, zone_to_road, time_col='jam_time', access_t
 def links_to_expanded_links(links_with_zone_to_road: gpd.GeoDataFrame, u_turns=False):
     df = links_with_zone_to_road.reset_index()
     df1 = df.rename(columns={'index': 'from_link', 'a': 'a1', 'b': 'b1'})
-    df2 = df[['index', 'a', 'b']].rename(columns={'index': 'to_link', 'a': 'a2', 'b': 'b2'})
+    df2 = df[['index', 'a', 'b', 'length', 'time']].rename(columns={'index': 'to_link', 'a': 'a2', 'b': 'b2'})
 
-    expanded_links = pd.merge(df1, df2, left_on='b1', right_on='a2')
+    expanded_links = pd.merge(df1, df2, left_on='b1', right_on='a2', suffixes=('', '_to'))
     if not u_turns:  # remove U turn
         expanded_links = expanded_links[expanded_links['a1'] != expanded_links['b2']].reset_index(drop=True)
+
+    for col in ['time', 'length']:
+        if col in expanded_links.columns and f'{col}_to' in expanded_links.columns:
+            expanded_links[col] = expanded_links[col] + expanded_links[f'{col}_to']
+            expanded_links = expanded_links.drop(columns=[f'{col}_to'])
 
     # rename, reorder, clean
     expanded_links = expanded_links.rename(columns={'a1': 'from_node', 'b2': 'to_node', 'a2': 'mid_node'}).drop(

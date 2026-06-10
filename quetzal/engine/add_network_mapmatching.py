@@ -14,7 +14,7 @@ from sklearn.neighbors import NearestNeighbors
 from quetzal.engine.fast_utils import get_path
 from quetzal.engine.pathfinder_utils import sparse_matrix
 from quetzal.engine.road_pathfinder import links_to_expanded_links
-from quetzal.os.parallel_call import parallel_executor
+from quetzal.os.parallel_call import get_worker_state, pool_imap_unordered_executor, shared_state_worker_init
 from syspy.spatial.spatial import add_geometry_coordinates, plot_lineStrings
 
 log = logging.getLogger(__name__)
@@ -356,6 +356,27 @@ def get_gps_tracks(links, nodes, by='trip_id', sequence='link_sequence'):
     return gps_tracks
 
 
+def _mapmatch_single_trip(task_args):
+    """Process one trip. road_links and kwargs are retrieved from worker state set by initializer."""
+    trip_id, gps_track, gps_index_dict = task_args
+    road_links = get_worker_state('road_links')
+    kwargs = get_worker_state('kwargs')
+    try:
+        res = Mapmatching(gps_track, road_links, **kwargs)
+    except (ValueError, IndexError) as e:
+        print(f'Trip {trip_id} skipped: {e}')
+        return trip_id, None, None, True
+
+    if isinstance(res, tuple):
+        val, node_list = res
+    else:
+        val, node_list = res, gpd.GeoDataFrame()
+
+    val.index = val.index.map(gps_index_dict)
+    node_list.index = node_list.index.map(gps_index_dict)
+    return trip_id, val, node_list, False
+
+
 def Parallel_Mapmatching(
     gps_tracks: pd.DataFrame, road_links: RoadLinks, by: str = 'trip_id', num_cores: int = 1, **kwargs
 ) -> Tuple[pd.DataFrame, pd.DataFrame, list]:
@@ -369,24 +390,52 @@ def Parallel_Mapmatching(
     if len(trip_list) == 0:
         return gpd.GeoDataFrame(), gpd.GeoDataFrame(), unmatched_trip
 
-    num_cores = max(1, int(num_cores))
-    num_cores = min(num_cores, len(trip_list))
-    if len(trip_list) < 2 * num_cores:
-        num_cores = max(1, len(trip_list) // 2)
+    num_cores = max(1, min(int(num_cores), len(trip_list)))
 
-    chunk_length = int(np.ceil(len(trip_list) / num_cores))
-    chunks = [trip_list[j : j + chunk_length] for j in range(0, len(trip_list), chunk_length)]
-    chunk_gps_tracks = [gps_tracks[gps_tracks[by].isin(trips)] for trips in chunks]
+    # Build per-trip args (small: only the gps_track slice, no road_links)
+    task_args = []
+    for trip_id in trip_list:
+        gps_track = gps_tracks[gps_tracks[by] == trip_id].drop(columns=by).reset_index()
+        gps_index_dict = gps_track['index'].to_dict()
+        gps_track = gps_track.drop(columns=['index'])
+        task_args.append((trip_id, gps_track, gps_index_dict))
 
-    kwargs = {'road_links': road_links, 'by': by, **kwargs}
-    results = parallel_executor(
-        Multi_Mapmatching, num_workers=len(chunks), parallel_kwargs={'gps_tracks': chunk_gps_tracks}, **kwargs
-    )
+    shared_state = {'road_links': road_links, 'kwargs': kwargs}
 
-    vals = pd.concat([res[0] for res in results]) if results else gpd.GeoDataFrame()
-    node_lists = pd.concat([res[1] for res in results]) if results else gpd.GeoDataFrame()
-    unmatched_trip.extend([trip for res in results for trip in res[2]])
+    if num_cores == 1:
+        shared_state_worker_init(shared_state)
+        raw_results = [_mapmatch_single_trip(args) for args in task_args]
+    else:
+        raw_results = []
+        done = 0
+        for result in pool_imap_unordered_executor(
+            _mapmatch_single_trip,
+            task_args,
+            num_workers=num_cores,
+            initializer=shared_state_worker_init,
+            initargs=(shared_state,),
+            chunksize=1,
+            context='fork',
+        ):
+            raw_results.append(result)
+            done += 1
+            if done % max(len(trip_list) // 5, 5) == 0 or done == len(trip_list):
+                print(f'{done} / {len(trip_list)}')
+
+    vals_list, node_lists_list = [], []
+    for trip_id, val, node_list, failed in raw_results:
+        if failed:
+            unmatched_trip.append(trip_id)
+            continue
+        val[by] = trip_id
+        node_list[by] = trip_id
+        vals_list.append(val)
+        node_lists_list.append(node_list)
+
+    vals = pd.concat(vals_list) if vals_list else gpd.GeoDataFrame()
+    node_lists = pd.concat(node_lists_list) if node_lists_list else gpd.GeoDataFrame()
     return vals, node_lists, unmatched_trip
+
 
 
 def Multi_Mapmatching(
