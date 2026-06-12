@@ -1,4 +1,4 @@
-## [FUTURE] (2026-05-29)
+## [FUTURE] (2026-05-29 2026-06-12)
 ## bug fixes
 * AON RoadPathfinder. uses time_columns and acces_time to do the pathfinder and the car_los time col
 * distribute_commons_on_links: only put boardings on first links and alightings on last link (when there is multiple link merge together to create a common_link, not between trips) 
@@ -9,6 +9,7 @@
 * road_pathfinder: allow zone-to-zone in the expanded graph.
 * distribute_commons_on_links: can add a seceondary weight: usefull for capacitated assignment
 * analysis_pt_time: add waiting_time_expr= 'headway / 2'. whith this you can specify a 'waiting_time' column.
+* find_common_trips: complete rework to work on stops list and not links. results are better, but still dont catch every possible combinaisons of buses whith direction mismatch
 
 ## [3.6.0] (2026-05-25)
 ## Features

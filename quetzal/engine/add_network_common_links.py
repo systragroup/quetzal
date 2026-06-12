@@ -16,76 +16,139 @@ def find_common_sets(links: pd.DataFrame) -> list[frozenset]:
     return trip_id_sets
 
 
-def find_common_trips(links: pd.DataFrame, trip_id_sets: list[frozenset]) -> pd.DataFrame:
-    #
-    # return common_trips (index  a	b	trip_id_list	index_list	link_sequence	trip_id)
-    #
-    ab_links = pl.DataFrame(links.reset_index()[['index', 'a', 'b', 'trip_id', 'link_sequence']])
-    ab_links = ab_links.sort(['trip_id', 'link_sequence'])
-    # we want index_list as we want a list of list when agg. at the end we have a,v:[[link1],[link2],...]. but there could
-    # be multiple links (when we find missing links) for a given a,b,trip. so we need a list of list.
-    ab_links = ab_links.with_columns(pl.col('index').map_elements(lambda x: [x]).alias('index_list'))
-    new_links = []
+def _get_shared_stops(pl_stops_list, trip_set):
+    filtered_stops = pl_stops_list.filter(pl.col('trip_id').is_in(trip_set))
+    _expr = [pl.col('trip_id').alias('trip_id_list'), pl.col('link_sequence'), pl.col('index')]
+    shared_stops = filtered_stops.group_by('stop', maintain_order=True).agg(_expr)
+    shared_stops = shared_stops.filter(pl.col('trip_id_list').list.n_unique() == len(trip_set))
+    # if a link uses 2 trip. we dont want 3 links because its a loop and reuse multiple time the same link. we drop and it will be filled if necessary.
+    shared_stops = shared_stops.filter(pl.col('trip_id_list').list.n_unique() == pl.col('index').list.n_unique())
+    # remove stops not in order.
+    if len(shared_stops) < 2:
+        return []
+    arr = shared_stops['link_sequence'].to_numpy()
+    arr = np.stack(arr, axis=1)
+
+    order = np.all(np.diff(arr) > 0, axis=0)  # i to i+1. so last is missing
+    # check the last diff for the last stop (to append) if was decreasing (False) must be False also.
+    order = np.append(order, order[-1])
+    shared_stops = shared_stops.filter(order)
+
+    shared_stops = shared_stops['stop'].to_numpy()
+    return shared_stops
+
+
+def bisect(arr: np.ndarray[str], start: str, end: str):
+    a = np.where(arr == start)[0][0]
+    b = np.where(arr == end)[0][0]
+    return arr[a : b + 1]
+
+
+def _agg_on_shared_stops(shared_stops: np.array, trip_stops: np.array) -> list[tuple]:
+    """
+    shared_stops: list of all shared stops (ordered)
+    trip_stops: list of all the stop for a trip (ordered)
+
+    return
+        a list of edges from the first to the last shared trip.
+    """
+    first_stop = shared_stops[0]
+    last_stop = shared_stops[-1]
+    trip_stops = bisect(trip_stops, first_stop, last_stop)
+    if len(trip_stops) < 2:
+        # some trips are detedted as shared, but they are "loop". their end is at the start of the others.
+        # in this case bisect return [], and we skip.
+        # TODO we could crop to keep only the beginning, or create 2 new common links for example
+        return []
+
+    i = 1
+    origin = first_stop
+    edges = []
+    for stop in shared_stops[1:]:
+        target = stop
+        stops_list = [origin]
+        next_stop = trip_stops[i]
+        if target not in trip_stops[i:]:
+            continue
+        while next_stop != target:
+            stops_list.append(next_stop)
+            i += 1
+            next_stop = trip_stops[i]
+
+        # create a list of tuple
+        stops_list.append(target)
+        edges.append(list(zip(stops_list[:-1], stops_list[1:])))
+        origin = target
+        i += 1
+    return edges
+
+
+def find_common_trips(links: pd.DataFrame, trip_id_sets: list[frozenset], log=False) -> pd.DataFrame:
+    links = links[['a', 'b', 'trip_id', 'link_sequence']]
+    last = links.groupby(['trip_id']).agg('last')
+    last['a'] = last['b']
+    last['link_sequence'] += 1
+    stops_list = pd.concat([links, last]).sort_values(['trip_id', 'link_sequence'])
+    stops_list = stops_list.drop(columns=['b']).reset_index().rename(columns={'a': 'stop'})
+    stop_list_dict = stops_list.groupby('trip_id')['stop'].agg(np.array).to_dict()
+    links_dict_per_trip = (
+        links.reset_index().groupby('trip_id').apply(lambda g: g.set_index(['a', 'b'])['index'].to_dict()).to_dict()
+    )
+    pl_stops_list = pl.DataFrame(stops_list)
+    common_list = {'edges': [], 'links': [], 'trip_id': [], 'common_trip_id': [], 'link_sequence': []}
     for i, trip_set in enumerate(trip_id_sets):
-        # filter links for the one in the trip_set.
-        filtered_links = ab_links.filter(pl.col('trip_id').is_in(trip_set))
-
-        # first. we find the common links. links shared between all trips
-        _expr = [
-            pl.col('trip_id').alias('trip_id_list'),
-            pl.col('index_list'),
-            pl.col('link_sequence').first(),
-            pl.col('link_sequence').alias('seq'),
-        ]
-        common_list = filtered_links.group_by(['a', 'b']).agg(_expr)
-        # some links doesnt contain all our trip. check if list == set with a n_unique.(this method is valid because of the prior filter)
-        common_list = common_list.filter(pl.col('trip_id_list').list.n_unique() == len(trip_set))
-        # if a link uses 2 trip. we dont want 3 links because its a loop and reuse multiple time the same link. we drop and it will be filled if necessary.
-        common_list = common_list.filter(pl.col('trip_id_list').list.n_unique() == pl.col('index_list').list.n_unique())
-        common_list = common_list.sort(by='link_sequence')
-
-        # check if link_sequences is consecutives for each trip. if not. its not to agg.
-        # ex: we have trips_1 and_2 going from link_a to link_b. and  trip (trip_3) from link_b to link_a.
-        # if its the case, we do not agg, we exit. there should be a trip_set in trip_id_sets that is only {trip_1, trip_2}
-        arr = common_list['seq'].to_numpy()
-        if len(arr) == 0:
-            continue
-        arr = np.stack(arr, axis=1)
-        if not np.all(np.diff(arr) > 0):
+        shared_stops = _get_shared_stops(pl_stops_list, trip_set)
+        if len(shared_stops) <= 2:
+            print('skip: less than 2 shared stops: ', i, trip_set) if log else None
             continue
 
-        common_list = common_list.drop('seq')
-        # find missing links. if a,b are not consecutive (b != next_a). we add a new link
-        missing_list = common_list.with_columns(pl.col('a').shift(-1).alias('next_a'))
-        missing_list = missing_list.filter(pl.col('next_a').is_not_null())
-        missing_list = missing_list.filter(pl.col('b') != pl.col('next_a'))
+        result = {'edges': [], 'links': [], 'trip_id': [], 'link_sequence': []}
+        for trip in trip_set:
+            trip_stops = stop_list_dict.get(trip)
+            edges = _agg_on_shared_stops(shared_stops, trip_stops)
+            if len(edges) == 0:
+                # if at least one trip was not well ordered (when bisect. last node is before first). we skip
+                # we could keep the other trips as common, but they will exist somewhere in another trip_set
+                result = None
+                print('skip: cannot bissect: ', i, trip_set) if log else None
+                break
+            result['edges'].extend(edges)
+            _dict = links_dict_per_trip.get(trip)
+            result['links'].extend([[*map(_dict.get, ls)] for ls in edges])
+            result['trip_id'].extend([trip] * len(edges))
+            result['link_sequence'].extend([i for i in range(1, len(edges) + 1)])
+        if result is None:
+            continue
+        common_list['edges'].extend(result['edges'])
+        common_list['trip_id'].extend(result['trip_id'])
+        common_list['common_trip_id'].extend([f'common_{i}'] * len(result['edges']))
+        common_list['link_sequence'].extend(result['link_sequence'])
+        common_list['links'].extend(result['links'])
 
-        missing_list[['a', 'b']] = missing_list[['b', 'next_a']]
-        missing_list = missing_list.with_columns(pl.col('link_sequence') + 1)
-        missing_list = missing_list.drop(['next_a', 'index_list'])
-        if len(missing_list) > 0:
-            lsls = []
-            for a, b, trips in missing_list[['a', 'b', 'trip_id_list']].to_numpy():
-                lsls.append(_get_links_inbetween_trips(a, b, trips, filtered_links))
-            missing_list = missing_list.with_columns(pl.Series('index_list', lsls))
-            missing_list = missing_list.select(common_list.columns)
-            common_list = pl.concat([common_list, missing_list])
+    df = pd.DataFrame(common_list)
+    df['a'] = df['edges'].apply(lambda ls: ls[0][0])
+    df['b'] = df['edges'].apply(lambda ls: ls[-1][-1])
 
-        # finish up
-        common_list = common_list.sort('link_sequence')
+    df = (
+        df.groupby(['common_trip_id', 'a', 'b'])
+        .agg({'trip_id': list, 'link_sequence': 'first', 'links': list})
+        .reset_index()
+    )
 
-        common_list = common_list.with_columns(pl.arange(1, common_list.height + 1).alias('link_sequence'))
-        common_list = common_list.with_columns(pl.lit(f'common_{i}').alias('trip_id'))
-        common_list = common_list.with_columns(
-            ('link_' + pl.col('trip_id') + '_' + pl.col('link_sequence').cast(str)).alias('index')
-        )
+    # only keeps common links using all the common trips.
+    # TODO: I think its like the len(edges) == 0 skip. but the bisect does return some common links
+    df['len'] = df['trip_id'].apply(len)
+    df = df[df['len'] == df.groupby('common_trip_id')['len'].transform('max')]
+    df = df[df['len'] > 1]  # same-ish reason. we can have a common with a single trip: remove as its not common
 
-        new_links.append(common_list)
+    df = df.rename(columns={'trip_id': 'trip_id_list', 'common_trip_id': 'trip_id', 'links': 'index_list'})
+    df.index = 'link_' + df['trip_id'] + '_' + df['link_sequence'].astype(str)
+    df.index.name = 'index'
 
-    new_links = pl.concat(new_links)
-    new_links.to_pandas().set_index('index')
-    print(len(new_links['trip_id'].unique()), ' common_trips founded')
-    return new_links.to_pandas().set_index('index')
+    df = df[['a', 'b', 'trip_id', 'trip_id_list', 'index_list', 'link_sequence']]
+    df = df.sort_values(['trip_id', 'link_sequence'])
+    print(len(df['trip_id'].unique()), ' common_trips founded')
+    return df
 
 
 # delete new common trips if total time is smaller than min_time
@@ -101,7 +164,7 @@ def restrict_common_trips(common_trips: pd.DataFrame, links: pd.DataFrame, min_t
     common_trips = common_trips[common_trips['trip_id'].isin(to_keep)]
     print(len(common_trips['trip_id'].unique()), ' common trips after filtering')
 
-    return common_trips
+    return common_trips.drop(columns=['time'])
 
 
 def create_common_links(
