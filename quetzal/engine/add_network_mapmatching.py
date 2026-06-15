@@ -406,21 +406,31 @@ def Parallel_Mapmatching(
         shared_state_worker_init(shared_state)
         raw_results = [_mapmatch_single_trip(args) for args in task_args]
     else:
-        raw_results = []
-        done = 0
-        for result in pool_imap_unordered_executor(
-            _mapmatch_single_trip,
-            task_args,
-            num_workers=num_cores,
-            initializer=shared_state_worker_init,
-            initargs=(shared_state,),
-            chunksize=1,
-            context='fork',
-        ):
-            raw_results.append(result)
-            done += 1
-            if done % max(len(trip_list) // 5, 5) == 0 or done == len(trip_list):
-                print(f'{done} / {len(trip_list)}')
+        raw_results = None
+        try:
+            run_results = []
+            done = 0
+            for result in pool_imap_unordered_executor(
+                _mapmatch_single_trip,
+                task_args,
+                num_workers=num_cores,
+                initializer=shared_state_worker_init,
+                initargs=(shared_state,),
+                chunksize=1,
+                context='spawn',
+            ):
+                run_results.append(result)
+                done += 1
+                if done % max(len(trip_list) // 5, 5) == 0 or done == len(trip_list):
+                    print(f'{done} / {len(trip_list)}')
+            raw_results = run_results
+        except Exception as exc:
+            log.warning('Parallel_Mapmatching failed with context=spawn and %s workers (%s).', num_cores, exc)
+
+        if raw_results is None:
+            log.warning('Parallel_Mapmatching falling back to single-core execution for stability.')
+            shared_state_worker_init(shared_state)
+            raw_results = [_mapmatch_single_trip(args) for args in task_args]
 
     vals_list, node_lists_list = [], []
     for trip_id, val, node_list, failed in raw_results:
@@ -435,7 +445,6 @@ def Parallel_Mapmatching(
     vals = pd.concat(vals_list) if vals_list else gpd.GeoDataFrame()
     node_lists = pd.concat(node_lists_list) if node_lists_list else gpd.GeoDataFrame()
     return vals, node_lists, unmatched_trip
-
 
 
 def Multi_Mapmatching(
