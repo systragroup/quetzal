@@ -84,12 +84,13 @@ def _agg_on_shared_stops(shared_stops: np.array, trip_stops: np.array) -> list[t
 
 
 def find_common_trips(links: pd.DataFrame, trip_id_sets: list[frozenset], log=False) -> pd.DataFrame:
-    links = links[['a', 'b', 'trip_id', 'link_sequence']]
-    last = links.groupby(['trip_id']).agg('last')
+    links = links[['a', 'b', 'trip_id', 'link_sequence']].reset_index()
+    last = links.groupby(['trip_id']).agg('last').reset_index()
     last['a'] = last['b']
     last['link_sequence'] += 1
-    stops_list = pd.concat([links, last]).sort_values(['trip_id', 'link_sequence'])
-    stops_list = stops_list.drop(columns=['b']).reset_index().rename(columns={'a': 'stop'})
+    last['index'] += '_last'
+    stops_list = pd.concat([links, last], ignore_index=True).sort_values(['trip_id', 'link_sequence'])
+    stops_list = stops_list.drop(columns=['b']).reset_index(drop=True).rename(columns={'a': 'stop'})
     stop_list_dict = stops_list.groupby('trip_id')['stop'].agg(np.array).to_dict()
     links_dict_per_trip = (
         links.reset_index().groupby('trip_id').apply(lambda g: g.set_index(['a', 'b'])['index'].to_dict()).to_dict()
