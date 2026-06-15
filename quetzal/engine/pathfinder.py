@@ -20,18 +20,20 @@ class PublicPathFinder:
             road_links = model.road_links.copy()
             road_links['time'] = road_links['walk_time']
             to_concat = [road_links, model.road_to_transit]
-            try:
+            if 'footpaths' in model.__dict__.keys():
                 to_concat.append(model.footpaths)
-            except AttributeError:
-                pass
             self.footpaths = pd.concat([df[['a', 'b', 'time']] for df in to_concat])
 
-            to_concat = [model.zone_to_road]
-            try:
-                to_concat.append(model.zone_to_transit)
-            except AttributeError:
-                pass
-            self.ntlegs = pd.concat([df[['a', 'b', 'time']] for df in to_concat])
+            zone_to_road = model.zone_to_road.copy()
+            if 'walk_time' in zone_to_road.columns:
+                zone_to_road['time'] = zone_to_road['walk_time']
+            else:
+                print('WARNING: no "walk_time" column in zone_to_road. using "time" column (possibly car time)')
+            access_to_concat = [zone_to_road]
+            if 'zone_to_transit' in model.__dict__.keys():
+                access_to_concat.append(model.zone_to_transit)
+
+            self.ntlegs = pd.concat([df[['a', 'b', 'time']] for df in access_to_concat])
 
         else:
             self.footpaths = model.footpaths.copy()

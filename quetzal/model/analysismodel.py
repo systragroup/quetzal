@@ -341,25 +341,26 @@ class AnalysisModel(summarymodel.SummaryModel):
 
         assert alighting_time is None, 'cannot perform analysis_pt_time with alighting_time'
 
+        assert 'ntlegs' in self.pt_los.columns, 'run self.analysis_pt_los() first'
+
         if walk_on_road:
             road_links = self.road_links.copy()
             road_links['time'] = road_links['walk_time']
             road_to_transit = self.road_to_transit.copy()
-            road_to_transit['length'] = road_to_transit['distance']
-
             to_concat = [road_links, road_to_transit]
-            try:
+            if 'footpaths' in self.__dict__.keys():
                 to_concat.append(self.footpaths)
-            except AttributeError:
-                pass
             footpaths = pd.concat(to_concat)
 
-            to_concat = [self.zone_to_road]
-            try:
-                to_concat.append(self.zone_to_transit)
-            except AttributeError:
-                pass
-            access = pd.concat(to_concat)
+            zone_to_road = self.zone_to_road.copy()
+            if 'walk_time' in zone_to_road.columns:
+                zone_to_road['time'] = zone_to_road['walk_time']
+            else:
+                print('WARNING: no "walk_time" column in zone_to_road. using "time" column (possibly car time)')
+            access_to_concat = [zone_to_road]
+            if 'zone_to_transit' in self.__dict__.keys():
+                access_to_concat.append(self.zone_to_transit)
+            access = pd.concat(access_to_concat)
         else:
             footpaths = self.footpaths
             access = self.zone_to_transit
