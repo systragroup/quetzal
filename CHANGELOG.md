@@ -14,6 +14,9 @@
 * find_common_trips: complete rework to work on stops list and not links. results are better, but still dont catch every possible combinaisons of buses whith direction mismatch
 * road_pathfinder: trackers dont get "ab_volumes" as input anymore. created in the tracker (LinkTracker) if needed. not used anymore in the road_pathfinder.
 
+## Features
+* road_pathfinder: add CompositeTracker object for having a list of trackers in the assignment.
+
 ## [3.6.0] (2026-05-25)
 ## Features
 * RoadPathfinder: can now compute volumes on zone_to_road with arg: keep_connectors=True with all available methods

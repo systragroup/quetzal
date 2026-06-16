@@ -27,7 +27,6 @@ class LinksTracker(Tracker):
             self.ab_volumes = init_ab_volumes(links_sparse_index)
         else:
             self.ab_volumes = init_numba_volumes(links_sparse_index)
-        self.links_sparse_index = links_sparse_index
         self.sparse_links_list = [*map(links_to_sparse.get, self.track_links_list)]
         self.sparse_to_links = {v: k for k, v in links_to_sparse.items()}
 
@@ -94,16 +93,16 @@ def apply_biconjugated_frank_wolfe(mat_datas: List[TrackedVolume], phi_dict: dic
 
 
 # for standard msa (not expanded)
-def init_numba_volumes(indexes: List[int]) -> Dict[int, float]:
-    numba_volumes = nb.typed.Dict.empty(key_type=nb.types.int64, value_type=nb.types.float64)
+def init_ab_volumes(indexes: List[tuple]) -> dict[tuple, float]:
+    numba_volumes = nb.typed.Dict.empty(key_type=nb.types.UniTuple(nb.types.int64, 2), value_type=nb.types.float64)
     for key in indexes:
         numba_volumes[key] = 0
     return numba_volumes
 
 
-# for extended
-def init_ab_volumes(indexes: List[tuple]) -> dict[tuple, float]:
-    numba_volumes = nb.typed.Dict.empty(key_type=nb.types.UniTuple(nb.types.int64, 2), value_type=nb.types.float64)
+# # for extended
+def init_numba_volumes(indexes: List[int]) -> Dict[int, float]:
+    numba_volumes = nb.typed.Dict.empty(key_type=nb.types.int64, value_type=nb.types.float64)
     for key in indexes:
         numba_volumes[key] = 0
     return numba_volumes

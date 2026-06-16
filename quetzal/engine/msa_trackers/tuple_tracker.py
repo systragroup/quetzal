@@ -24,7 +24,7 @@ class TupleTracker(Tracker):
         links_sparse_index: Union[List[int], List[tuple[int, int]]],
         links_to_sparse: Union[Dict[str, int], Dict[str, tuple[int, int]]],
     ):
-        self.links_sparse_index = links_sparse_index
+        self.n_cols = len(links_sparse_index)
         self.sparse_links_list = [[*map(links_to_sparse.get, ls)] for ls in self.track_links_list]
         self.sparse_to_links = {v: k for k, v in links_to_sparse.items()}
         self.tracked_links_set = set(np.concatenate(self.sparse_links_list))
@@ -33,8 +33,8 @@ class TupleTracker(Tracker):
         return len(self.track_links_list) > 0
 
     def assign(self, odv, pred, seg, it):
-        n_cols = len(self.links_sparse_index)
-        mat = get_paths_matrix(odv, pred, n_cols, self.tracked_links_set)
+
+        mat = get_paths_matrix(odv, pred, self.n_cols, self.tracked_links_set)
         od_indexes_list = get_od_indexes(mat, self.sparse_links_list)
         volumes = []
         for od_indexes in od_indexes_list:
