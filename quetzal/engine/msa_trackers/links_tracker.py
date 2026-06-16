@@ -22,6 +22,11 @@ class LinksTracker(Tracker):
         links_sparse_index: Union[List[int], List[tuple[int, int]]],
         links_to_sparse: Union[Dict[str, int], Dict[str, tuple[int, int]]],
     ):
+        # TODO: change for new LUT assigment method (faster and parallel), not numba dict assignment
+        if isinstance(links_sparse_index[0], tuple):
+            self.ab_volumes = init_ab_volumes(links_sparse_index)
+        else:
+            self.ab_volumes = init_numba_volumes(links_sparse_index)
         self.links_sparse_index = links_sparse_index
         self.sparse_links_list = [*map(links_to_sparse.get, self.track_links_list)]
         self.sparse_to_links = {v: k for k, v in links_to_sparse.items()}
@@ -29,10 +34,10 @@ class LinksTracker(Tracker):
     def __call__(self) -> bool:  # when calling the instance. check if we track links or no.
         return len(self.track_links_list) > 0
 
-    def assign(self, ab_volumes, odv, pred, seg, it):
-        volumes = [ab_volumes.copy() for _ in self.sparse_links_list]
+    def assign(self, odv, pred, seg, it):
+        volumes = [self.ab_volumes.copy() for _ in self.sparse_links_list]
         volumes = assign_tracked_volumes(odv, pred, volumes, self.sparse_links_list)
-        ab_keys = [k for k in ab_volumes.keys()]
+        ab_keys = [k for k in self.ab_volumes.keys()]
         self.add_volumes(volumes, seg, ab_keys, it)
 
     def add_volumes(self, volumes, seg, ab_keys, it):
@@ -86,6 +91,22 @@ def apply_biconjugated_frank_wolfe(mat_datas: List[TrackedVolume], phi_dict: dic
         else:
             flow = (1 - phi) * flow + phi * aux_flow
     return flow
+
+
+# for standard msa (not expanded)
+def init_numba_volumes(indexes: List[int]) -> Dict[int, float]:
+    numba_volumes = nb.typed.Dict.empty(key_type=nb.types.int64, value_type=nb.types.float64)
+    for key in indexes:
+        numba_volumes[key] = 0
+    return numba_volumes
+
+
+# for extended
+def init_ab_volumes(indexes: List[tuple]) -> dict[tuple, float]:
+    numba_volumes = nb.typed.Dict.empty(key_type=nb.types.UniTuple(nb.types.int64, 2), value_type=nb.types.float64)
+    for key in indexes:
+        numba_volumes[key] = 0
+    return numba_volumes
 
 
 @nb.njit()

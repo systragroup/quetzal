@@ -32,8 +32,8 @@ class TupleTracker(Tracker):
     def __call__(self) -> bool:  # when calling the instance. check if we track links or no.
         return len(self.track_links_list) > 0
 
-    def assign(self, ab_volumes, odv, pred, seg, it):
-        n_cols = len(ab_volumes)
+    def assign(self, odv, pred, seg, it):
+        n_cols = len(self.links_sparse_index)
         mat = get_paths_matrix(odv, pred, n_cols, self.tracked_links_set)
         od_indexes_list = get_od_indexes(mat, self.sparse_links_list)
         volumes = []

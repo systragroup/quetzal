@@ -5,12 +5,14 @@
 * preparation_footpaths: if length=0: dont do any foothpaths
 * create_common_links:fix bug where time was already in the common_trips. so it was not recomputed on aggregation.
 * uses zone_to_road walk_time if avaible in pt_pathfinder and analysis_pt_time
+* split_quenedi_rlinks: return inputed rlinks when nothing to split
 
 ## Changes
 * road_pathfinder: allow zone-to-zone in the expanded graph.
 * distribute_commons_on_links: can add a seceondary weight: usefull for capacitated assignment
 * analysis_pt_time: add waiting_time_expr= 'headway / 2'. whith this you can specify a 'waiting_time' column.
 * find_common_trips: complete rework to work on stops list and not links. results are better, but still dont catch every possible combinaisons of buses whith direction mismatch
+* road_pathfinder: trackers dont get "ab_volumes" as input anymore. created in the tracker (LinkTracker) if needed. not used anymore in the road_pathfinder.
 
 ## [3.6.0] (2026-05-25)
 ## Features

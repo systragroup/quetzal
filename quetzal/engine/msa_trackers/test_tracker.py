@@ -3,7 +3,7 @@ from quetzal.engine.msa_trackers.tracker import Tracker
 from collections import namedtuple
 
 # need to name the class the same as the namedTuple name for pickle.
-TrackedAssign = namedtuple('TrackedAssign', 'ab_volumes odv pred seg it')
+TrackedAssign = namedtuple('TrackedAssign', 'odv pred seg it')
 TrackedWeight = namedtuple('TrackedWeight', 'iteration phi beta')
 
 
@@ -26,9 +26,9 @@ class TestTracker(Tracker):
     def __call__(self) -> bool:  # when calling the instance. check if we track links or no.
         return True
 
-    def assign(self, ab_volumes, odv, pred, seg, it):
+    def assign(self, odv, pred, seg, it):
         # just save everything.
-        self.tracked_mat.append(TrackedAssign(ab_volumes, odv, pred, seg, it))
+        self.tracked_mat.append(TrackedAssign(odv, pred, seg, it))
 
     def add_weights(self, phi, beta, it):
         self.weights.append(TrackedWeight(iteration=it, phi=phi, beta=beta))

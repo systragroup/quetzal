@@ -132,18 +132,18 @@ def compute_time_and_speed(links, dwell_from='departure'):
     return links
 
 
-def split_quenedi_rlinks(road_links, oneway='0'):
+def split_quenedi_rlinks(road_links: gpd.GeoDataFrame, oneway='0') -> gpd.GeoDataFrame:
     """
     split road_links into two directions.
     attributes with _r suffix are applied to the reverse links.
     """
     if 'oneway' not in road_links.columns:
         print('no column oneway. do not split')
-        return
+        return road_links
     links_r = road_links[road_links['oneway'] == oneway].copy()
     if len(links_r) == 0:
         print('all oneway, nothing to split')
-        return
+        return road_links
     # apply _r features to the normal non r features
     r_cols = [col for col in links_r.columns if col.endswith('_r')]
     cols = [col[:-2] for col in r_cols]

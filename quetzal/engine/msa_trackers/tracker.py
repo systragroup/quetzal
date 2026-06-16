@@ -17,7 +17,7 @@ class Tracker(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def assign(self, ab_volumes, odv, pred, seg, it):
+    def assign(self, odv, pred, seg, it):
         pass
 
     @abc.abstractmethod

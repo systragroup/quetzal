@@ -146,13 +146,6 @@ def assign_volume(odv, predecessors, volumes, lut):
     return volumes
 
 
-def init_ab_volumes(indexes: List[Tuple]) -> Dict[Tuple, float]:
-    numba_volumes = nb.typed.Dict.empty(key_type=nb.types.UniTuple(nb.types.int64, 2), value_type=nb.types.float64)
-    for key in indexes:
-        numba_volumes[key] = 0
-    return numba_volumes
-
-
 def init_expanded_track_volumes(base_flow: Dict[int, float], track_links_list: List[int]) -> List[Dict[int, float]]:
     numba_volumes = base_flow.copy()
     for key in numba_volumes.keys():
@@ -216,7 +209,7 @@ def get_derivative(plinks: pl.DataFrame, vdf, cost_functions, segments, h=0.001,
     return (x1 - x2) / (2 * h)
 
 
-@nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)  # parallel=> not thread safe. do not!
+@nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)
 def assign_volume_on_links_parallel(odv, predecessors, nlen, num_cores=1):
     nb.set_num_threads(num_cores)
     odv_mat = np.array_split(odv, num_cores)
@@ -227,9 +220,9 @@ def assign_volume_on_links_parallel(odv, predecessors, nlen, num_cores=1):
     return volumes_mat.sum(axis=0)
 
 
-@nb.njit(locals={'predecessors': nb.int32[:, ::1]})  # parallel=> not thread safe. do not!
+@nb.njit(locals={'predecessors': nb.int32[:, ::1]})
 def assign_volume_on_links(odv, predecessors, volumes):
-    # volumes is a numba dict with all the key initialized
+    # volumes is a numpy array lut
     for i in range(len(odv)):  # nb.prange(len(odv)):
         origin = odv[i, 0]
         destination = odv[i, 1]
@@ -240,10 +233,3 @@ def assign_volume_on_links(odv, predecessors, volumes):
             for key in path:
                 volumes[key] += v
     return volumes
-
-
-def init_numba_volumes(indexes: List[int]) -> Dict[int, float]:
-    numba_volumes = nb.typed.Dict.empty(key_type=nb.types.int64, value_type=nb.types.float64)
-    for key in indexes:
-        numba_volumes[key] = 0
-    return numba_volumes

@@ -6,7 +6,6 @@ from quetzal.engine.pathfinder_utils import build_index, get_path
 from quetzal.engine.msa_trackers.links_tracker import LinksTracker
 from quetzal.engine.msa_utils import (
     get_derivative,
-    init_ab_volumes,
     assign_volume_parallel,
     jam_time,
     apply_segment_cost,
@@ -14,7 +13,6 @@ from quetzal.engine.msa_utils import (
     find_beta,
     get_bfw_auxiliary_flow,
     shortest_path,
-    init_numba_volumes,
     assign_volume_on_links_parallel,
     get_relgap,
     get_sparse_volumes,
@@ -398,8 +396,6 @@ def msa_roadpathfinder(
     # init track links
 
     if tracker_plugin():
-        # only use for tracker. should change tracker to not use ab_volumes
-        ab_volumes = init_ab_volumes(links.index)  # index is a,b here
         _tmp_dict = links['index'].to_dict()
         links_to_sparse = {v: k for k, v in _tmp_dict.items()}
         tracker_plugin.init(links_sparse_index=links.index, links_to_sparse=links_to_sparse)
@@ -434,7 +430,7 @@ def msa_roadpathfinder(
             links[(seg, 'auxiliary_flow')] = assign_volume_parallel(odv, pred, lut, num_cores)
 
             if tracker_plugin():
-                tracker_plugin.assign(ab_volumes, odv, pred, seg, i)
+                tracker_plugin.assign(odv, pred, seg, i)
 
         flow_cols = [(seg, 'auxiliary_flow') for seg in segments] + ['base_flow']
         links['auxiliary_flow'] = links[flow_cols].sum(axis=1)
@@ -599,8 +595,6 @@ def expanded_roadpathfinder(
 
     # init track links
     if tracker_plugin():
-        # only use for tracker. should change tracker to not use ab_volumes
-        ab_volumes = init_numba_volumes(links.index)
         tracker_plugin.init(links_sparse_index=links.index, links_to_sparse=index)
 
     # pred origins and odv for each segments fro quick access as it doesnt change between iteration
@@ -633,7 +627,7 @@ def expanded_roadpathfinder(
             volumes_arr = assign_volume_on_links_parallel(odv, pred, nlen, num_cores)
             links[(seg, 'auxiliary_flow')] = volumes_arr[links.index]  # links index may be not sorted are missing
             if tracker_plugin():
-                tracker_plugin.assign(ab_volumes, odv, pred, seg, i)
+                tracker_plugin.assign(odv, pred, seg, i)
 
         auxiliary_flow_cols = [(seg, 'auxiliary_flow') for seg in segments] + ['base_flow']
         links['auxiliary_flow'] = links[auxiliary_flow_cols].sum(axis=1)  # for phi and relgap
