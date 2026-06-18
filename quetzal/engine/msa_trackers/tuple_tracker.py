@@ -14,6 +14,7 @@ TrackedWeight = namedtuple('TrackedWeight', 'iteration phi beta')
 
 class TupleTracker(Tracker):
     def __init__(self, track_links_list: List[tuple] = []):
+        print('This tracker only work with turn_penalties')
         # list of tuple [(rlink1, rlink2), (rlink1, rlink100),...]
         self.track_links_list = track_links_list
         self.weights = []

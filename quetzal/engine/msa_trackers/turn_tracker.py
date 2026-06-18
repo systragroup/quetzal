@@ -21,6 +21,7 @@ class TrackedWeight(NamedTuple):
 
 class TurnTracker(Tracker):
     def __init__(self, track_links_list: list[str] = []):
+        print('This tracker only work with turn_penalties')
         self.track_links_list = track_links_list  # row_labels
         self.weights: list[TrackedWeight] = []
         self.tracked_mat: list[TrackedVolume] = []
@@ -46,10 +47,14 @@ class TurnTracker(Tracker):
 
     def merge(self) -> pd.DataFrame:
         # apply frank wolfe for each iteration on each segments
-        output = pd.DataFrame()
-        for seg, mat in _merge(self.tracked_mat, self.weights).items():
-            df = _mat_to_df(mat, self.track_links_list, self.links_list)
-            output[seg] = df.stack()
+        mats = _merge(self.tracked_mat, self.weights)
+        row_labels = np.array(self.track_links_list)
+        col_labels = np.array(self.links_list)
+        output = pd.DataFrame(columns=['from', 'to'])
+        for seg, mat in mats.items():
+            rows, cols = mat.nonzero()
+            df = pd.DataFrame({'from': row_labels[rows], 'to': col_labels[cols], seg: mat.data})
+            output = pd.merge(output, df, on=['from', 'to'], how='outer')
         return output
 
 
