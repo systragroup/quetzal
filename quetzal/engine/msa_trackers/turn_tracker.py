@@ -29,21 +29,18 @@ class TurnTracker(Tracker):
         return len(self.track_links_list) > 0
 
     def init(self, links_sparse_index: list[int], links_to_sparse: dict[str, int]) -> None:
-        self.sparse_links_list = [*map(links_to_sparse.get, self.track_links_list)]
+        self.sparse_track_links_list = [*map(links_to_sparse.get, self.track_links_list)]
         self.sparse_to_links = {v: k for k, v in links_to_sparse.items()}
         self.links_list = list(self.sparse_to_links.values())  # col_labels
 
     def assign(self, odv, pred, seg, it) -> None:
-        num_links = len(self.sparse_to_links)
-        volumes_mat = np.zeros((num_links, num_links))
-        volumes = assign_tracked_volumes(odv, pred, self.sparse_links_list, volumes_mat)
+        n_rows, n_cols = len(self.sparse_track_links_list), len(self.links_list)
+        volumes_mat = np.zeros((n_rows, n_cols))
+        volumes = assign_tracked_volumes(odv, pred, self.sparse_track_links_list, volumes_mat)
         self._add_volumes(volumes, seg, it)
 
     def _add_volumes(self, volumes, seg, it) -> None:
-        n_rows, n_cols = len(self.sparse_links_list), len(self.sparse_to_links)
-        rows, cols, vals = array_to_sparse(volumes, self.sparse_links_list)
-        sparse_mat = csr_matrix((vals, (rows, cols)), shape=(n_rows, n_cols))
-
+        sparse_mat = array_to_csr_matrix(volumes)  # transform numpy to csr_matrix for easier lighter storage
         self.tracked_mat.append(TrackedVolume(it, seg, sparse_mat))
 
     def add_weights(self, phi, beta, it) -> None:
@@ -98,6 +95,7 @@ def apply_biconjugated_frank_wolfe(mat_datas: list[TrackedVolume], phi_dict: dic
 
 @nb.njit(locals={'predecessors': nb.int32[:, ::1]})  # parallel=> not thread safe. do not!
 def assign_tracked_volumes(odv, predecessors, track_index_list, volumes) -> np.ndarray:
+    nrow = len(track_index_list)
     for i in range(len(odv)):
         origin = odv[i, 0]
         destination = odv[i, 1]
@@ -106,23 +104,28 @@ def assign_tracked_volumes(odv, predecessors, track_index_list, volumes) -> np.n
             path = get_node_path(predecessors, origin, destination)
             for j in range(len(path) - 1):
                 p = path[j]
-                if p in track_index_list:
-                    # we get volume on next link (turn table)
-                    volumes[p][path[j + 1]] += v
+                for row in range(nrow):
+                    if track_index_list[row] == p:
+                        # we get volume on next link (turn table)
+                        volumes[row][path[j + 1]] += v
     return volumes
 
 
+def array_to_csr_matrix(array: np.ndarray) -> csr_matrix:
+    n_rows, n_cols = array.shape
+    rows, cols, vals = _array_to_sparse(array)
+    return csr_matrix((vals, (rows, cols)), shape=(n_rows, n_cols))
+
+
 @nb.njit()
-def array_to_sparse(volumes: np.ndarray, track_links_list: np.ndarray):
+def _array_to_sparse(volumes: np.ndarray):
     # only append data if its in the set.
     # so we only keep the cols of links we will use (the one we track)
     rows, cols, vals = [], [], []
-    ncols = len(volumes)
-    nrows = len(track_links_list)
+    nrows, ncols = volumes.shape
     for i in range(nrows):
-        index = track_links_list[i]
         for j in range(ncols):
-            v = volumes[index, j]
+            v = volumes[i, j]
             if v != 0:
                 rows.append(i)
                 cols.append(j)
