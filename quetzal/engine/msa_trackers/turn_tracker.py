@@ -35,11 +35,9 @@ class TurnTracker(Tracker):
 
     def assign(self, odv, pred, seg, it) -> None:
         n_rows, n_cols = len(self.sparse_track_links_list), len(self.links_list)
-        volumes_mat = np.zeros((n_rows, n_cols))
-        volumes = assign_tracked_volumes(odv, pred, self.sparse_track_links_list, volumes_mat)
-        self._add_volumes(volumes, seg, it)
-
-    def _add_volumes(self, volumes, seg, it) -> None:
+        volumes = np.zeros((n_rows, n_cols))
+        # TODO: could parallelize: split sparse_track_links_list in N, and create N volumes mat: concat at the end
+        volumes = assign_tracked_volumes(odv, pred, self.sparse_track_links_list, volumes)
         sparse_mat = array_to_csr_matrix(volumes)  # transform numpy to csr_matrix for easier lighter storage
         self.tracked_mat.append(TrackedVolume(it, seg, sparse_mat))
 
