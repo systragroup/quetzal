@@ -1,11 +1,7 @@
-## [FUTURE] (2026-05-29 2026-06-19)
-## bug fixes
-* AON RoadPathfinder. uses time_columns and acces_time to do the pathfinder and the car_los time col
-* distribute_commons_on_links: only put boardings on first links and alightings on last link (when there is multiple link merge together to create a common_link, not between trips) 
-* preparation_footpaths: if length=0: dont do any foothpaths
-* create_common_links:fix bug where time was already in the common_trips. so it was not recomputed on aggregation.
-* uses zone_to_road walk_time if avaible in pt_pathfinder and analysis_pt_time
-* split_quenedi_rlinks: return inputed rlinks when nothing to split
+## [3.7.0] (2026-05-29 2026-06-19)
+## Features
+* road_pathfinder: add CompositeTracker object for having a list of trackers in the assignment.
+* road_pathfinder: add TurnTracker object. only work with expanded pathfinder
 
 ## Changes
 * road_pathfinder: allow zone-to-zone in the expanded graph.
@@ -14,9 +10,13 @@
 * find_common_trips: complete rework to work on stops list and not links. results are better, but still dont catch every possible combinaisons of buses whith direction mismatch
 * road_pathfinder: trackers dont get "ab_volumes" as input anymore. created in the tracker (LinkTracker) if needed. not used anymore in the road_pathfinder.
 
-## Features
-* road_pathfinder: add CompositeTracker object for having a list of trackers in the assignment.
-* road_pathfinder: add TurnTracker object. only work with expanded pathfinder
+## bug fixes
+* AON RoadPathfinder. uses time_columns and acces_time to do the pathfinder and the car_los time col
+* distribute_commons_on_links: only put boardings on first links and alightings on last link (when there is multiple link merge together to create a common_link, not between trips) 
+* preparation_footpaths: if length=0: dont do any foothpaths
+* create_common_links:fix bug where time was already in the common_trips. so it was not recomputed on aggregation.
+* split_quenedi_rlinks: return inputed rlinks when nothing to split
+* uses zone_to_road walk_time if avaible in pt_pathfinder and analysis_pt_time
 
 ## [3.6.0] (2026-05-25)
 ## Features

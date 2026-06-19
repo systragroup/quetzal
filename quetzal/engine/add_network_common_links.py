@@ -16,7 +16,7 @@ def find_common_sets(links: pd.DataFrame) -> list[frozenset]:
     return trip_id_sets
 
 
-def _get_shared_stops(pl_stops_list, trip_set):
+def _get_shared_stops(pl_stops_list: pl.DataFrame, trip_set: set[str]) -> np.ndarray:
     filtered_stops = pl_stops_list.filter(pl.col('trip_id').is_in(trip_set))
     _expr = [pl.col('trip_id').alias('trip_id_list'), pl.col('link_sequence'), pl.col('index')]
     shared_stops = filtered_stops.group_by('stop', maintain_order=True).agg(_expr)
