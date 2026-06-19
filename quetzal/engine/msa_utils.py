@@ -1,4 +1,4 @@
-from typing import List, Tuple, Dict, Union
+from typing import Tuple, Union
 import pandas as pd
 import polars as pl
 import numpy as np
@@ -144,13 +144,6 @@ def assign_volume(odv, predecessors, volumes, lut):
                 index = lut[path[j], path[j + 1]]  # get links
                 volumes[index] += v
     return volumes
-
-
-def init_expanded_track_volumes(base_flow: Dict[int, float], track_links_list: List[int]) -> List[Dict[int, float]]:
-    numba_volumes = base_flow.copy()
-    for key in numba_volumes.keys():
-        numba_volumes[key] = 0
-    return [numba_volumes.copy() for _ in track_links_list]
 
 
 def find_beta(links, phi_1, segments):

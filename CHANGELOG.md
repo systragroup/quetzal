@@ -1,4 +1,4 @@
-## [FUTURE] (2026-05-29 2026-06-12)
+## [FUTURE] (2026-05-29 2026-06-19)
 ## bug fixes
 * AON RoadPathfinder. uses time_columns and acces_time to do the pathfinder and the car_los time col
 * distribute_commons_on_links: only put boardings on first links and alightings on last link (when there is multiple link merge together to create a common_link, not between trips) 
@@ -16,6 +16,7 @@
 
 ## Features
 * road_pathfinder: add CompositeTracker object for having a list of trackers in the assignment.
+* road_pathfinder: add TurnTracker object. only work with expanded pathfinder
 
 ## [3.6.0] (2026-05-25)
 ## Features

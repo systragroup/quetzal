@@ -20,11 +20,14 @@ class TrackedWeight(NamedTuple):
 
 
 class TurnTracker(Tracker):
-    def __init__(self, track_links_list: list[str] = []):
+    def __init__(self, track_links_list: list[str] = [], num_threads: int = 1):
         print('This tracker only work with turn_penalties')
+        # if we want to make this work with normal msa. we should track nodes (intersection)
+        # so the check in the paths is easy. if p == node take p-1 and p+1
         self.track_links_list = track_links_list  # row_labels
         self.weights: list[TrackedWeight] = []
         self.tracked_mat: list[TrackedVolume] = []
+        self.num_threads = num_threads
 
     def __call__(self) -> bool:  # when calling the instance. check if we track links or no.
         return len(self.track_links_list) > 0
@@ -35,10 +38,7 @@ class TurnTracker(Tracker):
         self.links_list = list(self.sparse_to_links.values())  # col_labels
 
     def assign(self, odv, pred, seg, it) -> None:
-        n_rows, n_cols = len(self.sparse_track_links_list), len(self.links_list)
-        volumes = np.zeros((n_rows, n_cols))
-        # TODO: could parallelize: split sparse_track_links_list in N, and create N volumes mat: concat at the end
-        volumes = assign_tracked_volumes(odv, pred, self.sparse_track_links_list, volumes)
+        volumes = assign_tracked_volumes_parallel(odv, pred, self.sparse_track_links_list, self.num_threads)
         sparse_mat = array_to_csr_matrix(volumes)  # transform numpy to csr_matrix for easier lighter storage
         self.tracked_mat.append(TrackedVolume(it, seg, sparse_mat))
 
@@ -98,7 +98,7 @@ def apply_biconjugated_frank_wolfe(mat_datas: list[TrackedVolume], phi_dict: dic
 
 @nb.njit(locals={'predecessors': nb.int32[:, ::1]})  # parallel=> not thread safe. do not!
 def assign_tracked_volumes(odv, predecessors, track_index_list, volumes) -> np.ndarray:
-    nrow = len(track_index_list)
+    nrows = len(track_index_list)
     for i in range(len(odv)):
         origin = odv[i, 0]
         destination = odv[i, 1]
@@ -107,10 +107,23 @@ def assign_tracked_volumes(odv, predecessors, track_index_list, volumes) -> np.n
             path = get_node_path(predecessors, origin, destination)
             for j in range(len(path) - 1):
                 p = path[j]
-                for row in range(nrow):
+                for row in range(nrows):
                     if track_index_list[row] == p:
                         # we get volume on next link (turn table)
                         volumes[row][path[j + 1]] += v
+    return volumes
+
+
+@nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)
+def assign_tracked_volumes_parallel(odv, predecessors, track_index_list, num_threads=1) -> np.ndarray:
+    nb.set_num_threads(num_threads)
+    nrows = len(track_index_list)
+    ncols = predecessors.shape[1]
+    volumes = np.zeros((nrows, ncols))
+    track_index_split = np.array_split(track_index_list, num_threads)
+    volumes_split = np.array_split(volumes, num_threads, axis=0)
+    for j in nb.prange(num_threads):
+        volumes_split[j] = assign_tracked_volumes(odv, predecessors, track_index_split[j], volumes_split[j])
     return volumes
 
 
