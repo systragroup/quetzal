@@ -24,9 +24,9 @@ def read_zip(filepath, *args, **kwargs):
 
 def read_zipped_hdf(filepath, *args, **kwargs):
     filedir = ntpath.dirname(filepath)
-    tempdir = filedir + '/quetzal_temp' + '-' + str(uuid.uuid4())
+    tempdir = filedir + "/quetzal_temp" + "-" + str(uuid.uuid4())
     shutil.unpack_archive(filepath, tempdir)
-    m = read_hdf(tempdir + r'/model.hdf', *args, **kwargs)
+    m = read_hdf(tempdir + r"/model.hdf", *args, **kwargs)
     shutil.rmtree(tempdir)
     return m
 
@@ -75,16 +75,24 @@ def get_boarding_links(link_path, trip_dict):
 class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if 'time_interval' not in dir(self):
+        if "time_interval" not in dir(self):
             self.time_interval = [0, 24 * 3600 - 1]
 
     def lighten_pt_los(self):
         super(ConnectionScanModel, self).lighten_pt_los()
-        to_drop = ['connection_path', 'path', 'first_connections', 'last_connection', 'ntransfers']
-        self.pt_los = self.pt_los.drop(to_drop, axis=1, errors='ignore')
+        to_drop = [
+            "connection_path",
+            "path",
+            "first_connections",
+            "last_connection",
+            "ntransfers",
+        ]
+        self.pt_los = self.pt_los.drop(to_drop, axis=1, errors="ignore")
 
     def lighten_pseudo_connections(self):
-        self.pseudo_connections = self.pseudo_connections[['csa_index', 'link_index', 'model_index', 'trip_id']]
+        self.pseudo_connections = self.pseudo_connections[
+            ["csa_index", "link_index", "model_index", "trip_id"]
+        ]
 
     def lighten(self):
         super(ConnectionScanModel, self).lighten()
@@ -94,42 +102,77 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             pass
 
     def preparation_build_connection_dataframe(
-        self, min_transfer_time=0, time_interval=None, cutoff=np.inf, reindex=True, step=None
+        self,
+        min_transfer_time=0,
+        time_interval=None,
+        cutoff=np.inf,
+        reindex=True,
+        step=None,
     ):
-        time_interval = time_interval if time_interval is not None else self.time_interval
+        time_interval = (
+            time_interval if time_interval is not None else self.time_interval
+        )
 
-        links = self.links.loc[self.links['a'] != self.links['b']]
-        links = links.loc[links['departure_time'] >= time_interval[0]]
-        links = links.loc[links['departure_time'] <= time_interval[1] + cutoff]
+        links = self.links.loc[self.links["a"] != self.links["b"]]
+        links = links.loc[links["departure_time"] >= time_interval[0]]
+        links = links.loc[links["departure_time"] <= time_interval[1] + cutoff]
 
         try:
-            links = pd.merge(links, self.nodes[['transfer_duration']], how='left', left_on='a', right_index=True)
-            links['min_transfer_time'] = links['transfer_duration'].fillna(0) + min_transfer_time
+            links = pd.merge(
+                links,
+                self.nodes[["transfer_duration"]],
+                how="left",
+                left_on="a",
+                right_index=True,
+            )
+            links["min_transfer_time"] = (
+                links["transfer_duration"].fillna(0) + min_transfer_time
+            )
         except KeyError:
-            links['min_transfer_time'] = min_transfer_time
+            links["min_transfer_time"] = min_transfer_time
 
         pseudo_links = links[
-            ['a', 'b', 'departure_time', 'arrival_time', 'min_transfer_time', 'trip_id', 'link_sequence']
+            [
+                "a",
+                "b",
+                "departure_time",
+                "arrival_time",
+                "min_transfer_time",
+                "trip_id",
+                "link_sequence",
+            ]
         ].copy()
-        pseudo_links['link_index'] = pseudo_links['model_index'] = pseudo_links.index
-        pseudo_links['actual_departure_time'] = pseudo_links['departure_time']
-        pseudo_links['departure_time'] -= links['min_transfer_time']
-        zone_to_transit = csa.time_zone_to_transit(pseudo_links, self.zone_to_transit, step=step)
+        pseudo_links["link_index"] = pseudo_links["model_index"] = pseudo_links.index
+        pseudo_links["actual_departure_time"] = pseudo_links["departure_time"]
+        pseudo_links["departure_time"] -= links["min_transfer_time"]
+        zone_to_transit = csa.time_zone_to_transit(
+            pseudo_links, self.zone_to_transit, step=step
+        )
         footpaths = csa.time_footpaths(pseudo_links, self.footpaths)
         self.time_expended_footpaths = footpaths
         self.time_expended_zone_to_transit = zone_to_transit
 
         pseudo_connections = pd.concat([pseudo_links, footpaths, zone_to_transit])
-        pseudo_connections = pseudo_connections[pseudo_connections['a'] != pseudo_connections['b']]
+        pseudo_connections = pseudo_connections[
+            pseudo_connections["a"] != pseudo_connections["b"]
+        ]
 
         # connections of each trip are consecutive
-        pseudo_connections.sort_values(by=['trip_id', 'link_sequence'], inplace=True)
+        pseudo_connections.sort_values(by=["trip_id", "link_sequence"], inplace=True)
         if reindex:
-            pseudo_connections['csa_index'] = range(len(pseudo_connections))  # use int as index
+            pseudo_connections["csa_index"] = range(
+                len(pseudo_connections)
+            )  # use int as index
         else:
-            pseudo_connections['csa_index'] = pseudo_connections['csa_index'].fillna(pseudo_connections['model_index'])
-        pseudo_connections['actual_departure_time'].fillna(pseudo_connections['departure_time'], inplace=True)
-        pseudo_connections.sort_values('actual_departure_time', ascending=False, inplace=True)
+            pseudo_connections["csa_index"] = pseudo_connections["csa_index"].fillna(
+                pseudo_connections["model_index"]
+            )
+        pseudo_connections["actual_departure_time"].fillna(
+            pseudo_connections["departure_time"], inplace=True
+        )
+        pseudo_connections.sort_values(
+            "actual_departure_time", ascending=False, inplace=True
+        )
         self.pseudo_connections = pseudo_connections
 
     def step_pt_pathfinder(
@@ -144,7 +187,8 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         reindex=True,
         step=None,
         on_stop=False,
-        groupby=['origin', 'destination'],
+        drop_off_pickup_filter=True,
+        groupby=["origin", "destination"],
         walk_penalty=1.0,
     ):
         """Performs public transport pathfinder for connection scan models.
@@ -176,7 +220,9 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             penalty to be applied on access/egress and footpath time for the pareto filter
 
         """
-        time_interval = time_interval if time_interval is not None else self.time_interval
+        time_interval = (
+            time_interval if time_interval is not None else self.time_interval
+        )
 
         if build_connections:
             self.preparation_build_connection_dataframe(
@@ -189,12 +235,25 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
 
         if on_stop:
             # remove zone to road in pseudo. dont need them.
-            self.pseudo_connections = self.pseudo_connections[self.pseudo_connections['direction'] != 'access']
-            self.pseudo_connections = self.pseudo_connections[self.pseudo_connections['direction'] != 'egress']
-            pt_los_on_stop = csa.pathfinder_on_stops(pseudo_connections=self.pseudo_connections)
+            self.pseudo_connections = self.pseudo_connections[
+                self.pseudo_connections["direction"] != "access"
+            ]
+            self.pseudo_connections = self.pseudo_connections[
+                self.pseudo_connections["direction"] != "egress"
+            ]
+            pt_los_on_stop = csa.pathfinder_on_stops(
+                pseudo_connections=self.pseudo_connections
+            )
 
-            pt_los_on_stop['footpath_time'] = csa.get_footpaths_time(
-                pt_los=pt_los_on_stop, pseudo_connections=self.pseudo_connections, footpaths=self.footpaths
+            if drop_off_pickup_filter:
+                pt_los_on_stop = csa.drop_off_pickup_filter(
+                    pt_los_on_stop, self.pseudo_connections, self.links
+                )
+
+            pt_los_on_stop["footpath_time"] = csa.get_footpaths_time(
+                pt_los=pt_los_on_stop,
+                pseudo_connections=self.pseudo_connections,
+                footpaths=self.footpaths,
             )
 
             zones = self.zones.index
@@ -209,10 +268,12 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             )
 
         else:
-            seta = set(self.time_expended_zone_to_transit['a'])
-            setb = set(self.time_expended_zone_to_transit['b'])
+            seta = set(self.time_expended_zone_to_transit["a"])
+            setb = set(self.time_expended_zone_to_transit["b"])
             zone_set = set(self.zones.index).intersection(seta).intersection(setb)
-            targets = zone_set if targets is None else set(targets).intersection(zone_set)
+            targets = (
+                zone_set if targets is None else set(targets).intersection(zone_set)
+            )
 
             self.pt_los = csa.pathfinder(
                 pseudo_connections=self.pseudo_connections,
@@ -242,40 +303,61 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         """
         pseudo_connections = self.pseudo_connections
         pt_los = self.pt_los
-        clean = pseudo_connections[['csa_index', 'trip_id']].dropna()
-        clean.sort_values(by='csa_index', inplace=True)
+        clean = pseudo_connections[["csa_index", "trip_id"]].dropna()
+        clean.sort_values(by="csa_index", inplace=True)
 
-        trip_connections = clean.groupby('trip_id')['csa_index'].agg(list).to_dict()
-        trip_dict = clean.set_index('csa_index')['trip_id'].to_dict()
+        trip_connections = clean.groupby("trip_id")["csa_index"].agg(list).to_dict()
+        trip_dict = clean.set_index("csa_index")["trip_id"].to_dict()
         if on_stop:
-            path = pt_los['csa_path'].apply(lambda ls: csa.get_full_csa_path(ls, trip_dict, trip_connections))
+            path = pt_los["csa_path"].apply(
+                lambda ls: csa.get_full_csa_path(ls, trip_dict, trip_connections)
+            )
         else:  # remove first and last (zones.)
-            path = pt_los['csa_path'].apply(lambda ls: csa.get_full_csa_path(ls[1:-1], trip_dict, trip_connections))
-        pt_los['path'] = path
+            path = pt_los["csa_path"].apply(
+                lambda ls: csa.get_full_csa_path(ls[1:-1], trip_dict, trip_connections)
+            )
+        pt_los["path"] = path
         # remap csa path to links indexes.
-        model_index_dict = pseudo_connections.set_index('csa_index')['model_index'].to_dict()
-        pt_los['path'] = pt_los['path'].apply(lambda ls: [*map(model_index_dict.get, ls)])
+        model_index_dict = pseudo_connections.set_index("csa_index")[
+            "model_index"
+        ].to_dict()
+        pt_los["path"] = pt_los["path"].apply(
+            lambda ls: [*map(model_index_dict.get, ls)]
+        )
         # add origin and destination in path
-        pt_los['path'] = [[o, *p, d] for o, p, d in zip(pt_los['origin'], pt_los['path'], pt_los['destination'])]
+        pt_los["path"] = [
+            [o, *p, d]
+            for o, p, d in zip(pt_los["origin"], pt_los["path"], pt_los["destination"])
+        ]
 
-        links_set = set(pseudo_connections['link_index'].dropna().values)
-        pt_los['link_path'] = pt_los['path'].apply(lambda ls: [x for x in ls if x in links_set])
+        links_set = set(pseudo_connections["link_index"].dropna().values)
+        pt_los["link_path"] = pt_los["path"].apply(
+            lambda ls: [x for x in ls if x in links_set]
+        )
 
-        trip_dict = self.links['trip_id'].to_dict()
+        trip_dict = self.links["trip_id"].to_dict()
 
-        pt_los['boarding_links'] = pt_los['link_path'].apply(get_boarding_links, trip_dict=trip_dict)
+        pt_los["boarding_links"] = pt_los["link_path"].apply(
+            get_boarding_links, trip_dict=trip_dict
+        )
 
-        pt_los['ntransfers'] = pt_los['boarding_links'].apply(lambda b: len(b) - 1)
-        pt_los['ntransfers'] = np.clip(pt_los['ntransfers'], 0, a_max=None)
+        pt_los["ntransfers"] = pt_los["boarding_links"].apply(lambda b: len(b) - 1)
+        pt_los["ntransfers"] = np.clip(pt_los["ntransfers"], 0, a_max=None)
         if boardings:
-            linka = self.links['a'].to_dict()
-            pt_los['boardings'] = pt_los['boarding_links'].apply(lambda ls: [*map(linka.get, ls)])
+            linka = self.links["a"].to_dict()
+            pt_los["boardings"] = pt_los["boarding_links"].apply(
+                lambda ls: [*map(linka.get, ls)]
+            )
         else:
-            pt_los = pt_los.drop(columns=['boarding_links'])
+            pt_los = pt_los.drop(columns=["boarding_links"])
         if alightings:
-            pt_los['alighting_links'] = pt_los['link_path'].apply(get_alighting_links, link_trip_dict=trip_dict)
+            pt_los["alighting_links"] = pt_los["link_path"].apply(
+                get_alighting_links, link_trip_dict=trip_dict
+            )
 
-            linkb = self.links['b'].to_dict()
-            pt_los['alightings'] = pt_los['alighting_links'].apply(lambda ls: [*map(linkb.get, ls)])
+            linkb = self.links["b"].to_dict()
+            pt_los["alightings"] = pt_los["alighting_links"].apply(
+                lambda ls: [*map(linkb.get, ls)]
+            )
 
         self.pt_los = pt_los
