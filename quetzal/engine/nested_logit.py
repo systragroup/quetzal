@@ -286,20 +286,11 @@ def one_block_nested_logit_from_paths(
             ref_paths, ascending_modes, route_types, phi, od_cols=od_cols, verbose=verbose
         )
 
-        print('Pro Utilities')
-        print(mode_utilities.loc[od])
-
-        print('Ref Utilities')
-        print(ref_mode_utilities.loc[od])
-
         for mode in route_types:
             mode_utilities[mode] = (
                 mode_utilities[mode].sub(ref_mode_utilities[mode].replace([-np.inf], -100)).fillna(0.0)
             )  # Delta utilitie
             mode_utilities[mode] = mode_utilities[mode].replace([-np.inf], 0.0)
-
-        print('Delta')
-        print(mode_utilities.loc[od])
 
         ref_probabilities.set_index(mode_probabilities.index.names, inplace=True)
 
@@ -307,9 +298,6 @@ def one_block_nested_logit_from_paths(
         mode_utilities = symmetrize_utilities(mode_utilities)
 
     mode_utilities = mode_utilities.clip(clip, -clip)
-    if incremental:
-        print('After Clip')
-        print(mode_utilities.loc[od])
 
     # propagate utilities to higher modes (bottom -> up) (leaf => root)
     for mode in ascending_modes:
@@ -321,13 +309,7 @@ def one_block_nested_logit_from_paths(
             else:  # Direct Logit
                 mode_utilities[mode] = nest_utility(mode_utilities[children].values, phi=phi[mode])
 
-    if incremental:
-        print('After propagation')
-        print(mode_utilities.loc[od])
     mode_utilities = mode_utilities[descending_modes]
-
-    if incremental:
-        print(mode_utilities.loc[od])
 
     #
     #  mode probability
@@ -345,9 +327,6 @@ def one_block_nested_logit_from_paths(
                 partial = nest_probabilities(utilities=mode_utilities[children].values, phi=phi[mode])
             mode_probabilities[children] = mode_probabilities[[mode]].values * partial
     mode_probabilities = mode_probabilities[descending_modes].fillna(0)
-    if incremental:
-        print('Probabilities')
-        print(mode_probabilities.loc[od])
 
     #
     # stack probabilities and merge on back on paths
