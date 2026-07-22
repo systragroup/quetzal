@@ -75,15 +75,7 @@ def time_footpaths(links, footpaths):
     transfers['str'] += '_' + transfers['arrival_time'].astype(str)
     transfers['csa_index'] = 'footpath_' + transfers['str']
     transfers['trip_id'] = 'footpath_trip_' + transfers['str']
-    columns = [
-        'a',
-        'b',
-        'departure_time',
-        'arrival_time',
-        'trip_id',
-        'csa_index',
-        'model_index',
-    ]
+    columns = ['a', 'b', 'departure_time', 'arrival_time', 'trip_id', 'csa_index', 'model_index']
     return transfers[columns]
 
 
@@ -134,18 +126,7 @@ def time_zone_to_transit(links, zone_to_transit, reindex=False, step=None):
         df['departure_time_round'] = df['departure_time'] // (step)
         df = df.sort_values(by='departure_time')
         df = df.drop_duplicates(['a', 'b', 'departure_time_round', 'direction'])
-    return df[
-        [
-            'a',
-            'b',
-            'departure_time',
-            'arrival_time',
-            'trip_id',
-            'csa_index',
-            'model_index',
-            'direction',
-        ]
-    ]
+    return df[['a', 'b', 'departure_time', 'arrival_time', 'trip_id', 'csa_index', 'model_index', 'direction']]
 
 
 def csa_profile(connections, target, stop_set=None, Ttrip=None):
@@ -334,14 +315,7 @@ def pathfinder(
 
     pt_los = pd.DataFrame(
         pareto,
-        columns=[
-            'origin',
-            'destination',
-            'departure_time',
-            'arrival_time',
-            'last_connection',
-            'csa_path',
-        ],
+        columns=['origin', 'destination', 'departure_time', 'arrival_time', 'last_connection', 'csa_path'],
     )
     return pt_los
 
@@ -422,10 +396,7 @@ def merge_on_connector(
 
     # TODO  have a way to select columns to merge. we could want to groupby mode_type_egress for example
     ztt_cols = ['a', 'b', 'time', 'route_type', 'model_index']
-    for col in [
-        'route_type',
-        'model_index',
-    ]:  # convert to category before merge: save memory.
+    for col in ['route_type', 'model_index']:  # convert to category before merge: save memory.
         zone_to_transit[col] = zone_to_transit[col].astype('category')
     access = zone_to_transit[zone_to_transit['direction'] == 'access'][ztt_cols]
     egress = zone_to_transit[zone_to_transit['direction'] == 'eggress'][ztt_cols]
@@ -471,14 +442,7 @@ def merge_on_connector(
 
     # add access and egress ntlegs. usefull to create a complete path (and drop dup later)
     df['ntlegs'] = [*zip(df['model_index_access'], df['model_index_egress'])]
-    df = df.drop(
-        columns=[
-            'model_index_access',
-            'model_index_egress',
-            'pseudo_departure_time',
-            'pseudo_arrival_time',
-        ]
-    )
+    df = df.drop(columns=['model_index_access', 'model_index_egress', 'pseudo_departure_time', 'pseudo_arrival_time'])
 
     return df  # this is pt_los
 
