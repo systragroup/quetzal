@@ -94,7 +94,12 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             pass
 
     def preparation_build_connection_dataframe(
-        self, min_transfer_time=0, time_interval=None, cutoff=np.inf, reindex=True, step=None
+        self,
+        min_transfer_time=0,
+        time_interval=None,
+        cutoff=np.inf,
+        reindex=True,
+        step=None,
     ):
         time_interval = time_interval if time_interval is not None else self.time_interval
 
@@ -144,6 +149,7 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         reindex=True,
         step=None,
         on_stop=False,
+        drop_off_pickup_filter=True,
         groupby=['origin', 'destination'],
         walk_penalty=1.0,
     ):
@@ -192,6 +198,9 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             self.pseudo_connections = self.pseudo_connections[self.pseudo_connections['direction'] != 'access']
             self.pseudo_connections = self.pseudo_connections[self.pseudo_connections['direction'] != 'egress']
             pt_los_on_stop = csa.pathfinder_on_stops(pseudo_connections=self.pseudo_connections)
+
+            if drop_off_pickup_filter:
+                pt_los_on_stop = csa.drop_off_pickup_filter(pt_los_on_stop, self.pseudo_connections, self.links)
 
             pt_los_on_stop['footpath_time'] = csa.get_footpaths_time(
                 pt_los=pt_los_on_stop, pseudo_connections=self.pseudo_connections, footpaths=self.footpaths

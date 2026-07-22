@@ -211,7 +211,15 @@ def get_full_csa_path(path, trip_dict, trip_connections):
     return full_path
 
 
-def pathfinder(pseudo_connections, zone_set, time_interval=None, cutoff=np.inf, targets=None, workers=1, od_set=None):
+def pathfinder(
+    pseudo_connections,
+    zone_set,
+    time_interval=None,
+    cutoff=np.inf,
+    targets=None,
+    workers=1,
+    od_set=None,
+):
     targets = list(set(targets))
     if workers > 1:
         results = {}
@@ -306,7 +314,8 @@ def pathfinder(pseudo_connections, zone_set, time_interval=None, cutoff=np.inf, 
                 pareto.append((source, target, departure, arrival, c, path))
 
     pt_los = pd.DataFrame(
-        pareto, columns=['origin', 'destination', 'departure_time', 'arrival_time', 'last_connection', 'csa_path']
+        pareto,
+        columns=['origin', 'destination', 'departure_time', 'arrival_time', 'last_connection', 'csa_path'],
     )
     return pt_los
 
@@ -328,8 +337,36 @@ def pathfinder_on_stops(pseudo_connections: pd.DataFrame):
                 path = get_path(predecessor, c)
                 pareto.append((source, target, departure, arrival, path))
 
-    pt_los = pd.DataFrame(pareto, columns=['origin', 'destination', 'departure_time', 'arrival_time', 'csa_path'])
+    pt_los = pd.DataFrame(
+        pareto,
+        columns=['origin', 'destination', 'departure_time', 'arrival_time', 'csa_path'],
+    )
     return pt_los
+
+
+def drop_off_pickup_filter(
+    pt_los: pd.DataFrame,
+    pseudo_connections: pd.DataFrame,
+    links: pd.DataFrame,
+) -> pd.DataFrame:
+    connections = pseudo_connections.merge(
+        links[['drop_off_type', 'pickup_type']],
+        left_on='model_index',
+        right_index=True,
+    )
+    drop_off = (~connections.set_index('csa_index')['drop_off_type'].astype(bool)).to_dict()
+    drop_off_list = [
+        [drop_off.get(c) for c in csa_path if drop_off.get(c) is not None] for csa_path in pt_los['csa_path'].values
+    ]
+    drop_off_mask = [lst[-1] if len(lst) > 0 else True for lst in drop_off_list]
+
+    pickup = (~connections.set_index('csa_index')['pickup_type'].astype(bool)).to_dict()
+    pickup_list = [
+        [pickup.get(c) for c in csa_path if pickup.get(c) is not None] for csa_path in pt_los['csa_path'].values
+    ]
+    pickup_mask = [lst[0] if len(lst) > 0 else True for lst in pickup_list]
+
+    return pt_los[[x and y for x, y in zip(drop_off_mask, pickup_mask)]]
 
 
 def get_footpaths_time(pt_los: pd.DataFrame, pseudo_connections: pd.DataFrame, footpaths: pd.DataFrame) -> pd.Series:
@@ -397,7 +434,9 @@ def merge_on_connector(
 
     # filter big los with pareto
     mask = pareto_per_groups(
-        df['pseudo_departure_time'].values, df['pseudo_arrival_time'].values, df['pareto_group'].values
+        df['pseudo_departure_time'].values,
+        df['pseudo_arrival_time'].values,
+        df['pareto_group'].values,
     )
     df = df.iloc[mask]
 
