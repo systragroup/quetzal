@@ -238,7 +238,7 @@ class RoadLinks:
     RoadLinks object for mapmatching
     """
 
-    def __init__(self, links, n_neighbors_centroid=10, radius_search=250, on_centroid=False):
+    def __init__(self, links, n_neighbors_centroid=10, radius_search=250, on_centroid=False, weight_column=None):
         self.links = links
         assert self.links.crs != None, 'road_links crs must be set (crs in meter, NOT 3857)'
         assert self.links.crs != 3857, 'CRS error. crs 3857 is not supported. use a local projection in meters.'
@@ -258,6 +258,11 @@ class RoadLinks:
         if 'index' not in self.links.columns:
             self.links = self.links.reset_index()
 
+        if weight_column is not None:
+            self.links['_weight'] = self.links[weight_column]
+        else:
+            self.links['_weight'] = self.links['length']
+
         self.get_sparse_matrix()
         self.get_dict()
         self.build_link_graph()
@@ -267,11 +272,14 @@ class RoadLinks:
             self.fit_nearest_model()
 
     def get_sparse_matrix(self):
-        self.mat, self.node_index = sparse_matrix(self.links[['a', 'b', 'length']].values)
+        self.mat, self.node_index = sparse_matrix(self.links[['a', 'b', '_weight']].values)
         self.index_node = {v: k for k, v in self.node_index.items()}
 
     def build_link_graph(self):
+        self.links['_length_saved'] = self.links['length']
+        self.links['length'] = self.links['_weight']
         expanded_links = links_to_expanded_links(self.links, u_turns=False)
+        self.links['length'] = self.links.pop('_length_saved')
         self.csgraph, self.link_index = sparse_matrix(expanded_links[['from_link', 'to_link', 'length']].values)
         self.reversed_link_index = {v: k for k, v in self.link_index.items()}
 
