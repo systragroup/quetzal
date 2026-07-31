@@ -1,53 +1,57 @@
-[tool.poetry]
+[project]
 name = "quetzal-transport"
 version = "3.8.0"
 description = "modeling library for transport planning"
-authors = ["Quentin Chasserieau <qchasserieau@systra.com>"]
+authors = [
+  { name = "Quentin Chasserieau", email = "qchasserieau@systra.com" }
+]
 readme = "README.md"
-repository = "https://github.com/systragroup/quetzal"
-documentation = "https://systragroup.github.io/quetzal"
+license = { text = "CeCILL-B" }
 keywords = ["transport", "planning", "simulation", "fast"]
-license = "CeCILL-B"
-
-packages = [
-  { include = "quetzal" },
-  { include = "syspy" }
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "numpy>=2.4.4",
+  "pandas>=2.3.3,<3.0",
+  "geopandas>=1.1.3",
+  "gtfs-kit==6.1.0",
+  "openpyxl>=3.1.5",
+  "numba>=0.65.1",
+  "boto3>=1.43.6",
+  "scipy>=1.17.1",
+  "geopy>=2.4.1",
+  "scikit-learn>=1.8.0",
+  "matplotlib>=3.10.9",
+  "notebook>=6.5.7,<7.0",
+  "tqdm>=4.67.3",
+  "seaborn>=0.13.2",
+  "xlrd>=2.0.2",
+  "s3fs>=0.4.2",
+  "rasterio>=1.5.0",
+  "ipywidgets>=8.1.8",
+  "openmatrix>=0.3.5.0",
+  "networkx>=3.6.1",
+  "ruff>=0.15.12",
+  "zstandard>=0.25.0",
+  "pydantic>=2.13.4",
+  "polars>=1.40.1",
+  "pyarrow>=24.0.0",
+  "fast-dijkstra>=2.1.2",
 ]
 
-[tool.poetry.dependencies]
-python = ">=3.12,<3.14"
-numpy = "*"
-pandas = "<3.0"
-geopandas = "*"
-gtfs-kit = "6.1.0"
-openpyxl = "*"
-numba = "*"
-boto3 = "*"
-scipy = "*"
-geopy = "*"
-scikit-learn = "*"
-matplotlib = "*"
-notebook = "<7.0"
-tqdm = "*"
-seaborn = "*"
-xlrd = "*"
-s3fs = "*"
-rasterio = "*"
-ipywidgets = "*"
-openmatrix = "*"
-networkx = "*"
-ruff = "*"
-zstandard = "*"
-pydantic = "*"
-polars = "*"
-pyarrow = "*"
-fast-dijkstra = "*"
+[project.urls]
+Repository = "https://github.com/systragroup/quetzal"
+Documentation = "https://systragroup.github.io/quetzal"
 
-[tool.poetry.group.dev.dependencies]
-twine = "^6.2.0"
-pip-chill = "*"
-jupytext = "^1.19.1"
+[dependency-groups]
+dev = [
+  "twine>=6.2.0",
+  "pip-chill>=1.0.5",
+  "jupytext>=1.19.2",
+]
 
 [build-system]
-requires = ["poetry-core>=2.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["quetzal", "syspy"]
