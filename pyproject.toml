@@ -53,5 +53,11 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.poetry]
+packages = [
+  { include = "quetzal" },
+  { include = "syspy" }
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["quetzal", "syspy"]
