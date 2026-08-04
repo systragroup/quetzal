@@ -9,8 +9,7 @@ import pandas as pd
 from numba import njit
 from scipy.sparse.csgraph import dijkstra
 from shapely import get_coordinates
-from shapely.geometry import LineString, MultiLineString
-from shapely.ops import linemerge
+from shapely.geometry import LineString
 from sklearn.neighbors import NearestNeighbors
 
 from quetzal.engine.fast_utils import get_path
@@ -858,24 +857,39 @@ def _matched(line, offset):
     return line.interpolate(offset)
 
 
-def build_matched_links(vals, routing_list, links, rlinks, links_model, crs=None, matched_nodes=False):
+def _concatenate_links(geoms):
+    coords = []
+    prev_end = None
+    for geom in geoms:
+        segment = list(geom.coords)
+        if prev_end is not None and segment and segment[0] != prev_end:
+            segment[0] = prev_end
+        coords.extend(segment)
+        if segment:
+            prev_end = segment[-1]
+    return LineString(coords)
+
+
+def build_matched_links(vals, routing_list, links, rlinks, links_model, crs=None):
     if crs is None:
         crs = links.crs
 
-    mnodes = vals.copy()
-    mnodes['geometry'] = mnodes['road_id_a'].apply(lambda x: links_model.geom_dict.get(x))
-    mnodes['road_id'] = mnodes['road_id_a'].apply(lambda x: links_model.links_index_dict.get(x))
-    mnodes['matched_points'] = mnodes.apply(lambda x: _matched(x['geometry'], x['offset_a']), axis=1)
-    mnodes = mnodes.join(routing_list['road_link_list'])
-    mnodes = mnodes.drop(columns=['geometry', 'road_id_a', 'road_id_b', 'offset_b', 'length'])
-    mnodes = mnodes.rename(columns={'matched_points': 'geometry', 'offset_a': 'offset', 'road_link_list': 'routing'})
-    mnodes = gpd.GeoDataFrame(mnodes, geometry='geometry', crs=crs)
+    matched_nodes = vals.copy()
+    matched_nodes['geometry'] = matched_nodes['road_id_a'].apply(lambda x: links_model.geom_dict.get(x))
+    matched_nodes['road_id'] = matched_nodes['road_id_a'].apply(lambda x: links_model.links_index_dict.get(x))
+    matched_nodes['matched_points'] = matched_nodes.apply(lambda x: _matched(x['geometry'], x['offset_a']), axis=1)
+    matched_nodes = matched_nodes.join(routing_list['road_link_list'])
+    matched_nodes = matched_nodes.drop(columns=['geometry', 'road_id_a', 'road_id_b', 'offset_b', 'length'])
+    matched_nodes = matched_nodes.rename(
+        columns={'matched_points': 'geometry', 'offset_a': 'offset', 'road_link_list': 'routing'}
+    )
+    matched_nodes = gpd.GeoDataFrame(matched_nodes, geometry='geometry', crs=crs)
 
     rows = []
     idx_index = []
-    n = len(mnodes)
-    road_link_lists = mnodes['routing'].tolist()
-    indexes = mnodes.index[1:].tolist()
+    n = len(matched_nodes)
+    road_link_lists = matched_nodes['routing'].tolist()
+    indexes = matched_nodes.index[1:].tolist()
 
     row_count = 0
     for i in range(n):
@@ -893,7 +907,7 @@ def build_matched_links(vals, routing_list, links, rlinks, links_model, crs=None
             ):
                 shared = routing[-1]
                 shared_length = rlinks.loc[shared, 'length']
-                next_offset = mnodes.iloc[i + 1]['offset']
+                next_offset = matched_nodes.iloc[i + 1]['offset']
 
                 n_curr = len(routing)
                 n_next = len(next_routing)
@@ -909,12 +923,7 @@ def build_matched_links(vals, routing_list, links, rlinks, links_model, crs=None
             continue
 
         sub = rlinks.loc[routing]
-        geom = linemerge(sub.geometry.tolist())
-
-        if isinstance(geom, MultiLineString):
-            geom = geom.geoms[0] if len(geom.geoms) > 0 else LineString()
-        elif not isinstance(geom, LineString):
-            geom = LineString()
+        geom = _concatenate_links(sub.geometry.tolist())
         a = sub['a'].iloc[0]
         b = sub['b'].iloc[-1]
         row_data = {'a': a, 'b': b, 'routing': routing, 'geometry': geom}
@@ -932,6 +941,16 @@ def build_matched_links(vals, routing_list, links, rlinks, links_model, crs=None
         rows.append(row_data)
         row_count += 1
 
+    for i in range(1, len(rows)):
+        prev_geom = rows[i - 1]['geometry']
+        geom = rows[i]['geometry']
+        if prev_geom.is_empty or geom.is_empty:
+            continue
+        coords = list(geom.coords)
+        if coords[0] != prev_geom.coords[-1]:
+            coords[0] = prev_geom.coords[-1]
+            rows[i]['geometry'] = LineString(coords)
+
     if rows:
         matched_links = gpd.GeoDataFrame(rows, index=idx_index, geometry='geometry', crs=rlinks.crs)
     else:
@@ -940,11 +959,8 @@ def build_matched_links(vals, routing_list, links, rlinks, links_model, crs=None
         matched_links = gpd.GeoDataFrame(columns=columns, crs=rlinks.crs, geometry='geometry')
 
     matched_links.index.name = 'index'
-    if matched_nodes:
-        mnodes.index.name = 'index'
-        return matched_links, mnodes
-    else:
-        return matched_links
+    matched_nodes.index.name = 'index'
+    return matched_links, matched_nodes
 
 
 def mapmatch_links(
