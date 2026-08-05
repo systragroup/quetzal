@@ -85,6 +85,11 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                         add columns walk_time if road=True
 
         """
+        if road:
+            speed = kwargs['speed'] * 1000 / 3600  # en m/s
+            self.road_links['walk_time'] = self.road_links['length'] / speed
+        if max_length == 0:
+            return
         try:
             self.footpaths = connectivity.build_footpaths(
                 self.nodes,
@@ -113,10 +118,6 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 coordinates_unit=self.coordinates_unit,
                 **kwargs,
             )
-
-        if road:
-            v = kwargs['speed'] * 1000 / 3600  # en m/s
-            self.road_links['walk_time'] = self.road_links['length'] / v
 
     @track_args
     def preparation_ntlegs(

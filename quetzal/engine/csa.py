@@ -189,38 +189,37 @@ def get_path(predecessor, source, maxiter=1000):
             return path[:-1]
 
 
-def trip_bit(t, c_in, c_out, trip_connections):
-    trip = trip_connections[t]
-    left = bisect.bisect_left(trip, c_in)
-    right = bisect.bisect_left(trip, c_out)
-    return trip[left:right]
+def trip_bit(c_in: int, c_out: int, trip_connections: list[int]):
+    left = bisect.bisect_left(trip_connections, c_in)
+    right = bisect.bisect_left(trip_connections, c_out)
+    return trip_connections[left:right]
 
 
-def path_to_boarding_links_and_boarding_path(csa_path, connection_trip, trip_connections):
-    link_path = []
-    trips = set()
-    boarding_links = []
-
-    for i in range(len(csa_path) - 2):
-        c_in, c_out = csa_path[i : i + 2]
-
-        try:
-            trip_in = connection_trip[c_in]
-            link_path.append(c_in)
-            if trip_in not in trips:
-                trips.add(trip_in)
-                boarding_links.append(c_in)
-            assert trip_in == connection_trip[c_out]
-            link_path += trip_bit(connection_trip[c_in], c_in, c_out, trip_connections)
-        except (KeyError, AssertionError):
-            pass
-        link_path.append(c_out)
-
-    link_path = list(dict.fromkeys(link_path))
-    return link_path, boarding_links
+def get_full_csa_path(path, trip_dict, trip_connections):
+    full_path = []
+    for j in range(len(path) - 1):
+        c_in = path[j]
+        c_out = path[j + 1]
+        trip_in = trip_dict[c_in]
+        trip_out = trip_dict[c_out]
+        full_path.append(c_in)
+        if trip_in == trip_out:
+            # first value already append
+            bit = trip_bit(c_in, c_out, trip_connections.get(trip_in))[1:]
+            full_path += bit
+    full_path.append(path[-1])
+    return full_path
 
 
-def pathfinder(pseudo_connections, zone_set, time_interval=None, cutoff=np.inf, targets=None, workers=1, od_set=None):
+def pathfinder(
+    pseudo_connections,
+    zone_set,
+    time_interval=None,
+    cutoff=np.inf,
+    targets=None,
+    workers=1,
+    od_set=None,
+):
     targets = list(set(targets))
     if workers > 1:
         results = {}
@@ -315,12 +314,13 @@ def pathfinder(pseudo_connections, zone_set, time_interval=None, cutoff=np.inf, 
                 pareto.append((source, target, departure, arrival, c, path))
 
     pt_los = pd.DataFrame(
-        pareto, columns=['origin', 'destination', 'departure_time', 'arrival_time', 'last_connection', 'csa_path']
+        pareto,
+        columns=['origin', 'destination', 'departure_time', 'arrival_time', 'last_connection', 'csa_path'],
     )
     return pt_los
 
 
-def pathfinder_on_stops(pseudo_connections):
+def pathfinder_on_stops(pseudo_connections: pd.DataFrame):
     targets = list(pseudo_connections['b'].unique())
     stop_set = set(pseudo_connections['a']).union(set(pseudo_connections['b']))
     Ttrip_inf = {t: float('inf') for t in set(pseudo_connections['trip_id'])}
@@ -337,33 +337,78 @@ def pathfinder_on_stops(pseudo_connections):
                 path = get_path(predecessor, c)
                 pareto.append((source, target, departure, arrival, path))
 
-    pt_los = pd.DataFrame(pareto, columns=['origin', 'destination', 'departure_time', 'arrival_time', 'csa_path'])
+    pt_los = pd.DataFrame(
+        pareto,
+        columns=['origin', 'destination', 'departure_time', 'arrival_time', 'csa_path'],
+    )
     return pt_los
 
 
+def drop_off_pickup_filter(
+    pt_los: pd.DataFrame,
+    pseudo_connections: pd.DataFrame,
+    links: pd.DataFrame,
+) -> pd.DataFrame:
+    connections = pseudo_connections.merge(
+        links[['drop_off_type', 'pickup_type']],
+        left_on='model_index',
+        right_index=True,
+    )
+    drop_off = (~connections.set_index('csa_index')['drop_off_type'].astype(bool)).to_dict()
+    drop_off_list = [
+        [drop_off.get(c) for c in csa_path if drop_off.get(c) is not None] for csa_path in pt_los['csa_path'].values
+    ]
+    drop_off_mask = [lst[-1] if len(lst) > 0 else True for lst in drop_off_list]
+
+    pickup = (~connections.set_index('csa_index')['pickup_type'].astype(bool)).to_dict()
+    pickup_list = [
+        [pickup.get(c) for c in csa_path if pickup.get(c) is not None] for csa_path in pt_los['csa_path'].values
+    ]
+    pickup_mask = [lst[0] if len(lst) > 0 else True for lst in pickup_list]
+
+    return pt_los[[x and y for x, y in zip(drop_off_mask, pickup_mask)]]
+
+
+def get_footpaths_time(pt_los: pd.DataFrame, pseudo_connections: pd.DataFrame, footpaths: pd.DataFrame) -> pd.Series:
+    footpaths_set = set(footpaths['model_index'])
+    pseudo_footpaths = pseudo_connections[pseudo_connections['model_index'].isin(footpaths_set)]
+    pseudo_footpaths['time'] = pseudo_footpaths['arrival_time'] - pseudo_footpaths['departure_time']
+    footpaths_time_dict = pseudo_footpaths.set_index('csa_index')['time'].to_dict()
+    return pt_los['csa_path'].apply(lambda ls: sum([footpaths_time_dict.get(x, 0) for x in ls]))
+
+
 def merge_on_connector(
-    pt_los: pd.DataFrame, zone_to_transit: pd.DataFrame, od_set: list[tuple], groupby=['origin', 'destination']
+    pt_los: pd.DataFrame,
+    zone_to_transit: pd.DataFrame,
+    od_set: list[tuple],
+    groupby=['origin', 'destination'],
+    walk_penalty=1,
 ):
     """
-    groupby=['origin', 'destination'] for pareto groups. can add route_type_access, route_type_egress
+    takes the pt_los station to station, and merge on all the zone_to_road and apply pareto to each group in groupby
+    pt_los : csa pt_los station station.
+    groupby = ['origin', 'destination']: for pareto groups. can add route_type_access, route_type_egress
     stop_egress
+    walk_penalty : float >= 1, optional, default 1 (1 = no penaly)
+            penalty to be applied on access/egress and footpath time for the pareto filter
 
     """
+
+    # TODO  have a way to select columns to merge. we could want to groupby mode_type_egress for example
+    ztt_cols = ['a', 'b', 'time', 'route_type', 'model_index']
+    for col in ['route_type', 'model_index']:  # convert to category before merge: save memory.
+        zone_to_transit[col] = zone_to_transit[col].astype('category')
+    access = zone_to_transit[zone_to_transit['direction'] == 'access'][ztt_cols]
+    egress = zone_to_transit[zone_to_transit['direction'] == 'eggress'][ztt_cols]
+    # rename before merging. this is faster than renamming and dropping after when df is big.
+    access = access.rename(columns={'a': 'origin', 'b': 'stop_access'})
+    egress = egress.rename(columns={'b': 'destination', 'a': 'stop_egress'})
+
     # init the pt_los df (each od)
     df = pd.DataFrame(od_set, columns=['origin', 'destination'])
-
-    zone_to_transit = zone_to_transit[['a', 'b', 'time', 'route_type']]
-    for col in ['route_type']:  #
-        zone_to_transit[col] = zone_to_transit[col].astype('category')
-
-    # merge access connector
-    df = df.merge(zone_to_transit, left_on='origin', right_on='a')
-    df = df.drop(columns='a').rename(columns={'b': 'stop_access'})
-
-    # merge egress connector
-    # TODO rename _access _egress
-    df = df.merge(zone_to_transit, left_on='destination', right_on='b', suffixes=['_access', '_egress'])
-    df = df.drop(columns='b').rename(columns={'a': 'stop_egress'})
+    # merge access and egress connector
+    df = df.merge(access, on='origin')
+    df = df.merge(egress, on='destination', suffixes=['_access', '_egress'])
 
     # convert to category before merge. this save a lot of memory
     for col in ['origin', 'destination', 'stop_access', 'stop_egress']:
@@ -371,7 +416,7 @@ def merge_on_connector(
     for col in ['origin', 'destination']:
         pt_los[col] = pt_los[col].astype('category')
 
-    # merge stop to stop csa on OD
+    # merge station to station csa on OD
     pt_los = pt_los.rename(columns={'origin': 'stop_access', 'destination': 'stop_egress'})
     df = df.merge(pt_los, on=['stop_access', 'stop_egress'])
 
@@ -379,13 +424,25 @@ def merge_on_connector(
     df['departure_time'] = df['departure_time'] - df['time_access']
     df['arrival_time'] = df['arrival_time'] + df['time_egress']
 
+    # compute a pseudo time with access and egress time penalty
+    df['pseudo_departure_time'] = df['departure_time'] - df['time_access'] * (walk_penalty - 1)
+    df['pseudo_arrival_time'] = df['arrival_time'] + (df['time_egress'] + df['footpath_time']) * (walk_penalty - 1)
+
     # group data for the pareto by group [['origin', 'destination']]
     df['pareto_group'] = df.groupby(groupby, group_keys=False).ngroup()
     df = df.sort_values('pareto_group')
 
     # filter big los with pareto
-    mask = pareto_per_groups(df['departure_time'].values, df['arrival_time'].values, df['pareto_group'].values)
+    mask = pareto_per_groups(
+        df['pseudo_departure_time'].values,
+        df['pseudo_arrival_time'].values,
+        df['pareto_group'].values,
+    )
     df = df.iloc[mask]
+
+    # add access and egress ntlegs. usefull to create a complete path (and drop dup later)
+    df['ntlegs'] = [*zip(df['model_index_access'], df['model_index_egress'])]
+    df = df.drop(columns=['model_index_access', 'model_index_egress', 'pseudo_departure_time', 'pseudo_arrival_time'])
 
     return df  # this is pt_los
 
@@ -414,8 +471,8 @@ def _pareto_sweep(arrivals: np.ndarray, order: np.ndarray) -> np.ndarray[bool]:
     return keep
 
 
-def compute_offset(groups):
-    changes = np.where(groups[1:] != groups[:-1])[0]
+def compute_offset(groups: np.ndarray) -> np.ndarray:
+    changes = np.where(groups[1:] != groups[:-1])[0] + 1
     offsets = np.concatenate(([0], changes, [len(groups)]))
     return offsets
 
@@ -432,5 +489,5 @@ def pareto_per_groups(all_departures: np.ndarray, all_arrivals: np.ndarray, grou
         end = offsets[i + 1]
         arrival = all_arrivals[start:end]
         departure = all_departures[start:end]
-        pareto_mask[start:end] = pareto(arrival, departure)
+        pareto_mask[start:end] = pareto(departure, arrival)
     return pareto_mask

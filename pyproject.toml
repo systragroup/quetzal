@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "quetzal-transport"
-version = "3.4.1"
+version = "3.8.0"
 description = "modeling library for transport planning"
 authors = ["Quentin Chasserieau <qchasserieau@systra.com>"]
 readme = "README.md"
@@ -46,6 +46,7 @@ fast-dijkstra = "*"
 [tool.poetry.group.dev.dependencies]
 twine = "^6.2.0"
 pip-chill = "*"
+jupytext = "^1.19.1"
 
 [build-system]
 requires = ["poetry-core>=2.0.0"]

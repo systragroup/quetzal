@@ -9,11 +9,12 @@ from collections import namedtuple
 
 # need to name the class the same as the namedTuple name for pickle.
 TrackedArrays = namedtuple('TrackedArrays', 'iteration seg volumes')
-TrackedWeight = namedtuple('TrackedWeight', 'iteration phi beta relgap')
+TrackedWeight = namedtuple('TrackedWeight', 'iteration phi beta')
 
 
 class TupleTracker(Tracker):
     def __init__(self, track_links_list: List[tuple] = []):
+        print('This tracker only work with turn_penalties')
         # list of tuple [(rlink1, rlink2), (rlink1, rlink100),...]
         self.track_links_list = track_links_list
         self.weights = []
@@ -24,7 +25,7 @@ class TupleTracker(Tracker):
         links_sparse_index: Union[List[int], List[tuple[int, int]]],
         links_to_sparse: Union[Dict[str, int], Dict[str, tuple[int, int]]],
     ):
-        self.links_sparse_index = links_sparse_index
+        self.n_cols = len(links_sparse_index)
         self.sparse_links_list = [[*map(links_to_sparse.get, ls)] for ls in self.track_links_list]
         self.sparse_to_links = {v: k for k, v in links_to_sparse.items()}
         self.tracked_links_set = set(np.concatenate(self.sparse_links_list))
@@ -32,9 +33,9 @@ class TupleTracker(Tracker):
     def __call__(self) -> bool:  # when calling the instance. check if we track links or no.
         return len(self.track_links_list) > 0
 
-    def assign(self, ab_volumes, odv, pred, seg, it):
-        n_cols = len(ab_volumes)
-        mat = get_paths_matrix(odv, pred, n_cols, self.tracked_links_set)
+    def assign(self, odv, pred, seg, it):
+
+        mat = get_paths_matrix(odv, pred, self.n_cols, self.tracked_links_set)
         od_indexes_list = get_od_indexes(mat, self.sparse_links_list)
         volumes = []
         for od_indexes in od_indexes_list:
@@ -42,8 +43,8 @@ class TupleTracker(Tracker):
 
         self.tracked_mat.append(TrackedArrays(it, seg, np.array(volumes)))
 
-    def add_weights(self, phi, beta, relgap, it):
-        self.weights.append(TrackedWeight(iteration=it, phi=phi, beta=beta, relgap=relgap))
+    def add_weights(self, phi, beta, it):
+        self.weights.append(TrackedWeight(iteration=it, phi=phi, beta=beta))
 
     def merge(self) -> pd.DataFrame:
         # apply frank wolfe for each iteration on each segments

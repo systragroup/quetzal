@@ -1,8 +1,8 @@
-from typing import List, Tuple, Dict, Union
+from typing import Tuple, Union
 import pandas as pd
 import polars as pl
 import numpy as np
-from quetzal.engine.pathfinder_utils import get_node_path, fast_dijkstra
+from quetzal.engine.pathfinder_utils import get_node_path, get_path, fast_dijkstra
 
 import numba as nb
 from scipy.sparse import csr_matrix
@@ -31,10 +31,10 @@ def get_sparse_matrix(edges, index):
 
 
 def shortest_path(
-    links: pd.DataFrame, weight_col: str, index: dict[str, int], origins: list[int], num_cores: int
+    links: pd.DataFrame, weight_cols: list[str], index: dict[str, int], origins: list[int], num_cores: int
 ) -> Tuple[np.ndarray, np.ndarray]:
     # from  df index(a,b) and weight col, return predecessor.
-    edges = links[weight_col].reset_index().values  # build the edges again, useless
+    edges = links[weight_cols].sum(axis=1).reset_index().values  # build the edges again, useless
     csgraph = get_sparse_matrix(edges, index=index)
     # shortest path
     weight_matrix, predecessors = fast_dijkstra(
@@ -107,7 +107,8 @@ def find_phi(plinks: pl.DataFrame, segments, vdf, cost_functions, maxiter=10, to
 
 def get_relgap(links: pd.DataFrame, segments: list[str]) -> float:
     # modelling transport eq 11.11. SUM currentFlow x currentCost - SUM AONFlow x currentCost / SUM currentFlow x currentCost
-    # NOTE: base_flow is ignored now while it was considered before. they dont move and they dont have cost, so I think its ok
+    # As we want AON here, we compute this after the shortest path, before we change auxiliary_flow with the BFW direction
+    # NOTE: base_flow is ignored here. they dont move and they dont have cost.
     flow_cost = 0
     aux_cost = 0
     for seg in segments:
@@ -138,25 +139,11 @@ def assign_volume(odv, predecessors, volumes, lut):
         destination = odv[i, 1]
         v = odv[i, 2]
         if v > 0:
-            path = get_node_path(predecessors, origin, destination)
+            path = get_path(predecessors, origin, destination)
             for j in range(len(path) - 1):
                 index = lut[path[j], path[j + 1]]  # get links
                 volumes[index] += v
     return volumes
-
-
-def init_ab_volumes(indexes: List[Tuple]) -> Dict[Tuple, float]:
-    numba_volumes = nb.typed.Dict.empty(key_type=nb.types.UniTuple(nb.types.int64, 2), value_type=nb.types.float64)
-    for key in indexes:
-        numba_volumes[key] = 0
-    return numba_volumes
-
-
-def init_expanded_track_volumes(base_flow: Dict[int, float], track_links_list: List[int]) -> List[Dict[int, float]]:
-    numba_volumes = base_flow.copy()
-    for key in numba_volumes.keys():
-        numba_volumes[key] = 0
-    return [numba_volumes.copy() for _ in track_links_list]
 
 
 def find_beta(links, phi_1, segments):
@@ -215,7 +202,7 @@ def get_derivative(plinks: pl.DataFrame, vdf, cost_functions, segments, h=0.001,
     return (x1 - x2) / (2 * h)
 
 
-@nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)  # parallel=> not thread safe. do not!
+@nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)
 def assign_volume_on_links_parallel(odv, predecessors, nlen, num_cores=1):
     nb.set_num_threads(num_cores)
     odv_mat = np.array_split(odv, num_cores)
@@ -226,9 +213,9 @@ def assign_volume_on_links_parallel(odv, predecessors, nlen, num_cores=1):
     return volumes_mat.sum(axis=0)
 
 
-@nb.njit(locals={'predecessors': nb.int32[:, ::1]})  # parallel=> not thread safe. do not!
+@nb.njit(locals={'predecessors': nb.int32[:, ::1]})
 def assign_volume_on_links(odv, predecessors, volumes):
-    # volumes is a numba dict with all the key initialized
+    # volumes is a numpy array lut
     for i in range(len(odv)):  # nb.prange(len(odv)):
         origin = odv[i, 0]
         destination = odv[i, 1]
@@ -239,10 +226,3 @@ def assign_volume_on_links(odv, predecessors, volumes):
             for key in path:
                 volumes[key] += v
     return volumes
-
-
-def init_numba_volumes(indexes: List[int]) -> Dict[int, float]:
-    numba_volumes = nb.typed.Dict.empty(key_type=nb.types.int64, value_type=nb.types.float64)
-    for key in indexes:
-        numba_volumes[key] = 0
-    return numba_volumes

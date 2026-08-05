@@ -3,11 +3,12 @@ import multiprocessing
 import os
 import shutil
 import string
+import subprocess
+import sys
 import time
 import uuid
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import Manager, Pipe, Process, Queue
-from subprocess import Popen
 from typing import Any
 
 import nbformat
@@ -45,12 +46,12 @@ def parallel_call_jobs(jobs, mode='w', workers=1, sleep=1, raise_errors=False):
         with open(stdout_file, mode) as stdout:
             with open(stderr_file, mode) as stderr:
                 if type(arg) == tuple:
-                    command_list = ['python', file] + list(arg)
+                    command_list = [sys.executable, file] + list(arg)
                 else:
-                    command_list = ['python', file] + [arg]
+                    command_list = [sys.executable, file] + [arg]
                 # my_env = os.environ
                 # my_env["PYTHONPATH"] = os.pathsep.join(sys.path)[1:]
-                popens[i] = Popen(
+                popens[i] = subprocess.Popen(
                     command_list,
                     stdout=stdout,
                     stderr=stderr,
@@ -95,7 +96,7 @@ def parallel_call_notebooks(
         file = notebook.replace('.ipynb', '.py')
         files.append(file)
         if not os.path.exists(file):
-            os.system('jupyter nbconvert --to python %s' % notebook)
+            subprocess.run([sys.executable, '-m', 'jupyter', 'nbconvert', '--to', 'python', notebook])
         if not os.path.exists(file):  # jupyter nb convert failed, for instance, jupyter is not recognized
             convertNotebook(notebook, file)
         if freeze_support:
@@ -154,7 +155,7 @@ def parallel_call_notebook(
     return_jobs=False,
     raise_errors=False,
 ):
-    os.system('jupyter nbconvert --to python %s' % notebook)
+    subprocess.run([sys.executable, '-m', 'jupyter', 'nbconvert', '--to', 'python', notebook])
     file = notebook.replace('.ipynb', '.py')
     if not os.path.exists(file):  # jupyter nb convert failed, for instance, jupyter is not recognized
         convertNotebook(notebook, file)

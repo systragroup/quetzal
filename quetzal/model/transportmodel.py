@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 from typing import Dict, List, Literal, Optional
 from quetzal.analysis import analysis
 from quetzal.engine import engine, nested_logit
@@ -62,6 +63,9 @@ log = model.log
 
 
 class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
+    road_links: gpd.GeoDataFrame
+    zone_to_road: gpd.GeoDataFrame
+
     @track_args
     def step_distribution(self, segmented=False, deterrence_matrix=None, **od_volume_from_zones_kwargs):
         """Function performing distribution of flows with doubly constrained algorithm,
@@ -126,9 +130,16 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             )
 
     def sample_volumes(
-        self, bidimentional_sampling=False, fit_sums=True, sample_weight=1, sample_size=None, inplace=True, **kwargs
+        self,
+        index_cols=['origin', 'destination'],
+        bidimentional_sampling=False,
+        fit_sums=True,
+        sample_weight=1,
+        sample_size=None,
+        inplace=True,
+        **kwargs,
     ):
-        od_volumes = self.volumes.set_index(['origin', 'destination'])
+        od_volumes = self.volumes.set_index(index_cols)
         # remove segments without volumes.
         columns = od_volumes.columns[od_volumes.sum(axis=0) > 0]
 
@@ -158,7 +169,6 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         else:
             return volumes
 
-    @track_args
     def step_road_pathfinder(
         self,
         method: Literal['bfw', 'fw', 'msa', 'aon'] = 'bfw',
@@ -168,9 +178,9 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         od_set: Optional[Dict] = None,
         tracker_plugin: LinksTracker = LinksTracker(),
         turn_penalties: Optional[Dict[str, List[str]]] = None,
-        ntleg_penalty: float = 10e9,
         num_cores: int = 1,
         return_car_los=True,
+        assign_on_connectors=False,
         **kwargs,
     ) -> None:
         """Performs road assignment with or without capacity constraint, depending on the method used
@@ -207,8 +217,6 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             set of od to use - may be used to reduce computation time
             for example, the od_set is the set of od for which there is a volume in self.volumes
 
-        ntleg_penalty : float, optional, default 1e9
-            ntleg penality for access time
         turn_penalties : dict, optional, default None
             dictionary of turn penalties for the road links
             ex: {'rlink_0', ['rlink_4']}
@@ -223,12 +231,16 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         return_car_los:
             compute and return self.car_los
 
+        assign_on_connectors:
+            return assignment on self.zone_to_roads (flows, costs, jam_time)
+
         **kwargs :  see msa_roadpathfinder()
             vdf={'default_bpr': default_bpr, 'free_flow': free_flow},
             method='bfw',
             maxiters=10,
             tolerance=0.01,
             log=False,
+
 
             turn_penality for expanded.
 
@@ -256,17 +268,18 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             print(method, ' not supported. use msa, fw, bfw or aon')
             return
 
-        network = init_network(self, method, segments, time_column, access_time, ntleg_penalty)
+        network = init_network(self, method, segments, time_column, access_time)
         volumes = init_volumes(self, od_set)
 
         if method == 'aon':
             self.car_los = aon_roadpathfinder(network, volumes, time_column, num_cores)
-            self.car_los = get_car_los_time(self.car_los, self.road_links, self.zone_to_road, 'time', 'time')
+            time_dict = network.set_index(['a', 'b'])[time_column].to_dict()
+            self.car_los = get_car_los_time(self.car_los, time_dict)
             return
 
         # elif method in ['msa', 'fw', 'bfw']:
         if turn_penalties is None:
-            links, car_los, rel_gap = msa_roadpathfinder(
+            loaded_links, car_los, rel_gap = msa_roadpathfinder(
                 network,
                 volumes,
                 segments=segments,
@@ -278,7 +291,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 **kwargs,
             )
         else:
-            links, car_los, rel_gap = expanded_roadpathfinder(
+            loaded_links, car_los, rel_gap = expanded_roadpathfinder(
                 network,
                 volumes,
                 segments=segments,
@@ -288,25 +301,45 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 turn_penalties=turn_penalties,
                 num_cores=num_cores,
                 return_car_los=return_car_los,
+                keep_connectors=assign_on_connectors,
                 **kwargs,
             )
+        time_dict = loaded_links['jam_time'].to_dict()
+        if not assign_on_connectors:
+            # need to add zone_to_road to time_dict, as they are not return by the roadPathfinder in that case.
+            time_dict.update(self.zone_to_road.set_index(['a', 'b'])[access_time].to_dict())
 
-        time_dict = links['jam_time'].to_dict()
-        self.road_links['jam_time'] = self.road_links.set_index(['a', 'b']).index.map(time_dict.get)
-        self.road_links['jam_speed'] = self.road_links['length'] / self.road_links['jam_time'] * 3.6
+        _rlinks = self.road_links.copy()
+        _connectors = self.zone_to_road.copy()
 
-        volume_dict = links['flow'].to_dict()
-        self.road_links['flow'] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
+        # if assign_on_connectors:
+        #     # concat both to assign flow, time, cost in 1 operation. split after
+        #     _rlinks = pd.concat([_rlinks, self.zone_to_road])
+
+        _rlinks['jam_time'] = _rlinks.set_index(['a', 'b']).index.map(time_dict.get)
+        _rlinks['jam_speed'] = _rlinks['length'] / _rlinks['jam_time'] * 3.6
+        _connectors['jam_time'] = _connectors.set_index(['a', 'b']).index.map(time_dict.get)
+        _connectors['jam_speed'] = _connectors['length'] / _connectors['jam_time'] * 3.6
+
+        volume_dict = loaded_links['flow'].to_dict()
+        _rlinks['flow'] = _rlinks.set_index(['a', 'b']).index.map(volume_dict.get)
+        _connectors['flow'] = _connectors.set_index(['a', 'b']).index.map(volume_dict.get)
+
         for seg in segments:
-            volume_dict = links[(seg, 'flow')].to_dict()
-            self.road_links[(seg, 'flow')] = self.road_links.set_index(['a', 'b']).index.map(volume_dict.get)
+            volume_dict = loaded_links[(seg, 'flow')].to_dict()
+            _rlinks[(seg, 'flow')] = _rlinks.set_index(['a', 'b']).index.map(volume_dict.get)
+            _connectors[(seg, 'flow')] = _connectors.set_index(['a', 'b']).index.map(volume_dict.get)
         for seg in segments:
-            cost_dict = links[(seg, 'cost')].to_dict()
-            self.road_links[(seg, 'cost')] = self.road_links.set_index(['a', 'b']).index.map(cost_dict.get)
-
+            cost_dict = loaded_links[(seg, 'cost')].to_dict()
+            _rlinks[(seg, 'cost')] = _rlinks.set_index(['a', 'b']).index.map(cost_dict.get)
+            _connectors[(seg, 'cost')] = _connectors.set_index(['a', 'b']).index.map(cost_dict.get)
         if return_car_los:
-            car_los = get_car_los_time(car_los, self.road_links, self.zone_to_road, 'jam_time', 'time')
+            car_los = get_car_los_time(car_los, time_dict)
             self.car_los = car_los
+
+        self.road_links = _rlinks
+        if assign_on_connectors:
+            self.zone_to_road = _connectors
         self.relgap = rel_gap
 
     @track_args
@@ -564,12 +597,15 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         los['volume'] = np.nansum(values, axis=1)
 
         if time_expanded:
-            los_volumes = self.te_los.groupby('path_id')[['volume'] + segments].sum()
-            path_id_list = list(self.los['path_id'])
-            volume_values = los_volumes.reindex(path_id_list).fillna(0).values
-            for c in los_volumes.columns:
-                self.los[c] = np.nan  # create_columns
-            self.los.loc[:, los_volumes.columns] = volume_values
+            try:
+                los_volumes = self.te_los.groupby('path_id')[['volume'] + segments].sum()
+                path_id_list = list(self.los['path_id'])
+                volume_values = los_volumes.reindex(path_id_list).fillna(0).values
+                for c in los_volumes.columns:
+                    self.los[c] = np.nan  # create_columns
+                self.los.loc[:, los_volumes.columns] = volume_values
+            except KeyError:
+                pass
 
     def step_assignment(
         self,
@@ -1092,7 +1128,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 rt: get_combined_mode_utility(rt, how=how, mode_utility=mode_utility)
                 for rt in logit_los['route_types'].unique()
             }
-            logit_los['mode_utility'] = logit_los['route_types'].map(rtu.get)
+            logit_los['mode_utility'] = logit_los['route_types'].map(rtu.get).astype(float)
 
         utility_values = self.utility_values[segment].to_dict()
         u = 0
@@ -1140,6 +1176,8 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         workers=1,
         keep_od_tables=True,
         symmetric=False,
+        incremental=False,
+        clip=np.inf,
     ):
         """Performs the nested logit : compute the probabilities per segment of the paths in self.los
         after having computed the utilities with function analysis_mode_utility.
@@ -1181,23 +1219,36 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         """
         # concatenate paths
         od_cols = ['origin', 'destination']
-        if time_expanded:
-            od_cols.append('wished_departure_time')
+
+        def segment_paths(los, segments, od_cols=['origin', 'destination']):
+            to_concat = []
+            for segment in segments:
+                keep_columns = od_cols + ['route_type', (segment, 'utility')]
+                paths = los[keep_columns].copy()
+                paths.rename(columns={(segment, 'utility'): 'utility'}, inplace=True)
+                paths = paths.dropna(subset=['utility'])
+                paths['segment'] = pd.Categorical([segment] * len(paths), categories=segments)
+                to_concat.append(paths)
+            return pd.concat(to_concat)
+
+        if time_expanded & incremental:
+            raise NotImplementedError
+
         if symmetric & (nchunks > 1):
             raise Exception('symmetric utility unspported for nchunks > 1')
-        to_concat = []
-        for segment in self.segments:
-            keep_columns = od_cols + ['route_type', (segment, 'utility')]
-            if time_expanded:
-                paths = self.te_los[keep_columns]
-            else:
-                paths = self.los[keep_columns]
 
-            paths.rename(columns={(segment, 'utility'): 'utility'}, inplace=True)
-            paths = paths.dropna(subset=['utility'])
-            paths['segment'] = segment
-            to_concat.append(paths)
-        segmented_paths = pd.concat(to_concat)
+        if time_expanded:
+            od_cols.append('wished_departure_time')
+            segmented_paths = segment_paths(self.te_los, self.segments, od_cols=od_cols)
+        else:
+            segmented_paths = segment_paths(self.los, self.segments, od_cols=od_cols)
+
+        if incremental:
+            ref_paths = segment_paths(self.ref_los, self.segments, od_cols=od_cols)
+            ref_probabilities = self.ref_probabilities.copy()
+        else:
+            ref_paths = None
+            ref_probabilities = None
 
         try:
             # all the segments can be proccessed together
@@ -1225,6 +1276,10 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 workers=workers,
                 return_od_tables=keep_od_tables,
                 symmetric=symmetric,
+                clip=clip,
+                incremental=incremental,
+                ref_paths=ref_paths,
+                ref_probabilities=ref_probabilities,
             )
 
         except AssertionError:
@@ -1245,6 +1300,10 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                     decimals=decimals,
                     n_paths_max=n_paths_max,
                     symmetric=symmetric,
+                    clip=clip,
+                    incremental=incremental,
+                    ref_paths=ref_paths,
+                    ref_probabilities=ref_probabilities,
                 )
                 p_list.append(p)
                 mu_list.append(mu)
