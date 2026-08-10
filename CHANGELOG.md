@@ -1,15 +1,16 @@
-## [FUTURE] (2026-08-10)
+## [3.8.1] (2026-08-10)
 
 ## Changes
-* road_pathfinder (normal msa one): change Lut (dict from nodes tuple to links) to a flat arr such that lut[(node_a * n_node) + node_b] = link_index. this improve memory usage for large network [#157](https://github.com/systragroup/quetzal/issues/157)
 
+* road_pathfinder (normal msa one): change Lut (dict from nodes tuple to links) to a flat arr such that lut[(node_a * n_node) + node_b] = link_index. this improve memory usage for large network [#157](https://github.com/systragroup/quetzal/issues/157)
+* Fix tag 3.8.0 (Features were not added)
 
 ## [3.8.0] (2026-07-22)
 
 ## Features
 
 * Incremental Logit: It is now possible to run the logit as an incremental logit
-* pickup_type and drop_off_type in CSA: Now the Connection Scan Algorithm can use the information on pickup_type and drop_off_type. 
+* pickup_type and drop_off_type in CSA: Now the Connection Scan Algorithm can use the information on pickup_type and drop_off_type.
 
 ## [3.7.0] (2026-05-29 2026-06-19)
 
