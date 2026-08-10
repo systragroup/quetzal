@@ -17,7 +17,7 @@ from quetzal.engine.msa_utils import (
     get_relgap,
     get_sparse_volumes,
 )
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 
 # base vdf
 free_flow = 'time'
@@ -241,7 +241,7 @@ def links_to_expanded_links(links_with_zone_to_road: gpd.GeoDataFrame, u_turns=F
 
 
 def fix_zone_to_road(
-    ex_links: gpd.GeoDataFrame, links: gpd.geodataframe, keep_connectors=False, keep_zone_to_zone=True
+    ex_links: gpd.GeoDataFrame, links: gpd.GeoDataFrame, keep_connectors=False, keep_zone_to_zone=True
 ) -> gpd.GeoDataFrame:
     """
     remove links that go through zones and zone-to-zone links.
@@ -346,7 +346,7 @@ def msa_roadpathfinder(
     log=False,
     time_col='time',
     tracker_plugin: LinksTracker = LinksTracker(),
-    cost_functions=None,
+    cost_functions: Optional[dict[str, str]] = None,
     return_car_los=True,
     num_cores=1,
 ):
@@ -382,12 +382,14 @@ def msa_roadpathfinder(
     links['sparse_b'] = links['b'].apply(lambda x: index.get(x))
     links = links.reset_index().set_index(['sparse_a', 'sparse_b'])
 
-    # make lut
-    tup_to_index = {tup: i for i, tup in enumerate(links.index)}
-    lut = np.empty((len(links), len(links)), dtype=np.int32)
-    for tup, i in tup_to_index.items():
-        lut[tup] = i
-
+    # make lut where the keys are node_a * n_nodes + node_b. this encode tuple to a 1d array.
+    keys = links.index
+    n_nodes = max(max(key[0] for key in keys), max(key[1] for key in keys)) + 1
+    n_links = len(links)
+    lut = np.empty(n_nodes * (n_nodes + 1), dtype=np.int32)
+    for i, (a, b) in enumerate(keys):
+        key = np.int64(a) * n_nodes + b
+        lut[key] = i
     # initialization
     links['jam_time'] = jam_time(to_polars(links), vdf, 'flow', time_col=time_col)
     for seg in segments:
@@ -412,7 +414,7 @@ def msa_roadpathfinder(
     relgap = np.inf
     relgap_list = []
     phi = 1  # first iteration is AON
-    beta = [1, 0, 0]  # bfw coefficients
+    beta = [1.0, 0, 0]  # bfw coefficients
     print('it  |  Phi    |  Rel Gap (%)') if log else None
     # note: first iteration i == 0 is AON to initialized.
     for i in range(maxiters + 1):
@@ -427,7 +429,7 @@ def msa_roadpathfinder(
             weight_cols = [(seg, 'cost'), 'ntleg_penalty']
             _, pred = shortest_path(segment_links, weight_cols, index, origins, num_cores)
 
-            links[(seg, 'auxiliary_flow')] = assign_volume_parallel(odv, pred, lut, num_cores)
+            links[(seg, 'auxiliary_flow')] = assign_volume_parallel(odv, pred, lut, n_nodes, n_links, num_cores)
 
             if tracker_plugin():
                 tracker_plugin.assign(odv, pred, seg, i)

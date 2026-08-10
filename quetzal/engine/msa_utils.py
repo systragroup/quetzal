@@ -117,23 +117,21 @@ def get_relgap(links: pd.DataFrame, segments: list[str]) -> float:
     return 100 * (flow_cost - aux_cost) / flow_cost
 
 
-@nb.njit(locals={'predecessors': nb.int32[:, ::1], 'lut': nb.int32[:, ::1]}, parallel=True)
-def assign_volume_parallel(odv, predecessors, lut, num_cores=1):
-    # lut is a lookup table (matrix) nodes to link [i,j]=>link.
+@nb.njit(locals={'predecessors': nb.int32[:, ::1], 'lut': nb.int32[:]}, parallel=True)
+def assign_volume_parallel(odv, predecessors, lut, n_nodes, n_links, num_cores=1):
     nb.set_num_threads(num_cores)
-    nlen = len(lut)
     odv_mat = np.array_split(odv, num_cores)
-    volumes_mat = np.zeros((num_cores, nlen))
+    volumes_mat = np.zeros((num_cores, n_links))
     for j in nb.prange(num_cores):
-        assign_volume(odv_mat[j], predecessors, volumes_mat[j], lut)
+        assign_volume(odv_mat[j], predecessors, volumes_mat[j], lut, n_nodes)
 
     return volumes_mat.sum(axis=0)
 
 
-@nb.njit(locals={'predecessors': nb.int32[:, ::1], 'lut': nb.int32[:, ::1]})
-def assign_volume(odv, predecessors, volumes, lut):
-    # volumes is an array. index of links. lut is a lookup table (matrix) nodes to link [i,j]=>link.
-
+@nb.njit(locals={'predecessors': nb.int32[:, ::1], 'lut': nb.int32[:]})
+def assign_volume(odv, predecessors, volumes, lut, n_nodes):
+    # volumes is an array. index of links. lut is a lookup table nodes to links encoded as i*n + j => link
+    # could get n_nodes from quadratic equation as its n**2 + n = len(lut)  (-1 + np.sqrt(1 + 4 * len(lut))) / 2
     for i in range(len(odv)):
         origin = odv[i, 0]
         destination = odv[i, 1]
@@ -141,14 +139,15 @@ def assign_volume(odv, predecessors, volumes, lut):
         if v > 0:
             path = get_path(predecessors, origin, destination)
             for j in range(len(path) - 1):
-                index = lut[path[j], path[j + 1]]  # get links
+                key = np.int64(path[j]) * n_nodes + path[j + 1]  # index may be big: int64
+                index = lut[key]
                 volumes[index] += v
     return volumes
 
 
 def find_beta(links, phi_1, segments):
     # The Stiff is Moving - Conjugate Direction Frank-Wolfe Methods with Applications to Traffic Assignment from Mitradjieva maria
-    b = [0, 0, 0]
+    b = [0.0, 0.0, 0.0]
     s_k_1 = links[[(seg, 's_k-1') for seg in segments]].sum(axis=1)
     s_k_2 = links[[(seg, 's_k-2') for seg in segments]].sum(axis=1)
     aux = links[[(seg, 'auxiliary_flow') for seg in segments]].sum(axis=1)

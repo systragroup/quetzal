@@ -1,3 +1,9 @@
+## [FUTURE] (2026-08-10)
+
+## Changes
+* road_pathfinder (normal msa one): change Lut (dict from nodes tuple to links) to a flat arr such that lut[(node_a * n_node) + node_b] = link_index. this improve memory usage for large network [#157](https://github.com/systragroup/quetzal/issues/157)
+
+
 ## [3.8.0] (2026-07-22)
 
 ## Features
