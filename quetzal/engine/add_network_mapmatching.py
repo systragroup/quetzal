@@ -1,4 +1,5 @@
 import logging
+import sys
 import warnings
 from typing import Tuple
 
@@ -272,6 +273,14 @@ class RoadLinks:
         else:
             self.fit_nearest_model()
 
+    def __getstate__(self):
+        # Workers never use these attributes: drop them so the pickled shared
+        # state sent to spawn workers stays as light as possible.
+        state = self.__dict__.copy()
+        for key in ('mat', 'node_index', 'index_node', 'dict_node_a', 'dict_node_b', 'dict_link'):
+            state.pop(key, None)
+        return state
+
     def get_sparse_matrix(self):
         self.mat, self.node_index = sparse_matrix(self.links[['a', 'b', '_weight']].values)
         self.index_node = {v: k for k, v in self.node_index.items()}
@@ -387,7 +396,11 @@ def _mapmatch_single_trip(task_args):
 
 
 def Parallel_Mapmatching(
-    gps_tracks: pd.DataFrame, road_links: RoadLinks, by: str = 'trip_id', num_cores: int = 1, **kwargs
+    gps_tracks: pd.DataFrame,
+    road_links: RoadLinks,
+    by: str = 'trip_id',
+    num_cores: int = 1,
+    **kwargs,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, list]:
     """
     **kwargs : see Mapmatching args
@@ -416,25 +429,31 @@ def Parallel_Mapmatching(
         raw_results = [_mapmatch_single_trip(args) for args in task_args]
     else:
         raw_results = None
-        try:
-            run_results = []
-            done = 0
-            for result in pool_imap_unordered_executor(
-                _mapmatch_single_trip,
-                task_args,
-                num_workers=num_cores,
-                initializer=shared_state_worker_init,
-                initargs=(shared_state,),
-                chunksize=1,
-                context='spawn',
-            ):
-                run_results.append(result)
-                done += 1
-                if done % max(len(trip_list) // 5, 5) == 0 or done == len(trip_list):
-                    print(f'{done} / {len(trip_list)}')
-            raw_results = run_results
-        except Exception as exc:
-            log.warning('Parallel_Mapmatching failed with context=spawn and %s workers (%s).', num_cores, exc)
+        contexts = ['fork', 'spawn']
+        for pool_context in contexts:
+            try:
+                run_results = []
+                done = 0
+                for result in pool_imap_unordered_executor(
+                    _mapmatch_single_trip,
+                    task_args,
+                    num_workers=num_cores,
+                    initializer=shared_state_worker_init,
+                    initargs=(shared_state,),
+                    chunksize=1,
+                    context=pool_context,
+                ):
+                    run_results.append(result)
+                    done += 1
+                    if done % max(len(trip_list) // 5, 5) == 0 or done == len(trip_list):
+                        print(f'{done} / {len(trip_list)}')
+                raw_results = run_results
+                log.info('Parallel_Mapmatching running with context=%s and %s workers.', pool_context, num_cores)
+                break
+            except Exception as exc:
+                log.warning(
+                    'Parallel_Mapmatching failed with context=%s and %s workers (%s).', pool_context, num_cores, exc
+                )
 
         if raw_results is None:
             log.warning('Parallel_Mapmatching falling back to single-core execution for stability.')
