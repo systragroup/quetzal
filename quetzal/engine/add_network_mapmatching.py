@@ -400,6 +400,7 @@ def Parallel_Mapmatching(
     road_links: RoadLinks,
     by: str = 'trip_id',
     num_cores: int = 1,
+    context='fork',
     **kwargs,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, list]:
     """
@@ -429,7 +430,12 @@ def Parallel_Mapmatching(
         raw_results = [_mapmatch_single_trip(args) for args in task_args]
     else:
         raw_results = None
-        contexts = ['fork', 'spawn']
+        if context not in ['fork', 'spawn']:
+            raise ValueError("Invalid context. Must be 'fork' or 'spawn'.")
+        elif context == 'spawn':
+            contexts = ['spawn']
+        else:
+            contexts = ['fork', 'spawn']
         for pool_context in contexts:
             try:
                 run_results = []
