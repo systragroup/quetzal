@@ -1,3 +1,5 @@
+## [3.8.3] (2026-08-13)
+revert building pipeline to poetry as some files are missing with uv backend
 ## [3.8.2] (2026-08-13)
 
 ## Features
