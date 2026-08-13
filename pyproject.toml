@@ -1,6 +1,6 @@
 [project]
 name = "quetzal-transport"
-version = "3.8.1"
+version = "3.8.2"
 description = "modeling library for transport planning"
 authors = [
   { name = "Quentin Chasserieau", email = "qchasserieau@systra.com" }
