@@ -1,8 +1,13 @@
-## [FUTURE] (2026-08-10)
+## [3.8.1] (2026-08-13)
+
+## Features
+* can read parameters as csv instead of xlsx (@LinSiyu-TL)
+* add uv installation support and fixed dependencies (@bwentl)
 
 ## Changes
 * road_pathfinder (normal msa one): change Lut (dict from nodes tuple to links) to a flat arr such that lut[(node_a * n_node) + node_b] = link_index. this improve memory usage for large network [#157](https://github.com/systragroup/quetzal/issues/157)
-
+* publish to pypi with uv instead of poetry and twine (@bwentl)
+* 
 
 ## [3.8.0] (2026-07-22)
 
