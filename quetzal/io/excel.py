@@ -8,7 +8,11 @@ from tqdm import tqdm
 
 
 def read_var(file='parameters.xlsx', scenario='base', period=None, return_ancestry=False):
-    parameter_frame = pd.read_excel(file, sheet_name='parameters').dropna(axis=1, how='all')
+    if file.endswith('.xlsx'):
+        parameter_frame = pd.read_excel(file, sheet_name='parameters').dropna(axis=1, how='all')
+    elif file.endswith('.csv'):
+        parameter_frame = pd.read_csv(file).dropna(axis=1, how='all')
+        
     try:
         types = parameter_frame.set_index(['category', 'parameter'])['type'].dropna().to_dict()
     except KeyError:

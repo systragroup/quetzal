@@ -189,6 +189,7 @@ def merge_quenedi_rlinks(road_links, new_cols=[]):
 def _to_geojson(gdf, tmp_path, new_dir, name, to_4326=True, engine='pyogrio'):
     if to_4326:
         gdf = gdf.to_crs(4326)
+    gdf.geometry = gpd.GeoSeries.from_wkt(gdf.geometry.to_wkt(rounding_precision=6), crs=gdf.crs)
     p = tmp_path / os.path.join(new_dir, name + '.geojson')
     gdf.to_file(str(p), driver='GeoJSON', engine=engine)
 

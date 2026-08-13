@@ -22,7 +22,25 @@ pip install quetzal-transport
 # Installation from sources
 ## For Linux
 
-### poetry
+### uv
+1) Install uv (if not already installed)
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+2) install dependencies (this will create a new virtualenv at `.venv/` and fetch Python 3.12 if needed)
+```bash
+uv sync
+```
+3) activate the env
+```bash
+source .venv/bin/activate
+```
+4) (optional) add the env to ipykernel (to use in jupyter)
+```bash
+python -m ipykernel install --user --name=quetzal_env
+```
+
+### poetry (alternative)
 1) You may need to set the default (or local) python version in the project
 ```bash
 pyenv local 3.12
@@ -43,31 +61,39 @@ python -m ipykernel install --user --name=quetzal_env
 
 
 ## For Windows
-`Anaconda 3 + Python 3.12` is supposed to be installed
-#### Poetry and Anaconda (recommended)
-To create quetzal_env automatically and install quetzal, open anaconda prompt and
-run windows-install batch file
-```bash
-(base) C:users\you\path\to\quetzal> windows-install.bat
+#### uv (recommended)
+No prior installation of Python or uv is required — the batch file handles both.
+Open a command prompt and run the windows-install batch file
+```bat
+C:\users\you\path\to\quetzal> windows-install.bat
 ```
-press enter to accept default environment name or enter a custom name 
-#### If you are facing SSL issues
-```bash
-(base) pip config set global.trusted-host "pypi.org files.pythonhosted.org"
-(base) C:users\you\path\to\quetzal> windows-install.bat
+press enter to accept the default kernel name or enter a custom name
+#### poetry (alternative)
+Requires `Anaconda 3` with Python 3.12. Run the poetry batch file instead:
+```bat
+C:\users\you\path\to\quetzal> windows-install-poetry.bat
 ```
-security warning: the host is added to pip.ini
-
+press enter to accept the default kernel name or enter a custom name
 #### If you are facing DLL or dependencies issues
 Anaconda and Pip do not get along well, your Anaconda install may have been corrupted at some point.
 - Remove your envs
 - Uninstall Anaconda
 - Delete your Python and Anaconda folders (users\you\Anaconda3, users\you\Appdata\Roaming\Python, ...etc)
-- Install Anaconda 
+- Install Anaconda
+#### If you are facing SSL issues
+```bat
+pip config set global.trusted-host "pypi.org files.pythonhosted.org"
+C:\users\you\path\to\quetzal> windows-install.bat
+```
+security warning: the host is added to pip.ini
  
 # Tests
 to run unittest:
 
+```bash
+uv run python -W ignore -m unittest discover
+```
+Or with poetry:
 ```bash
 poetry run python -W ignore -m unittest discover
 ```
@@ -77,7 +103,7 @@ poetry run python -W ignore -m unittest discover
 1) change the version in **pyproject.toml**
 
 ```toml
-[tool.poetry]
+[project]
 name = "quetzal-transport"
 version = "3.1.1"
 ```
