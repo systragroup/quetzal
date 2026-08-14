@@ -5,3 +5,8 @@ quote-style = "single"
 indent-style = "space"
 docstring-code-format = true
 skip-magic-trailing-comma = false
+
+[lint]
+ignore = [
+    "I001",  # unsorted imports
+]

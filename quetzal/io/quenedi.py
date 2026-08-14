@@ -194,6 +194,20 @@ def _to_geojson(gdf, tmp_path, new_dir, name, to_4326=True, engine='pyogrio'):
     gdf.to_file(str(p), driver='GeoJSON', engine=engine)
 
 
+def _save_file(data, tmp_path, new_dir, name, to_4326, engine):
+    if isinstance(data, gpd.GeoDataFrame):
+        _to_geojson(data, tmp_path, new_dir, name, to_4326, engine)
+    elif isinstance(data, pd.DataFrame):
+        p = tmp_path / os.path.join(new_dir, name + '.csv')
+        print(name + '.csv')
+        data.to_csv(str(p))
+    elif isinstance(data, dict):
+        p = tmp_path / os.path.join(new_dir, name + '.json')
+        print(name + '.json')
+        with open(p, 'w') as json_file:
+            json.dump(data, json_file)
+
+
 def to_zip(sm, path='test.zip', to_export=['pt', 'road'], inputs=[], outputs=[], to_4326=False, engine='pyogrio'):
     """
     Export model to zip file (readable in quenedi)
@@ -233,12 +247,7 @@ def to_zip(sm, path='test.zip', to_export=['pt', 'road'], inputs=[], outputs=[],
         if not os.path.exists(new_dir):
             os.makedirs(new_dir)
         data = getattr(sm, name)
-        if type(data) == gpd.GeoDataFrame:
-            _to_geojson(data, tmp_path, new_dir, name, to_4326, engine)
-        elif type(data) == pd.DataFrame:
-            p = tmp_path / os.path.join(new_dir, name + '.csv')
-            print(name + '.csv')
-            data.to_csv(str(p))
+        _save_file(data, tmp_path, new_dir, name, to_4326, engine)
 
     for name in outputs:
         if name not in sm.__dict__.keys():
@@ -247,12 +256,7 @@ def to_zip(sm, path='test.zip', to_export=['pt', 'road'], inputs=[], outputs=[],
         if not os.path.exists(new_dir):
             os.makedirs(new_dir)
         data = getattr(sm, name)
-        if type(data) == gpd.GeoDataFrame:
-            _to_geojson(data, tmp_path, new_dir, name, to_4326, engine)
-        elif type(data) == pd.DataFrame:
-            p = tmp_path / os.path.join(new_dir, name + '.csv')
-            print(name + '.csv')
-            data.to_csv(str(p))
+        _save_file(data, tmp_path, new_dir, name, to_4326, engine)
 
     basename = str(path.parent / path.stem)
     shutil.make_archive(basename, format='zip', root_dir=tmp_dir.name)
@@ -304,7 +308,6 @@ def update_parameters(parameters: pd.Series, new_params: pd.Series):
             parameters[key] = casted
         else:
             print(f'key: {key} not found in parameters')
-            pass
 
 
 def restrict_df_to_variant(
