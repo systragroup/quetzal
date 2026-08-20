@@ -1,7 +1,10 @@
 
-## [FUTURE] (2026-08-14)
+## [8.3.4] (2026-08-20)
 ## Features
 * quenedi to_zip function can now export dict as json too.
+
+## revert
+* analysis_pt_time: remove self.links["waiting_time"].astype(float)  as its not always present in links. this should be done in the model before calling the method.
 
 ## [3.8.3] (2026-08-13)
 revert building pipeline to poetry as some files are missing with uv backend
