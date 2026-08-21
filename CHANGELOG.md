@@ -1,37 +1,51 @@
+## [3.8.6] (2026-08-21)
+
+## Changes
+
+* Add 'obeserved' argument to groupby_weighted average method
 
 ## [3.8.5] (2026-08-21)
+
 ## Changes
 
 * Remove max version dependency of Jupyter Notebook
-* Add 'obeserved' argument to groupby_weighted average method
 
 ## [3.8.4] (2026-08-20)
+
 ## Features
+
 * quenedi to_zip function can now export dict as json too.
 
 ## revert
+
 * analysis_pt_time: remove self.links["waiting_time"].astype(float)  as its not always present in links. this should be done in the model before calling the method.
 
 ## [3.8.3] (2026-08-13)
+
 revert building pipeline to poetry as some files are missing with uv backend
+
 ## [3.8.2] (2026-08-13)
 
 ## Features
+
 * can read parameters as csv instead of xlsx (@LinSiyu-TL)
 * add uv installation support and fixed dependencies (@bwentl)
 
 ## Changes
+
 * road_pathfinder (normal msa one): change Lut (dict from nodes tuple to links) to a flat arr such that lut[(node_a * n_node) + node_b] = link_index. this improve memory usage for large network [#157](https://github.com/systragroup/quetzal/issues/157)
 * publish to pypi with uv instead of poetry and twine (@bwentl)
 
-
 ## [3.8.1] (2026-08-11)
+
 ## [3.8.0] (2026-07-22)
+
 3.8.0 tag was not on head, the correct version is 3.8.1
+
 ## Features
 
 * Incremental Logit: It is now possible to run the logit as an incremental logit
-* pickup_type and drop_off_type in CSA: Now the Connection Scan Algorithm can use the information on pickup_type and drop_off_type. 
+* pickup_type and drop_off_type in CSA: Now the Connection Scan Algorithm can use the information on pickup_type and drop_off_type.
 
 ## [3.7.0] (2026-05-29 2026-06-19)
 
