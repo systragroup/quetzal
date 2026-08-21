@@ -1,4 +1,5 @@
 import copy
+
 import pandas as pd
 
 
@@ -19,7 +20,7 @@ def df_explode(df, column_to_explode):
     new_observations = list()
 
     # Iterate through existing observations
-    for row in df.to_dict(orient='records'):
+    for row in df.to_dict(orient="records"):
         # Take out the exploding iterable
         explode_values = row[column_to_explode]
         del row[column_to_explode]
@@ -37,7 +38,7 @@ def df_explode(df, column_to_explode):
     return return_df
 
 
-def groupby_weighted_average(df, groupby, columns, weight):
+def groupby_weighted_average(df, groupby, columns, weight, observed=False):
     """
     perform a weighted average on specified columns
     during a groupby operation
@@ -57,6 +58,10 @@ def groupby_weighted_average(df, groupby, columns, weight):
         columns = [columns]
     new_columns = [(c, weight) for c in columns]
     df[new_columns] = pd.concat([df[c] * df[weight] for c in columns], axis=1)
-    grouped = df.groupby(groupby)[new_columns].sum().div(df.groupby(groupby)[weight].sum(), axis=0)
+    grouped = (
+        df.groupby(groupby, observed=observed)[new_columns]
+        .sum()
+        .div(df.groupby(groupby, observed=observed)[weight].sum(), axis=0)
+    )
     grouped = grouped.rename(columns={(c, w): c for c, w in grouped.columns})
     return grouped
