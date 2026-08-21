@@ -1,5 +1,11 @@
 
-## [8.3.4] (2026-08-20)
+## [3.8.5] (2026-08-21)
+## Changes
+
+* Remove max version dependency of Jupyter Notebook
+* Add 'obeserved' argument to groupby_weighted average method
+
+## [3.8.4] (2026-08-20)
 ## Features
 * quenedi to_zip function can now export dict as json too.
 

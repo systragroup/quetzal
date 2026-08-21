@@ -1,6 +1,6 @@
 [project]
 name = "quetzal-transport"
-version = "3.8.4"
+version = "3.8.5"
 description = "modeling library for transport planning"
 authors = [
   { name = "Quentin Chasserieau", email = "qchasserieau@systra.com" }
@@ -21,7 +21,7 @@ dependencies = [
   "geopy>=2.4.1",
   "scikit-learn>=1.8.0",
   "matplotlib>=3.10.9",
-  "notebook>=6.5.7,<7.0",
+  "notebook>=6.5.7",
   "tqdm>=4.67.3",
   "seaborn>=0.13.2",
   "xlrd>=2.0.2",
