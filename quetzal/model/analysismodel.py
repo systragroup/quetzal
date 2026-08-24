@@ -373,6 +373,7 @@ class AnalysisModel(summarymodel.SummaryModel):
 
         d = self.links[link_time_col].to_dict()
         self.pt_los['in_vehicle_time'] = self.pt_los['link_path'].apply(lambda ls: sum([d[t] for t in ls]))
+        self.links["waiting_time"] = self.links["waiting_time"].astype(float)
         d = self.links.eval(waiting_time_expr).to_dict()
         self.pt_los['waiting_time'] = self.pt_los['boarding_links'].apply(lambda ls: sum([d[t] for t in ls]))
 

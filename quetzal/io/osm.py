@@ -168,11 +168,11 @@ def highest_highway_order(value, highway_order=highway_order):
 
 
 def first_item(value):
-    try:
-        hash(value)
-        return value
-    except TypeError:
+    # OSM fields can be a scalar or a list when a way has multiple tag values.
+    # Return the scalar directly; for lists return the first element.
+    if isinstance(value, list):
         return value[0]
+    return value
 
 
 def printable(value):
