@@ -249,8 +249,6 @@ def one_block_nested_logit_from_paths(
     ref_probabilities=None,
 ):
 
-    od = ('87', '167', 'Business')
-
     if 'segment' not in paths.columns:
         paths['segment'] = 'all'
 
@@ -290,7 +288,7 @@ def one_block_nested_logit_from_paths(
             mode_utilities[mode] = (
                 mode_utilities[mode].sub(ref_mode_utilities[mode].replace([-np.inf], -100)).fillna(0.0)
             )  # Delta utilitie
-            mode_utilities[mode] = mode_utilities[mode].replace([-np.inf], 0.0)
+            mode_utilities[mode] = mode_utilities[mode].replace([-np.inf], -100)
 
         ref_probabilities.set_index(mode_probabilities.index.names, inplace=True)
 

@@ -1,3 +1,10 @@
+
+## [3.8.7] (2026-08-21)
+
+## Bug Fix
+
+* Fix specific case in incremental logit when utility goes from U_ref to 0 in the project scenario. 
+
 ## [3.8.6] (2026-08-21)
 
 ## Changes

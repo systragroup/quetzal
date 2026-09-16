@@ -115,14 +115,20 @@ version = "3.1.1"
 * some changes
 ```
 
+3) commit your changes
 
-2) create a tag matching the version **(starting with v)**
+```bash
+git commit -m 'description'
+```
+
+
+4) create a tag matching the version **(starting with v)**
 
 ```bash
 git tag -a v3.1.1 -m 'description'
 ```
 
-3) push the tag
+5) push the tag
 
 ```bash
 git push origin v3.1.1
