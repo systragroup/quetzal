@@ -552,14 +552,13 @@ def route_mapmatched_points(df: pd.DataFrame, road_links: RoadLinks, by='trip_id
     paths = []
     nodes_paths = []
     for ori, dest, trip_a, trip_b in routing_df[cols].values:
-        if trip_a != trip_b:  # dont route between trips
-            paths.append([])
-            nodes_paths.append([])
+        if trip_a == trip_b:  # dont route between trips. just return [ori]
+            path = [dest]
         else:
             path = get_path(pred, ori, dest)
-            path = [*map(index_node.get, path)]
-            paths.append(path)
-            nodes_paths.append(_links_path_to_nodes_path(path, dict_node_a, dict_node_b))
+        path = [*map(index_node.get, path)]
+        paths.append(path)
+        nodes_paths.append(_links_path_to_nodes_path(path, dict_node_a, dict_node_b))
 
     routing_df['road_link_list'] = paths
     routing_df['road_node_list'] = nodes_paths
