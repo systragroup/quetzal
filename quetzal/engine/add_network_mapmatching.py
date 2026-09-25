@@ -6,7 +6,7 @@ import pandas as pd
 from scipy.sparse.csgraph import dijkstra
 from shapely import get_coordinates
 from sklearn.neighbors import NearestNeighbors
-from quetzal.engine.pathfinder_utils import sparse_matrix, get_path
+from quetzal.engine.pathfinder_utils import sparse_matrix, get_path, fast_dijkstra
 from syspy.spatial.spatial import add_geometry_coordinates
 from quetzal.os.parallel_call import parallel_executor
 from quetzal.engine.road_pathfinder import links_to_expanded_links
@@ -275,7 +275,7 @@ class RoadLinks:
     RoadLinks object for mapmatching
     """
 
-    def __init__(self, links, n_neighbors_centroid=10, radius_search=250, on_centroid=False):
+    def __init__(self, links, n_neighbors_centroid=10, radius_search=250, on_centroid=False, precompute_routing=False):
         self.links = links
         assert self.links.crs != None, 'road_links crs must be set (crs in meter, NOT 3857)'
         assert self.links.crs != 3857, 'CRS error. crs 3857 is not supported. use a local projection in meters.'
@@ -285,6 +285,7 @@ class RoadLinks:
         self.n_neighbors_centroid = n_neighbors_centroid
         self.n_neighbors_centroid = min(self.n_neighbors_centroid, len(links))
         self.radius_search = radius_search
+        self.dist_matrix = None
 
         try:
             self.links['length']
@@ -295,6 +296,11 @@ class RoadLinks:
             self.links = self.links.reset_index()
 
         self.get_sparse_matrix()
+
+        if precompute_routing:
+            origins = list(self.node_index.values())
+            self.dist_matrix = fast_dijkstra(csgraph=self.mat, indices=origins, return_predecessors=False, limit=np.inf)
+
         self.get_dict()
         if on_centroid:
             self.fit_nearest_centroid()
@@ -310,12 +316,7 @@ class RoadLinks:
         self.dict_node_a = self.links['a'].to_dict()
         self.dict_node_b = self.links['b'].to_dict()
         self.links_index_dict = self.links['index'].to_dict()
-        self.dict_link = (
-            self.links.sort_values('length', ascending=True)
-            .drop_duplicates(['a', 'b'], keep='first')
-            .set_index(['a', 'b'], drop=False)['index']
-            .to_dict()
-        )
+
         self.length_dict = self.links['length'].to_dict()
         self.geom_dict = self.links['geometry'].to_dict()
         self.geom_dict_arr = {key: get_coordinates(item) for key, item in self.geom_dict.items()}
@@ -386,7 +387,12 @@ def get_gps_tracks(links, nodes, by='trip_id', sequence='link_sequence'):
 
 
 def Parallel_Mapmatching(
-    gps_tracks: pd.DataFrame, road_links: RoadLinks, by: str = 'trip_id', num_cores: int = 1, **kwargs
+    gps_tracks: pd.DataFrame,
+    road_links: RoadLinks,
+    by: str = 'trip_id',
+    num_cores: int = 1,
+    routing: bool = True,
+    **kwargs,
 ) -> tuple[pd.DataFrame, pd.DataFrame, list]:
     """
     **kwargs : see Mapmatching args
@@ -401,13 +407,20 @@ def Parallel_Mapmatching(
 
     kwargs = {'road_links': road_links, 'by': by, **kwargs}
     results = parallel_executor(
-        Multi_Mapmatching, num_workers=len(chunks), parallel_kwargs={'gps_tracks': chunk_gps_tracks}, **kwargs
+        Multi_Mapmatching,
+        num_workers=len(chunks),
+        parallel_kwargs={'gps_tracks': chunk_gps_tracks},
+        routing=False,
+        **kwargs,
     )
 
     df = pd.concat([res[0] for res in results])
-    route_df = pd.concat([res[1] for res in results])
+    route_lists = gpd.GeoDataFrame()
+    if routing:
+        print('routing')
+        route_lists = route_mapmatched_points(df, road_links, by)
     unmatched_trip = []
-    return df, route_df, unmatched_trip
+    return df, route_lists, unmatched_trip
 
 
 def Multi_Mapmatching(
@@ -422,7 +435,6 @@ def Multi_Mapmatching(
     """
 
     final_df = gpd.GeoDataFrame()
-    route_lists = gpd.GeoDataFrame()
     unmatched_trip = []
     trip_id_list = gps_tracks[by].unique()
     it = 0
@@ -440,18 +452,20 @@ def Multi_Mapmatching(
             unmatched_trip.append(trip_id)
         else:
             df = Mapmatching(gps_track, road_links, **kwargs)
-
-            if routing:
-                route_df = route_mapmatched_points(df, road_links)
-                route_df[by] = trip_id
-                route_df.index = route_df.index.map(gps_index_dict.get)
-                route_lists = pd.concat([route_lists, route_df])
+            if len(df) == 0:
+                unmatched_trip.append(trip_id)
+                continue
 
             df[by] = trip_id
             df.index = df.index.map(gps_index_dict.get)
             final_df = pd.concat([final_df, df])
 
     print(f'{len(trip_id_list)} / {len(trip_id_list)}')
+    route_lists = gpd.GeoDataFrame()
+    if routing:
+        print('routing')
+        route_lists = route_mapmatched_points(final_df, road_links, by)
+
     return final_df, route_lists, unmatched_trip
 
 
@@ -479,20 +493,26 @@ def add_road_offset(candidat_links: pd.DataFrame, links_dict: dict, point_dict: 
 
 
 def get_routing_distance(candidat_links: pd.DataFrame, links: RoadLinks, dijkstra_limit):
-    origins = list(candidat_links['node_a'].unique())
-    origin_sparse = [links.node_index[x] for x in origins]
+    if links.dist_matrix is not None:  # precomputed dijkstra on all the network
+        ori = candidat_links['node_a'].map(links.node_index.get)
+        dest = candidat_links['node_b'].map(links.node_index.get)
+        candidat_links['routing_distance'] = links.dist_matrix[ori, dest]
+    else:
+        origins = list(candidat_links['node_a'].unique())
+        origin_sparse = [links.node_index[x] for x in origins]
 
-    dist_matrix = dijkstra(
-        csgraph=links.mat, directed=True, indices=origin_sparse, return_predecessors=False, limit=dijkstra_limit
-    )
+        dist_matrix = fast_dijkstra(
+            csgraph=links.mat, indices=origin_sparse, return_predecessors=False, limit=dijkstra_limit
+        )
 
-    origin_dict = {index: i for i, index in enumerate(origins)}
-    ori = candidat_links['node_a'].map(origin_dict.get)
-    dest = candidat_links['node_b'].map(links.node_index.get)
-    candidat_links['routing_distance'] = dist_matrix[ori, dest]
+        origin_dict = {index: i for i, index in enumerate(origins)}
+        ori = candidat_links['node_a'].map(origin_dict.get)
+        dest = candidat_links['node_b'].map(links.node_index.get)
+        candidat_links['routing_distance'] = dist_matrix[ori, dest]
     return candidat_links
 
 
+# self.dist_matrix
 def _links_path_to_nodes_path(path: list[str], dict_a: dict[str, str], dict_b: dict[str, str]):
     nodes = []
     for link_id in path:
@@ -502,35 +522,44 @@ def _links_path_to_nodes_path(path: list[str], dict_a: dict[str, str], dict_b: d
     return nodes
 
 
-def route_mapmatched_points(df: pd.DataFrame, road_links: RoadLinks):
+def route_mapmatched_points(df: pd.DataFrame, road_links: RoadLinks, by='trip_id'):
+
     expanded_links = links_to_expanded_links(road_links.links.set_index('index')[['a', 'b', 'length']], u_turns=False)
     csr_matrix, node_index = sparse_matrix(expanded_links[['from_link', 'to_link', 'length']].values)
+
     index_node = {v: k for k, v in node_index.items()}
 
-    routing_df = df.copy()[['road_id']]
+    routing_df = df.copy()[['road_id', by]]
     routing_df['sparse_id'] = routing_df['road_id'].map(node_index.get)
     routing_df = routing_df.merge(routing_df.shift(-1), on='index', suffixes=['_a', '_b']).iloc[:-1]
 
-    origins = routing_df['sparse_id_a'].unique()
+    origins = list(routing_df['sparse_id_a'].unique())
     origin_dict = {index: i for i, index in enumerate(origins)}
-    _, pred = dijkstra(csgraph=csr_matrix, directed=True, indices=origins, return_predecessors=True, limit=np.inf)
+    _, pred = fast_dijkstra(csgraph=csr_matrix, indices=origins, return_predecessors=True, limit=np.inf)
 
-    dict_a = road_links.links.set_index('index')['a'].to_dict()
-    dict_b = road_links.links.set_index('index')['b'].to_dict()
+    dict_node_a = road_links.links.set_index('index')['a'].to_dict()
+    dict_node_b = road_links.links.set_index('index')['b'].to_dict()
 
     routing_df['origin'] = routing_df['sparse_id_a'].map(origin_dict)
+    cols = ['origin', 'sparse_id_b', by + '_a', by + '_b']
     paths = []
     nodes_paths = []
-    for ori, dest in routing_df[['origin', 'sparse_id_b']].values:
-        path = get_path(pred, ori, dest)
-        path = [*map(index_node.get, path)]
-        paths.append(path)
-        nodes_paths.append(_links_path_to_nodes_path(path, dict_a, dict_b))
+    for ori, dest, trip_a, trip_b in routing_df[cols].values:
+        if trip_a != trip_b:  # dont route between trips
+            paths.append([])
+            nodes_paths.append([])
+        else:
+            path = get_path(pred, ori, dest)
+            path = [*map(index_node.get, path)]
+            paths.append(path)
+            nodes_paths.append(_links_path_to_nodes_path(path, dict_node_a, dict_node_b))
 
     routing_df['road_link_list'] = paths
     routing_df['road_node_list'] = nodes_paths
     # road_id_a	sparse_id_a	road_id_b	sparse_id_b	origin
-    return routing_df.drop(columns=['road_id_a', 'road_id_b', 'sparse_id_a', 'sparse_id_b', 'origin'])
+    routing_df = routing_df.drop(columns=['road_id_a', 'road_id_b', 'sparse_id_a', 'sparse_id_b', 'origin', by + '_b'])
+    routing_df = routing_df.rename(columns={by + '_a': by})
+    return routing_df
 
 
 def Mapmatching(
@@ -588,9 +617,7 @@ def Mapmatching(
     dict_distance = candidat_links.set_index(['ix_one', 'index_nn'])['distance'].to_dict()
     candidat_links = candidat_links.drop(columns=['distance']).rename(columns={'index_nn': 'road'})
     if len(candidat_links) < 1:
-        raise ValueError(
-            'No candidat links found. try increasing max_distance, n_neighbors.and make sure the crs is ok'
-        )
+        return pd.DataFrame()
 
     # add virtual nodes start and end.
     first = candidat_links.iloc[[0]].copy()

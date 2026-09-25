@@ -618,6 +618,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             n_neighbors_centroid=n_neighbors_centroid,
             radius_search=radius_search,
             on_centroid=on_centroid,
+            precompute_routing=True,
         )
         gps_tracks = get_gps_tracks(self.links, self.nodes, by=by, sequence=sequence)
         if num_cores == 1:
