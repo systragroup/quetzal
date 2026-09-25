@@ -5,7 +5,6 @@ from scipy.sparse.csgraph import dijkstra
 import numba as nb
 from copy import deepcopy
 from quetzal.os.parallel_call import parallel_executor
-from typing import Optional
 
 import fast_dijkstra as fd
 
@@ -13,7 +12,7 @@ import fast_dijkstra as fd
 # Wrapper to split the indices (destination) into parallel batchs and compute the shortest path on each batchs.
 def fast_dijkstra(
     csgraph: csr_matrix,
-    indices: Optional[list[str]] = None,
+    indices: list[int] | None = None,
     return_predecessors: bool = True,
     limit: float = np.inf,
     num_threads: int = -1,
