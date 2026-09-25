@@ -649,8 +649,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             )
         # we added a first node to to the mapmatching. we need to reshift the index
         # a link is 2 node. if we have 5 links, there are 6 points in mapmatching.
-        matched_links = matched_links.shift(1)[1:]
-        links_mat = links_mat.shift(1)[1:]
+        matched_links = matched_links.merge(matched_links.shift(-1), on=['index', 'trip_id'], suffixes=['_a', '_b'])
 
         matched_links['road_id_a'] = matched_links['road_id_a'].apply(lambda x: road_links.links_index_dict.get(x))
         matched_links['road_id_b'] = matched_links['road_id_b'].apply(lambda x: road_links.links_index_dict.get(x))
@@ -658,14 +657,19 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         road_b_dict = matched_links['road_id_b'].to_dict()
         offset_a_dict = matched_links['offset_a'].to_dict()
         offset_b_dict = matched_links['offset_b'].to_dict()
-        length_dict = matched_links['length'].to_dict()
         self.links['road_a'] = self.links.index.map(road_a_dict.get)
         self.links['road_b'] = self.links.index.map(road_b_dict.get)
         self.links['offset_a'] = self.links.index.map(offset_a_dict.get)
         self.links['offset_b'] = self.links.index.map(offset_b_dict.get)
-        self.links['length'] = self.links.index.map(length_dict.get)
-        self.links = self.links.merge(
-            links_mat[['road_node_list', 'road_link_list']], left_index=True, right_index=True, how='left'
+        self.links = self.links.merge(links_mat[['road_node_list', 'road_link_list']], on='index', how='left')
+        self.links['road_link_list'] = self.links['road_link_list'].apply(lambda x: x if isinstance(x, list) else [])
+
+        length_dict = road_links.links.set_index('index')['length'].to_dict()
+        # we exclude last link in road_link_list and add offset_b
+        self.links['length'] = (
+            self.links['road_link_list'].apply(lambda ls: sum([*map(length_dict.get, ls[1:])]))
+            - self.links['offset_a']
+            + self.links['offset_b']
         )
 
         if overwrite_nodes:
