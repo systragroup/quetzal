@@ -383,6 +383,7 @@ def get_gps_tracks(links, nodes, by='trip_id', sequence='link_sequence'):
     gps_tracks = gps_tracks.sort_values([by, sequence])
     gps_tracks = gpd.GeoDataFrame(gps_tracks)
     gps_tracks = gps_tracks.drop(columns=['a', 'b', sequence])
+
     return gps_tracks
 
 
@@ -396,7 +397,12 @@ def Parallel_Mapmatching(
 ) -> tuple[pd.DataFrame, pd.DataFrame, list]:
     """
     **kwargs : see Mapmatching args
+    this method only work (and faster) if we precomputed the dijkstra (road_links.dist_matrix)
     """
+    if (road_links.dist_matrix is None) | (num_cores < 2):
+        # cannot run fast_dijktra on parallel.
+        return Multi_Mapmatching(gps_tracks, road_links, by=by, routing=routing, **kwargs)
+    # parallelize
     trip_list = gps_tracks[by].unique()
     if num_cores > len(trip_list):
         num_cores = max(len(trip_list), 1)
@@ -409,8 +415,9 @@ def Parallel_Mapmatching(
     results = parallel_executor(
         Multi_Mapmatching,
         num_workers=len(chunks),
+        method='pipe',
         parallel_kwargs={'gps_tracks': chunk_gps_tracks},
-        routing=False,
+        routing=False,  # we run routing after. with all threads available
         **kwargs,
     )
 

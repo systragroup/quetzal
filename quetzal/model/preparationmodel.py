@@ -5,7 +5,6 @@ from quetzal.engine.add_network import NetworkCaster
 from quetzal.engine.add_network_mapmatching import (
     RoadLinks,
     get_gps_tracks,
-    Multi_Mapmatching,
     Parallel_Mapmatching,
     duplicate_nodes,
 )
@@ -621,33 +620,19 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             precompute_routing=True,
         )
         gps_tracks = get_gps_tracks(self.links, self.nodes, by=by, sequence=sequence)
-        if num_cores == 1:
-            matched_links, links_mat, _ = Multi_Mapmatching(
-                gps_tracks,
-                road_links,
-                routing=routing,
-                n_neighbors=n_neighbors,
-                distance_max=distance_max,
-                by=by,
-                nearest_method=nearest_method,
-                speed_limit=speed_limit,
-                turn_penalty=turn_penalty,
-                **kwargs,
-            )
-        else:
-            matched_links, links_mat, _ = Parallel_Mapmatching(
-                gps_tracks,
-                road_links,
-                routing=routing,
-                n_neighbors=n_neighbors,
-                distance_max=distance_max,
-                by=by,
-                nearest_method=nearest_method,
-                speed_limit=speed_limit,
-                turn_penalty=turn_penalty,
-                num_cores=num_cores,
-                **kwargs,
-            )
+        matched_links, links_mat, _ = Parallel_Mapmatching(
+            gps_tracks,
+            road_links,
+            routing=routing,
+            n_neighbors=n_neighbors,
+            distance_max=distance_max,
+            by=by,
+            nearest_method=nearest_method,
+            speed_limit=speed_limit,
+            turn_penalty=turn_penalty,
+            num_cores=num_cores,
+            **kwargs,
+        )
         # we added the last node. shift to go back on links
         matched_links = matched_links.merge(matched_links.shift(-1), on=['index', 'trip_id'], suffixes=['_a', '_b'])
 
