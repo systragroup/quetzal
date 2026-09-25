@@ -601,7 +601,7 @@ def Mapmatching(
     """
 
     if dijkstra_limit is None:
-        dijkstra_limit = add_geometry_coordinates(gps_track)[['x_geometry', 'y_geometry']].std().mean() / 2
+        dijkstra_limit = add_geometry_coordinates(gps_track)[['x_geometry', 'y_geometry']].std().mean()
 
     gps_dict = gps_track['geometry'].to_dict()
     gps_dict_arr = {key: item.coords[0] for key, item in gps_dict.items()}
@@ -651,6 +651,7 @@ def Mapmatching(
     candidat_links['node_a'] = candidat_links['road_a'].apply(lambda x: links.dict_node_a.get(x))
     candidat_links['node_b'] = candidat_links['road_b'].apply(lambda x: links.dict_node_b.get(x))
 
+    # we do 2 dijkstra with increasing limit. this is faster tha going to inf for all origins
     candidat_links = get_routing_distance(candidat_links, links, dijkstra_limit)
     unfounded = candidat_links[np.isinf(candidat_links['routing_distance'])].copy()
     if len(unfounded) > 0:
