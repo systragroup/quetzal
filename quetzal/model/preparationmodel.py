@@ -545,6 +545,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         self,
         by: str = 'trip_id',
         sequence: str = 'link_sequence',
+        length: str = 'length',
         n_neighbors_centroid: int = 10,
         radius_search: int = 500,
         on_centroid: bool = False,
@@ -568,6 +569,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                         links column name for each mapmaptching. they are group according to this column
         sequence : str,
                         links column giving the sequence of point for a given by (trip_id)
+        length : str
+                        links column giving the links length. this is used to compare with routing distance. if none uses acf fly between points
         routing : bool,
                         if True return the complete routing from the first to the last point on the road network.
         n_neighbors_centroid : int,
@@ -619,7 +622,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             on_centroid=on_centroid,
             precompute_routing=True,
         )
-        gps_tracks = get_gps_tracks(self.links, self.nodes, by=by, sequence=sequence)
+        gps_tracks = get_gps_tracks(self.links, self.nodes, by=by, sequence=sequence, length=length)
         matched_links, links_mat, _ = Parallel_Mapmatching(
             gps_tracks,
             road_links,

@@ -153,9 +153,9 @@ def emission_logprob(distance, SIGMA, p):
     return 0.5 * (distance / SIGMA) ** p  # Drop constant with log. its the same for everyone.
 
 
-def transition_logprob(dijkstra_dist, gps_dist, BETA, diff):
+def transition_logprob(dijkstra_dist, points_dist, BETA, diff):
     c = 1 / BETA
-    delta = abs(dijkstra_dist - gps_dist)
+    delta = abs(dijkstra_dist - points_dist)
     # return c * np.exp(-c * delta)
     if diff:
         return c * delta
@@ -353,7 +353,7 @@ class RoadLinks:
         self.knn_dict = {i: i for i in range(len(x))}
 
 
-def get_gps_tracks(links, nodes, by='trip_id', sequence='link_sequence'):
+def get_gps_tracks(links, nodes, by='trip_id', sequence='link_sequence', length='length'):
     """
     format links to a format used by the Multi Mapmatching
     """
@@ -383,6 +383,10 @@ def get_gps_tracks(links, nodes, by='trip_id', sequence='link_sequence'):
     gps_tracks = gps_tracks.sort_values([by, sequence])
     gps_tracks = gpd.GeoDataFrame(gps_tracks)
     gps_tracks = gps_tracks.drop(columns=['a', 'b', sequence])
+    # add the linestring distance. this is used in the mm to compare with routing distance
+    if length is not None:
+        dist_dict = links[length].to_dict()
+        gps_tracks['points_distance'] = gps_tracks.index.map(dist_dict.get)
 
     return gps_tracks
 
@@ -604,8 +608,11 @@ def Mapmatching(
 
     gps_dict = gps_track['geometry'].to_dict()
     gps_dict_arr = {key: item.coords[0] for key, item in gps_dict.items()}
-    # GPS point distance to next point.
-    gps_dist_dict = gps_track['geometry'].distance(gps_track.shift(-1)).to_dict()
+    # GPS point distance to next point
+    # for links mapmatching. can use the actual length between 2 stops (and not the asf dist)
+    if 'points_distance' in gps_track.columns:
+        dist_dict = gps_track['points_distance'].to_dict()
+    dist_dict = gps_track['geometry'].distance(gps_track.shift(-1)).to_dict()
 
     timestamp_dict = {}
     if speed_limit:
@@ -620,8 +627,10 @@ def Mapmatching(
     candidat_links = get_candidat_links(gps_track, links, method=nearest_method)
     candidat_links = add_distance_to_road(candidat_links, links.geom_dict_arr, gps_dict_arr, n_neighbors, distance_max)
     candidat_links = add_road_offset(candidat_links, links.geom_dict, gps_dict)
-    dict_distance = candidat_links.set_index(['ix_one', 'index_nn'])['distance'].to_dict()
-    candidat_links = candidat_links.drop(columns=['distance']).rename(columns={'index_nn': 'road'})
+    # distance_to_road and points_distance.
+    candidat_links = candidat_links.rename(columns={'index_nn': 'road', 'distance': 'distance_to_road'})
+    candidat_links['points_distance'] = candidat_links['ix_one'].apply(lambda x: dist_dict.get(x))
+
     if len(candidat_links) < 1:
         return pd.DataFrame()
 
@@ -638,8 +647,10 @@ def Mapmatching(
 
     # make a graph (connect each point to the next one)
     grouped = candidat_links.groupby('ix_one', sort=False).agg(list)
-    grouped = grouped.merge(grouped.shift(-1), left_index=True, right_index=True, suffixes=['_a', '_b'])
-    candidat_links = grouped.explode(['road_a', 'offset_a']).explode(['road_b', 'offset_b'])
+    grouped = grouped.merge(grouped.shift(-1)[['road', 'offset']], on='ix_one', suffixes=['_a', '_b'])
+    candidat_links = grouped.explode(['road_a', 'offset_a', 'distance_to_road', 'points_distance']).explode(
+        ['road_b', 'offset_b']
+    )
     candidat_links = candidat_links.iloc[:-1]  # last node has no connection. remove
     candidat_links = candidat_links.reset_index()
 
@@ -665,10 +676,6 @@ def Mapmatching(
     candidat_links['road_distance'] = (
         candidat_links['routing_distance'] - candidat_links['offset_a'] - (road_b_length - candidat_links['offset_b'])
     )
-
-    # apply gps distance computed earlier.
-    candidat_links['distance_to_road'] = candidat_links.set_index(['ix_one', 'road_a']).index.map(dict_distance.get)
-    candidat_links['points_distance'] = candidat_links['ix_one'].apply(lambda x: gps_dist_dict.get(x))
 
     # path prob
     candidat_links['path_prob'] = emission_logprob(candidat_links['distance_to_road'], SIGMA, POWER)
