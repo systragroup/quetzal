@@ -1,4 +1,5 @@
-## [FUTURE] ()
+## [3.9.0] (2026-09-28)
+
 ## Changes
 * Mapmatching 
   * only return a list of matched points to road [index,road_id, offset]
@@ -6,7 +7,7 @@
   * Use fast-dijktra and have the possibility to compute the dijkstra once for all trips (faster). This is not always an option as it required a large amount of memory on big road networks.
   * uses the link distance for the transition prob (and not acf distance between stops.)
 
-## [3.8.7] (2026-08-21)
+## [3.8.7] (2026-09-16)
 
 ## Bug Fix
 
