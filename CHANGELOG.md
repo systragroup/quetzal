@@ -1,3 +1,10 @@
+## [FUTURE] ()
+## Changes
+* Mapmatching 
+  * only return a list of matched points to road [index,road_id, offset]
+  * new method to have the routing of those matched points (route_mapmatched_points()) This method work on the expanded_graph to make sure the resulting routing uses the mapmatched roads. Its also applied by trip_id once after the multi_mapmatching.
+  * Use fast-dijktra and have the possibility to compute the dijkstra once for all trips (faster). This is not always an option as it required a large amount of memory on big road networks.
+  * uses the link distance for the transition prob (and not acf distance between stops.)
 
 ## [3.8.7] (2026-08-21)
 
