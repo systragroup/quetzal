@@ -299,7 +299,12 @@ class RoadLinks:
 
         if precompute_routing:
             origins = list(self.node_index.values())
-            self.dist_matrix = fast_dijkstra(csgraph=self.mat, indices=origins, return_predecessors=False, limit=np.inf)
+            if len(origins) > 20000:
+                print('too many nodes to precompute dijkstra (>20 000)')
+            else:
+                self.dist_matrix = fast_dijkstra(
+                    csgraph=self.mat, indices=origins, return_predecessors=False, limit=np.inf
+                )
 
         self.get_dict()
         if on_centroid:
@@ -556,7 +561,7 @@ def route_mapmatched_points(df: pd.DataFrame, road_links: RoadLinks, by='trip_id
     paths = []
     nodes_paths = []
     for ori, dest, trip_a, trip_b in routing_df[cols].values:
-        if trip_a == trip_b:  # dont route between trips. just return [ori]
+        if trip_a != trip_b:  # dont route between trips. just return [ori]
             path = [dest]
         else:
             path = get_path(pred, ori, dest)
@@ -658,8 +663,9 @@ def Mapmatching(
     # DIJKSTRA sur road network
     # ======================================================
 
-    candidat_links['node_a'] = candidat_links['road_a'].apply(lambda x: links.dict_node_a.get(x))
-    candidat_links['node_b'] = candidat_links['road_b'].apply(lambda x: links.dict_node_b.get(x))
+    # go from b to a. this make sure we dont do u turns.
+    candidat_links['node_a'] = candidat_links['road_a'].apply(lambda x: links.dict_node_b.get(x))
+    candidat_links['node_b'] = candidat_links['road_b'].apply(lambda x: links.dict_node_a.get(x))
 
     # we do 2 dijkstra with increasing limit. this is faster tha going to inf for all origins
     candidat_links = get_routing_distance(candidat_links, links, dijkstra_limit)
@@ -668,13 +674,21 @@ def Mapmatching(
         unfounded = get_routing_distance(unfounded, links, np.inf)
         candidat_links.loc[unfounded.index, 'routing_distance'] = unfounded['routing_distance']
 
+    # candidat_links['routing_distance'] = candidat_links['routing_distance'].replace(np.inf, np.nan)
+    # max_len = candidat_links['routing_distance'].max()
+    # candidat_links['routing_distance'] = candidat_links['routing_distance'].fillna(max_len)
     # ======================================================
     # Calcul probabilité
     # ======================================================
 
-    road_b_length = candidat_links['road_b'].apply(lambda x: links.length_dict.get(x))
+    road_a_length = candidat_links['road_a'].apply(lambda x: links.length_dict.get(x))
     candidat_links['road_distance'] = (
-        candidat_links['routing_distance'] - candidat_links['offset_a'] - (road_b_length - candidat_links['offset_b'])
+        candidat_links['routing_distance'] + (road_a_length - candidat_links['offset_a']) + candidat_links['offset_b']
+    )
+    # we need to route from b to a (bad result if not). need to correct transition on same exact link
+    same_road = candidat_links['road_a'] == candidat_links['road_b']
+    candidat_links.loc[same_road, 'road_distance'] = (
+        candidat_links.loc[same_road, 'offset_b'] - candidat_links.loc[same_road, 'offset_a']
     )
 
     # path prob
@@ -697,7 +711,6 @@ def Mapmatching(
         # correction, on ne veut pas filtrer les chemins qui sont le meme link.
         # si une route est en U par exemple, deux points peuvent se matche tres loins
         # en routing sur la meme route et la vitesse devient > max.
-        same_road = candidat_links['road_a'] == candidat_links['road_b']
         candidat_links.loc[same_road, 'speed'] = 0
         # dont drop virtual nodes and observation at the same exact time (speed = inf)
         candidat_links.loc[candidat_links['gps_time'] == 0, 'speed'] = 0

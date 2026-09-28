@@ -1,3 +1,7 @@
+## [3.9.1] (2026-09-28)
+## Bug Fix
+* new mapmatching was faulty
+
 ## [3.9.0] (2026-09-28)
 
 ## Changes
