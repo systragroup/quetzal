@@ -1,18 +1,32 @@
-## [3.9.2] (2026-09-30)
+## [3.9.3] (2026-09-30)
+
 ## Changes
+* Nested Logit
+  * Optimize segment_paths method for large los table
+  * Optimize rank_and_filter_paths method for large los table
+
+* Disable TQDM when quetzal-transport runs on AWS
+
+## [3.9.2] (2026-09-30)
+
+## Changes
+
 * MapMatching
   * for PT links: mapmatch on links geometry and not stops for better results
   * dijkstra_limit: use 2x max dist between 2 points, and do routing 3 time with max limit = 4x dijkstra limit instead of inf.
-  * Optimisation for faster performance 
-  
+  * Optimisation for faster performance
+
 ## [3.9.1] (2026-09-28)
+
 ## Bug Fix
+
 * new mapmatching was faulty
 
 ## [3.9.0] (2026-09-28)
 
 ## Changes
-* Mapmatching 
+
+* Mapmatching
   * only return a list of matched points to road [index,road_id, offset]
   * new method to have the routing of those matched points (route_mapmatched_points()) This method work on the expanded_graph to make sure the resulting routing uses the mapmatched roads. Its also applied by trip_id once after the multi_mapmatching.
   * Use fast-dijktra and have the possibility to compute the dijkstra once for all trips (faster). This is not always an option as it required a large amount of memory on big road networks.
@@ -22,7 +36,7 @@
 
 ## Bug Fix
 
-* Fix specific case in incremental logit when utility goes from U_ref to 0 in the project scenario. 
+* Fix specific case in incremental logit when utility goes from U_ref to 0 in the project scenario.
 
 ## [3.8.6] (2026-08-21)
 
