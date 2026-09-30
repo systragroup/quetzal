@@ -1,3 +1,10 @@
+## [3.9.2] (2026-09-30)
+## Changes
+* MapMatching
+  * for PT links: mapmatch on links geometry and not stops for better results
+  * dijkstra_limit: use 2x max dist between 2 points, and do routing 3 time with max limit = 4x dijkstra limit instead of inf.
+  * Optimisation for faster performance 
+  
 ## [3.9.1] (2026-09-28)
 ## Bug Fix
 * new mapmatching was faulty

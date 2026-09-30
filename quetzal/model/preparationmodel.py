@@ -7,6 +7,7 @@ from quetzal.engine.add_network_mapmatching import (
     get_gps_tracks,
     Parallel_Mapmatching,
     duplicate_nodes,
+    flatten_road_link_list,
 )
 from quetzal.engine.add_network_common_links import (
     find_common_sets,
@@ -622,7 +623,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             on_centroid=on_centroid,
             precompute_routing=True,
         )
-        gps_tracks = get_gps_tracks(self.links, self.nodes, by=by, sequence=sequence, length=length)
+        gps_tracks = get_gps_tracks(self.links, by=by, sequence=sequence)
         matched_links, links_mat, _ = Parallel_Mapmatching(
             gps_tracks,
             road_links,
@@ -636,8 +637,20 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             num_cores=num_cores,
             **kwargs,
         )
-        # we added the last node. shift to go back on links
-        matched_links = matched_links.merge(matched_links.shift(-1), on=['index', 'trip_id'], suffixes=['_a', '_b'])
+
+        index_dict = gps_tracks['link_index'].to_dict()
+        matched_links.index = matched_links.index.map(index_dict.get)
+
+        # keep first points (a for each link, and the next is the b)
+        firsts = (
+            matched_links.reset_index().drop_duplicates(subset=['trip_id', 'index'], keep='first').set_index('index')
+        )
+        # we add the last points (last b) and shift by trip_id
+        lasts = matched_links.drop_duplicates(subset=['trip_id'], keep='last')
+        right = pd.concat([firsts, lasts])
+        right = right.groupby('trip_id').shift(-1).dropna()
+
+        matched_links = firsts.merge(right, on='index', suffixes=['_a', '_b'])
 
         road_a_dict = matched_links['road_id_a'].to_dict()
         road_b_dict = matched_links['road_id_b'].to_dict()
@@ -647,6 +660,16 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         self.links['road_b'] = self.links.index.map(road_b_dict.get)
         self.links['offset_a'] = self.links.index.map(offset_a_dict.get)
         self.links['offset_b'] = self.links.index.map(offset_b_dict.get)
+
+        # drop last routing per trip as its nothing (its like last trip point to next trip first point)
+        links_mat = links_mat.drop(links_mat.groupby(by).tail(1).index)  # todo before reindexing
+        links_mat.index = links_mat.index.map(index_dict.get)
+
+        links_mat = links_mat.groupby(['trip_id', 'index']).agg(list).reset_index()
+        links_mat['road_link_list'] = links_mat['road_link_list'].apply(flatten_road_link_list)
+        links_mat['road_node_list'] = links_mat['road_node_list'].apply(flatten_road_link_list)
+        links_mat = links_mat.set_index('index')
+
         self.links = self.links.merge(links_mat[['road_node_list', 'road_link_list']], on='index', how='left')
         self.links['road_link_list'] = self.links['road_link_list'].apply(lambda x: x if isinstance(x, list) else [])
 
