@@ -22,8 +22,9 @@ from syspy.skims import skims
 from tqdm import tqdm
 import networkx as nx
 import warnings
+from shapely.ops import linemerge
 
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, MultiLineString
 
 
 def read_hdf(filepath):
@@ -672,7 +673,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
 
         self.links = self.links.merge(links_mat[['road_node_list', 'road_link_list']], on='index', how='left')
         self.links['road_link_list'] = self.links['road_link_list'].apply(lambda x: x if isinstance(x, list) else [])
-
+        self.links['road_node_list'] = self.links['road_node_list'].apply(lambda x: x if isinstance(x, list) else [])
         length_dict = road_links.links.set_index('index')['length'].to_dict()
         # we exclude last link in road_link_list and add offset_b
         self.links['length'] = (
@@ -719,27 +720,10 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             links_geom_dict = road_links.links.set_index('index')['geometry'].to_dict()
 
             def get_geom(ls, geom_dict):
-                if type(ls) is not list:
+                if len(ls) == 0:
                     return None
-                # transform road_links index to linetring
                 ls = [*map(geom_dict.get, ls)]
-                new_line = []
-                # for each linestring
-                for link in ls:
-                    ## init on first iteration
-                    if len(new_line) == 0:
-                        # get list of point instead of linetring
-                        new_line = [Point(x, y) for x, y in zip(link.coords.xy[0], link.coords.xy[1])]
-                    else:
-                        # get list of point instead of linetring
-                        link = [Point(x, y) for x, y in zip(link.coords.xy[0], link.coords.xy[1])]
-                        # the link geom is reverse (B-A instead of A-B), reverse it
-                        if link[0] != new_line[-1]:
-                            link.reverse()
-                        # append other points to the linetring
-                        new_line.extend(link[1:])
-                # return a linetring of all road points.
-                return LineString(new_line)
+                return linemerge(MultiLineString(ls))
 
             self.links['new_geometry'] = self.links['road_link_list'].apply(lambda x: get_geom(x, links_geom_dict))
             self.links['geometry'] = self.links['new_geometry'].combine_first(self.links['geometry'])

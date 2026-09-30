@@ -538,7 +538,6 @@ def _links_path_to_nodes_path(path: list[str], dict_a: dict[str, str], dict_b: d
 
 
 def route_mapmatched_points(df: pd.DataFrame, road_links: RoadLinks, by='trip_id'):
-
     expanded_links = links_to_expanded_links(road_links.links.set_index('index')[['a', 'b', 'length']], u_turns=False)
     csr_matrix, node_index = sparse_matrix(expanded_links[['from_link', 'to_link', 'length']].values)
 
@@ -546,10 +545,11 @@ def route_mapmatched_points(df: pd.DataFrame, road_links: RoadLinks, by='trip_id
 
     routing_df = df.copy()[['road_id', by]]
     routing_df['sparse_id'] = routing_df['road_id'].map(node_index.get)
-    routing_df = routing_df.merge(routing_df.shift(-1), on='index', suffixes=['_a', '_b']).iloc[:-1]
+    routing_df = routing_df.merge(routing_df.shift(-1), on='index', suffixes=['_a', '_b'])
 
     origins = list(routing_df['sparse_id_a'].unique())
     origin_dict = {index: i for i, index in enumerate(origins)}
+    reversed_origin_dict = {val: key for key, val in origin_dict.items()}
     _, pred = fast_dijkstra(csgraph=csr_matrix, indices=origins, return_predecessors=True, limit=np.inf)
 
     dict_node_a = road_links.links.set_index('index')['a'].to_dict()
@@ -560,8 +560,8 @@ def route_mapmatched_points(df: pd.DataFrame, road_links: RoadLinks, by='trip_id
     paths = []
     nodes_paths = []
     for ori, dest, trip_a, trip_b in routing_df[cols].values:
-        if trip_a != trip_b:  # dont route between trips. just return [ori]
-            path = [dest]
+        if (trip_a != trip_b) | (trip_b is None):  # dont route between trips. just return [ori] None is last one
+            path = [reversed_origin_dict.get(ori)]
         else:
             path = get_path(pred, ori, dest)
         path = [*map(index_node.get, path)]
