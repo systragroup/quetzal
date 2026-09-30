@@ -27,7 +27,7 @@ def rank_and_filter_paths(
     by='utility',
     n_paths_max=None,
 ):
-    paths = paths.sort_values(by=[*od_cols, 'route_type', 'segment', by], ascending=False)
+    paths = paths.sort_values(by=by, ascending=False)
     paths['rank'] = paths.groupby([*od_cols, 'route_type', 'segment']).cumcount() + 1
     paths['rank'] = paths['rank'].astype(np.int32)
 
