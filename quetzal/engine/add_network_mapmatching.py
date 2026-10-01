@@ -10,6 +10,7 @@ from quetzal.engine.pathfinder_utils import sparse_matrix, get_path, fast_dijkst
 from syspy.spatial.spatial import add_geometry_coordinates
 from quetzal.os.parallel_call import parallel_executor
 from quetzal.engine.road_pathfinder import links_to_expanded_links
+from tqdm import tqdm
 
 from numba import njit
 
@@ -429,7 +430,9 @@ def Parallel_Mapmatching(
     route_lists = gpd.GeoDataFrame()
     if routing:
         print('routing')
-        route_lists = route_mapmatched_points(df, road_links, by)
+        # limit dijkstra to 10x the max distance between 2 routes
+        limit = gps_tracks['geometry'].distance(gps_tracks.groupby(by).shift(-1)).max() * 10
+        route_lists = route_mapmatched_points(df, road_links, by, limit)
     unmatched_trip = []
     return df, route_lists, unmatched_trip
 
@@ -451,11 +454,8 @@ def Multi_Mapmatching(
     final_df = gpd.GeoDataFrame()
     unmatched_trip = []
     trip_id_list = gps_tracks[by].unique()
-    it = 0
-    for trip_id in trip_id_list:
-        if it % max((len(trip_id_list) // 5), 5) == 0:  # print 5 time
-            print(f'{it} / {len(trip_id_list)}')
-        it += 1
+    print(f'{len(trip_id_list)} trips to process')
+    for trip_id in tqdm(trip_id_list, miniters=len(trip_id_list) // 10):
         gps_track = gps_tracks[gps_tracks[by] == trip_id].drop(columns=by)
         # format index. keep dict to reindex after the mapmatching
         gps_track = gps_track.reset_index()
@@ -474,11 +474,12 @@ def Multi_Mapmatching(
             df.index = df.index.map(gps_index_dict.get)
             final_df = pd.concat([final_df, df])
 
-    print(f'{len(trip_id_list)} / {len(trip_id_list)}')
     route_lists = gpd.GeoDataFrame()
     if routing:
         print('routing')
-        route_lists = route_mapmatched_points(final_df, road_links, by)
+        # limit dijkstra to 10x the max distance between 2 routes
+        limit = gps_tracks['geometry'].distance(gps_tracks.groupby(by).shift(-1)).max() * 10
+        route_lists = route_mapmatched_points(final_df, road_links, by, limit)
 
     return final_df, route_lists, unmatched_trip
 
@@ -539,7 +540,7 @@ def _links_path_to_nodes_path(path: list[str], dict_a: dict[str, str], dict_b: d
     return nodes
 
 
-def route_mapmatched_points(df: pd.DataFrame, road_links: RoadLinks, by='trip_id'):
+def route_mapmatched_points(df: pd.DataFrame, road_links: RoadLinks, by='trip_id', dijkstra_limit=np.inf):
     expanded_links = links_to_expanded_links(road_links.links.set_index('index')[['a', 'b', 'length']], u_turns=False)
     csr_matrix, node_index = sparse_matrix(expanded_links[['from_link', 'to_link', 'length']].values)
 
@@ -552,7 +553,7 @@ def route_mapmatched_points(df: pd.DataFrame, road_links: RoadLinks, by='trip_id
     origins = list(routing_df['sparse_id_a'].unique())
     origin_dict = {index: i for i, index in enumerate(origins)}
     reversed_origin_dict = {val: key for key, val in origin_dict.items()}
-    _, pred = fast_dijkstra(csgraph=csr_matrix, indices=origins, return_predecessors=True, limit=np.inf)
+    _, pred = fast_dijkstra(csgraph=csr_matrix, indices=origins, return_predecessors=True, limit=dijkstra_limit)
 
     dict_node_a = road_links.links.set_index('index')['a'].to_dict()
     dict_node_b = road_links.links.set_index('index')['b'].to_dict()

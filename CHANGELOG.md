@@ -1,5 +1,10 @@
-## [FUTURE] (2026-10-01)
-* add simplify to mapmatching on links at 50m.
+## [3.9.5] (2026-10-01)
+## Changes
+* Mapmatching
+  * add simplify to mapmatching on links at 100m.
+  * Routing now use a dijkstra limit.
+  * fix linemerge
+
 
 ## [3.9.4] (2026-09-30)
 ## Bug Fix

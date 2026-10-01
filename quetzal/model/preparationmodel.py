@@ -22,9 +22,8 @@ from syspy.skims import skims
 from tqdm import tqdm
 import networkx as nx
 import warnings
-from shapely.ops import linemerge
 
-from shapely.geometry import LineString, MultiLineString
+from shapely.geometry import LineString
 
 
 def read_hdf(filepath):
@@ -547,7 +546,6 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         self,
         by: str = 'trip_id',
         sequence: str = 'link_sequence',
-        length: str = 'length',
         n_neighbors_centroid: int = 10,
         radius_search: int = 500,
         on_centroid: bool = False,
@@ -560,6 +558,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         overwrite_geom: bool = False,
         overwrite_nodes: bool = False,
         remove_duplicated_links_per_trips: bool = True,
+        simplify=100,
         num_cores=1,
         **kwargs,
     ):
@@ -598,6 +597,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                         for a trip (multiple links) remove rlinks in road_link_list if its duplicated between adjacent links.
                         ex: links 1 et 2 are [rlink_1, rlink_2] and [rlink_2, rlink_3] => [rlink_1, rlink_2] and [rlink_3]
                         this make sure that we dont count a road link multiple time qhen asigning load!
+        simplify: int
+                        meters: simplify linestring geometry so we dont mapmatch on each linestring anchors
         num_cores : int,
                         parallelize.
         ----------
@@ -624,7 +625,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             on_centroid=on_centroid,
             precompute_routing=True,
         )
-        gps_tracks = get_gps_tracks(self.links, by=by, sequence=sequence)
+        gps_tracks = get_gps_tracks(self.links, by=by, sequence=sequence, simplify=simplify)
         matched_links, links_mat, _ = Parallel_Mapmatching(
             gps_tracks,
             road_links,
@@ -723,7 +724,12 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                 if len(ls) == 0:
                     return None
                 ls = [*map(geom_dict.get, ls)]
-                return linemerge(MultiLineString(ls))
+                if len(ls) == 1:
+                    return ls[0]
+                points = [c for c in ls[0].coords]
+                for line in ls[1:]:
+                    points.extend(line.coords[1:])
+                return LineString(points)
 
             self.links['new_geometry'] = self.links['road_link_list'].apply(lambda x: get_geom(x, links_geom_dict))
             self.links['geometry'] = self.links['new_geometry'].combine_first(self.links['geometry'])
