@@ -16,7 +16,7 @@ def fast_dijkstra(
     return_predecessors: bool = True,
     limit: float = np.inf,
     num_threads: int = -1,
-):
+) -> tuple[pd.DataFrame, pd.DataFrame] | pd.DataFrame:
     """
     C++ dijkstra Faster than scipy when parallelize.
     On windows with 16 threads. it is almost 6 times faster than scipy (parallilize scipy)

@@ -63,8 +63,13 @@ log = model.log
 
 
 class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
+    links: gpd.GeoDataFrame
+    nodes: gpd.GeoDataFrame
     road_links: gpd.GeoDataFrame
+    road_nodes: gpd.GeoDataFrame
     zone_to_road: gpd.GeoDataFrame
+    volumes: pd.DataFrame
+    zones: gpd.GeoDataFrame
 
     @track_args
     def step_distribution(self, segmented=False, deterrence_matrix=None, **od_volume_from_zones_kwargs):

@@ -355,14 +355,16 @@ class RoadLinks:
         self.knn_dict = {i: i for i in range(len(x))}
 
 
-def get_gps_tracks(links, by='trip_id', sequence='link_sequence'):
+def get_gps_tracks(links: gpd.GeoDataFrame, by: str = 'trip_id', sequence: str = 'link_sequence', simplify: int = 50):
     """
     format links to a format used by the Multi Mapmatching
     """
 
     links = links[[by, sequence, 'geometry']].copy()
+    links['geometry'] = links.simplify(simplify)
     last = links.reset_index().groupby(by).last().reset_index().set_index('index')
-    last['geometry'] = last['geometry'].apply(lambda g: Point(g.coords[-1]))
+
+    last['geometry'] = last['geometry'].apply(lambda g: Point(g.coords[-1]))  # type: ignore
     links['geometry'] = links['geometry'].apply(lambda g: [Point(g) for g in g.coords[:-1]])
     links = links.explode('geometry')
     links['order'] = links.groupby(by).cumcount()
@@ -693,6 +695,7 @@ def Mapmatching(
     )
 
     # path prob
+    # TODO: for first and last points. we could force them to be close to the link (emission). for PT links. we dont want to move them so much
     candidat_links['path_prob'] = emission_logprob(candidat_links['distance_to_road'], SIGMA, POWER)
     candidat_links['path_prob'] += transition_logprob(
         candidat_links['road_distance'], candidat_links['points_distance'], BETA, DIFF

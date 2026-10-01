@@ -1,3 +1,6 @@
+## [FUTURE] (2026-10-01)
+* add simplify to mapmatching on links at 50m.
+
 ## [3.9.4] (2026-09-30)
 ## Bug Fix
 * Mapmatching last routing element was not ok.also a bug in the very last element that was drop
