@@ -13,6 +13,7 @@ import fast_dijkstra as fd
 def fast_dijkstra(
     csgraph: csr_matrix,
     indices: list[int] | None = None,
+    targets: list[int] | None = None,
     return_predecessors: bool = True,
     limit: float = np.inf,
     num_threads: int = -1,
@@ -25,7 +26,17 @@ def fast_dijkstra(
         csgraph = csgraph.tocsr()
     if indices is None:
         indices = csgraph.indptr
-    distances, predecessor = fd.dijkstra(csgraph.indptr, csgraph.indices, csgraph.data, indices, limit, num_threads)
+
+    distances, predecessor = fd.dijkstra(
+        indptr=csgraph.indptr,
+        indices=csgraph.indices,
+        weights=csgraph.data,
+        sources=indices,
+        targets=targets,
+        cutoff=limit,
+        return_predecessors=return_predecessors,
+        num_threads=num_threads,
+    )
     if return_predecessors:
         return distances, predecessor
     else:

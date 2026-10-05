@@ -1,3 +1,14 @@
+## [3.10.0] (2026-10-05)
+
+## Changes
+* Update fast-dijkstra: can now provide targets and a cutoff per origin
+* Mapmatching : uses new fast-dijksta targets to save memory on big network. and cutoff per origin to speedup
+
+## Bug Fix
+* Mapmatching (routing distance was off)
+
+
+
 ## [3.9.5] (2026-10-01)
 ## Changes
 * Mapmatching

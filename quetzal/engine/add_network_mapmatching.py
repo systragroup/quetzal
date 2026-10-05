@@ -291,6 +291,7 @@ class RoadLinks:
 
         if 'index' not in self.links.columns:
             self.links = self.links.reset_index()
+        self.index_node = self.links['index'].to_dict()
 
         self.get_sparse_matrix()
 
@@ -311,8 +312,10 @@ class RoadLinks:
             self.fit_nearest_model()
 
     def get_sparse_matrix(self):
-        self.mat, self.node_index = sparse_matrix(self.links[['a', 'b', 'length']].values)
-        self.index_node = {v: k for k, v in self.node_index.items()}
+        expanded_links = links_to_expanded_links(self.links.set_index('index')[['a', 'b', 'length']], u_turns=False)
+        self.node_index = {v: k for k, v in self.index_node.items()}
+        self.mat, _ = sparse_matrix(expanded_links[['from_link', 'to_link', 'length']].values, index=self.node_index)
+        self.expanded_links = expanded_links
 
     def get_dict(self):
         # create dict of road network parameters
@@ -507,25 +510,29 @@ def add_road_offset(candidat_links: pd.DataFrame, links_dict: dict, point_dict: 
     return candidat_links
 
 
-def get_routing_distance(candidat_links: pd.DataFrame, links: RoadLinks, dijkstra_limit):
+def get_routing_distance(candidat_links: pd.DataFrame, links: RoadLinks, fact: int):
     if links.dist_matrix is not None:  # precomputed dijkstra on all the network
-        ori = candidat_links['node_a'].map(links.node_index.get)
-        dest = candidat_links['node_b'].map(links.node_index.get)
+        ori = candidat_links['road_a'].map(links.node_index.get)
+        dest = candidat_links['road_b'].map(links.node_index.get)
         return links.dist_matrix[ori, dest]
     else:
-        origins = list(candidat_links['node_a'].unique())
-        origin_sparse = [links.node_index[x] for x in origins]
+        origins_dist = candidat_links.groupby('road_a')['limit'].max()
+        limits = origins_dist.values * fact
+        origins = list(origins_dist.index)
+        targets = list(candidat_links['road_b'].unique())
 
         dist_matrix = fast_dijkstra(
             csgraph=links.mat,
-            indices=origin_sparse,
+            indices=origins,
+            targets=targets,
             return_predecessors=False,
-            limit=dijkstra_limit,
+            limit=limits,
         )
 
         origin_dict = {index: i for i, index in enumerate(origins)}
-        ori = candidat_links['node_a'].map(origin_dict.get)
-        dest = candidat_links['node_b'].map(links.node_index.get)
+        target_dict = {index: i for i, index in enumerate(targets)}
+        ori = candidat_links['road_a'].map(origin_dict.get)
+        dest = candidat_links['road_b'].map(target_dict.get)
 
     return dist_matrix[ori, dest]
 
@@ -541,10 +548,10 @@ def _links_path_to_nodes_path(path: list[str], dict_a: dict[str, str], dict_b: d
 
 
 def route_mapmatched_points(df: pd.DataFrame, road_links: RoadLinks, by='trip_id', dijkstra_limit=np.inf):
-    expanded_links = links_to_expanded_links(road_links.links.set_index('index')[['a', 'b', 'length']], u_turns=False)
-    csr_matrix, node_index = sparse_matrix(expanded_links[['from_link', 'to_link', 'length']].values)
+    csr_matrix = road_links.mat
+    node_index = road_links.node_index
 
-    index_node = {v: k for k, v in node_index.items()}
+    index_node = road_links.index_node
 
     routing_df = df.copy()[['road_id', by]]
     routing_df['sparse_id'] = routing_df['road_id'].map(node_index.get)
@@ -584,7 +591,6 @@ def Mapmatching(
     links: RoadLinks,
     n_neighbors: int = 10,
     distance_max: float = 1000,
-    dijkstra_limit=None,
     nearest_method: str = 'radius',
     speed_limit: bool = False,
     turn_penalty: bool = False,
@@ -598,7 +604,6 @@ def Mapmatching(
     gps_track: ordered list of geometry Point (in metre)
     links: RoadLinks object
     distance_max: max radius to search candidat road for each gps points
-    dijkstra_limit: first dijkstra limit. if None. will use half the STD of the gps points coords.
     routing: True return the complete routing from the first to the last point on the road network (default = False)
     nearest_method: knn, radius or both.
     speed_limit: add a penalty if speed is larger dans maxspeed.
@@ -614,10 +619,6 @@ def Mapmatching(
     gps_dict_arr = {key: item.coords[0] for key, item in gps_dict.items()}
     # GPS point distance to next point
     dist_dict = gps_track['geometry'].distance(gps_track.shift(-1)).to_dict()
-
-    if dijkstra_limit is None:
-        # max routing distance should be within 2 time the distance between 2 points
-        dijkstra_limit = max(dist_dict.values()) * 2
 
     timestamp_dict = {}
     if speed_limit:
@@ -664,30 +665,32 @@ def Mapmatching(
     # ======================================================
 
     # go from b to a. this make sure we dont do u turns.
-    candidat_links['node_a'] = candidat_links['road_a'].map(links.dict_node_b.get)
-    candidat_links['node_b'] = candidat_links['road_b'].map(links.dict_node_a.get)
+    candidat_links['road_a'] = candidat_links['road_a'].astype(int)
+    candidat_links['road_b'] = candidat_links['road_b'].astype(int)
 
     # we do 3 dijkstra with increasing limit.
     # we will not find every thing as we dont go to inf, but with dijkstra_limit = 2X max points_distance
     # we can assume that anything 2 to 8 time longer is not a good candidat.
-    candidat_links['routing_distance'] = get_routing_distance(candidat_links, links, dijkstra_limit)
+    # offset_a is imporant, we we have 2 close points (10m), but on road_a and b. if road_a is super long, we need to include it
+    # in the limit.
+    candidat_links['limit'] = candidat_links[['points_distance', 'offset_a', 'offset_b']].sum(axis=1)
+    candidat_links['routing_distance'] = get_routing_distance(candidat_links, links, 2)
     unfounded = candidat_links[np.isinf(candidat_links['routing_distance'])]
     if len(unfounded) > 0:
-        for fact in [2, 4]:
-            dist_matrix = get_routing_distance(unfounded, links, dijkstra_limit * fact)
+        for fact in [4, 8]:
+            dist_matrix = get_routing_distance(unfounded, links, fact)
             candidat_links.loc[unfounded.index, 'routing_distance'] = dist_matrix
             unfounded = candidat_links[np.isinf(candidat_links['routing_distance'])]
             if len(unfounded) == 0:
                 break
 
-    # candidat_links['routing_distance'] = candidat_links['routing_distance'].replace(np.inf, dijkstra_limit*4)
+    candidat_links['routing_distance'] = candidat_links['routing_distance'].replace(np.inf, 1e10)
     # ======================================================
     # Calcul probabilité
     # ======================================================
 
-    road_a_length = candidat_links['road_a'].map(links.length_dict.get)
     candidat_links['road_distance'] = (
-        candidat_links['routing_distance'] + (road_a_length - candidat_links['offset_a']) + candidat_links['offset_b']
+        candidat_links['routing_distance'] - candidat_links['offset_a'] + candidat_links['offset_b']
     )
     # we need to route from b to a (bad result if not). need to correct transition on same exact link
     same_road = candidat_links['road_a'] == candidat_links['road_b']

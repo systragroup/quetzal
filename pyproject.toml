@@ -1,6 +1,6 @@
 [project]
 name = "quetzal-transport"
-version = "3.9.5"
+version = "3.10.0"
 description = "modeling library for transport planning"
 authors = [
   { name = "Quentin Chasserieau", email = "qchasserieau@systra.com" }
@@ -35,7 +35,9 @@ dependencies = [
   "pydantic>=2.13.4",
   "polars>=1.40.1",
   "pyarrow>=24.0.0",
-  "fast-dijkstra>=2.1.2",
+  "fast-dijkstra (==3.0.0)",
+  
+
 ]
 
 [project.urls]
