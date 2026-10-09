@@ -1,23 +1,51 @@
 import geopandas as gpd
+import hashlib
 import json
 import pandas as pd
+import struct
 from quetzal.engine import gps_tracks
 from shapely.geometry import Point
 # from syspy.spatial.graph import graphbuilder as gb
 
 
+def _coord_hash(coords):
+    """Deterministic, version-independent integer hash for a coordinate sequence.
+
+    Python's built-in ``hash()`` for tuples is NOT stable across Python versions:
+    CPython's ``tuplehash()`` algorithm changed between Python 3.7 and 3.8, so code
+    that uses ``hash(tuple(coords))`` as a persistent identity key will silently
+    produce different values after a Python upgrade, breaking geometry deduplication.
+
+    This function encodes each coordinate value as an IEEE 754 big-endian double
+    (8 bytes), prepends the per-point dimension count, and feeds the result into
+    SHA-256.  The output is a Python ``int`` suitable for use as a dict key or in
+    ``min()`` / ``max()`` comparisons.
+
+    Properties:
+    - Identical output on Python 3.6 - 3.x (any version)
+    - Identical output on Windows, Linux, macOS (all IEEE 754 platforms)
+    - Unaffected by ``PYTHONHASHSEED``
+    - Encodes coordinate structure (dimension count per point) to avoid ambiguity
+    """
+    parts = []
+    for p in coords:
+        parts.append(struct.pack('>I', len(p)))   # dimension count as 4-byte uint
+        for v in p:
+            parts.append(struct.pack('>d', float(v)))  # coordinate as 8-byte double
+    return int(hashlib.sha256(b''.join(parts)).hexdigest(), 16)
+
+
 def _merge_reversed_geometries_dict(geojson_dict):
     features = {
-        hash(tuple(tuple(p) for p in feature['geometry']['coordinates'])):
+        _coord_hash(feature['geometry']['coordinates']):
         feature for feature in geojson_dict['features']
     }
     counts = {}  # {geohash : 2 if the reverse geohash is in the geometries, 1 otherwise}
     drop = set()  # for each direct/indirect geometry pair, countain the lesser geohash
     for _, feature in features.items():
-        geo_tuple = tuple(tuple(p) for p in feature['geometry']['coordinates'])
-        reversed_geo_tuple = reversed(geo_tuple)
-        k = hash(tuple(geo_tuple))
-        kr = hash(tuple(reversed_geo_tuple))
+        coords = feature['geometry']['coordinates']
+        k = _coord_hash(coords)
+        kr = _coord_hash(list(reversed(coords)))
         drop.add(min(k, kr))
         counts[k] = counts.get(k, 0) + 1
         counts[kr] = counts.get(kr, 0) + 1
