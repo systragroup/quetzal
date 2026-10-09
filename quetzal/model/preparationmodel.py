@@ -5,9 +5,9 @@ from quetzal.engine.add_network import NetworkCaster
 from quetzal.engine.add_network_mapmatching import (
     RoadLinks,
     get_gps_tracks,
-    Multi_Mapmatching,
     Parallel_Mapmatching,
     duplicate_nodes,
+    flatten_road_link_list,
 )
 from quetzal.engine.add_network_common_links import (
     find_common_sets,
@@ -23,7 +23,7 @@ from tqdm import tqdm
 import networkx as nx
 import warnings
 
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString
 
 
 def read_hdf(filepath):
@@ -558,6 +558,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         overwrite_geom: bool = False,
         overwrite_nodes: bool = False,
         remove_duplicated_links_per_trips: bool = True,
+        simplify=100,
         num_cores=1,
         **kwargs,
     ):
@@ -569,6 +570,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                         links column name for each mapmaptching. they are group according to this column
         sequence : str,
                         links column giving the sequence of point for a given by (trip_id)
+        length : str
+                        links column giving the links length. this is used to compare with routing distance. if none uses acf fly between points
         routing : bool,
                         if True return the complete routing from the first to the last point on the road network.
         n_neighbors_centroid : int,
@@ -594,6 +597,8 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
                         for a trip (multiple links) remove rlinks in road_link_list if its duplicated between adjacent links.
                         ex: links 1 et 2 are [rlink_1, rlink_2] and [rlink_2, rlink_3] => [rlink_1, rlink_2] and [rlink_3]
                         this make sure that we dont count a road link multiple time qhen asigning load!
+        simplify: int
+                        meters: simplify linestring geometry so we dont mapmatch on each linestring anchors
         num_cores : int,
                         parallelize.
         ----------
@@ -618,54 +623,64 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             n_neighbors_centroid=n_neighbors_centroid,
             radius_search=radius_search,
             on_centroid=on_centroid,
+            precompute_routing=True,
         )
-        gps_tracks = get_gps_tracks(self.links, self.nodes, by=by, sequence=sequence)
-        if num_cores == 1:
-            matched_links, links_mat, _ = Multi_Mapmatching(
-                gps_tracks,
-                road_links,
-                routing=routing,
-                n_neighbors=n_neighbors,
-                distance_max=distance_max,
-                by=by,
-                nearest_method=nearest_method,
-                speed_limit=speed_limit,
-                turn_penalty=turn_penalty,
-                **kwargs,
-            )
-        else:
-            matched_links, links_mat, _ = Parallel_Mapmatching(
-                gps_tracks,
-                road_links,
-                routing=routing,
-                n_neighbors=n_neighbors,
-                distance_max=distance_max,
-                by=by,
-                nearest_method=nearest_method,
-                speed_limit=speed_limit,
-                turn_penalty=turn_penalty,
-                num_cores=num_cores,
-                **kwargs,
-            )
-        # we added a first node to to the mapmatching. we need to reshift the index
-        # a link is 2 node. if we have 5 links, there are 6 points in mapmatching.
-        matched_links = matched_links.shift(1)[1:]
-        links_mat = links_mat.shift(1)[1:]
+        gps_tracks = get_gps_tracks(self.links, by=by, sequence=sequence, simplify=simplify)
+        matched_links, links_mat, _ = Parallel_Mapmatching(
+            gps_tracks,
+            road_links,
+            routing=routing,
+            n_neighbors=n_neighbors,
+            distance_max=distance_max,
+            by=by,
+            nearest_method=nearest_method,
+            speed_limit=speed_limit,
+            turn_penalty=turn_penalty,
+            num_cores=num_cores,
+            **kwargs,
+        )
 
-        matched_links['road_id_a'] = matched_links['road_id_a'].apply(lambda x: road_links.links_index_dict.get(x))
-        matched_links['road_id_b'] = matched_links['road_id_b'].apply(lambda x: road_links.links_index_dict.get(x))
+        index_dict = gps_tracks['link_index'].to_dict()
+        matched_links.index = matched_links.index.map(index_dict.get)
+
+        # keep first points (a for each link, and the next is the b)
+        firsts = (
+            matched_links.reset_index().drop_duplicates(subset=['trip_id', 'index'], keep='first').set_index('index')
+        )
+        # we add the last points (last b) and shift by trip_id
+        lasts = matched_links.drop_duplicates(subset=['trip_id'], keep='last')
+        right = pd.concat([firsts, lasts])
+        right = right.groupby('trip_id').shift(-1).dropna()
+
+        matched_links = firsts.merge(right, on='index', suffixes=['_a', '_b'])
+
         road_a_dict = matched_links['road_id_a'].to_dict()
         road_b_dict = matched_links['road_id_b'].to_dict()
         offset_a_dict = matched_links['offset_a'].to_dict()
         offset_b_dict = matched_links['offset_b'].to_dict()
-        length_dict = matched_links['length'].to_dict()
         self.links['road_a'] = self.links.index.map(road_a_dict.get)
         self.links['road_b'] = self.links.index.map(road_b_dict.get)
         self.links['offset_a'] = self.links.index.map(offset_a_dict.get)
         self.links['offset_b'] = self.links.index.map(offset_b_dict.get)
-        self.links['length'] = self.links.index.map(length_dict.get)
-        self.links = self.links.merge(
-            links_mat[['road_node_list', 'road_link_list']], left_index=True, right_index=True, how='left'
+
+        # drop last routing per trip as its nothing (its like last trip point to next trip first point)
+        links_mat = links_mat.drop(links_mat.groupby(by).tail(1).index)  # todo before reindexing
+        links_mat.index = links_mat.index.map(index_dict.get)
+
+        links_mat = links_mat.groupby(['trip_id', 'index']).agg(list).reset_index()
+        links_mat['road_link_list'] = links_mat['road_link_list'].apply(flatten_road_link_list)
+        links_mat['road_node_list'] = links_mat['road_node_list'].apply(flatten_road_link_list)
+        links_mat = links_mat.set_index('index')
+
+        self.links = self.links.merge(links_mat[['road_node_list', 'road_link_list']], on='index', how='left')
+        self.links['road_link_list'] = self.links['road_link_list'].apply(lambda x: x if isinstance(x, list) else [])
+        self.links['road_node_list'] = self.links['road_node_list'].apply(lambda x: x if isinstance(x, list) else [])
+        length_dict = road_links.links.set_index('index')['length'].to_dict()
+        # we exclude last link in road_link_list and add offset_b
+        self.links['length'] = (
+            self.links['road_link_list'].apply(lambda ls: sum([*map(length_dict.get, ls[1:])]))
+            - self.links['offset_a']
+            + self.links['offset_b']
         )
 
         if overwrite_nodes:
@@ -706,27 +721,15 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             links_geom_dict = road_links.links.set_index('index')['geometry'].to_dict()
 
             def get_geom(ls, geom_dict):
-                if type(ls) is not list:
+                if len(ls) == 0:
                     return None
-                # transform road_links index to linetring
                 ls = [*map(geom_dict.get, ls)]
-                new_line = []
-                # for each linestring
-                for link in ls:
-                    ## init on first iteration
-                    if len(new_line) == 0:
-                        # get list of point instead of linetring
-                        new_line = [Point(x, y) for x, y in zip(link.coords.xy[0], link.coords.xy[1])]
-                    else:
-                        # get list of point instead of linetring
-                        link = [Point(x, y) for x, y in zip(link.coords.xy[0], link.coords.xy[1])]
-                        # the link geom is reverse (B-A instead of A-B), reverse it
-                        if link[0] != new_line[-1]:
-                            link.reverse()
-                        # append other points to the linetring
-                        new_line.extend(link[1:])
-                # return a linetring of all road points.
-                return LineString(new_line)
+                if len(ls) == 1:
+                    return ls[0]
+                points = [c for c in ls[0].coords]
+                for line in ls[1:]:
+                    points.extend(line.coords[1:])
+                return LineString(points)
 
             self.links['new_geometry'] = self.links['road_link_list'].apply(lambda x: get_geom(x, links_geom_dict))
             self.links['geometry'] = self.links['new_geometry'].combine_first(self.links['geometry'])

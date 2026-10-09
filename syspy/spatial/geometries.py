@@ -13,6 +13,7 @@ import pandas as pd
 import shapely
 from tqdm import tqdm
 
+
 def reverse_geometry(linestring):
     return shapely.geometry.LineString(linestring.coords[::-1])
 
@@ -24,10 +25,7 @@ def reversed_polyline(polyline):
 
 def linestring_geometry(row):
     return shapely.geometry.LineString(
-        [
-            [row['x_origin'], row['y_origin']],
-            [row['x_destination'], row['y_destination']]
-        ]
+        [[row['x_origin'], row['y_origin']], [row['x_destination'], row['y_destination']]]
     )
 
 
@@ -46,7 +44,7 @@ def linestring_from_indexed_point_geometries(indexed, points):
         return None
 
 
-def line_list_to_polyline(geometries:list) -> shapely.geometry.linestring.LineString:
+def line_list_to_polyline(geometries: list) -> shapely.geometry.linestring.LineString:
     coord_sequence = []
     last = False
     for geometry in geometries:
@@ -57,10 +55,6 @@ def line_list_to_polyline(geometries:list) -> shapely.geometry.linestring.LineSt
         return shapely.geometry.linestring.LineString(coord_sequence)
     except ValueError:
         return None
-    
-
-
-
 
 
 def polyline_to_line_list(geometry, tolerance=0):
@@ -79,13 +73,7 @@ def geometry_to_string(geometry_series):
     return [json.dumps(shapely.geometry.mapping(x)) for x in iterator]
 
 
-def coexist(
-    line_a,
-    line_b,
-    rate=0.25,
-    buffer=1e-4,
-    check_collinearity=True
-):
+def coexist(line_a, line_b, rate=0.25, buffer=1e-4, check_collinearity=True):
     buffer_a = line_a.buffer(buffer)
     buffer_b = line_b.buffer(buffer)
     min_area = min(buffer_a.area, buffer_b.area)
@@ -135,13 +123,7 @@ def collinear(g_a, g_b, tol=pi / 4):
 
 
 def dissociate_collinear_lines(lines, coexist_kwargs={}):
-    conflicts = [
-        [
-            coexist(line_a, line_b, **coexist_kwargs)
-            for line_a in lines
-        ]
-        for line_b in tqdm(lines)
-    ]
+    conflicts = [[coexist(line_a, line_b, **coexist_kwargs) for line_a in lines] for line_b in tqdm(lines)]
 
     df = pd.DataFrame(conflicts)
     uniques = {i: None for i in range(len(conflicts))}
@@ -150,10 +132,7 @@ def dissociate_collinear_lines(lines, coexist_kwargs={}):
 
     for line in sorted_lines:
         taken = {
-            uniques[other_line]
-            for other_line in sorted_lines
-            if conflicts[line][other_line]
-            and other_line != line
+            uniques[other_line] for other_line in sorted_lines if conflicts[line][other_line] and other_line != line
         }
         uniques[line] = min(possibilities - taken)
     return uniques
@@ -229,7 +208,7 @@ def add_centroids_to_polyline(geometry, intersections, buffer=1e-9):
     coord_intersections = set(intersections).intersection(coords)
     sequence_dict = {coords[i]: i for i in range(len(coords))}
     cuts = sorted([0] + [sequence_dict[coord] for coord in coord_intersections] + [len(coords) - 1])
-    coord_lists = [coords[cuts[i]: cuts[i + 1] + 1] for i in range(len(cuts) - 1)]
+    coord_lists = [coords[cuts[i] : cuts[i + 1] + 1] for i in range(len(cuts) - 1)]
     polylines = [shapely.geometry.LineString(coord_list) for coord_list in coord_lists if len(coord_list) > 1]
 
     if len(remaining_intersections) == 0:
@@ -248,9 +227,7 @@ def add_centroids_to_polyline(geometry, intersections, buffer=1e-9):
 
     # recursive
     return add_centroids_to_polyline(
-        line_list_to_polyline(polylines),
-        coord_intersections.union(centroid_coords),
-        buffer
+        line_list_to_polyline(polylines), coord_intersections.union(centroid_coords), buffer
     )
 
 
@@ -284,7 +261,7 @@ def connected_geometries(sorted_edges):
 
         geometry_list = []
         for s in slices:
-            line_series = edges.loc[a].iloc[s[0]: s[1]]['geometry']
+            line_series = edges.loc[a].iloc[s[0] : s[1]]['geometry']
             geometry = line_list_to_polyline(list(line_series))
             geometry_list.append(geometry)
     except ValueError:  # Can only compare identically-labeled Series objects
@@ -293,10 +270,7 @@ def connected_geometries(sorted_edges):
     return geometry_list
 
 
-def geometries_with_side(
-    tuple_indexed_geometry_lists,
-    width=1
-):
+def geometries_with_side(tuple_indexed_geometry_lists, width=1):
     tigl = tuple_indexed_geometry_lists
 
     # explode geometry lists
@@ -332,8 +306,10 @@ def geometries_with_side(
 
     return gpd.GeoDataFrame(l[['geometry', 'width', 'side', 'offset', 'id']])
 
+
 def euclidean_distance(p1, p2):
-    return np.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
+    return np.sqrt((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2)
+
 
 def cut(line, distance):
     # Cuts a line in two at a distance from its starting point
@@ -348,14 +324,16 @@ def cut(line, distance):
             continue
         pd += euclidean_distance(p, coords[i - 1])
         if pd == distance:
-            return [
-                shapely.geometry.LineString(coords[:i + 1]),
-                shapely.geometry.LineString(coords[i:])]
+            return [shapely.geometry.LineString(coords[: i + 1]), shapely.geometry.LineString(coords[i:])]
         if pd > distance:
             cp = line.interpolate(distance)
             return [
                 shapely.geometry.LineString(coords[:i] + [(cp.x, cp.y)]),
-                shapely.geometry.LineString([(cp.x, cp.y)] + coords[i:])]
+                shapely.geometry.LineString([(cp.x, cp.y)] + coords[i:]),
+            ]
+    else:
+        return [None, None]
+
 
 def cut_inbetween(geom, d_a, d_b):
     geom1 = cut(geom, d_a)[1]

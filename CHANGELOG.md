@@ -1,9 +1,114 @@
+## [3.10.0] (2026-10-05)
+
+## Changes
+* Update fast-dijkstra: can now provide targets and a cutoff per origin
+* Mapmatching : uses new fast-dijksta targets to save memory on big network. and cutoff per origin to speedup
+
+## Bug Fix
+* Mapmatching (routing distance was off)
+
+
+
+## [3.9.5] (2026-10-01)
+## Changes
+* Mapmatching
+  * add simplify to mapmatching on links at 100m.
+  * Routing now use a dijkstra limit.
+  * fix linemerge
+
+
+## [3.9.4] (2026-09-30)
+## Bug Fix
+* Mapmatching last routing element was not ok.also a bug in the very last element that was drop
+
+## [3.9.3] (2026-09-30)
+
+## Changes
+* Nested Logit
+  * Optimize segment_paths method for large los table
+  * Optimize rank_and_filter_paths method for large los table
+
+* Disable TQDM when quetzal-transport runs on AWS
+
+## [3.9.2] (2026-09-30)
+
+## Changes
+
+* MapMatching
+  * for PT links: mapmatch on links geometry and not stops for better results
+  * dijkstra_limit: use 2x max dist between 2 points, and do routing 3 time with max limit = 4x dijkstra limit instead of inf.
+  * Optimisation for faster performance
+
+## [3.9.1] (2026-09-28)
+
+## Bug Fix
+
+* new mapmatching was faulty
+
+## [3.9.0] (2026-09-28)
+
+## Changes
+
+* Mapmatching
+  * only return a list of matched points to road [index,road_id, offset]
+  * new method to have the routing of those matched points (route_mapmatched_points()) This method work on the expanded_graph to make sure the resulting routing uses the mapmatched roads. Its also applied by trip_id once after the multi_mapmatching.
+  * Use fast-dijktra and have the possibility to compute the dijkstra once for all trips (faster). This is not always an option as it required a large amount of memory on big road networks.
+  * uses the link distance for the transition prob (and not acf distance between stops.)
+
+## [3.8.7] (2026-09-16)
+
+## Bug Fix
+
+* Fix specific case in incremental logit when utility goes from U_ref to 0 in the project scenario.
+
+## [3.8.6] (2026-08-21)
+
+## Changes
+
+* Add 'obeserved' argument to groupby_weighted average method
+
+## [3.8.5] (2026-08-21)
+
+## Changes
+
+* Remove max version dependency of Jupyter Notebook
+
+## [3.8.4] (2026-08-20)
+
+## Features
+
+* quenedi to_zip function can now export dict as json too.
+
+## revert
+
+* analysis_pt_time: remove self.links["waiting_time"].astype(float)  as its not always present in links. this should be done in the model before calling the method.
+
+## [3.8.3] (2026-08-13)
+
+revert building pipeline to poetry as some files are missing with uv backend
+
+## [3.8.2] (2026-08-13)
+
+## Features
+
+* can read parameters as csv instead of xlsx (@LinSiyu-TL)
+* add uv installation support and fixed dependencies (@bwentl)
+
+## Changes
+
+* road_pathfinder (normal msa one): change Lut (dict from nodes tuple to links) to a flat arr such that lut[(node_a * n_node) + node_b] = link_index. this improve memory usage for large network [#157](https://github.com/systragroup/quetzal/issues/157)
+* publish to pypi with uv instead of poetry and twine (@bwentl)
+
+## [3.8.1] (2026-08-11)
+
 ## [3.8.0] (2026-07-22)
+
+3.8.0 tag was not on head, the correct version is 3.8.1
 
 ## Features
 
 * Incremental Logit: It is now possible to run the logit as an incremental logit
-* pickup_type and drop_off_type in CSA: Now the Connection Scan Algorithm can use the information on pickup_type and drop_off_type. 
+* pickup_type and drop_off_type in CSA: Now the Connection Scan Algorithm can use the information on pickup_type and drop_off_type.
 
 ## [3.7.0] (2026-05-29 2026-06-19)
 

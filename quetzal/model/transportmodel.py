@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-from typing import Dict, List, Literal, Optional
+from typing import Literal
 from quetzal.analysis import analysis
 from quetzal.engine import engine, nested_logit
 from quetzal.engine.park_and_ride_pathfinder import ParkRidePathFinder
@@ -63,8 +63,13 @@ log = model.log
 
 
 class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
+    links: gpd.GeoDataFrame
+    nodes: gpd.GeoDataFrame
     road_links: gpd.GeoDataFrame
+    road_nodes: gpd.GeoDataFrame
     zone_to_road: gpd.GeoDataFrame
+    volumes: pd.DataFrame
+    zones: gpd.GeoDataFrame
 
     @track_args
     def step_distribution(self, segmented=False, deterrence_matrix=None, **od_volume_from_zones_kwargs):
@@ -172,12 +177,12 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
     def step_road_pathfinder(
         self,
         method: Literal['bfw', 'fw', 'msa', 'aon'] = 'bfw',
-        segments: List[str] = [],
+        segments: list[str] = [],
         time_column: str = 'time',
         access_time: str = 'time',
-        od_set: Optional[Dict] = None,
+        od_set: dict | None = None,
         tracker_plugin: LinksTracker = LinksTracker(),
-        turn_penalties: Optional[Dict[str, List[str]]] = None,
+        turn_penalties: dict[str, list[str]] | None = None,
         num_cores: int = 1,
         return_car_los=True,
         assign_on_connectors=False,
@@ -1222,13 +1227,11 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
 
         def segment_paths(los, segments, od_cols=['origin', 'destination']):
             to_concat = []
+            id_cols = od_cols + ['route_type']
+            base = los[id_cols]
+
             for segment in segments:
-                keep_columns = od_cols + ['route_type', (segment, 'utility')]
-                paths = los[keep_columns].copy()
-                paths.rename(columns={(segment, 'utility'): 'utility'}, inplace=True)
-                paths = paths.dropna(subset=['utility'])
-                paths['segment'] = pd.Categorical([segment] * len(paths), categories=segments)
-                to_concat.append(paths)
+                to_concat.append(base.assign(segment=segment, utility=los[(segment, 'utility')].to_numpy()))
             return pd.concat(to_concat)
 
         if time_expanded & incremental:
