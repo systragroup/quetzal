@@ -404,16 +404,18 @@ def msa_roadpathfinder(
         links_to_sparse = {v: k for k, v in _tmp_dict.items()}
         tracker_plugin.init(links_sparse_index=links.index, links_to_sparse=links_to_sparse)
 
-    # pred origins and odv for each segments for quick access as it doesnt change between iteration
+    # doesnt change between iteration. faster to precompute
     segment_origins = {}
     segment_destinations = {}
     segment_odv = {}
+    segment_links_index = {}
     for seg in segments:
         segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
         odv = segment_volumes[['origin_sparse', 'destination_sparse', seg]].values
         segment_origins[seg] = origins
         segment_destinations[seg] = segment_volumes['destination_sparse'].unique()
         segment_odv[seg] = odv
+        segment_links_index[seg] = links[links['segments'].apply(lambda x: seg in x)].index
 
     relgap = np.inf
     relgap_list = []
@@ -430,7 +432,7 @@ def msa_roadpathfinder(
             origins = segment_origins[seg]
             targets = segment_destinations[seg]
             odv = segment_odv[seg]
-            segment_links = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
+            segment_links = links.loc[segment_links_index[seg]]
             weight_cols = [(seg, 'cost'), 'ntleg_penalty']
             _, pred = shortest_path(segment_links, weight_cols, index, origins, targets, num_cores)
 
@@ -511,7 +513,7 @@ def msa_roadpathfinder(
         for seg in segments:
             # filter links to allowed segment
             segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
-            segment_links = links[links['segments'].apply(lambda x: seg in x)]  # filter links to allowed segment
+            segment_links = links.loc[segment_links_index[seg]]
             weight_cols = [(seg, 'cost'), 'ntleg_penalty']
             temp_los = get_car_los(segment_volumes, segment_links, index, origins, weight_cols, num_cores)
             temp_los['segment'] = seg
@@ -610,9 +612,10 @@ def expanded_roadpathfinder(
     if tracker_plugin():
         tracker_plugin.init(links_sparse_index=links.index, links_to_sparse=index)
 
-    # pred origins and odv for each segments fro quick access as it doesnt change between iteration
+    # those are constant. faster to precompute them
     segment_origins = {}
     segment_destinations = {}
+    segment_links_index = {}
     segment_odv = {}
     for seg in segments:
         segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
@@ -620,7 +623,7 @@ def expanded_roadpathfinder(
         segment_destinations[seg] = segment_volumes['destination_sparse'].unique()
         segment_origins[seg] = origins
         segment_odv[seg] = odv
-
+        segment_links_index[seg] = expanded_links[expanded_links['segments'].apply(lambda x: seg in x)].index
     relgap = np.inf
     relgap_list = []
     phi = 1  # first iteration is AON
@@ -636,7 +639,7 @@ def expanded_roadpathfinder(
             origins = segment_origins[seg]
             targets = segment_destinations[seg]
             odv = segment_odv[seg]
-            segment_links = expanded_links[expanded_links['segments'].apply(lambda x: seg in x)]
+            segment_links = expanded_links.loc[segment_links_index[seg]]
             weight_cols = [(seg, 'cost'), 'ntleg_penalty', 'turn_penalty']
             _, pred = shortest_path(segment_links, weight_cols, index, origins, targets, num_cores)
             # assign volume
@@ -721,7 +724,7 @@ def expanded_roadpathfinder(
         for seg in segments:
             # filter links to allowed segment
             segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
-            segment_links = expanded_links[expanded_links['segments'].apply(lambda x: seg in x)]
+            segment_links = expanded_links.loc[segment_links_index[seg]]
             weight_cols = [(seg, 'cost'), 'ntleg_penalty', 'turn_penalty']
             temp_los = get_car_los(segment_volumes, segment_links, index, origins, weight_cols, num_cores)
             temp_los['segment'] = seg
