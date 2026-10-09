@@ -1,3 +1,7 @@
+## [3.10.1] (2026-10-05)
+## Changes
+* road_pathfinder overall slight optimization. jam_time more parallel friendly and more readable.
+
 ## [3.10.0] (2026-10-05)
 
 ## Changes
@@ -6,7 +10,6 @@
 
 ## Bug Fix
 * Mapmatching (routing distance was off)
-
 
 
 ## [3.9.5] (2026-10-01)
