@@ -1,4 +1,3 @@
-from typing import Tuple, Union
 import pandas as pd
 import polars as pl
 import numpy as np
@@ -16,7 +15,7 @@ def get_sparse_volumes(volumes: pd.DataFrame, index: dict[str, int]):
     origins = [*map(index.get, sources)]
     zone_index = dict(zip(sources, range(len(sources))))
 
-    volumes['origin_sparse'] = volumes['origin'].apply(zone_index.get)
+    volumes['origin_sparse'] = volumes['origin'].map(zone_index.get)
     # could do this once before to save 100ms/it.
     volumes['destination_sparse'] = volumes['destination'].apply(index.get)
     return volumes, origins
@@ -31,14 +30,20 @@ def get_sparse_matrix(edges, index):
 
 
 def shortest_path(
-    links: pd.DataFrame, weight_cols: list[str], index: dict[str, int], origins: list[int], num_cores: int
-) -> Tuple[np.ndarray, np.ndarray]:
+    links: pd.DataFrame,
+    weight_cols: list[str],
+    index: dict[str, int],
+    origins: list[int],
+    targets: list[int] | None,
+    num_cores: int,
+    limit=np.inf,
+) -> tuple[np.ndarray, np.ndarray]:
     # from  df index(a,b) and weight col, return predecessor.
     edges = links[weight_cols].sum(axis=1).reset_index().values  # build the edges again, useless
     csgraph = get_sparse_matrix(edges, index=index)
     # shortest path
     weight_matrix, predecessors = fast_dijkstra(
-        csgraph, indices=origins, return_predecessors=True, num_threads=num_cores
+        csgraph, indices=origins, targets=targets, return_predecessors=True, num_threads=num_cores, limit=limit
     )
     return weight_matrix, predecessors
 
@@ -52,7 +57,7 @@ def pl_expr_from_str(expr_str: str) -> pl.Expr:
 
 
 def apply_segment_cost(
-    links: Union[pd.DataFrame, pl.DataFrame], str_expression: str, jam_time_col: str = 'jam_time'
+    links: pd.DataFrame | pl.DataFrame, str_expression: str, jam_time_col: str = 'jam_time'
 ) -> np.ndarray:
     # simply evaluate string expression on dataframe for a pandas or polars dataframe.
     str_expression = str_expression.replace('jam_time', jam_time_col)
@@ -63,14 +68,15 @@ def apply_segment_cost(
         return links.select(expr).to_series().to_numpy()
 
 
-def jam_time(links: pl.DataFrame, vdf, flow: str = 'flow', time_col: str = 'time') -> np.ndarray:
+def jam_time(plinks: pl.DataFrame, vdf, flow: str = 'flow', time_col: str = 'time') -> np.ndarray:
     # using polars is almost 30X faster than pandas here
-    expr = pl.when(False).then(None)
+    expr_list = []
     for key, str_expression in vdf.items():
         str_expression = str_expression.replace('flow', flow).replace('time', time_col)
-        expr = expr.when(pl.col('vdf') == key).then(pl_expr_from_str(str_expression))
+        expr = pl.when(pl.col('vdf') == key).then(pl_expr_from_str(str_expression)).otherwise(0).alias(key)
+        expr_list.append(expr)
         # return a numpy array with filled with time_col
-    return links.select(expr.fill_nan(pl.col(time_col))).to_series().to_numpy()
+    return plinks.select(expr_list).to_numpy().sum(axis=1)
 
 
 def z_prime(plinks: pl.DataFrame, segments, vdf, cost_functions, phi, **kwargs):
@@ -145,14 +151,13 @@ def assign_volume(odv, predecessors, volumes, lut, n_nodes):
     return volumes
 
 
-def find_beta(links, phi_1, segments):
+def find_beta(links, phi_1, segments, derivative):
     # The Stiff is Moving - Conjugate Direction Frank-Wolfe Methods with Applications to Traffic Assignment from Mitradjieva maria
     b = [0.0, 0.0, 0.0]
     s_k_1 = links[[(seg, 's_k-1') for seg in segments]].sum(axis=1)
     s_k_2 = links[[(seg, 's_k-2') for seg in segments]].sum(axis=1)
     aux = links[[(seg, 'auxiliary_flow') for seg in segments]].sum(axis=1)
     flow = links[[(seg, 'flow') for seg in segments]].sum(axis=1)
-    derivative = links['derivative']
 
     dk_1 = s_k_1 - flow
     dk_2 = phi_1 * s_k_1 + (1 - phi_1) * s_k_2 - flow
