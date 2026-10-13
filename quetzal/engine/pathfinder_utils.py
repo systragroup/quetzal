@@ -27,7 +27,6 @@ def fast_dijkstra(
     if indices is None:
         indices = [i for i in range(csgraph.shape[0])]
     if (targets is None) & (not isinstance(limit, list)):
-        print('dijkstra')
         distances, predecessor = fd.dijkstra(
             indptr=csgraph.indptr,
             indices=csgraph.indices,
@@ -37,7 +36,6 @@ def fast_dijkstra(
             num_threads=num_threads,
         )
     else:
-        print('targets')
         distances, predecessor = fd.dijkstra_with_targets(
             indptr=csgraph.indptr,
             indices=csgraph.indices,

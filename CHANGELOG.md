@@ -1,3 +1,7 @@
+## [3.10.3] (2026-10-05)
+## Changes
+* remove targets in road_pathfinder
+
 ## [3.10.2] (2026-10-05)
 ## Changes
 * fast_dijkstra: add back old version on all targets

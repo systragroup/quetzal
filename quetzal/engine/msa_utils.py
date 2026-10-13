@@ -34,8 +34,8 @@ def shortest_path(
     weight_cols: list[str],
     index: dict[str, int],
     origins: list[int],
-    targets: list[int] | None,
-    num_cores: int,
+    targets: list[int] | None = None,
+    num_cores: int = -1,
     limit=np.inf,
 ) -> tuple[np.ndarray, np.ndarray]:
     # from  df index(a,b) and weight col, return predecessor.

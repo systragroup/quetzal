@@ -184,7 +184,7 @@ def get_car_los(volumes, links, index, zones, weight_cols, num_cores=1):
     """get the car los paths for the given volumes and links"""
     reversed_index = {v: k for k, v in index.items()}
     car_los = volumes[['origin', 'destination', 'origin_sparse', 'destination_sparse']]
-    _, predecessors = shortest_path(links, weight_cols, index, zones, None, num_cores=num_cores)
+    _, predecessors = shortest_path(links, weight_cols, index, zones, num_cores=num_cores)
     odlist = list(zip(car_los['origin_sparse'].values, car_los['destination_sparse'].values))
 
     path_dict = {}
@@ -406,14 +406,12 @@ def msa_roadpathfinder(
 
     # doesnt change between iteration. faster to precompute
     segment_origins = {}
-    segment_destinations = {}
     segment_odv = {}
     segment_links_index = {}
     for seg in segments:
         segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
         odv = segment_volumes[['origin_sparse', 'destination_sparse', seg]].values
         segment_origins[seg] = origins
-        segment_destinations[seg] = segment_volumes['destination_sparse'].unique()
         segment_odv[seg] = odv
         segment_links_index[seg] = links[links['segments'].apply(lambda x: seg in x)].index
 
@@ -430,11 +428,10 @@ def msa_roadpathfinder(
 
         for seg in segments:
             origins = segment_origins[seg]
-            targets = segment_destinations[seg]
             odv = segment_odv[seg]
             segment_links = links.loc[segment_links_index[seg]]
             weight_cols = [(seg, 'cost'), 'ntleg_penalty']
-            _, pred = shortest_path(segment_links, weight_cols, index, origins, targets, num_cores)
+            _, pred = shortest_path(segment_links, weight_cols, index, origins, num_cores=num_cores)
 
             links[(seg, 'auxiliary_flow')] = assign_volume_parallel(odv, pred, lut, n_nodes, n_links, num_cores)
 
@@ -614,13 +611,11 @@ def expanded_roadpathfinder(
 
     # those are constant. faster to precompute them
     segment_origins = {}
-    segment_destinations = {}
     segment_links_index = {}
     segment_odv = {}
     for seg in segments:
         segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
         odv = segment_volumes[['origin_sparse', 'destination_sparse', seg]].values
-        segment_destinations[seg] = segment_volumes['destination_sparse'].unique()
         segment_origins[seg] = origins
         segment_odv[seg] = odv
         segment_links_index[seg] = expanded_links[expanded_links['segments'].apply(lambda x: seg in x)].index
@@ -637,11 +632,10 @@ def expanded_roadpathfinder(
         for seg in segments:
             # filter links to allowed segment
             origins = segment_origins[seg]
-            targets = segment_destinations[seg]
             odv = segment_odv[seg]
             segment_links = expanded_links.loc[segment_links_index[seg]]
             weight_cols = [(seg, 'cost'), 'ntleg_penalty', 'turn_penalty']
-            _, pred = shortest_path(segment_links, weight_cols, index, origins, targets, num_cores)
+            _, pred = shortest_path(segment_links, weight_cols, index, origins, num_cores=num_cores)
             # assign volume
             volumes_arr = assign_volume_on_links_parallel(odv, pred, nlen, num_cores)
             links[(seg, 'auxiliary_flow')] = volumes_arr[links.index]  # links index may be not sorted are missing
