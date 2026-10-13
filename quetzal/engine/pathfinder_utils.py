@@ -15,7 +15,7 @@ def fast_dijkstra(
     indices: list[int] | None = None,
     targets: list[int] | None = None,
     return_predecessors: bool = True,
-    limit: float = np.inf,
+    limit: float | list[float] = np.inf,
     num_threads: int = -1,
 ) -> tuple[pd.DataFrame, pd.DataFrame] | pd.DataFrame:
     """
@@ -25,18 +25,29 @@ def fast_dijkstra(
     if isinstance(csgraph, csc_matrix):
         csgraph = csgraph.tocsr()
     if indices is None:
-        indices = csgraph.indptr
-
-    distances, predecessor = fd.dijkstra(
-        indptr=csgraph.indptr,
-        indices=csgraph.indices,
-        weights=csgraph.data,
-        sources=indices,
-        targets=targets,
-        cutoff=limit,
-        return_predecessors=return_predecessors,
-        num_threads=num_threads,
-    )
+        indices = [i for i in range(csgraph.shape[0])]
+    if (targets is None) & (not isinstance(limit, list)):
+        print('dijkstra')
+        distances, predecessor = fd.dijkstra(
+            indptr=csgraph.indptr,
+            indices=csgraph.indices,
+            weights=csgraph.data,
+            sources=indices,
+            cutoff=limit,
+            num_threads=num_threads,
+        )
+    else:
+        print('targets')
+        distances, predecessor = fd.dijkstra_with_targets(
+            indptr=csgraph.indptr,
+            indices=csgraph.indices,
+            weights=csgraph.data,
+            sources=indices,
+            targets=targets,
+            cutoff=limit,
+            return_predecessors=return_predecessors,
+            num_threads=num_threads,
+        )
     if return_predecessors:
         return distances, predecessor
     else:

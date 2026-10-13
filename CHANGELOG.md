@@ -1,3 +1,7 @@
+## [3.10.2] (2026-10-05)
+## Changes
+* fast_dijkstra: add back old version on all targets
+
 ## [3.10.1] (2026-10-05)
 ## Changes
 * road_pathfinder overall slight optimization. jam_time more parallel friendly and more readable.
