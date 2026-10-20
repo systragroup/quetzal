@@ -1,3 +1,9 @@
+## [3.11.3] (2026-10-05)
+## Changes
+* road_pathfinder: uses target per source for increase performances.
+* ntlegs only on access (for early exit with targets)
+* Update fast-dijkstra: can now provide targets per origin in the form of a csc_matrix
+
 ## [3.10.3] (2026-10-05)
 ## Changes
 * remove targets in road_pathfinder

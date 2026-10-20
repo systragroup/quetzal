@@ -297,11 +297,8 @@ class TestRoadPathfinder(unittest.TestCase):
         self.assertEqual(expected_link_path, found_path)
 
     def test_turn_penality_roadpathfinder(self):
-        turn_penalty = 100
         turn_penalties = {'rlink_0': ['rlink_4']}
-        links, car_los, relgap = self._get_expanded_roadpathfinder(
-            turn_penalty=turn_penalty, turn_penalties=turn_penalties
-        )
+        links, car_los, relgap = self._get_expanded_roadpathfinder(turn_penalties=turn_penalties)
         expected_path_1 = ['z1', 'a', 'b', 'c', 'e', 'z2']
         self.assertEqual(car_los['path'][0], expected_path_1)
 
