@@ -230,3 +230,37 @@ def assign_volume_on_links(odv, predecessors, volumes):
             for key in path:
                 volumes[key] += v
     return volumes
+
+
+@nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)
+def assign_volume_on_links_parallel2(odv, predecessors, nlen, num_cores=1):
+    nb.set_num_threads(num_cores)
+    volumes_mat = np.zeros((num_cores, nlen), dtype=np.float64)
+    n_odv = len(odv)
+    for j in nb.prange(num_cores):
+        start = n_odv * j // num_cores
+        end = n_odv * (j + 1) // num_cores
+        assign_volume_on_links2(odv[start:end], predecessors, volumes_mat[j])
+
+    return volumes_mat.sum(axis=0)
+
+
+@nb.njit(locals={'predecessors': nb.int32[:, ::1]})
+def assign_volume_on_links2(odv, predecessors, volumes):
+    # volumes is a numpy array lut
+    for i in range(len(odv)):
+        origin = int(odv[i, 0])
+        destination = int(odv[i, 1])
+        v = odv[i, 2]
+        pred = predecessors[origin]
+        if v <= 0:
+            continue
+        k = pred[destination]
+        while k != -9999:
+            prev = pred[k]
+            if prev == -9999:
+                break
+            volumes[k] += v
+            k = prev
+
+    return volumes

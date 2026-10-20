@@ -13,7 +13,7 @@ from quetzal.engine.msa_utils import (
     find_beta,
     get_bfw_auxiliary_flow,
     shortest_path,
-    assign_volume_on_links_parallel,
+    assign_volume_on_links_parallel2,
     get_relgap,
     get_sparse_volumes,
     get_sparse_matrix,
@@ -654,7 +654,7 @@ def expanded_roadpathfinder(
             weight_cols = [(seg, 'cost'), 'ntleg_penalty']
             _, pred = shortest_path(segment_links, weight_cols, index, origins, targets, num_cores=num_cores)
             # assign volume
-            volumes_arr = assign_volume_on_links_parallel(odv, pred, nlen, num_cores)
+            volumes_arr = assign_volume_on_links_parallel2(odv, pred, nlen, num_cores)
             links[(seg, 'auxiliary_flow')] = volumes_arr[links.index]  # links index may be not sorted are missing
             if tracker_plugin():
                 tracker_plugin.assign(odv, pred, seg, i)
