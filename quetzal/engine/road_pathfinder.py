@@ -16,6 +16,7 @@ from quetzal.engine.msa_utils import (
     assign_volume_on_links_parallel,
     get_relgap,
     get_sparse_volumes,
+    get_sparse_matrix,
 )
 
 # base vdf
@@ -38,6 +39,8 @@ def init_network(sm, method='aon', segments=['car'], time_col='time', access_tim
         'there is duplicated road links (same a,b for a link) please remove duplicated'
     )
     assert time_col in road_links.columns, f'time_column: {time_col} not found in road_links.'
+    assert 'length' in zone_to_road, 'missing column length in zone_to_road'
+
     aon = method == 'aon'
 
     test_zone_to_road_network(road_links, zone_to_road)
@@ -89,10 +92,16 @@ def test_zone_to_road_network(road_links, zone_to_road):
 
     if not access_nodes.issubset(nodes_set):
         missing_nodes = access_nodes - nodes_set
-        raise ValueError('access: Some road_nodes in zone_to_road are missing in road_links', missing_nodes)
+        raise ValueError(
+            'access: Some road_nodes in zone_to_road are missing in road_links',
+            missing_nodes,
+        )
     if not eggress_nodes.issubset(nodes_set):
         missing_nodes = eggress_nodes - nodes_set
-        raise ValueError('eggress: Some road_nodes in zone_to_road are missing in road_links', missing_nodes)
+        raise ValueError(
+            'eggress: Some road_nodes in zone_to_road are missing in road_links',
+            missing_nodes,
+        )
 
 
 def test_zone_to_road_volumes(volumes, zone_to_road):
@@ -103,7 +112,8 @@ def test_zone_to_road_volumes(volumes, zone_to_road):
         # print elements that are not in zone_to_road_set
         missing_zones = volumes_set - zone_to_road_set
         raise ValueError(
-            'Some zones in volumes are not in zone_to_road. add to zones_to_road or drop in volumes.', missing_zones
+            'Some zones in volumes are not in zone_to_road. add to zones_to_road or drop in volumes.',
+            missing_zones,
         )
 
 
@@ -124,7 +134,7 @@ def _zone_to_road_preparation(zone_to_road, segments, time_col='time', access_ti
 
 def _concat_connectors_to_roads(road_links, zone_to_road, segments, time_col='time', aon=False, log=False):
     road_links['ntleg_penalty'] = 0
-    zone_to_road['ntleg_penalty'] = 1e9
+    zone_to_road['ntleg_penalty'] = np.where(zone_to_road['direction'] == 'access', 1e9, 0)  # only on access
     if aon:
         columns = ['a', 'b', 'ntleg_penalty', time_col]
         links = pd.concat([road_links[columns], zone_to_road[columns]])
@@ -270,6 +280,7 @@ def fix_zone_to_road(
         egress = egress.reset_index().rename(columns={'index': 'from_link', 'b': 'to_link', 'a': 'from_node'})
         egress['mid_node'] = egress['to_link']
         egress['to_node'] = 'virtual'
+        egress['ntleg_penalty'] = 0  # dont want a penalty on egress
 
         connectors = pd.concat([access, egress])
         connectors.reset_index(drop=True)
@@ -408,12 +419,16 @@ def msa_roadpathfinder(
     segment_origins = {}
     segment_odv = {}
     segment_links_index = {}
+    segment_targets = {}
     for seg in segments:
         segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
         odv = segment_volumes[['origin_sparse', 'destination_sparse', seg]].values
         segment_origins[seg] = origins
         segment_odv[seg] = odv
         segment_links_index[seg] = links[links['segments'].apply(lambda x: seg in x)].index
+        segment_volumes['_val'] = 0
+        targets_mat = get_sparse_matrix(segment_volumes[['origin_sparse', 'destination_sparse', '_val']].values, index)
+        segment_targets[seg] = targets_mat.astype(bool)
 
     relgap = np.inf
     relgap_list = []
@@ -431,7 +446,8 @@ def msa_roadpathfinder(
             odv = segment_odv[seg]
             segment_links = links.loc[segment_links_index[seg]]
             weight_cols = [(seg, 'cost'), 'ntleg_penalty']
-            _, pred = shortest_path(segment_links, weight_cols, index, origins, num_cores=num_cores)
+            targets = segment_targets[seg]
+            _, pred = shortest_path(segment_links, weight_cols, index, origins, targets=targets, num_cores=num_cores)
 
             links[(seg, 'auxiliary_flow')] = assign_volume_parallel(odv, pred, lut, n_nodes, n_links, num_cores)
 
@@ -531,7 +547,6 @@ def expanded_roadpathfinder(
     tolerance=0.01,
     log=False,
     time_col='time',
-    turn_penalty=10e3,
     tracker_plugin: LinksTracker = LinksTracker(),
     turn_penalties: dict[str, str] = {},
     cost_functions: dict[str, str] | None = None,
@@ -550,7 +565,6 @@ def expanded_roadpathfinder(
     log = False : log data on each iteration.
     time_col='freeflow time column'. replace 'time' in vdf
     zone_penalty = 10e9 : penalty for zone to road links.
-    turn_penalty = 10e3 : penalty for turn links.
     track_links_list=[] list of link index to track flow at each iteration
     turn_penalties: dict of turn penalties {from_link: [to_link]}
     cost_functions : if None return dict {seg:'jam_time'} for each segments.
@@ -584,9 +598,9 @@ def expanded_roadpathfinder(
     expanded_links['sparse_index'] = expanded_links['sparse_a']  # original link_a to add cost.
     expanded_links = expanded_links.reset_index().set_index(['sparse_a', 'sparse_b'])
 
-    # turn penalties to sparse index tuple dict {(0,1): turn_penalty}
-    turn_restrictions = {(index.get(k), index.get(v)): turn_penalty for k, ls in turn_penalties.items() for v in ls}
-    expanded_links['turn_penalty'] = expanded_links.index.map(turn_restrictions).fillna(0)
+    # turn penalties: remove from graph.
+    turn_restrictions = [(index.get(k), index.get(v)) for k, ls in turn_penalties.items() for v in ls]
+    expanded_links = expanded_links[~expanded_links.index.isin(turn_restrictions)]
 
     # add sparse index to links
     links['sparse_index'] = links.index.map(index)
@@ -613,12 +627,16 @@ def expanded_roadpathfinder(
     segment_origins = {}
     segment_links_index = {}
     segment_odv = {}
+    segment_targets = {}
     for seg in segments:
         segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
         odv = segment_volumes[['origin_sparse', 'destination_sparse', seg]].values
         segment_origins[seg] = origins
         segment_odv[seg] = odv
         segment_links_index[seg] = expanded_links[expanded_links['segments'].apply(lambda x: seg in x)].index
+        segment_volumes['_val'] = 0
+        targets_mat = get_sparse_matrix(segment_volumes[['origin_sparse', 'destination_sparse', '_val']].values, index)
+        segment_targets[seg] = targets_mat.astype(bool)
     relgap = np.inf
     relgap_list = []
     phi = 1  # first iteration is AON
@@ -633,9 +651,10 @@ def expanded_roadpathfinder(
             # filter links to allowed segment
             origins = segment_origins[seg]
             odv = segment_odv[seg]
+            targets = segment_targets[seg]
             segment_links = expanded_links.loc[segment_links_index[seg]]
-            weight_cols = [(seg, 'cost'), 'ntleg_penalty', 'turn_penalty']
-            _, pred = shortest_path(segment_links, weight_cols, index, origins, num_cores=num_cores)
+            weight_cols = [(seg, 'cost'), 'ntleg_penalty']
+            _, pred = shortest_path(segment_links, weight_cols, index, origins, targets, num_cores=num_cores)
             # assign volume
             volumes_arr = assign_volume_on_links_parallel(odv, pred, nlen, num_cores)
             links[(seg, 'auxiliary_flow')] = volumes_arr[links.index]  # links index may be not sorted are missing
@@ -719,7 +738,7 @@ def expanded_roadpathfinder(
             # filter links to allowed segment
             segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
             segment_links = expanded_links.loc[segment_links_index[seg]]
-            weight_cols = [(seg, 'cost'), 'ntleg_penalty', 'turn_penalty']
+            weight_cols = [(seg, 'cost'), 'ntleg_penalty']
             temp_los = get_car_los(segment_volumes, segment_links, index, origins, weight_cols, num_cores)
             temp_los['segment'] = seg
             car_los = pd.concat([car_los, temp_los], ignore_index=True)
