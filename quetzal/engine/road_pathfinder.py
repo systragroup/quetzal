@@ -22,6 +22,8 @@ from quetzal.engine.msa_utils import (
 # base vdf
 free_flow = 'time'
 default_bpr = f'time * (1 + {0.15} * (flow/capacity)**{4})'
+NTLEG_PENALTY = 1e9
+LIMIT = NTLEG_PENALTY * 2 - 1
 
 
 def to_polars(df):
@@ -134,7 +136,7 @@ def _zone_to_road_preparation(zone_to_road, segments, time_col='time', access_ti
 
 def _concat_connectors_to_roads(road_links, zone_to_road, segments, time_col='time', aon=False, log=False):
     road_links['ntleg_penalty'] = 0
-    zone_to_road['ntleg_penalty'] = np.where(zone_to_road['direction'] == 'access', 1e9, 0)  # only on access
+    zone_to_road['ntleg_penalty'] = np.where(zone_to_road['direction'] == 'access', NTLEG_PENALTY, 0)  # only on access
     if aon:
         columns = ['a', 'b', 'ntleg_penalty', time_col]
         links = pd.concat([road_links[columns], zone_to_road[columns]])
@@ -207,6 +209,12 @@ def get_car_los(volumes, links, index, zones, weight_cols, num_cores=1):
     car_los = car_los.drop(columns=['origin_sparse', 'destination_sparse'])
 
     return car_los
+
+
+def add_zone_to_zone_node(path, zone_to_zone_dict):
+    o, d = path
+    node = zone_to_zone_dict[(o, d)]
+    return [o, node, d]
 
 
 def get_car_los_time(car_los, time_dict: dict[tuple, float]):
@@ -288,7 +296,6 @@ def fix_zone_to_road(
 
         # only apply ntleg_penalty to new virtual connectors.
         ex_links['ntleg_penalty'] = 0
-        # connectors['ntleg_penalty'] = 1e9  # value aleady in the connectors
 
         ex_links = pd.concat([ex_links, connectors])
     else:
@@ -447,7 +454,7 @@ def msa_roadpathfinder(
             segment_links = links.loc[segment_links_index[seg]]
             weight_cols = [(seg, 'cost'), 'ntleg_penalty']
             targets = segment_targets[seg]
-            _, pred = shortest_path(segment_links, weight_cols, index, origins, targets=targets, num_cores=num_cores)
+            _, pred = shortest_path(segment_links, weight_cols, index, origins, targets, LIMIT, num_cores)
 
             links[(seg, 'auxiliary_flow')] = assign_volume_parallel(odv, pred, lut, n_nodes, n_links, num_cores)
 
@@ -654,7 +661,7 @@ def expanded_roadpathfinder(
             targets = segment_targets[seg]
             segment_links = expanded_links.loc[segment_links_index[seg]]
             weight_cols = [(seg, 'cost'), 'ntleg_penalty']
-            _, pred = shortest_path(segment_links, weight_cols, index, origins, targets, num_cores=num_cores)
+            _, pred = shortest_path(segment_links, weight_cols, index, origins, targets, LIMIT, num_cores)
             # assign volume
             volumes_arr = assign_volume_on_links_parallel(odv, pred, nlen, num_cores)
             links[(seg, 'auxiliary_flow')] = volumes_arr[links.index]  # links index may be not sorted are missing

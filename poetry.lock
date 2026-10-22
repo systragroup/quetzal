@@ -878,16 +878,16 @@ tests = ["asttokens (>=2.1.0)", "coverage", "coverage-enable-subprocess", "ipyth
 
 [[package]]
 name = "fast-dijkstra"
-version = "4.0.0"
+version = "4.1.0"
 description = "Fast Dijkstra"
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "fast_dijkstra-4.0.0-cp312-cp312-macosx_26_0_arm64.whl", hash = "sha256:bd8f53c44cadb8ba4fef8f66a40acc1cfd25e31a9b40c6f46c17c74c9dd0ef7a"},
-    {file = "fast_dijkstra-4.0.0-cp312-cp312-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:1184c9d2a62f9ec9933124c5af5d95f4f6a9edceb5c02f8332922b47708cf47f"},
-    {file = "fast_dijkstra-4.0.0-cp312-cp312-win32.whl", hash = "sha256:4801e7ce7dd1c5abec8321f38841cf679e0d8b223021511e1a3def3692a933da"},
-    {file = "fast_dijkstra-4.0.0-cp312-cp312-win_amd64.whl", hash = "sha256:1359fce2bb7a65da75cb0157629e432fbbbab63f1bb5047cc2ec135299bfd283"},
+    {file = "fast_dijkstra-4.1.0-cp312-cp312-macosx_26_0_arm64.whl", hash = "sha256:dfb98f6a7434f2b9bfff3c0f9be5768f3b8c0b1b2ba975d16aca95c7a4846642"},
+    {file = "fast_dijkstra-4.1.0-cp312-cp312-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e78c56a33a45a56365d4e2bc1f3812463876a0c8f6382d4ed3f24583ed0989b9"},
+    {file = "fast_dijkstra-4.1.0-cp312-cp312-win32.whl", hash = "sha256:392ce48ce3ad1978da2f3850bd2f6656efdbab4d851e3778ff7bddbc5fbf99b7"},
+    {file = "fast_dijkstra-4.1.0-cp312-cp312-win_amd64.whl", hash = "sha256:6e5966b8a691cdb30bc847118f70d015a2952711cbc0fffa094ff10e278d2000"},
 ]
 
 [[package]]
@@ -5150,4 +5150,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.14"
-content-hash = "60f17588cd1ca6431601dc92577bd9e274a9ec23f48fed6eceff2425986e5690"
+content-hash = "fe24b641e79e3d338c3e4f854be9e93222219905fc7c2121ce535995149558c9"

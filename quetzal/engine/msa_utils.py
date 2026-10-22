@@ -21,7 +21,7 @@ def get_sparse_volumes(volumes: pd.DataFrame, index: dict[str, int]):
     return volumes, origins
 
 
-def get_sparse_matrix(edges, index):
+def get_sparse_matrix(edges, index) -> csr_matrix:
     row, col, data = edges.T
     row = np.array(row, dtype=np.int32)
     col = np.array(col, dtype=np.int32)
@@ -35,8 +35,8 @@ def shortest_path(
     index: dict[str, int],
     origins: list[int],
     targets: csr_matrix | None = None,
-    num_cores: int = -1,
     limit=np.inf,
+    num_cores: int = -1,
 ) -> tuple[np.ndarray, np.ndarray]:
     # from  df index(a,b) and weight col, return predecessor.
     edges = links[weight_cols].sum(axis=1).reset_index().values  # build the edges again, useless
@@ -203,7 +203,9 @@ def get_derivative(plinks: pl.DataFrame, vdf, cost_functions, segments, h=0.001,
         func = cost_functions.get(seg)
         x1 += apply_segment_cost(plinks, func, 'jam_time_1') * (plinks[str((seg, 'flow'))].to_numpy() + h)
         x2 += apply_segment_cost(plinks, func, 'jam_time_2') * (plinks[str((seg, 'flow'))].to_numpy() - h)
-    return (x1 - x2) / (2 * h)
+
+    derivative = (x1 - x2) / (2 * h)
+    return np.nan_to_num(derivative, nan=0)
 
 
 @nb.njit(locals={'predecessors': nb.int32[:, ::1]}, parallel=True)

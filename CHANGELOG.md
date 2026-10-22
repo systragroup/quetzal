@@ -1,6 +1,11 @@
-## [FUTURE] (2026-10-22)
+## [3.11.1] (2026-10-22)
 ## Changes
-* read_geojson: now parse dtypes and apply them. This fix Boolean field being read as float because of missing values.
+* road_pathfinder: add limit of 2xNTLEG_PENALTY to improve performance (dont visit any access other the the first one)
+
+## Bug Fix
+* road_pathfinder:replace NaN with 0 in derivative. BFW was not working 
+* fix car_los path when its a zone to zone. add the node in between.
+
 
 ## [3.11.0] (2026-10-21)
 ## Changes
