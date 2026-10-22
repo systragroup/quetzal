@@ -1,3 +1,7 @@
+## [FUTURE] (2026-10-22)
+## Changes
+* read_geojson: now parse dtypes and apply them. This fix Boolean field being read as float because of missing values.
+
 ## [3.11.0] (2026-10-21)
 ## Changes
 * road_pathfinder: uses target per source for increasd performances.

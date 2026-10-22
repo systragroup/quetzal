@@ -264,6 +264,41 @@ def to_zip(sm, path='test.zip', to_export=['pt', 'road'], inputs=[], outputs=[],
     tmp_dir.cleanup()
 
 
+NoneType = type(None)
+# [bool, float, int, str, list, dict, NoneType] dont need list or dict.
+types_hierarchy: list[type] = [bool, float, int, str, NoneType]
+
+
+def _higher_dtype(dtypes: set[type], hierarchy: list[type] = types_hierarchy) -> type:
+    for mode in hierarchy:
+        if mode in dtypes:
+            return mode
+    return NoneType
+
+
+def _get_properties_dtypes(json_data: dict, hierarchy: list[type] = types_hierarchy) -> dict[str, type]:
+    dtypes: dict[str, set[type]] = {}
+    for feature in json_data['features']:
+        for key, value in feature.get('properties', {}).items():
+            if key in dtypes:
+                dtypes[key].add(type(value))
+            else:
+                dtypes[key] = {type(value)}
+
+    higest_dtypes: dict[str, type] = {}
+    for key, items in dtypes.items():
+        higest_dtypes[key] = _higher_dtype(items, hierarchy)
+    return higest_dtypes
+
+
+def get_property_values(json_data: dict, column: str = 'road_link_list', default=None):
+    ls = []
+    for features in json_data['features']:
+        properties = features['properties']
+        ls.append(properties.get(column, default))
+    return ls
+
+
 def read_geojson(filename, **kwargs):
     """
     read geojson with gpd.read_file but add unreadable columns susch as List.
@@ -277,13 +312,16 @@ def read_geojson(filename, **kwargs):
 
     with open(filename, 'r') as j:
         json_data = json.loads(j.read())
-    json_prop = json_data['features'][0]['properties'].keys()
-    missing_columns = set(json_prop).difference(gdf.columns)
+    dtypes = _get_properties_dtypes(json_data)
+    missing_columns = set(dtypes.keys()).difference(gdf.columns)
     missing_columns.discard('index')  # dont want to add index
     for col in missing_columns:
-        d = {f['properties']['index']: f['properties'][col] for f in json_data['features']}
-        gdf[col] = gdf.index.map(d)
-
+        gdf[col] = get_property_values(json_data, col)
+    # convert geopandas dtypes. this mainly fix bool that can be read as float if a null is present
+    dtypes = {key: item for key, item in dtypes.items() if item != NoneType}  # remove Nonetypes
+    for key, dtype in dtypes.items():
+        if key in gdf.columns:
+            gdf[key] = gdf[key].astype(dtype, errors='ignore')  # to int may fail if there is NaN. stay as float
     return gdf
 
 
