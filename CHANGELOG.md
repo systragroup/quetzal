@@ -1,3 +1,10 @@
+## [3.11.2] (2026-10-23)
+## Changes
+* road_pathfinder: add support for .clip(0,limit) in the vdf
+## Bug Fix
+* road_pathfinder: add assert for duplicates index
+* road_pathfinder: was failing to compute time in car_los for o==d.
+
 ## [3.11.1] (2026-10-22)
 ## Changes
 * road_pathfinder: add limit of 2xNTLEG_PENALTY to improve performance (dont visit any access other the the first one)

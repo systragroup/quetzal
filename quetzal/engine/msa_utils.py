@@ -17,7 +17,7 @@ def get_sparse_volumes(volumes: pd.DataFrame, index: dict[str, int]):
 
     volumes['origin_sparse'] = volumes['origin'].map(zone_index.get)
     # could do this once before to save 100ms/it.
-    volumes['destination_sparse'] = volumes['destination'].apply(index.get)
+    volumes['destination_sparse'] = volumes['destination'].map(index.get)
     return volumes, origins
 
 
@@ -50,8 +50,9 @@ def shortest_path(
 
 # convert string to Polars expression
 def pl_expr_from_str(expr_str: str) -> pl.Expr:
-    tokens = set(re.findall(r'[A-Za-z_]\w*', expr_str))
-    for tok in tokens:
+    regex = r'\b[A-Za-z_]\w*\b(?!\s*[=(])'
+    variables = set(re.findall(regex, expr_str))
+    for tok in variables:
         expr_str = re.sub(rf'\b{tok}\b', f'pl.col("{tok}")', expr_str)
     return eval(expr_str, {'pl': pl})
 
@@ -191,7 +192,7 @@ def get_bfw_auxiliary_flow(links: pd.DataFrame, b: list[float], segments: list[s
     return links
 
 
-def get_derivative(plinks: pl.DataFrame, vdf, cost_functions, segments, h=0.001, **kwargs):
+def get_derivative(plinks: pl.DataFrame, vdf, cost_functions, segments, h=1, **kwargs):
     # get Cost function derivative approximation around flow+-h
     plinks = plinks.with_columns([(pl.col('flow') + h).alias('flow_1'), (pl.col('flow') - h).alias('flow_2')])
     jam_time_1 = jam_time(plinks, vdf=vdf, flow='flow_1', **kwargs)

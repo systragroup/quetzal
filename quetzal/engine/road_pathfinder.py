@@ -38,8 +38,15 @@ def init_network(sm, method='aon', segments=['car'], time_col='time', access_tim
     road_links = sm.road_links.copy()
     zone_to_road = sm.zone_to_road.copy()
     assert not road_links.set_index(['a', 'b']).index.has_duplicates, (
-        'there is duplicated road links (same a,b for a link) please remove duplicated'
+        'there are duplicated road_links (same a,b for a road_links)'
     )
+
+    assert not zone_to_road.set_index(['a', 'b']).index.has_duplicates, (
+        'there are duplicated zone_to_road (same a,b for a zone_to_road)'
+    )
+    assert not road_links.index.has_duplicates, 'there are duplicated index in road_links'
+    assert not zone_to_road.index.has_duplicates, 'there are duplicated index in zone_to_road'
+
     assert time_col in road_links.columns, f'time_column: {time_col} not found in road_links.'
     assert 'length' in zone_to_road, 'missing column length in zone_to_road'
 
@@ -212,7 +219,8 @@ def get_car_los(volumes, links, index, zones, weight_cols, num_cores=1):
 
 
 def add_zone_to_zone_node(path, zone_to_zone_dict):
-    o, d = path
+    o = path[0]
+    d = path[-1]
     node = zone_to_zone_dict[(o, d)]
     return [o, node, d]
 
