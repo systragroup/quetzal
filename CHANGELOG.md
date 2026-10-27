@@ -1,66 +1,93 @@
-## [3.11.2] (2026-10-23)
-## Changes
-* road_pathfinder: add support for .clip(0,limit) in the vdf
+Changes
+## [dev]
+
 ## Bug Fix
+
+* csa: drop_off/pickup filter now filters illegal trips during a transfer
+
+## [3.11.2] (2026-10-23)
+
+## Changes
+
+* road_pathfinder: add support for .clip(0,limit) in the vdf
+
+## Bug Fix
+
 * road_pathfinder: add assert for duplicates index
 * road_pathfinder: was failing to compute time in car_los for o==d.
 
 ## [3.11.1] (2026-10-22)
+
 ## Changes
+
 * road_pathfinder: add limit of 2xNTLEG_PENALTY to improve performance (dont visit any access other the the first one)
 * read_geojson: now parse dtypes and apply them. This fix Boolean field being read as float because of missing values.
 
 ## Bug Fix
-* road_pathfinder:replace NaN with 0 in derivative. BFW was not working 
+
+* road_pathfinder:replace NaN with 0 in derivative. BFW was not working
 * fix car_los path when its a zone to zone. add the node in between.
 
 ## [3.11.0] (2026-10-21)
+
 ## Changes
+
 * road_pathfinder: uses target per source for increasd performances.
 * road_pathfinder: ntlegs only on access (for early exit with targets)
 * Update fast-dijkstra: can now provide targets per origin in the form of a csr_matrix
 
 ## [3.10.3] (2026-10-13)
+
 ## Changes
+
 * remove targets in road_pathfinder
 
 ## [3.10.2] (2026-10-13)
+
 ## Changes
+
 * fast_dijkstra: add back old version on all targets
 
 ## [3.10.1] (2026-10-09)
+
 ## Changes
+
 * road_pathfinder overall slight optimization. jam_time more parallel friendly and more readable.
 
 ## [3.10.0] (2026-10-05)
 
 ## Changes
+
 * Update fast-dijkstra: can now provide targets and a cutoff per origin
 * Mapmatching : uses new fast-dijksta targets to save memory on big network. and cutoff per origin to speedup
 
 ## Bug Fix
+
 * Mapmatching (routing distance was off)
 
-
 ## [3.9.5] (2026-10-01)
+
 ## Changes
+
 * Mapmatching
   * add simplify to mapmatching on links at 100m.
   * Routing now use a dijkstra limit.
   * fix linemerge
 
-
 ## [3.9.4] (2026-09-30)
+
 ## Bug Fix
+
 * Mapmatching last routing element was not ok.also a bug in the very last element that was drop
 
 ## [3.9.3] (2026-09-30)
 
 ## Changes
+
 * Nested Logit
+
   * Optimize segment_paths method for large los table
   * Optimize rank_and_filter_paths method for large los table
-
 * Disable TQDM when quetzal-transport runs on AWS
 
 ## [3.9.2] (2026-09-30)
