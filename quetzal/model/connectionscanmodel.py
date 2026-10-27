@@ -4,6 +4,7 @@ import uuid
 
 import numpy as np
 import pandas as pd
+
 from quetzal.engine import csa
 from quetzal.model import timeexpandedmodel
 
@@ -79,15 +80,21 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
             self.time_interval = [0, 24 * 3600 - 1]
 
     def lighten_pt_los(self):
-        super(ConnectionScanModel, self).lighten_pt_los()
-        to_drop = ['connection_path', 'path', 'first_connections', 'last_connection', 'ntransfers']
+        super().lighten_pt_los()
+        to_drop = [
+            'connection_path',
+            'path',
+            'first_connections',
+            'last_connection',
+            'ntransfers',
+        ]
         self.pt_los = self.pt_los.drop(to_drop, axis=1, errors='ignore')
 
     def lighten_pseudo_connections(self):
         self.pseudo_connections = self.pseudo_connections[['csa_index', 'link_index', 'model_index', 'trip_id']]
 
     def lighten(self):
-        super(ConnectionScanModel, self).lighten()
+        super().lighten()
         try:
             self.lighten_pseudo_connections()
         except AttributeError:
@@ -108,13 +115,27 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
         links = links.loc[links['departure_time'] <= time_interval[1] + cutoff]
 
         try:
-            links = pd.merge(links, self.nodes[['transfer_duration']], how='left', left_on='a', right_index=True)
+            links = pd.merge(
+                links,
+                self.nodes[['transfer_duration']],
+                how='left',
+                left_on='a',
+                right_index=True,
+            )
             links['min_transfer_time'] = links['transfer_duration'].fillna(0) + min_transfer_time
         except KeyError:
             links['min_transfer_time'] = min_transfer_time
 
         pseudo_links = links[
-            ['a', 'b', 'departure_time', 'arrival_time', 'min_transfer_time', 'trip_id', 'link_sequence']
+            [
+                'a',
+                'b',
+                'departure_time',
+                'arrival_time',
+                'min_transfer_time',
+                'trip_id',
+                'link_sequence',
+            ]
         ].copy()
         pseudo_links['link_index'] = pseudo_links['model_index'] = pseudo_links.index
         pseudo_links['actual_departure_time'] = pseudo_links['departure_time']
@@ -203,7 +224,9 @@ class ConnectionScanModel(timeexpandedmodel.TimeExpandedModel):
                 pt_los_on_stop = csa.drop_off_pickup_filter(pt_los_on_stop, self.pseudo_connections, self.links)
 
             pt_los_on_stop['footpath_time'] = csa.get_footpaths_time(
-                pt_los=pt_los_on_stop, pseudo_connections=self.pseudo_connections, footpaths=self.footpaths
+                pt_los=pt_los_on_stop,
+                pseudo_connections=self.pseudo_connections,
+                footpaths=self.footpaths,
             )
 
             zones = self.zones.index

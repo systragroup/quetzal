@@ -354,19 +354,24 @@ def drop_off_pickup_filter(
         left_on='model_index',
         right_index=True,
     )
-    drop_off = (~connections.set_index('csa_index')['drop_off_type'].astype(bool)).to_dict()
-    drop_off_list = [
-        [drop_off.get(c) for c in csa_path if drop_off.get(c) is not None] for csa_path in pt_los['csa_path'].values
-    ]
-    drop_off_mask = [lst[-1] if len(lst) > 0 else True for lst in drop_off_list]
-
     pickup = (~connections.set_index('csa_index')['pickup_type'].astype(bool)).to_dict()
-    pickup_list = [
-        [pickup.get(c) for c in csa_path if pickup.get(c) is not None] for csa_path in pt_los['csa_path'].values
-    ]
-    pickup_mask = [lst[0] if len(lst) > 0 else True for lst in pickup_list]
+    drop_off = (~connections.set_index('csa_index')['drop_off_type'].astype(bool)).to_dict()
 
-    return pt_los[[x and y for x, y in zip(drop_off_mask, pickup_mask)]]
+    tid_dict = connections.set_index('csa_index')['trip_id'].to_dict()
+
+    paths = pt_los['csa_path'].values
+    trip_ids = [[tid_dict.get(lnk) for lnk in path] for path in paths]
+
+    pickup_list, drop_off_list = [], []
+    for path, tids in zip(paths, trip_ids):
+        changes = [i for i in range(1, len(tids)) if tids[i] != tids[i - 1]]
+        b_idx = [0] + changes
+        a_idx = [i - 1 for i in changes] + [-1]
+
+        pickup_list.append(all([pickup.get(path[i]) for i in b_idx]))
+        drop_off_list.append(all([drop_off.get(path[i]) for i in a_idx]))
+
+    return pt_los[[x and y for x, y in zip(drop_off_list, pickup_list)]]
 
 
 def get_footpaths_time(pt_los: pd.DataFrame, pseudo_connections: pd.DataFrame, footpaths: pd.DataFrame) -> pd.Series:
