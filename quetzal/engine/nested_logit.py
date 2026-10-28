@@ -56,6 +56,12 @@ def incremental_nest_utility(
     return composite_delta_utility
 
 
+def incremental_nest_utility_pl(delta_utilities: np.ndarray, probabilities: np.ndarray):
+    addents = np.exp(delta_utilities) * probabilities / probabilities.sum(axis=1, keepdims=True)
+    composite_delta_utility = np.log(np.nansum(addents, axis=1))
+    return composite_delta_utility
+
+
 def nest_probabilities(utilities: np.ndarray, phi: float) -> np.ndarray:
     if phi == 0:
         phi = 1
@@ -73,6 +79,14 @@ def incremental_nest_probability(
     addents = np.exp(delta_utilities) * cond_probabilities
     denum = (addents).sum(axis=1, skipna=True)
     new_probabilities = np.exp(delta_utilities) * cond_probabilities.divide(denum, axis=0)
+    return new_probabilities
+
+
+def incremental_nest_probability_pl(delta_utilities: np.ndarray, probabilities: np.ndarray):
+    cond_probabilities = probabilities / probabilities.sum(axis=1, keepdims=True)
+    addents = np.exp(delta_utilities) * cond_probabilities
+    denum = np.nansum(addents, axis=1, keepdims=True)
+    new_probabilities = np.exp(delta_utilities) * cond_probabilities / denum
     return new_probabilities
 
 
@@ -99,6 +113,22 @@ def symmetrize_utilities(utilities: pd.DataFrame | pd.Series):
     reversed_utilities = utilities.swaplevel(0, 1)
     reversed_utilities.index.names = utilities.index.names
     return utilities.add(reversed_utilities) / 2
+
+
+def symmetrize_utilities_pl(utilities: pl.DataFrame, od_cols):
+    index_cols = [*od_cols, 'segment']
+    utilities_cols = [col for col in utilities.columns if col not in index_cols]
+    reversed_utilities = utilities.with_columns(  # reverse origin and destination
+        [
+            pl.col('origin').alias('destination'),
+            pl.col('destination').alias('origin'),
+        ]
+    )
+    # join and average
+    utilities = utilities.join(reversed_utilities, on=index_cols, suffix='_reversed')
+    utilities = utilities.with_columns([(pl.col(col) + pl.col(f'{col}_reversed')) / 2 for col in utilities_cols])
+    utilities = utilities.drop([f'{col}_reversed' for col in utilities_cols])  # drop reversed cols
+    return utilities
 
 
 def plot_nests(nests):
@@ -234,7 +264,7 @@ def _preparation(mode_nests: dict[str, list[str]], phi: dict[str, float]):
     return ascending_modes, phi, neighbors
 
 
-def one_block_nested_logit_from_paths(
+def _one_block_nested_logit_from_paths(
     paths: pd.DataFrame,
     od_cols=['origin', 'destination'],
     mode_nests=None,
@@ -373,7 +403,7 @@ def one_block_nested_logit_from_paths(
     return paths, mode_utilities.reset_index(), mode_probabilities.reset_index()
 
 
-def one_block_nested_logit_from_paths_pl(
+def one_block_nested_logit_from_paths(
     paths: pd.DataFrame,
     od_cols=['origin', 'destination'],
     mode_nests=None,
@@ -400,25 +430,64 @@ def one_block_nested_logit_from_paths_pl(
     route_types = list(paths['route_type'].unique())
 
     # set to category for a boost in performance (memory and speed)
-    for name in [*od_cols, 'segment']:
+    index_cols = [*od_cols, 'segment']
+    for name in index_cols:
         paths[name] = paths[name].astype('category')
     modes_dtype = pd.CategoricalDtype(categories=set([*ascending_modes, *route_types]))
     paths['route_type'] = paths['route_type'].astype(modes_dtype)
 
     paths_pl = pl.DataFrame(paths.reset_index())
+
     paths_pl = rank_and_filter_paths_pl(paths_pl, od_cols=od_cols, n_paths_max=n_paths_max)
     rank_utilities, mode_utilities = rank_and_mode_utilities_pl(
         paths_pl, ascending_modes, route_types, phi, od_cols=od_cols
     )
 
+    if incremental:
+        ref_paths_pl = pl.DataFrame(ref_paths)
+        ref_prob_pl = pl.DataFrame(ref_probabilities)
+        for col in index_cols:  # ensure dtype before join
+            dtype = paths_pl.schema[col]
+            ref_prob_pl = ref_prob_pl.with_columns(pl.col(col).cast(dtype))
+            ref_paths_pl = ref_paths_pl.with_columns(pl.col(col).cast(dtype))
+        # order
+        order = mode_utilities.with_row_index('_order').select(*index_cols, '_order')
+        ref_prob_pl = ref_prob_pl.join(order, on=index_cols, how='left').sort('_order')
+
+        ref_paths_pl = rank_and_filter_paths_pl(ref_paths_pl, od_cols=od_cols, n_paths_max=n_paths_max)
+
+        _, ref_mode_utilities = rank_and_mode_utilities_pl(
+            ref_paths_pl, ascending_modes, route_types, phi, od_cols=od_cols, verbose=verbose
+        )
+        ref_mode_utilities = ref_mode_utilities.join(order, on=index_cols, how='left').sort('_order')
+
+        for mode in route_types:  # Delta utilitie
+            mode_utilities = mode_utilities.with_columns(
+                (pl.col(mode) - ref_mode_utilities[mode].replace(-np.inf, -100))
+                .replace(np.nan, 0)
+                .replace(-np.inf, -100)
+                .alias(mode)
+            )
+
+    if symmetric:
+        mode_utilities = symmetrize_utilities_pl(mode_utilities, od_cols)
+
+    # clip
+    cols = [col for col in mode_utilities.columns if col not in index_cols]
+    mode_utilities = mode_utilities.with_columns([pl.col(col).clip(-clip, clip) for col in cols])
+
+    # propagate utilities to higher modes (bottom -> up) (leaf => root)
     for mode in ascending_modes:
         children = neighbors.get(mode, [])
         if len(children):
             print('mode utilities', children, phi[mode], '->', mode) if verbose else None
-            arr = nest_utility(mode_utilities[children].to_numpy(), phi=phi[mode])[:, 0]
-            mode_utilities = mode_utilities.with_columns(pl.Series(arr).alias(mode))
+            if incremental:
+                arr = incremental_nest_utility_pl(mode_utilities[children].to_numpy(), ref_prob_pl[children].to_numpy())
+            else:
+                arr = nest_utility(mode_utilities[children].to_numpy(), phi=phi[mode])
+            mode_utilities = mode_utilities.with_columns(pl.DataFrame(arr, schema=[mode]))
     # reorder ?
-    mode_utilities = mode_utilities[*od_cols, 'segment', *descending_modes]
+    # mode_utilities = mode_utilities[*od_cols, 'segment', *descending_modes]
 
     mode_probabilities = rank_utilities.select([*od_cols, 'segment'])
     mode_probabilities = mode_probabilities.with_columns(pl.lit(1).alias(descending_modes[0]))
@@ -426,10 +495,15 @@ def one_block_nested_logit_from_paths_pl(
         children = neighbors.get(mode, [])
         if len(children):
             print('mode probabilities', mode, phi[mode], '->', children) if verbose else None
-            partial = nest_probabilities(utilities=mode_utilities[children].to_numpy(), phi=phi[mode])
-            mode_probabilities = mode_probabilities.with_columns(
-                [(pl.Series(partial[:, i]) * pl.col(mode)).alias(ch) for i, ch in enumerate(children)]
-            )
+            if incremental:
+                partial = incremental_nest_probability_pl(
+                    mode_utilities[children].to_numpy(), ref_prob_pl[children].to_numpy()
+                )
+            else:
+                partial = nest_probabilities(utilities=mode_utilities[children].to_numpy(), phi=phi[mode])
+            new_cols = pl.DataFrame(partial, schema=children) * mode_probabilities[mode]
+            mode_probabilities = mode_probabilities.with_columns(new_cols)
+    # sort?
     mode_probabilities = mode_probabilities[*od_cols, 'segment', *descending_modes]
 
     rank_probabilities = rank_utilities.select([*od_cols, 'segment']).clone()
@@ -437,8 +511,9 @@ def one_block_nested_logit_from_paths_pl(
         print('path probabilities', mode, phi[mode], '->', mode) if verbose else None
         cols = [col for col in rank_utilities.columns if mode in col]
         arr = nest_probabilities(rank_utilities.select(pl.col(cols)).to_numpy(), phi[mode])
+        if decimals is not None:
+            arr = np.round(arr, decimals)
         mode_prod = pl.DataFrame(arr, schema=cols)
-        # todo: round
         mode_prod = mode_prod.with_columns(pl.all().replace(0, np.nan))
         rank_probabilities = rank_probabilities.with_columns(mode_prod)
 
@@ -478,7 +553,11 @@ def one_block_nested_logit_from_paths_pl(
     merge_columns = [*od_cols, 'route_type', 'segment', 'rank']
     paths_pl = paths_pl.join(merged[[*merge_columns, 'probability']], on=merge_columns, how='left')
     paths = paths_pl.to_pandas().set_index('index')
-    return paths, mode_utilities.to_pandas(), mode_probabilities.to_pandas()
+
+    if return_od_tables:
+        return paths, mode_utilities.to_pandas(), mode_probabilities.to_pandas()
+    else:
+        return paths, pd.DataFrame(), pd.DataFrame()
 
 
 def rank_and_filter_paths_pl(
