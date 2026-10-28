@@ -27,6 +27,8 @@ LIMIT = NTLEG_PENALTY * 2 - 1
 
 
 def to_polars(df):
+    if 'geometry' in df.columns:
+        return pl.DataFrame(df.drop(columns=['geometry']))
     return pl.DataFrame(df)
 
 

@@ -1,9 +1,9 @@
-Changes
-## [dev]
+## [3.11.3] (2026-10-28)
 
 ## Bug Fix
 
 * csa: drop_off/pickup filter now filters illegal trips during a transfer
+* road_pathfinder: drop geometry when converting to polars (if present).
 
 ## [3.11.2] (2026-10-23)
 

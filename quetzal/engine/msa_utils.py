@@ -74,7 +74,7 @@ def jam_time(plinks: pl.DataFrame, vdf, flow: str = 'flow', time_col: str = 'tim
     expr_list = []
     for key, str_expression in vdf.items():
         str_expression = str_expression.replace('flow', flow).replace('time', time_col)
-        expr = pl.when(pl.col('vdf') == key).then(pl_expr_from_str(str_expression)).otherwise(0).alias(key)
+        expr = pl.when(pl.col('vdf') == key).then(pl_expr_from_str(str_expression)).otherwise(0).alias(str(key))
         expr_list.append(expr)
         # return a numpy array with filled with time_col
     return plinks.select(expr_list).to_numpy().sum(axis=1)
