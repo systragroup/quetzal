@@ -264,7 +264,12 @@ def _preparation(mode_nests: dict[str, list[str]], phi: dict[str, float]):
     return ascending_modes, phi, neighbors
 
 
-def _one_block_nested_logit_from_paths(
+def one_block_nested_logit_from_paths(*args, **kwargs):
+    # return one_block_nested_logit_from_paths_df(*args, **kwargs)
+    return one_block_nested_logit_from_paths_pl(*args, **kwargs)
+
+
+def one_block_nested_logit_from_paths_df(
     paths: pd.DataFrame,
     od_cols=['origin', 'destination'],
     mode_nests=None,
@@ -403,7 +408,7 @@ def _one_block_nested_logit_from_paths(
     return paths, mode_utilities.reset_index(), mode_probabilities.reset_index()
 
 
-def one_block_nested_logit_from_paths(
+def one_block_nested_logit_from_paths_pl(
     paths: pd.DataFrame,
     od_cols=['origin', 'destination'],
     mode_nests=None,
