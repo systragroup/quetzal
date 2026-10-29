@@ -456,7 +456,7 @@ def one_block_nested_logit_from_paths_pl(
     modes_dtype = pd.CategoricalDtype(categories=set([*ascending_modes, *route_types]))
     paths['route_type'] = paths['route_type'].astype(modes_dtype)
 
-    paths_pl = pl.DataFrame(paths.reset_index())
+    paths_pl = pl.DataFrame(paths)
 
     paths_pl = rank_and_filter_paths_pl(paths_pl, od_cols=od_cols, n_paths_max=n_paths_max)
     rank_utilities, mode_utilities = rank_and_mode_utilities_pl(
