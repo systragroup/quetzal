@@ -410,7 +410,7 @@ def one_block_nested_logit_from_paths_df(
     paths['index'] = paths.index
     paths = pd.merge(
         paths.drop('probability', axis=1, errors='ignore'),
-        merged[[*merge_columns, 'assignment_share', 'modal_split_share', 'probability']],
+        merged[[*merge_columns, 'probability']],
         on=merge_columns,
         suffixes=['_old', ''],
         how='left',
@@ -589,7 +589,6 @@ def rank_and_filter_paths_pl(
     paths = paths.with_columns(
         pl.col(by).rank(method='ordinal', descending=True).over([*od_cols, 'route_type', 'segment']).alias('rank')
     )
-
     if n_paths_max is not None:
         paths = paths.filter(pl.col('rank') <= n_paths_max)
 
@@ -680,36 +679,25 @@ def one_block_nested_logit_from_paths_np(
     modes_dtype = pd.CategoricalDtype(categories=set([*ascending_modes, *route_types]))
     paths['route_type'] = paths['route_type'].astype(modes_dtype)
 
-    # get ranks and filter n_paths_max
-    # engine = 'polars'
-    # if engine == 'pandas':
-    #     paths = rank_and_filter_paths(paths, od_cols=od_cols, n_paths_max=n_paths_max)
-    #     rank_utilities_dict, mode_utilities_dict = rank_and_mode_utilities_np_df(
-    #         paths, ascending_modes, route_types, phi, verbose=verbose
-    #     )
-    #     paths['_group'] = paths.groupby(index_cols, group_keys=False).ngroup()
-
-    # else:
-    paths_pl = pl.DataFrame(paths.reset_index())
+    paths_pl = pl.DataFrame(paths)
     paths_pl = rank_and_filter_paths_pl(paths_pl, od_cols=od_cols, n_paths_max=n_paths_max)
     groups = paths_pl.select(index_cols).unique(maintain_order=True).with_row_index('_group')
     paths_pl = paths_pl.join(groups, on=index_cols, maintain_order='left')
     rank_utilities_dict, mode_utilities_dict = rank_and_mode_utilities_np_pl(
         paths_pl, ascending_modes, route_types, phi, verbose=verbose
     )
-    paths = paths_pl.to_pandas().set_index('index')
+    paths = paths_pl.to_pandas()
+    del paths_pl
 
     if incremental:
         ref_paths_pl = pl.DataFrame(ref_paths)
         ref_prob_pl = pl.DataFrame(ref_probabilities)
         for col in index_cols:
-            dtype = paths_pl.schema[col]
+            dtype = groups.schema[col]
             ref_prob_pl = ref_prob_pl.with_columns(pl.col(col).cast(dtype))
             ref_paths_pl = ref_paths_pl.with_columns(pl.col(col).cast(dtype))
         ref_prob_pl = ref_prob_pl.join(groups, on=index_cols, how='right')  # maintain order
         ref_paths_pl = ref_paths_pl.join(groups, on=index_cols, how='right')
-
-        # order
         ref_paths_pl = rank_and_filter_paths_pl(ref_paths_pl, od_cols=od_cols, n_paths_max=n_paths_max)
         _, ref_mode_utilities = rank_and_mode_utilities_np_pl(
             ref_paths_pl, ascending_modes, route_types, phi, verbose=verbose
@@ -778,14 +766,6 @@ def one_block_nested_logit_from_paths_np(
     route_types_dict = {mode: np.int32(i) for i, mode in enumerate(route_types)}
     paths['_mode'] = paths['route_type'].map(route_types_dict).astype(int)
     paths['_rank'] = paths['rank'] - 1
-
-    # rank_probabilities = np.stack([rank_probabilities[mode] for mode in route_types])
-    # # Retrieve probabilities for each row
-    # paths['assignment_share'] = rank_probabilities[
-    #     paths['_mode'].to_numpy(),
-    #     paths['_group'].to_numpy(),
-    #     paths['_rank'].to_numpy(),
-    # ]
 
     paths['assignment_share'] = 0
     for mode, probabilities in rank_probabilities.items():
