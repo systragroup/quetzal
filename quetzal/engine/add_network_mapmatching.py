@@ -138,7 +138,7 @@ def nearest(one, links_model, radius=False):
         indices = links_model.nbrs.kneighbors(y, n_neighbors=links_model.n_neighbors_centroid, return_distance=False)
         indices = pd.DataFrame(indices).stack().reset_index()
         indices = indices.rename(columns={'level_0': 'ix_one', 'level_1': 'rank', 0: 'index_nn'}).drop(columns=['rank'])
-    indices['index_nn'] = indices['index_nn'].apply(lambda x: links_model.knn_dict.get(x))
+    indices['index_nn'] = indices['index_nn'].map(links_model.knn_dict.get)
     return indices
 
 
@@ -150,13 +150,10 @@ def emission_logprob(distance, SIGMA, p):
 
 
 def transition_logprob(dijkstra_dist, points_dist, BETA, diff):
-    c = 1 / BETA
-    delta = abs(dijkstra_dist - points_dist)
     # return c * np.exp(-c * delta)
-    if diff:
-        return c * delta
-    else:
-        return c * dijkstra_dist
+    if not diff:
+        return dijkstra_dist / BETA
+    return abs(dijkstra_dist - points_dist) / BETA
 
 
 def turning_penalty_logprob(angle, BETA, ALPHA=50):
@@ -186,7 +183,7 @@ def get_candidat_links(gps_track, links_model, method):
             print(len(unfound_points), 'unfound with radius. use KNN for those')
             index_dict = {i: k for i, k in enumerate(unfound_points)}
             temp_candidat = nearest(gps_track.loc[unfound_points], links_model, radius=False)
-            temp_candidat['ix_one'] = temp_candidat['ix_one'].apply(lambda x: index_dict.get(x))
+            temp_candidat['ix_one'] = temp_candidat['ix_one'].map(index_dict.get)
             candidat_links = pd.concat([candidat_links, temp_candidat]).sort_values('ix_one').reset_index(drop=True)
 
     candidat_links['index_nn'] = candidat_links['index_nn'].astype(np.int32)
@@ -252,6 +249,28 @@ def duplicate_nodes(original_links, original_nodes):
 
         original_links = original_links.drop(columns=['new_a', 'new_b'])
     return original_links, original_nodes
+
+
+def remove_duplicated_links(_links, by='trip_id'):
+    """
+    ex: links 1 et 2 are [rlink_1, rlink_2] and [rlink_2, rlink_3] => [rlink_1, rlink_2] and [rlink_3]
+    [1,2,3], [3,4,5],[5],[5], [5,6], [6,7] => [1,2,3], [4], [5], [], [6], [7]
+    this make sure that we dont count a road link multiple time qhen asigning load!
+    """
+    links = _links[[by, 'road_link_list']].copy()
+    links['len'] = links['road_link_list'].apply(len)
+    flat = links.explode('road_link_list').rename(columns={'road_link_list': 'current'})
+    flat['prev'] = flat.groupby(by)['current'].shift(+1)
+    flat['next'] = flat.groupby(by)['current'].shift(-1)
+    flat['prev_len'] = flat.groupby(by)['len'].shift(+1).fillna(0).astype(int)
+    flat['next_len'] = flat.groupby(by)['len'].shift(-1).fillna(0).astype(int)
+
+    flat['keep'] = flat['current'] != flat['prev']
+    flat.loc[(flat['len'] == 1) & (flat['prev_len'] > 1), 'keep'] = True
+    flat.loc[(flat['len'] >= 2) & (flat['next_len'] == 1), 'keep'] = False
+    _dict = flat[flat['keep']].groupby('index')['current'].agg(list).to_dict()
+
+    return _links.index.map(lambda x: _dict.get(x, []))
 
 
 class RoadLinks:
@@ -323,7 +342,7 @@ class RoadLinks:
         self.dict_node_b = self.links['b'].to_dict()
         self.links_index_dict = self.links['index'].to_dict()
 
-        self.length_dict = self.links['length'].to_dict()
+        self.length_dict = self.links['geometry'].apply(lambda g: g.length)
         self.geom_dict = self.links['geometry'].to_dict()
         self.geom_dict_arr = {key: get_coordinates(item) for key, item in self.geom_dict.items()}
         if 'bearing' in self.links.columns:
@@ -365,7 +384,8 @@ def get_gps_tracks(links: gpd.GeoDataFrame, by: str = 'trip_id', sequence: str =
     """
 
     links = links[[by, sequence, 'geometry']].copy()
-    links['geometry'] = links.simplify(simplify)
+    if simplify is not None:
+        links['geometry'] = links.simplify(simplify)
     last = links.reset_index().groupby(by).last().reset_index().set_index('index')
 
     last['geometry'] = last['geometry'].apply(lambda g: Point(g.coords[-1]))  # type: ignore
@@ -512,8 +532,8 @@ def add_road_offset(candidat_links: pd.DataFrame, links_dict: dict, point_dict: 
 
 def get_routing_distance(candidat_links: pd.DataFrame, links: RoadLinks, fact: int):
     if links.dist_matrix is not None:  # precomputed dijkstra on all the network
-        ori = candidat_links['road_a'].map(links.node_index.get)
-        dest = candidat_links['road_b'].map(links.node_index.get)
+        ori = candidat_links['road_a'].values
+        dest = candidat_links['road_b'].values
         return links.dist_matrix[ori, dest]
     else:
         origins_dist = candidat_links.groupby('road_a')['limit'].max()
@@ -699,11 +719,23 @@ def Mapmatching(
     )
 
     # path prob
-    # TODO: for first and last points. we could force them to be close to the link (emission). for PT links. we dont want to move them so much
-    candidat_links['path_prob'] = emission_logprob(candidat_links['distance_to_road'], SIGMA, POWER)
-    candidat_links['path_prob'] += transition_logprob(
+    candidat_links['emission'] = emission_logprob(candidat_links['distance_to_road'], SIGMA, POWER)
+
+    candidat_links['transition'] = transition_logprob(
         candidat_links['road_distance'], candidat_links['points_distance'], BETA, DIFF
     )
+
+    # first point. we try to take the road with the smallest offset
+    start_mask = candidat_links['ix_one'] == -1
+    candidat_links.loc[start_mask, 'transition'] = (candidat_links.loc[start_mask, 'offset_b']) / BETA
+    # last point. we try to take the road with the biggest offset
+    end_mask = candidat_links['ix_one'] == candidat_links['ix_one'].max()
+    candidat_links.loc[end_mask, 'transition'] = (
+        candidat_links.loc[end_mask, 'road_a'].map(links.length_dict.get) - candidat_links.loc[end_mask, 'offset_a']
+    ) / BETA
+
+    candidat_links['path_prob'] = candidat_links['emission'] + candidat_links['transition']
+    candidat_links['path_prob'] = candidat_links['path_prob'].clip(0)
 
     if turn_penalty and ('bearing_dict' in links.__dict__.keys()):
         start_angle = candidat_links['road_a'].map(links.bearing_dict.get)
@@ -728,12 +760,6 @@ def Mapmatching(
         candidat_links['path_prob'] += candidat_links['speed'].apply(lambda x: np.log10(np.max(x - MAX_SPEED, 1)))
 
     # tous les liens avec les noeuds virtuels (start finish) ont une prob constante (1 par defaut).
-    start_mask = candidat_links['ix_one'] == -1
-    end_mask = candidat_links['ix_one'] == candidat_links['ix_one'].max()
-
-    candidat_links.loc[start_mask, 'path_prob'] = 1
-    candidat_links.loc[end_mask, 'path_prob'] = 1
-
     # ======================================================
     # Dijkstra sur pseudo graph
     # ======================================================
