@@ -1,5 +1,4 @@
 import pandas as pd
-from typing import List, Dict, Union
 import numba as nb
 import numpy as np
 from quetzal.engine.pathfinder_utils import get_node_path
@@ -13,17 +12,19 @@ TrackedWeight = namedtuple('TrackedWeight', 'iteration phi beta')
 
 
 class TupleTracker(Tracker):
-    def __init__(self, track_links_list: List[tuple] = []):
+    def __init__(self, track_links_list: list[tuple] = []):
         print('This tracker only work with turn_penalties')
         # list of tuple [(rlink1, rlink2), (rlink1, rlink100),...]
         self.track_links_list = track_links_list
         self.weights = []
-        self.tracked_mat: List[TrackedArrays] = []
+        self.tracked_mat: list[TrackedArrays] = []
 
     def init(
         self,
-        links_sparse_index: Union[List[int], List[tuple[int, int]]],
-        links_to_sparse: Union[Dict[str, int], Dict[str, tuple[int, int]]],
+        links_sparse_index: list[int] | list[tuple[int, int]],
+        links_to_sparse: dict[str, int] | dict[str, tuple[int, int]],
+        *args,
+        **kwargs,
     ):
         self.n_cols = len(links_sparse_index)
         self.sparse_links_list = [[*map(links_to_sparse.get, ls)] for ls in self.track_links_list]
@@ -33,7 +34,7 @@ class TupleTracker(Tracker):
     def __call__(self) -> bool:  # when calling the instance. check if we track links or no.
         return len(self.track_links_list) > 0
 
-    def assign(self, odv, pred, seg, it):
+    def assign(self, odv, pred, seg, it, *args, **kwargs):
 
         mat = get_paths_matrix(odv, pred, self.n_cols, self.tracked_links_set)
         od_indexes_list = get_od_indexes(mat, self.sparse_links_list)
@@ -113,7 +114,7 @@ def get_paths_matrix(odv, pred, n_cols, cols_set):
     return csc_matrix((vals, (rows, cols)), shape=(n_rows, n_cols))
 
 
-def get_od_indexes(mat, track_index_list) -> List[List[int]]:
+def get_od_indexes(mat, track_index_list) -> list[list[int]]:
     # this assume that every track_index_list is a tuple of 2 values.
     # we could extend to more (everyone must have the same), and multiply more matrix
 

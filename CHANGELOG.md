@@ -1,3 +1,7 @@
+## [FUTURE] (2026-11-05)
+## Features
+* road_pathfinder: LinksTracker now also track od using the select link. use self.merge(od=True) to return the tracked OD.
+
 ## [3.11.3] (2026-10-28)
 
 ## Bug Fix

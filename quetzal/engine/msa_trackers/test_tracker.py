@@ -1,6 +1,6 @@
-from typing import List, Dict, Union
 from quetzal.engine.msa_trackers.tracker import Tracker
 from collections import namedtuple
+import pandas as pd
 
 # need to name the class the same as the namedTuple name for pickle.
 TrackedAssign = namedtuple('TrackedAssign', 'odv pred seg it')
@@ -8,25 +8,29 @@ TrackedWeight = namedtuple('TrackedWeight', 'iteration phi beta')
 
 
 class TestTracker(Tracker):
-    def __init__(self, track_links_list: List[str] = []):
+    def __init__(self, track_links_list: list[str] = []):
         self.track_links_list = track_links_list
         self.weights = []
-        self.tracked_mat: List[TrackedAssign] = []
+        self.tracked_mat: list[TrackedAssign] = []
 
     def init(
         self,
-        links_sparse_index: Union[List[int], List[tuple[int, int]]],
-        links_to_sparse: Union[Dict[str, int], Dict[str, tuple[int, int]]],
+        links_sparse_index: list[int] | list[tuple[int, int]],
+        links_to_sparse: dict[str, int] | dict[str, tuple[int, int]],
+        volumes: pd.DataFrame,
+        *args,
+        **kwargs,
     ):
         self.links_sparse_index = links_sparse_index
         self.links_to_sparse = links_to_sparse
         self.sparse_links_list = [*map(links_to_sparse.get, self.track_links_list)]
         self.sparse_to_links = {v: k for k, v in links_to_sparse.items()}
+        self.volumes = volumes
 
     def __call__(self) -> bool:  # when calling the instance. check if we track links or no.
         return True
 
-    def assign(self, odv, pred, seg, it):
+    def assign(self, odv, pred, seg, it, *args, **kwargs):
         # just save everything.
         self.tracked_mat.append(TrackedAssign(odv, pred, seg, it))
 

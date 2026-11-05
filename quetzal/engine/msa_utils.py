@@ -11,13 +11,10 @@ import re
 
 def get_sparse_volumes(volumes: pd.DataFrame, index: dict[str, int]):
     sources = set(volumes['origin'])
-    sources = sorted(list(sources))  # fix order
+    sources = sorted(sources)  # fix order
     origins = [*map(index.get, sources)]
     zone_index = dict(zip(sources, range(len(sources))))
-
-    volumes['origin_sparse'] = volumes['origin'].map(zone_index.get)
-    # could do this once before to save 100ms/it.
-    volumes['destination_sparse'] = volumes['destination'].map(index.get)
+    volumes['origin_index'] = volumes['origin'].map(zone_index.get)
     return volumes, origins
 
 

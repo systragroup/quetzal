@@ -204,9 +204,9 @@ def test_cost_functions(links: pd.DataFrame, cost_functions: dict):
 def get_car_los(volumes, links, index, zones, weight_cols, num_cores=1):
     """get the car los paths for the given volumes and links"""
     reversed_index = {v: k for k, v in index.items()}
-    car_los = volumes[['origin', 'destination', 'origin_sparse', 'destination_sparse']]
+    car_los = volumes[['origin', 'destination', 'origin_index', 'destination_sparse']]
     _, predecessors = shortest_path(links, weight_cols, index, zones, num_cores=num_cores)
-    odlist = list(zip(car_los['origin_sparse'].values, car_los['destination_sparse'].values))
+    odlist = list(zip(car_los['origin_index'].values, car_los['destination_sparse'].values))
 
     path_dict = {}
     for origin, destination in odlist:
@@ -214,8 +214,8 @@ def get_car_los(volumes, links, index, zones, weight_cols, num_cores=1):
         path = [*map(reversed_index.get, path)]
         path_dict[(origin, destination)] = path
 
-    car_los['path'] = car_los.set_index(['origin_sparse', 'destination_sparse']).index.map(path_dict)
-    car_los = car_los.drop(columns=['origin_sparse', 'destination_sparse'])
+    car_los['path'] = car_los.set_index(['origin_index', 'destination_sparse']).index.map(path_dict)
+    car_los = car_los.drop(columns=['origin_index', 'destination_sparse'])
 
     return car_los
 
@@ -357,6 +357,9 @@ def aon_roadpathfinder(links, volumes, time_col='time', num_cores=1):
     links['sparse_a'] = links['a'].apply(lambda x: index.get(x))
     links['sparse_b'] = links['b'].apply(lambda x: index.get(x))
     links = links.set_index(['sparse_a', 'sparse_b'])
+    # reindex volumes
+    volumes['origin_sparse'] = volumes['origin'].map(index.get)
+    volumes['destination_sparse'] = volumes['destination'].map(index.get)
     # sparsify volumes keys
     volumes, origins = get_sparse_volumes(volumes, index)
     weight_cols = [time_col, 'ntleg_penalty']
@@ -410,6 +413,10 @@ def msa_roadpathfinder(
     links['sparse_b'] = links['b'].apply(lambda x: index.get(x))
     links = links.reset_index().set_index(['sparse_a', 'sparse_b'])
 
+    # reindex volumes
+    volumes['origin_sparse'] = volumes['origin'].map(index.get)
+    volumes['destination_sparse'] = volumes['destination'].map(index.get)
+
     # make lut where the keys are node_a * n_nodes + node_b. this encode tuple to a 1d array.
     keys = links.index
     n_nodes = max(max(key[0] for key in keys), max(key[1] for key in keys)) + 1
@@ -430,7 +437,7 @@ def msa_roadpathfinder(
     if tracker_plugin():
         _tmp_dict = links['index'].to_dict()
         links_to_sparse = {v: k for k, v in _tmp_dict.items()}
-        tracker_plugin.init(links_sparse_index=links.index, links_to_sparse=links_to_sparse)
+        tracker_plugin.init(links_sparse_index=links.index, links_to_sparse=links_to_sparse, volumes=volumes)
 
     # doesnt change between iteration. faster to precompute
     segment_origins = {}
@@ -439,12 +446,12 @@ def msa_roadpathfinder(
     segment_targets = {}
     for seg in segments:
         segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
-        odv = segment_volumes[['origin_sparse', 'destination_sparse', seg]].values
+        odv = segment_volumes[['origin_index', 'destination_sparse', seg]].values
         segment_origins[seg] = origins
         segment_odv[seg] = odv
         segment_links_index[seg] = links[links['segments'].apply(lambda x: seg in x)].index
         segment_volumes['_val'] = 0
-        targets_mat = get_sparse_matrix(segment_volumes[['origin_sparse', 'destination_sparse', '_val']].values, index)
+        targets_mat = get_sparse_matrix(segment_volumes[['origin_index', 'destination_sparse', '_val']].values, index)
         segment_targets[seg] = targets_mat.astype(bool)
 
     relgap = np.inf
@@ -469,7 +476,7 @@ def msa_roadpathfinder(
             links[(seg, 'auxiliary_flow')] = assign_volume_parallel(odv, pred, lut, n_nodes, n_links, num_cores)
 
             if tracker_plugin():
-                tracker_plugin.assign(odv, pred, seg, i)
+                tracker_plugin.assign(odv=odv, pred=pred, seg=seg, origins=origins, it=i)
 
         auxiliary_flow_cols = [(seg, 'auxiliary_flow') for seg in segments] + ['base_flow']
         links['auxiliary_flow'] = links[auxiliary_flow_cols].sum(axis=1)
@@ -615,6 +622,10 @@ def expanded_roadpathfinder(
     expanded_links['sparse_index'] = expanded_links['sparse_a']  # original link_a to add cost.
     expanded_links = expanded_links.reset_index().set_index(['sparse_a', 'sparse_b'])
 
+    # reindex volumes
+    volumes['origin_sparse'] = volumes['origin'].map(index.get)
+    volumes['destination_sparse'] = volumes['destination'].map(index.get)
+
     # turn penalties: remove from graph.
     turn_restrictions = [(index.get(k), index.get(v)) for k, ls in turn_penalties.items() for v in ls]
     expanded_links = expanded_links[~expanded_links.index.isin(turn_restrictions)]
@@ -638,7 +649,7 @@ def expanded_roadpathfinder(
 
     # init track links
     if tracker_plugin():
-        tracker_plugin.init(links_sparse_index=links.index, links_to_sparse=index)
+        tracker_plugin.init(links_sparse_index=links.index, links_to_sparse=index, volumes=volumes)
 
     # those are constant. faster to precompute them
     segment_origins = {}
@@ -647,13 +658,14 @@ def expanded_roadpathfinder(
     segment_targets = {}
     for seg in segments:
         segment_volumes, origins = get_sparse_volumes(volumes[volumes[seg] > 0], index)
-        odv = segment_volumes[['origin_sparse', 'destination_sparse', seg]].values
         segment_origins[seg] = origins
+        odv = segment_volumes[['origin_index', 'destination_sparse', seg]].values
         segment_odv[seg] = odv
         segment_links_index[seg] = expanded_links[expanded_links['segments'].apply(lambda x: seg in x)].index
         segment_volumes['_val'] = 0
-        targets_mat = get_sparse_matrix(segment_volumes[['origin_sparse', 'destination_sparse', '_val']].values, index)
+        targets_mat = get_sparse_matrix(segment_volumes[['origin_index', 'destination_sparse', '_val']].values, index)
         segment_targets[seg] = targets_mat.astype(bool)
+
     relgap = np.inf
     relgap_list = []
     phi = 1  # first iteration is AON
@@ -676,7 +688,7 @@ def expanded_roadpathfinder(
             volumes_arr = assign_volume_on_links_parallel(odv, pred, nlen, num_cores)
             links[(seg, 'auxiliary_flow')] = volumes_arr[links.index]  # links index may be not sorted are missing
             if tracker_plugin():
-                tracker_plugin.assign(odv, pred, seg, i)
+                tracker_plugin.assign(odv=odv, pred=pred, seg=seg, origins=origins, it=i)
 
         auxiliary_flow_cols = [(seg, 'auxiliary_flow') for seg in segments] + ['base_flow']
         links['auxiliary_flow'] = links[auxiliary_flow_cols].sum(axis=1)  # for phi and relgap

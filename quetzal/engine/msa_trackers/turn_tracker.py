@@ -4,19 +4,7 @@ import numba as nb
 from quetzal.engine.pathfinder_utils import get_node_path
 from scipy.sparse import csr_matrix
 from quetzal.engine.msa_trackers.tracker import Tracker
-from typing import NamedTuple
-
-
-class TrackedVolume(NamedTuple):
-    iteration: int
-    seg: str
-    volumes: csr_matrix
-
-
-class TrackedWeight(NamedTuple):
-    iteration: int
-    phi: float
-    beta: list[float]
+from quetzal.engine.msa_trackers.tracker_utils import TrackedVolume, TrackedWeight, apply_biconjugated_frank_wolfe
 
 
 class TurnTracker(Tracker):
@@ -32,12 +20,12 @@ class TurnTracker(Tracker):
     def __call__(self) -> bool:  # when calling the instance. check if we track links or no.
         return len(self.track_links_list) > 0
 
-    def init(self, links_sparse_index: list[int], links_to_sparse: dict[str, int]) -> None:
+    def init(self, links_to_sparse: dict[str, int], *args, **kwargs) -> None:
         self.sparse_track_links_list = [*map(links_to_sparse.get, self.track_links_list)]
         self.sparse_to_links = {v: k for k, v in links_to_sparse.items()}
         self.links_list = list(self.sparse_to_links.values())  # col_labels
 
-    def assign(self, odv, pred, seg, it) -> None:
+    def assign(self, odv, pred, seg, it, *args, **kwargs) -> None:
         volumes = assign_tracked_volumes_parallel(odv, pred, self.sparse_track_links_list, self.num_threads)
         sparse_mat = array_to_csr_matrix(volumes)  # transform numpy to csr_matrix for easier lighter storage
         self.tracked_mat.append(TrackedVolume(it, seg, sparse_mat))
@@ -60,7 +48,7 @@ class TurnTracker(Tracker):
 
 def _merge(mat_datas: list[TrackedVolume], weights: list[TrackedWeight]) -> dict[str, csr_matrix]:
     # read info [iteration,segment,file]
-    segments = segments = set([el.seg for el in mat_datas])
+    segments = set([el.seg for el in mat_datas])
     # read weights [phi,beta]
     phi_dict = {w.iteration: w.phi for w in weights}
     beta_dict = {w.iteration: w.beta for w in weights}
@@ -69,31 +57,6 @@ def _merge(mat_datas: list[TrackedVolume], weights: list[TrackedWeight]) -> dict
         filtered = [mat for mat in mat_datas if mat.seg == seg]
         output[seg] = apply_biconjugated_frank_wolfe(filtered, phi_dict, beta_dict)
     return output
-
-
-def _mat_to_df(mat: csr_matrix, row_labels: list[str], col_labels: list[str]) -> pd.DataFrame:
-    return pd.DataFrame(mat.toarray(), index=row_labels, columns=col_labels)
-
-
-def apply_biconjugated_frank_wolfe(mat_datas: list[TrackedVolume], phi_dict: dict, beta_dict: dict) -> csr_matrix:
-    flow = pd.DataFrame()
-    sk_1 = pd.DataFrame()
-    sk_2 = pd.DataFrame()
-    for mat_data in mat_datas:
-        it = mat_data.iteration
-        phi = phi_dict.get(it)
-        beta = beta_dict.get(it)
-        aux_flow = mat_data.volumes
-        if it > 2:
-            aux_flow = beta[0] * aux_flow + beta[1] * sk_1 + beta[2] * sk_2
-        sk_2 = sk_1.copy()
-        sk_1 = aux_flow.copy()
-
-        if it == 0:
-            flow = aux_flow.copy()
-        else:
-            flow = (1 - phi) * flow + phi * aux_flow
-    return flow
 
 
 @nb.njit(locals={'predecessors': nb.int32[:, ::1]})  # parallel=> not thread safe. do not!
