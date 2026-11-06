@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 from quetzal.engine import connectivity, engine, gps_tracks
 from quetzal.engine.add_network import NetworkCaster
 from quetzal.engine.add_network_mapmatching import (
@@ -8,6 +9,13 @@ from quetzal.engine.add_network_mapmatching import (
     Parallel_Mapmatching,
     duplicate_nodes,
     flatten_road_link_list,
+    remove_duplicated_links,
+)
+from quetzal.engine.road_nodes_mapmatching import (
+    get_nodes_list,
+    viterbi_mapmatching,
+    RoadNetwork,
+    route_between_points,
 )
 from quetzal.engine.add_network_common_links import (
     find_common_sets,
@@ -42,6 +50,8 @@ log = model.log
 
 
 class PreparationModel(model.Model, cubemodel.cubeModel):
+    links: gpd.GeoDataFrame
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -559,6 +569,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         overwrite_nodes: bool = False,
         remove_duplicated_links_per_trips: bool = True,
         simplify=100,
+        precompute_routing=True,
         num_cores=1,
         **kwargs,
     ):
@@ -623,7 +634,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             n_neighbors_centroid=n_neighbors_centroid,
             radius_search=radius_search,
             on_centroid=on_centroid,
-            precompute_routing=True,
+            precompute_routing=precompute_routing,
         )
         gps_tracks = get_gps_tracks(self.links, by=by, sequence=sequence, simplify=simplify)
         matched_links, links_mat, _ = Parallel_Mapmatching(
@@ -642,7 +653,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
 
         index_dict = gps_tracks['link_index'].to_dict()
         matched_links.index = matched_links.index.map(index_dict.get)
-
+        self.matched_links = matched_links.copy()
         # keep first points (a for each link, and the next is the b)
         firsts = (
             matched_links.reset_index().drop_duplicates(subset=['trip_id', 'index'], keep='first').set_index('index')
@@ -664,6 +675,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         self.links['offset_b'] = self.links.index.map(offset_b_dict.get)
 
         # drop last routing per trip as its nothing (its like last trip point to next trip first point)
+        self.links_mat = links_mat.copy()
         links_mat = links_mat.drop(links_mat.groupby(by).tail(1).index)  # todo before reindexing
         links_mat.index = links_mat.index.map(index_dict.get)
 
@@ -761,26 +773,34 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
 
             self.links['geometry'] = crops(self.links, self.nodes)
 
-        def remove_dup_in_road_link_list(links):
-            """
-            ex: links 1 et 2 are [rlink_1, rlink_2] and [rlink_2, rlink_3] => [rlink_1, rlink_2] and [rlink_3]
-            this make sure that we dont count a road link multiple time qhen asigning load!
-            """
-            res = {}
-            for t in links['trip_id'].unique():
-                trip = links[links['trip_id'] == t]
-                visited_links = set()
-                for i, ls in trip['road_link_list'].items():
-                    if type(ls) is not list:
-                        ls = []
-                    new_ls = [el for el in ls if el not in visited_links]
-                    visited_links.update(new_ls)
-                    res[i] = new_ls
-            links['road_link_list'] = links.index.map(res)
-            return links
-
         if remove_duplicated_links_per_trips:
-            self.links = remove_dup_in_road_link_list(self.links)
+            self.links['road_link_list'] = remove_duplicated_links(self.links, by)
+
+    @track_args
+    def preparation_car_nodes_on_road_nodes(
+        self,
+        by='trip_id',
+        sequence='link_sequence',
+        n_neighbors=4,
+        linestring_length=True,
+        min_nodes=True,
+        remove_duplicated_links_per_trips=False,
+        num_workers=1,
+    ):
+
+        nodes_list = get_nodes_list(self.links, by=by, sequence=sequence)
+        road_network = RoadNetwork(
+            self.road_links, self.road_nodes, n_neighbors=n_neighbors, linestring_length=linestring_length
+        )
+        matched_nodes = viterbi_mapmatching(nodes_list, road_network, num_workers=num_workers)
+        matched_nodes = route_between_points(matched_nodes, road_network, by=by, min_nodes=min_nodes)
+        road_node_dict = matched_nodes.set_index('link_index')['road_node_list']
+        road_link_dict = matched_nodes.set_index('link_index')['road_link_list']
+
+        self.links['road_node_list'] = self.links.index.map(road_node_dict.get)
+        self.links['road_link_list'] = self.links.index.map(road_link_dict.get)
+        if remove_duplicated_links_per_trips:
+            self.links['road_link_list'] = remove_duplicated_links(self.links, by)
 
     @track_args
     def preparation_logit(
