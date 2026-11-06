@@ -1,6 +1,7 @@
-## [FUTURE] (2026-11-05)
+## [3.12.0] (2026-11-07)
 ## Features
 * road_pathfinder: LinksTracker now also track od using the select link. use self.merge(od=True) to return the tracked OD.
+* preparation_car_nodes_on_road_nodes(): simpler as faster mapmatching on road_nodes only. will match pt nodes to road nodes, not on links.
 
 ## [3.11.3] (2026-10-28)
 
