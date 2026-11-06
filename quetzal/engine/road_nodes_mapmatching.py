@@ -7,6 +7,8 @@ from sklearn.neighbors import NearestNeighbors
 from syspy.spatial.spatial import add_geometry_coordinates
 from quetzal.os.parallel_call import parallel_executor
 from quetzal.engine.pathfinder_utils import get_path, get_edge_path, sparse_matrix, fast_dijkstra
+from shapely.geometry import LineString
+from quetzal.engine.add_network_mapmatching import get_coordinates, get_points_along_multiline
 
 
 def get_nodes_list(links: gpd.GeoDataFrame, by: str = 'trip_id', sequence: str = 'link_sequence'):
@@ -62,28 +64,88 @@ def nearest(one, nbrs, n_neighbors=1):
     return indices
 
 
+def get_anchor_rnodes(road_links: gpd.GeoDataFrame, dist=500):
+    # get nodes in between at  every dist from a
+    def get_pts_in_between(geom, dist):
+        coords = get_coordinates(geom)
+        return get_points_along_multiline(coords, dist)[1:-1]
+
+    anchors = road_links[['a', 'b', 'length', 'geometry']].copy()
+    anchors['geometry'] = anchors.simplify(dist)
+
+    # make df of points in between
+    anchors = anchors.sort_index()
+    anchors['geometry'] = anchors['geometry'].apply(lambda g: get_pts_in_between(g, dist))  # type: ignore
+    anchors = anchors[anchors['geometry'].apply(len) > 0]
+    anchors = anchors.explode('geometry')
+    anchors = anchors.reset_index().rename(columns={'index': 'link_index'})
+    anchors['geometry'] = anchors['geometry'].apply(lambda g: Point(g))  # type: ignore
+    anchors['rank'] = anchors.groupby('link_index').cumcount()
+    # reindex
+    anchors = anchors.reset_index(drop=True)
+    anchors.index = [f'anchor_{i}' for i in anchors.index]
+    anchors.index.name = 'index'
+    return anchors
+
+
+def get_anchors_links(anchors: pd.DataFrame):
+    # from anchors. create new links
+    new_nodes = anchors.copy().reset_index()[['index', 'link_index', 'rank', 'geometry']]
+
+    firsts = anchors.groupby('link_index')[['a', 'geometry', 'rank']].agg('first').reset_index()
+    firsts = firsts.rename(columns={'a': 'index'})
+    firsts['rank'] = firsts['rank'] - 1
+
+    lasts = anchors.groupby('link_index')[['b', 'geometry', 'rank']].agg('last').reset_index()
+    lasts = lasts.rename(columns={'b': 'index'})
+    lasts['rank'] = lasts['rank'] + 1
+
+    new_links = pd.concat([firsts, new_nodes, lasts], ignore_index=True)
+    new_links = new_links.sort_values(['link_index', 'rank']).reset_index(drop=True)
+
+    shifted = new_links.groupby('link_index').shift(-1)[['index', 'geometry']]
+    new_links = new_links.merge(shifted, left_index=True, right_index=True)
+    new_links = new_links.dropna()
+
+    geometry = [LineString([a, b]) for a, b in new_links[['geometry_x', 'geometry_y']].values]
+    new_links = gpd.GeoDataFrame(new_links, geometry=geometry)
+    new_links['length'] = new_links.length
+
+    new_links = new_links.rename(columns={'index_x': 'a', 'index_y': 'b'})
+
+    new_links = new_links.reset_index(drop=True)
+    new_links.index = [f'anchor_link_{i}' for i in new_links.index]
+    new_links.index.name = 'index'
+
+    return new_links
+
+
 class RoadNetwork:
-    def __init__(self, road_links, road_nodes, n_neighbors=4, linestring_length=True):
+    def __init__(
+        self, road_links, road_nodes, n_neighbors=4, anchor_distance: int | None = None, linestring_length=True
+    ):
         self.road_links = road_links
+        self.road_nodes = road_nodes
+        self.n_neighbors = n_neighbors
+        if anchor_distance is not None:
+            cols = ['a', 'b', 'length', 'geometry']
+            anchors = get_anchor_rnodes(self.road_links, dist=anchor_distance)
+            new_links = get_anchors_links(anchors)
+            self.road_links = pd.concat([self.road_links[cols], new_links[cols]])
+            self.road_nodes = pd.concat([self.road_nodes, anchors[['geometry']]])
+
         if linestring_length:
             self.road_links['length'] = self.road_links.length
 
         self.csgraph, self.node_index = sparse_matrix(self.road_links[['a', 'b', 'length']].values)
         self.index_node = {v: k for k, v in self.node_index.items()}
 
-        road_nodes = road_nodes.reset_index()
+        self.road_nodes = self.road_nodes.reset_index()
 
-        road_nodes['sparse_index'] = road_nodes['index'].map(self.node_index)
-        road_nodes = road_nodes[~np.isnan(road_nodes['sparse_index'])]
-        road_nodes['sparse_index'] = road_nodes['sparse_index'].astype(np.int32)
-        self.road_nodes = road_nodes.set_index('sparse_index')
-
-        x = add_geometry_coordinates(self.road_nodes.copy())[['x_geometry', 'y_geometry']].values
-        self.n_neighbors = n_neighbors
-        self.nbrs = NearestNeighbors(n_neighbors=n_neighbors, algorithm='ball_tree').fit(x)
-
-        # origins = list(self.node_index.values())
-        # self.dist_matrix, _ = fast_dijkstra(csgraph=self.csgraph, indices=origins, limit=np.inf)
+        self.road_nodes['sparse_index'] = self.road_nodes['index'].map(self.node_index)
+        self.road_nodes = self.road_nodes[~np.isnan(self.road_nodes['sparse_index'])]
+        self.road_nodes['sparse_index'] = self.road_nodes['sparse_index'].astype(np.int32)
+        self.road_nodes = self.road_nodes.set_index('sparse_index').sort_index()
 
         self.road_links['sparse_a'] = self.road_links['a'].map(self.node_index.get)
         self.road_links['sparse_b'] = self.road_links['b'].map(self.node_index.get)
@@ -95,6 +157,18 @@ class RoadNetwork:
         origins_index = np.array([*map(origin_index.get, origins)], dtype=np.int32)
         dist_matrix, _ = fast_dijkstra(csgraph=self.csgraph, indices=unique_origins, limit=limit)
         return dist_matrix[origins_index, destinations]
+
+    def nearest_node(self, nodes_list: pd.DataFrame):
+        assert nodes_list.index.is_unique
+
+        x = add_geometry_coordinates(self.road_nodes.copy())[['x_geometry', 'y_geometry']].values
+        y = add_geometry_coordinates(nodes_list.copy())[['x_geometry', 'y_geometry']].values
+        self.nbrs = NearestNeighbors(n_neighbors=self.n_neighbors, algorithm='ball_tree').fit(x)
+
+        indices = self.nbrs.kneighbors(y, n_neighbors=self.n_neighbors, return_distance=False)
+        indices = pd.DataFrame(indices).stack().reset_index()
+        indices = indices.rename(columns={'level_0': 'ix_one', 'level_1': 'rank', 0: 'index_nn'})
+        return indices
 
 
 def viterbi(log_emission: np.ndarray, log_transition: csc_matrix) -> list[int]:
@@ -139,7 +213,7 @@ def get_candidates(
     if 'order' not in nodes_list.columns:
         nodes_list['order'] = nodes_list.groupby(by).cumcount()
 
-    candidats = nearest(nodes_list, road_network.nbrs, n_neighbors=road_network.n_neighbors).drop(columns=['rank'])
+    candidats = road_network.nearest_node(nodes_list).drop(columns=['rank'])
     candidats = candidats.rename(columns={'index_nn': 'candidat'})
     candidats['candidat'] = candidats['candidat'].astype(np.int32)
     candidats = candidats.merge(nodes_list[['order', by]], left_on='ix_one', right_index=True)
@@ -149,7 +223,6 @@ def get_candidates(
     candidat_geometry = road_network.road_nodes['geometry'].to_dict()
     candidat_geom_arr = candidats['candidat'].map(candidat_geometry.get).to_numpy()
     gps_geom_arr = candidats['ix_one'].map(point_geometry.get).to_numpy()
-
     emissions['distance'] = [p1.distance(p2) for p1, p2 in zip(candidat_geom_arr, gps_geom_arr)]
     emissions['logprob'] = emission_logprob(emissions['distance'], SIGMA, POWER)
     emissions = emissions.drop(columns=['ix_one'])

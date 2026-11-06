@@ -37,12 +37,13 @@ def get_points_along_line(p1, p2, distance=20):
 
 
 def get_points_along_multiline(multiline, distance=10):
-    resp = multiline
+    resp = multiline[0:1]
     num_pts = len(multiline)
     for i in range(num_pts - 1):
         new_pts = get_points_along_line(multiline[i], multiline[i + 1], distance)
         resp = np.concatenate([resp, new_pts])
-    return resp
+
+    return np.concatenate([resp, multiline[-1:]])
 
 
 @njit
@@ -109,7 +110,14 @@ def point_to_line_distance(points: np.ndarray, lines: np.ndarray) -> list[float]
     points -> geom.coords[0]
     lines -> np.array(geom.coords)
     """
-    return [_point_to_multiLine_distance(p, l) for p, l in zip(points, lines)]
+    # TODO flatten the lines list of list (need a offset arr). and do it in parallel
+    res = []
+    for p, line in zip(points, lines):
+        if len(line) < 2:
+            res.append(0)
+        else:
+            res.append(_point_to_multiLine_distance(p, line))
+    return res
 
 
 def project(A, B, normalized=False):
