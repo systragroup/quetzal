@@ -50,7 +50,6 @@ def init_network(sm, method='aon', segments=['car'], time_col='time', access_tim
     assert not zone_to_road.index.has_duplicates, 'there are duplicated index in zone_to_road'
 
     assert time_col in road_links.columns, f'time_column: {time_col} not found in road_links.'
-    assert 'length' in zone_to_road, 'missing column length in zone_to_road'
 
     aon = method == 'aon'
 

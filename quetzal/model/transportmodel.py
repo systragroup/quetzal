@@ -310,6 +310,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 keep_connectors=assign_on_connectors,
                 **kwargs,
             )
+
         time_dict = loaded_links['jam_time'].to_dict()
         if not assign_on_connectors:
             # need to add zone_to_road to time_dict, as they are not return by the roadPathfinder in that case.
@@ -317,14 +318,16 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         _rlinks = self.road_links.copy()
         _connectors = self.zone_to_road.copy()
 
-        # if assign_on_connectors:
-        #     # concat both to assign flow, time, cost in 1 operation. split after
-        #     _rlinks = pd.concat([_rlinks, self.zone_to_road])
-
         _rlinks['jam_time'] = _rlinks.set_index(['a', 'b']).index.map(time_dict.get)
-        _rlinks['jam_speed'] = _rlinks['length'] / _rlinks['jam_time'] * 3.6
         _connectors['jam_time'] = _connectors.set_index(['a', 'b']).index.map(time_dict.get)
-        _connectors['jam_speed'] = _connectors['length'] / _connectors['jam_time'] * 3.6
+        if 'length' in _rlinks:
+            _rlinks['jam_speed'] = _rlinks['length'] / _rlinks['jam_time'] * 3.6
+        else:
+            print('could not compute jam_speed on road_links. (missing length column)')
+        if 'length' in _connectors:
+            _connectors['jam_speed'] = _connectors['length'] / _connectors['jam_time'] * 3.6
+        else:
+            print('could not compute jam_speed on zone_to_road. (missing length column)')
 
         volume_dict = loaded_links['flow'].to_dict()
         _rlinks['flow'] = _rlinks.set_index(['a', 'b']).index.map(volume_dict.get)

@@ -1,3 +1,8 @@
+## [FUTURE] (2026-11-09)
+## Changes
+* road_pathfinder: length is optional, only compute jam_speed if present.
+
+
 ## [3.12.0] (2026-11-07)
 ## Features
 * road_pathfinder: LinksTracker now also track od using the select link. use self.merge(od=True) to return the tracked OD.
