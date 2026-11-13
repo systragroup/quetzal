@@ -427,7 +427,7 @@ def get_paths_groups(paths: pd.DataFrame, index_cols: list[str], engine='polars'
         group_serie = groups.to_pandas().set_index(index_cols)['_group']
         paths['_group'] = pdf.join(groups, on=index_cols)['_group'].to_numpy()
     else:
-        paths['_group'] = paths.groupby(index_cols, observed=True).ngroup()
+        paths['_group'] = paths.groupby(index_cols, observed=True, sort=False).ngroup()
         group_serie = paths.drop_duplicates('_group').set_index(index_cols)['_group']
     return paths, group_serie
 
