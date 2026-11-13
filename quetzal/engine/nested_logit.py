@@ -1,40 +1,38 @@
-from concurrent.futures import ProcessPoolExecutor
-
+from concurrent.futures import ThreadPoolExecutor
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import polars as pl
+from typing import Literal
 
 
 def rank_and_filter_paths(
     paths: pd.DataFrame,
-    od_cols: list[str] = ['origin', 'destination'],
+    index_cols: list[str] = ['origin', 'destination', 'segment'],
     by: str = 'utility',
     n_paths_max: int | None = None,
+    engine='polars',
 ):
-    paths = paths.sort_values(by=by, ascending=False)
-    paths['rank'] = paths.groupby([*od_cols, 'route_type', 'segment']).cumcount() + 1
+    if n_paths_max is not None:
+        if engine == 'polars':
+            # faster with polars to rank
+            cols = [*index_cols, 'route_type']
+            pdf = pl.DataFrame(paths[[*cols, by]])
+            ranks = pdf.select(pl.col(by).rank(method='ordinal', descending=True).over(cols)).to_numpy()
+        else:
+            # sort then cumsum gives us rank
+            paths = paths.sort_values(by=by, ascending=False)
+            ranks = paths.groupby([*index_cols, 'route_type']).cumcount() + 1
+    else:
+        # rank is random here
+        ranks = paths.groupby([*index_cols, 'route_type']).cumcount() + 1
+    paths['rank'] = ranks
     paths['rank'] = paths['rank'].astype(np.int32)
 
     if n_paths_max is not None:
         paths = paths.loc[paths['rank'] <= n_paths_max]
-
-    return paths
-
-
-def rank_and_filter_paths_pl(
-    paths: pl.DataFrame,
-    od_cols: list[str] = ['origin', 'destination'],
-    by: str = 'utility',
-    n_paths_max: int | None = None,
-):
-    paths = paths.with_columns(
-        pl.col(by).rank(method='ordinal', descending=True).over([*od_cols, 'route_type', 'segment']).alias('rank')
-    )
-    if n_paths_max is not None:
-        paths = paths.filter(pl.col('rank') <= n_paths_max)
 
     return paths
 
@@ -57,7 +55,7 @@ def incremental_nest_utility(
     return composite_delta_utility
 
 
-def incremental_nest_utility_pl(delta_utilities: np.ndarray, probabilities: np.ndarray):
+def incremental_nest_utility_np(delta_utilities: np.ndarray, probabilities: np.ndarray):
     addents = np.exp(delta_utilities) * probabilities / probabilities.sum(axis=1, keepdims=True)
     composite_delta_utility = np.log(np.nansum(addents, axis=1, keepdims=True))
     return composite_delta_utility
@@ -83,7 +81,7 @@ def incremental_nest_probability(
     return new_probabilities
 
 
-def incremental_nest_probability_pl(delta_utilities: np.ndarray, probabilities: np.ndarray):
+def incremental_nest_probability_np(delta_utilities: np.ndarray, probabilities: np.ndarray):
     cond_probabilities = probabilities / probabilities.sum(axis=1, keepdims=True)
     addents = np.exp(delta_utilities) * cond_probabilities
     denum = np.nansum(addents, axis=1, keepdims=True)
@@ -117,51 +115,20 @@ def rank_and_mode_utilities(
     return rank_utilities, mode_utilities
 
 
-def rank_and_mode_utilities_pl(
-    paths: pl.DataFrame,
-    ascending_modes: list[str],
-    route_types: list[str],
-    phi: dict[str, float],
-    index_cols: list[str] = ['origin', 'destination', 'segment'],
-    verbose=True,
-) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray], pl.DataFrame]:
-    rank_utilities = paths.pivot(on=['route_type', 'rank'], index=index_cols, values='utility').with_row_index('_group')
-    groups = rank_utilities.select([*index_cols, '_group'])
-    rank_utilities = rank_utilities.drop([*index_cols, '_group']).fill_null(-np.inf)
-
-    n_group = len(groups)
-    inf_arr = np.full((n_group, 1), -np.inf)
-
-    rank_utilities_dict = {}
-    mode_utilities_dict = {mode: inf_arr for mode in ascending_modes}
-    for mode in route_types:
-        print('path utilities', mode, phi[mode], '->', mode) if verbose else None
-        cols = [col for col in rank_utilities.columns if mode in col]  # get cols like '{"rail",1}','{"rail",2}'
-        cols = sorted(cols, key=lambda x: int(x.split(',')[1][:-1]))  # make sure they are orderd with rank [1,2,3,...]
-        mat = rank_utilities.select(pl.col(cols)).to_numpy()
-        rank_utilities_dict[mode] = mat
-        mode_utilities_dict[mode] = nest_utility(mat, phi[mode])
-    return rank_utilities_dict, mode_utilities_dict, groups
-
-
 def symmetrize_utilities(utilities: pd.DataFrame | pd.Series):
     reversed_utilities = utilities.swaplevel(0, 1)
     reversed_utilities.index.names = utilities.index.names
     return utilities.add(reversed_utilities) / 2
 
 
-def symmetrize_utilities_np(utilities: dict[str, np.ndarray], groups: pl.DataFrame):
-    rindexes = groups.with_columns(  # reverse origin and destination
-        [
-            pl.col('origin').alias('destination'),
-            pl.col('destination').alias('origin'),
-        ]
-    )
-    index_cols = groups.drop('_group').columns
-    indexes = groups.join(rindexes, on=index_cols, how='left').select(['_group', '_group_right']).sort('_group')
-    rindexes = indexes['_group_right'].to_numpy()
+def symmetrize_utilities_np(utilities: dict[str, np.ndarray], group_serie: pd.Series):
+    reversed_group = group_serie.swaplevel(0, 1)
+    reversed_group.index.names = group_serie.index.names
+    _indexes = group_serie.to_frame().merge(reversed_group, left_index=True, right_index=True).values
+    idx = _indexes[:, 0]
+    reversed_idx = _indexes[:, 1]
     for mode, utility in utilities.items():
-        utilities[mode] = (utility + utility[rindexes]) / 2
+        utilities[mode][idx] = (utility[idx] + utility[reversed_idx]) / 2
     return utilities
 
 
@@ -208,20 +175,26 @@ def nested_logit_from_paths(
     incremental=False,
     ref_paths=None,
     ref_probabilities=None,
-):
+    engine='polars',
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    if n_paths_max is None:
+        print('rank are random when n_paths_max is None')
+
     groups_col = od_cols[0]  # split by origin so each tasks have all of the paths for a given origin.
     origins = list(paths[groups_col].unique())
     groups = np.array_split(origins, nchunks)
+    _dict = {el: i for i, group in enumerate(groups) for el in group}
+    group_mask = paths[groups_col].map(_dict.get)
 
     if workers > 1:
         results = []
-        with ProcessPoolExecutor(max_workers=workers) as executor:
-            for group in tqdm(groups):
-                chunk = paths[paths[groups_col].isin(group)]
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            for i in tqdm(range(len(groups))):
                 p = executor.submit(
                     one_block_nested_logit_from_paths,
-                    chunk,
+                    paths=paths[group_mask == i],
                     phi=phi,
+                    verbose=verbose,
                     mode_nests=mode_nests,
                     od_cols=od_cols,
                     decimals=decimals,
@@ -232,6 +205,7 @@ def nested_logit_from_paths(
                     incremental=incremental,
                     ref_paths=ref_paths,
                     ref_probabilities=ref_probabilities,
+                    engine=engine,
                 )
                 results.append(p)
 
@@ -244,11 +218,11 @@ def nested_logit_from_paths(
         p_list = []
         mu_list = []
         mp_list = []
-        for group in tqdm(groups):
-            chunk = paths[paths[groups_col].isin(group)]
+        for i in tqdm(range(len(groups))):
             p, mu, mp = one_block_nested_logit_from_paths(
-                chunk,
+                paths=paths[group_mask == i],
                 phi=phi,
+                verbose=verbose,
                 mode_nests=mode_nests,
                 od_cols=od_cols,
                 decimals=decimals,
@@ -259,6 +233,7 @@ def nested_logit_from_paths(
                 incremental=incremental,
                 ref_paths=ref_paths,
                 ref_probabilities=ref_probabilities,
+                engine=engine,
             )
             p_list.append(p)
             mu_list.append(mu)
@@ -318,8 +293,9 @@ def one_block_nested_logit_from_paths_df(
     incremental=False,
     ref_paths=None,
     ref_probabilities=None,
+    engine='pandas',
 ):
-
+    index_cols = [*od_cols, 'segment']
     if 'segment' not in paths.columns:
         paths['segment'] = 'all'
 
@@ -337,7 +313,7 @@ def one_block_nested_logit_from_paths_df(
     paths['route_type'] = paths['route_type'].astype(modes_dtype)
 
     # get ranks and filter n_paths_max
-    paths = rank_and_filter_paths(paths, od_cols=od_cols, n_paths_max=n_paths_max)
+    paths = rank_and_filter_paths(paths, index_cols=index_cols, n_paths_max=n_paths_max, engine='pandas')
 
     #
     # rank utilities and initialize probabilities
@@ -350,7 +326,7 @@ def one_block_nested_logit_from_paths_df(
     mode_probabilities.columns.name = 'route_type'
 
     if incremental:
-        ref_paths = rank_and_filter_paths(ref_paths, od_cols=od_cols, n_paths_max=n_paths_max)
+        ref_paths = rank_and_filter_paths(ref_paths, index_cols=index_cols, n_paths_max=n_paths_max, engine='pandas')
         _, ref_mode_utilities = rank_and_mode_utilities(
             ref_paths, ascending_modes, route_types, phi, od_cols=od_cols, verbose=verbose
         )
@@ -443,6 +419,45 @@ def one_block_nested_logit_from_paths_df(
     return paths, mode_utilities.reset_index(), mode_probabilities.reset_index()
 
 
+def get_paths_groups(paths: pd.DataFrame, index_cols: list[str], engine='polars'):
+
+    if engine == 'polars':
+        pdf = pl.DataFrame(paths[index_cols])
+        groups = pdf.select(index_cols).unique(maintain_order=True).with_row_index('_group')
+        group_serie = groups.to_pandas().set_index(index_cols)['_group']
+        paths['_group'] = pdf.join(groups, on=index_cols)['_group'].to_numpy()
+    else:
+        paths['_group'] = paths.groupby(index_cols, observed=True).ngroup()
+        group_serie = paths.drop_duplicates('_group').set_index(index_cols)['_group']
+    return paths, group_serie
+
+
+def rank_and_mode_utilities_np(
+    df: pd.DataFrame,
+    ascending_modes: list[str],
+    route_types: list[str],
+    phi: dict[str, float],
+):
+    n_groups = df['_group'].max() + 1
+    n_ranks = df['rank'].max()
+
+    inf_arr = np.full((n_groups, 1), -np.inf)
+
+    rank_utilities_dict = {}
+    mode_utilities_dict = {mode: inf_arr for mode in ascending_modes}
+
+    for mode in route_types:
+        mat = np.full((n_groups, n_ranks), -np.inf)
+        rows = df['_group'].to_numpy()
+        cols = df['rank'].to_numpy() - 1
+        data = df['utility'].to_numpy()
+        mat[rows, cols] = data
+        rank_utilities_dict[mode] = mat
+        mode_utilities_dict[mode] = nest_utility(mat, phi[mode])
+
+    return rank_utilities_dict, mode_utilities_dict
+
+
 def one_block_nested_logit_from_paths_np(
     paths: pd.DataFrame,
     od_cols=['origin', 'destination'],
@@ -457,6 +472,7 @@ def one_block_nested_logit_from_paths_np(
     incremental: bool = False,
     ref_paths: pd.DataFrame | None = None,
     ref_probabilities: pd.DataFrame | None = None,
+    engine: Literal['polars', 'pandas'] = 'polars',
 ):
     index_cols = [*od_cols, 'segment']
     if 'segment' not in paths.columns:
@@ -473,69 +489,64 @@ def one_block_nested_logit_from_paths_np(
     for name in [*od_cols, 'segment', 'route_type']:
         paths[name] = paths[name].astype('category')
 
-    paths_pl = pl.DataFrame(paths.reset_index())
-    paths_pl = rank_and_filter_paths_pl(paths_pl, od_cols=od_cols, n_paths_max=n_paths_max)
-    rank_utilities_dict, mode_utilities_dict, groups = rank_and_mode_utilities_pl(
-        paths_pl, ascending_modes, route_types, phi, index_cols, verbose=verbose
-    )
-    paths_pl = paths_pl.join(groups, on=index_cols, maintain_order='left')
-    paths = paths_pl.to_pandas().set_index('index')
-    del paths_pl
+    paths = rank_and_filter_paths(paths, index_cols=index_cols, n_paths_max=n_paths_max, engine=engine)
+    paths, group_serie = get_paths_groups(paths, index_cols=index_cols, engine=engine)
 
+    rank_utilities_dict, mode_utilities = rank_and_mode_utilities_np(paths, ascending_modes, route_types, phi)
     if incremental:
-        ref_paths_pl = pl.DataFrame(ref_paths)
-        ref_prob_pl = pl.DataFrame(ref_probabilities)
-        for col in index_cols:
-            dtype = groups.schema[col]
-            ref_prob_pl = ref_prob_pl.with_columns(pl.col(col).cast(dtype))
-            ref_paths_pl = ref_paths_pl.with_columns(pl.col(col).cast(dtype))
-        ref_prob_pl = ref_prob_pl.join(groups, on=index_cols, how='right')  # maintain order
-        ref_paths_pl = ref_paths_pl.join(groups, on=index_cols, how='right')
-        ref_paths_pl = rank_and_filter_paths_pl(ref_paths_pl, od_cols=od_cols, n_paths_max=n_paths_max)
-        _, ref_mode_utilities, _ = rank_and_mode_utilities_pl(
-            ref_paths_pl, ascending_modes, route_types, phi, index_cols, verbose=verbose
-        )
+        assert ref_probabilities is not None
+        assert ref_paths is not None
+
+        ref_probabilities = ref_probabilities.merge(group_serie, on=index_cols, how='left')
+        ref_probabilities = ref_probabilities.sort_values('_group')
+
+        ref_paths = rank_and_filter_paths(ref_paths, index_cols=index_cols, n_paths_max=n_paths_max)
+        ref_paths = ref_paths.merge(group_serie, on=index_cols, how='left')
+        _, ref_mode_utilities = rank_and_mode_utilities_np(ref_paths, ascending_modes, route_types, phi)
+
         for mode in route_types:  # Delta utilitie
             ref_utility = ref_mode_utilities[mode]
             ref_utility[np.isinf(ref_utility)] = -100
-            utility = mode_utilities_dict[mode]
+            utility = mode_utilities[mode]
             utility = utility - ref_utility
             utility[np.isnan(ref_utility)] = 0
             utility[np.isinf(ref_utility)] = -100
-            mode_utilities_dict[mode] = utility
+            mode_utilities[mode] = utility
 
     if symmetric:
-        mode_utilities_dict = symmetrize_utilities_np(mode_utilities_dict, groups)
+        mode_utilities = symmetrize_utilities_np(mode_utilities, group_serie)
 
-    for key, utility in mode_utilities_dict.items():
-        mode_utilities_dict[key] = utility.clip(-clip, clip)  # TODO was reversed...why
+    for key, utility in mode_utilities.items():
+        mode_utilities[key] = utility.clip(-clip, clip)  # TODO was reversed...why
 
     # propagate utilities to higher modes (bottom -> up) (leaf => root)
     for mode in ascending_modes:
         children = neighbors.get(mode, [])
         if len(children):
             print('mode utilities', children, phi[mode], '->', mode) if verbose else None
-            utilities = np.hstack([mode_utilities_dict[ch] for ch in children])
+            utilities = np.hstack([mode_utilities[ch] for ch in children])
             if incremental:
-                mode_utilities_dict[mode] = incremental_nest_utility_pl(utilities, ref_prob_pl[children].to_numpy())
+                assert ref_probabilities is not None
+                mode_utilities[mode] = incremental_nest_utility_np(utilities, ref_probabilities[children].to_numpy())
             else:  # Direct Logit
-                mode_utilities_dict[mode] = nest_utility(utilities, phi=phi[mode])
+                mode_utilities[mode] = nest_utility(utilities, phi=phi[mode])
 
     #
     #  mode probability
     #
     #  propagate probabilities
+    n_groups = paths['_group'].max() + 1
 
-    arr = np.full_like(len(groups), 1)
+    arr = np.full((n_groups, 1), 1)
     mode_probabilities = {mode: arr for mode in descending_modes}
-
     for mode in descending_modes:
         children = neighbors.get(mode, [])
         if len(children):
             print('mode probabilities', mode, phi[mode], '->', children) if verbose else None
-            utilities = np.hstack([mode_utilities_dict[ch] for ch in children if ch in mode_utilities_dict])
+            utilities = np.hstack([mode_utilities[ch] for ch in children if ch in mode_utilities])
             if incremental:
-                partial = incremental_nest_probability_pl(utilities, ref_prob_pl[children].to_numpy())
+                assert ref_probabilities is not None
+                partial = incremental_nest_probability_np(utilities, ref_probabilities[children].to_numpy())
             else:
                 partial = nest_probabilities(utilities=utilities, phi=phi[mode])
             probabilities = mode_probabilities[mode] * partial
@@ -550,7 +561,9 @@ def one_block_nested_logit_from_paths_np(
     rank_probabilities = {}
     for mode in route_types:
         print('path probabilities', mode, phi[mode], '->', mode) if verbose else None
+        # probabilities = sparse_nest_probabilities(rank_utilities_dict[mode], phi[mode])
         probabilities = nest_probabilities(rank_utilities_dict[mode], phi[mode])
+
         probabilities[np.isnan(probabilities)] = 0
         if decimals is not None:
             probabilities = np.round(probabilities, decimals)
@@ -579,12 +592,12 @@ def one_block_nested_logit_from_paths_np(
     paths['probability'] = paths['assignment_share'] * paths['modal_split_share']
     paths = paths.drop(columns=['_group', '_mode', '_rank', 'assignment_share', 'modal_split_share'])
     if return_od_tables:
-        utility_df = groups.select(index_cols).to_pandas()
-        probability_df = groups.select(index_cols).to_pandas()
+        utility_df = group_serie.index.to_frame(index=False)
+        probability_df = utility_df.copy()
+        order = group_serie.to_numpy()
         for mode in descending_modes:
-            utility_df[mode] = mode_utilities_dict[mode]
-            probability_df[mode] = mode_probabilities[mode]
-
+            utility_df[mode] = mode_utilities[mode][order]
+            probability_df[mode] = mode_probabilities[mode][order]
         return paths, utility_df, probability_df
     else:
         return paths, pd.DataFrame(), pd.DataFrame()

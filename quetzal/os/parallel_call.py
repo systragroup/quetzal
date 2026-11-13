@@ -10,6 +10,7 @@ from typing import Any
 
 import nbformat
 from nbconvert import PythonExporter
+from concurrent.futures import ThreadPoolExecutor
 
 
 def add_freeze_support(file):
@@ -39,26 +40,25 @@ def parallel_call_jobs(jobs, mode='w', workers=1, sleep=1, raise_errors=False):
     for i, file, arg, stdout_file, stderr_file in jobs:
         cwd, file = split_cwd_and_file(file)
         print(i, file, arg)
-        with open(stdout_file, mode) as stdout:
-            with open(stderr_file, mode) as stderr:
-                if type(arg) == tuple:
-                    command_list = [sys.executable, file] + list(arg)
-                else:
-                    command_list = [sys.executable, file] + [arg]
-                # my_env = os.environ
-                # my_env["PYTHONPATH"] = os.pathsep.join(sys.path)[1:]
-                popens[i] = subprocess.Popen(
-                    command_list,
-                    stdout=stdout,
-                    stderr=stderr,
-                    # env=my_env,
-                    cwd=cwd,
-                )
-                if (i + 1) % workers == 0 or (i + 1) == len(jobs):
-                    # print('waiting')
-                    for p in popens.values():
-                        p.wait()
-                        p.terminate()
+        with open(stdout_file, mode) as stdout, open(stderr_file, mode) as stderr:
+            if type(arg) == tuple:
+                command_list = [sys.executable, file] + list(arg)
+            else:
+                command_list = [sys.executable, file] + [arg]
+            # my_env = os.environ
+            # my_env["PYTHONPATH"] = os.pathsep.join(sys.path)[1:]
+            popens[i] = subprocess.Popen(
+                command_list,
+                stdout=stdout,
+                stderr=stderr,
+                # env=my_env,
+                cwd=cwd,
+            )
+            if (i + 1) % workers == 0 or (i + 1) == len(jobs):
+                # print('waiting')
+                for p in popens.values():
+                    p.wait()
+                    p.terminate()
         time.sleep(sleep)
     for i, file, arg, stdout_file, stderr_file in jobs:
         cwd, file = split_cwd_and_file(file)
@@ -66,7 +66,7 @@ def parallel_call_jobs(jobs, mode='w', workers=1, sleep=1, raise_errors=False):
         with open(stderr_file, 'r', encoding='latin') as stderr:
             content = stderr.read()
             if 'Error' in content and 'end_of_notebook' not in content:
-                print('subprocess **{} {}** terminated with an error.'.format(subprocess_name, arg))
+                print(f'subprocess **{subprocess_name} {arg}** terminated with an error.')
                 if raise_errors:
                     raise Exception(content)
 
@@ -122,7 +122,7 @@ def parallel_call_notebooks(
             except FileNotFoundError:
                 pass
     end = time.time()
-    print('Total: {} seconds'.format(int(end - start)))
+    print(f'Total: {int(end - start)} seconds')
     if return_jobs:
         return all_jobs
 
@@ -304,6 +304,10 @@ def parallel_executor(function, method='pool', num_workers: int = 1, parallel_kw
         results = process_pool_executor(
             function=function, num_workers=num_workers, parallel_kwargs=parallel_kwargs, **kwargs
         )
+    elif method == 'thread':
+        results = thread_pool_executor(
+            function=function, num_workers=num_workers, parallel_kwargs=parallel_kwargs, **kwargs
+        )
 
     elif method == 'pipe':
         results = process_pipe_executor(
@@ -328,14 +332,24 @@ def parallel_executor(function, method='pool', num_workers: int = 1, parallel_kw
 
 
 def process_pool_executor(function, num_workers=1, parallel_kwargs={}, **kwargs):
+    batchs_kwargs_list = [{key: chunk} for key, chunks in parallel_kwargs.items() for chunk in chunks]
     results = []
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
-        for i in range(num_workers):
-            batch_kwargs = {key: item[i] for key, item in parallel_kwargs.items()}
+        for batch_kwargs in batchs_kwargs_list:
             p = executor.submit(function, **batch_kwargs, **kwargs)
             results.append(p)
     results = [res.result() for res in results]
     return results
+
+
+def thread_pool_executor(function, num_workers=1, parallel_kwargs={}, **kwargs):
+    batchs_kwargs_list = [{key: chunk} for key, chunks in parallel_kwargs.items() for chunk in chunks]
+    futures = []
+    with ThreadPoolExecutor(max_workers=num_workers) as executor:
+        for batch_kwargs in batchs_kwargs_list:
+            p = executor.submit(function, **batch_kwargs, **kwargs)
+            futures.append(p)
+    return [res.result() for res in futures]
 
 
 def process_wrapper(function, process_kwargs, kwargs, queue, i):
@@ -396,15 +410,15 @@ def process_pipe_executor(function, num_workers=1, parallel_kwargs={}, **kwargs)
     # as the order in wich the Queue results is extract is not in the order it was created.
     # we keep track of the order and assign the result in the correct index of results
     # https://aws.amazon.com/blogs/compute/parallel-processing-in-python-with-aws-lambda/
+    batchs_kwargs_list = [{key: chunk} for key, chunks in parallel_kwargs.items() for chunk in chunks]
     processes = []
     parent_connections = []
     child_connections = []
     results = [None] * num_workers
-    for i in range(num_workers):
+    for i, process_kwargs in enumerate(batchs_kwargs_list):
         parent_conn, child_conn = Pipe()
         parent_connections.append(parent_conn)
         child_connections.append(child_conn)
-        process_kwargs = {key: item[i] for key, item in parallel_kwargs.items()}
         process = Process(target=process_wrapper_pipe, args=(function, process_kwargs, kwargs, child_conn, i))
         process.start()
         processes.append(process)

@@ -72,6 +72,9 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
     volumes: pd.DataFrame
     zones: gpd.GeoDataFrame
 
+    los: pd.DataFrame
+    te_los: pd.DataFrame
+
     @track_args
     def step_distribution(self, segmented=False, deterrence_matrix=None, **od_volume_from_zones_kwargs):
         """Function performing distribution of flows with doubly constrained algorithm,
@@ -1195,6 +1198,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         symmetric=False,
         incremental=False,
         clip=np.inf,
+        engine='polars',
     ):
         """Performs the nested logit : compute the probabilities per segment of the paths in self.los
         after having computed the utilities with function analysis_mode_utility.
@@ -1253,9 +1257,11 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             raise Exception('symmetric utility unspported for nchunks > 1')
 
         if time_expanded:
+            assert self.te_los.index.is_unique, 'te_los must have unique index'
             od_cols.append('wished_departure_time')
             segmented_paths = segment_paths(self.te_los, self.segments, od_cols=od_cols)
         else:
+            assert self.los.index.is_unique, 'los must have unique index'
             segmented_paths = segment_paths(self.los, self.segments, od_cols=od_cols)
 
         if incremental:
@@ -1295,9 +1301,10 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 incremental=incremental,
                 ref_paths=ref_paths,
                 ref_probabilities=ref_probabilities,
+                engine=engine,
             )
-
         except AssertionError:
+            print('assert error')
             p_list = []
             mu_list = []
             mp_list = []
@@ -1319,6 +1326,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                     incremental=incremental,
                     ref_paths=ref_paths,
                     ref_probabilities=ref_probabilities,
+                    engine=engine,
                 )
                 p_list.append(p)
                 mu_list.append(mu)
@@ -1328,15 +1336,16 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
             mu = pd.concat(mu_list, ignore_index=True)
             mp = pd.concat(mp_list, ignore_index=True)
 
-        p.reset_index(inplace=True)
-        p.set_index(['segment', 'index'], inplace=True)
         for segment in self.segments:
+            segment_path = p.loc[p['segment'] == segment, 'probability']
+            index = segment_path.index.to_numpy()
+            probs = segment_path.to_numpy()
             if time_expanded:
-                self.te_los[(segment, 'probability')] = p.loc[segment]['probability']
+                self.te_los[(segment, 'probability')] = 0
+                self.te_los[(segment, 'probability')].loc[index] = probs
             else:
-                assert self.los.index.is_unique, 'los must have unique index'
-                self.los[(segment, 'probability')] = p.loc[segment]['probability']
-
+                self.los[(segment, 'probability')] = 0
+                self.los[(segment, 'probability')].loc[index] = probs
         self.probabilities = mp
         self.utilities = mu
 
