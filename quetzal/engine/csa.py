@@ -350,12 +350,10 @@ def drop_off_pickup_filter(
     links: pd.DataFrame,
 ) -> pd.DataFrame:
     connections = pseudo_connections.merge(
-        links[['drop_off_type', 'pickup_type']],
-        left_on='model_index',
-        right_index=True,
+        links[['drop_off_type', 'pickup_type']], left_on='model_index', right_index=True, how='left'
     )
-    pickup = (~connections.set_index('csa_index')['pickup_type'].astype(bool)).to_dict()
-    drop_off = (~connections.set_index('csa_index')['drop_off_type'].astype(bool)).to_dict()
+    pickup = (~connections.set_index('csa_index')['pickup_type'].fillna(0.0).astype(bool)).to_dict()
+    drop_off = (~connections.set_index('csa_index')['drop_off_type'].fillna(0.0).astype(bool)).to_dict()
 
     tid_dict = connections.set_index('csa_index')['trip_id'].to_dict()
 

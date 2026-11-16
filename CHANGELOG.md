@@ -1,10 +1,19 @@
-## [FUTURE] (2026-11-09)
-## Changes
-* road_pathfinder: length is optional, only compute jam_speed if present.
+## [3.12.1] (2026-11-16)
 
+## Changes
+
+* road_pathfinder: length is optional, only compute jam_speed if present.
+* step_logit: add verbose parameter
+* step_logit: add a definition of infity for the mode utility 
+
+## Bug Fix
+
+* csa: drop_off/pickup filter was skipping foothpaths, shifting the whole process of filtering
 
 ## [3.12.0] (2026-11-07)
+
 ## Features
+
 * road_pathfinder: LinksTracker now also track od using the select link. use self.merge(od=True) to return the tracked OD.
 * preparation_car_nodes_on_road_nodes(): simpler as faster mapmatching on road_nodes only. will match pt nodes to road nodes, not on links.
 

@@ -75,16 +75,18 @@ def incremental_nest_probability(
     return new_probabilities
 
 
-def rank_and_mode_utilities(paths, ascending_modes, route_types, phi, od_cols=['origin', 'destination'], verbose=True):
+def rank_and_mode_utilities(
+    paths, ascending_modes, route_types, phi, od_cols=['origin', 'destination'], verbose=True, inf=np.inf
+):
     # rank_utilities
     # a bit faster than set_index() unstack()
     rank_utilities = paths.pivot(index=[*od_cols, 'segment'], columns=['route_type', 'rank'], values='utility')
-    rank_utilities.fillna(-np.inf, inplace=True)
+    rank_utilities.fillna(-inf, inplace=True)
 
     # mode utilities
     mode_utilities = pd.DataFrame(index=rank_utilities.index)
     mode_utilities.columns.name = 'route_type'
-    mode_utilities[ascending_modes] = -np.inf
+    mode_utilities[ascending_modes] = -inf
 
     # aggregate rank_utilities
     for mode in route_types:
@@ -140,6 +142,7 @@ def nested_logit_from_paths(
     return_od_tables=True,
     symmetric=False,
     clip=-np.inf,
+    inf=np.inf,
     incremental=False,
     ref_paths=None,
     ref_probabilities=None,
@@ -164,9 +167,11 @@ def nested_logit_from_paths(
                     return_od_tables=return_od_tables,
                     symmetric=symmetric,
                     clip=clip,
+                    inf=inf,
                     incremental=incremental,
                     ref_paths=ref_paths,
                     ref_probabilities=ref_probabilities,
+                    verbose=verbose,
                 )
                 results.append(p)
 
@@ -190,9 +195,11 @@ def nested_logit_from_paths(
                 n_paths_max=n_paths_max,
                 symmetric=symmetric,
                 clip=clip,
+                inf=inf,
                 incremental=incremental,
                 ref_paths=ref_paths,
                 ref_probabilities=ref_probabilities,
+                verbose=verbose,
             )
             p_list.append(p)
             mu_list.append(mu)
@@ -244,6 +251,7 @@ def one_block_nested_logit_from_paths(
     return_od_tables=True,
     symmetric=False,
     clip=np.inf,
+    inf=np.inf,
     incremental=False,
     ref_paths=None,
     ref_probabilities=None,
@@ -272,7 +280,7 @@ def one_block_nested_logit_from_paths(
     # rank utilities and initialize probabilities
     #
     rank_utilities, mode_utilities = rank_and_mode_utilities(
-        paths, ascending_modes, route_types, phi, od_cols=od_cols, verbose=verbose
+        paths, ascending_modes, route_types, phi, od_cols=od_cols, verbose=verbose, inf=inf
     )
 
     mode_probabilities = pd.DataFrame(index=rank_utilities.index)
@@ -281,19 +289,17 @@ def one_block_nested_logit_from_paths(
     if incremental:
         ref_paths = rank_and_filter_paths(ref_paths, od_cols=od_cols, n_paths_max=n_paths_max)
         _, ref_mode_utilities = rank_and_mode_utilities(
-            ref_paths, ascending_modes, route_types, phi, od_cols=od_cols, verbose=verbose
+            ref_paths, ascending_modes, route_types, phi, od_cols=od_cols, verbose=verbose, inf=inf
         )
 
         for mode in route_types:
-            mode_utilities[mode] = (
-                mode_utilities[mode].sub(ref_mode_utilities[mode].replace([-np.inf], -100)).fillna(0.0)
-            )  # Delta utilitie
-            mode_utilities[mode] = mode_utilities[mode].replace([-np.inf], -100)
+            mode_utilities[mode] = mode_utilities[mode].sub(ref_mode_utilities[mode]).fillna(0.0)  # Delta utilitie
 
         ref_probabilities.set_index(mode_probabilities.index.names, inplace=True)
 
     if symmetric:
         mode_utilities = symmetrize_utilities(mode_utilities)
+        mode_utilities = mode_utilities.loc[rank_utilities.index]
 
     mode_utilities = mode_utilities.clip(clip, -clip)
 
