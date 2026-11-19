@@ -95,17 +95,18 @@ def rank_and_mode_utilities(
     route_types: list[str],
     phi: dict[str, float],
     od_cols: list[str] = ['origin', 'destination'],
+    inf: float = np.inf,
     verbose=True,
 ):
     # rank_utilities
     # a bit faster than set_index() unstack()
     rank_utilities = paths.pivot(index=[*od_cols, 'segment'], columns=['route_type', 'rank'], values='utility')
-    rank_utilities.fillna(-np.inf, inplace=True)
+    rank_utilities.fillna(-inf, inplace=True)
 
     # mode utilities
     mode_utilities = pd.DataFrame(index=rank_utilities.index)
     mode_utilities.columns.name = 'route_type'
-    mode_utilities[ascending_modes] = -np.inf
+    mode_utilities[ascending_modes] = -inf
 
     # aggregate rank_utilities
     for mode in route_types:
@@ -172,6 +173,7 @@ def nested_logit_from_paths(
     return_od_tables=True,
     symmetric=False,
     clip=-np.inf,
+    inf=np.inf,
     incremental=False,
     ref_paths=None,
     ref_probabilities=None,
@@ -202,6 +204,7 @@ def nested_logit_from_paths(
                     return_od_tables=return_od_tables,
                     symmetric=symmetric,
                     clip=clip,
+                    inf=inf,
                     incremental=incremental,
                     ref_paths=ref_paths,
                     ref_probabilities=ref_probabilities,
@@ -230,6 +233,7 @@ def nested_logit_from_paths(
                 return_od_tables=return_od_tables,
                 symmetric=symmetric,
                 clip=clip,
+                inf=inf,
                 incremental=incremental,
                 ref_paths=ref_paths,
                 ref_probabilities=ref_probabilities,
@@ -290,6 +294,7 @@ def one_block_nested_logit_from_paths_df(
     return_od_tables=True,
     symmetric=False,
     clip=-np.inf,
+    inf=np.inf,
     incremental=False,
     ref_paths=None,
     ref_probabilities=None,
@@ -319,7 +324,7 @@ def one_block_nested_logit_from_paths_df(
     # rank utilities and initialize probabilities
     #
     rank_utilities, mode_utilities = rank_and_mode_utilities(
-        paths, ascending_modes, route_types, phi, od_cols=od_cols, verbose=verbose
+        paths, ascending_modes, route_types, phi, od_cols=od_cols, inf=inf, verbose=verbose
     )
 
     mode_probabilities = pd.DataFrame(index=rank_utilities.index)
@@ -328,7 +333,7 @@ def one_block_nested_logit_from_paths_df(
     if incremental:
         ref_paths = rank_and_filter_paths(ref_paths, index_cols=index_cols, n_paths_max=n_paths_max, engine='pandas')
         _, ref_mode_utilities = rank_and_mode_utilities(
-            ref_paths, ascending_modes, route_types, phi, od_cols=od_cols, verbose=verbose
+            ref_paths, ascending_modes, route_types, phi, od_cols=od_cols, inf=inf, verbose=verbose
         )
 
         for mode in route_types:
@@ -437,17 +442,19 @@ def rank_and_mode_utilities_np(
     ascending_modes: list[str],
     route_types: list[str],
     phi: dict[str, float],
+    inf: float = np.inf,
 ):
     n_groups = df['_group'].max() + 1
     n_ranks = df['rank'].max()
 
-    inf_arr = np.full((n_groups, 1), -np.inf)
+    inf_arr = np.full((n_groups, 1), -inf, dtype=np.float64)
 
     rank_utilities_dict = {}
     mode_utilities_dict = {mode: inf_arr for mode in ascending_modes}
 
     for mode in route_types:
-        mat = np.full((n_groups, n_ranks), -np.inf)
+        mat = np.full((n_groups, n_ranks), -inf, dtype=np.float64)
+        df = df[df['route_type'] == mode]
         rows = df['_group'].to_numpy()
         cols = df['rank'].to_numpy() - 1
         data = df['utility'].to_numpy()
@@ -469,6 +476,7 @@ def one_block_nested_logit_from_paths_np(
     return_od_tables: bool = True,
     symmetric: bool = False,
     clip: float = -np.inf,
+    inf=np.inf,
     incremental: bool = False,
     ref_paths: pd.DataFrame | None = None,
     ref_probabilities: pd.DataFrame | None = None,
@@ -492,7 +500,12 @@ def one_block_nested_logit_from_paths_np(
     paths = rank_and_filter_paths(paths, index_cols=index_cols, n_paths_max=n_paths_max, engine=engine)
     paths, group_serie = get_paths_groups(paths, index_cols=index_cols, engine=engine)
 
-    rank_utilities_dict, mode_utilities = rank_and_mode_utilities_np(paths, ascending_modes, route_types, phi)
+    rank_utilities_dict, mode_utilities = rank_and_mode_utilities_np(paths, ascending_modes, route_types, phi, inf=inf)
+    if verbose:
+        print('mode utility')
+        idx = group_serie.loc[('52', '152', 'Non-Business')]
+        print(mode_utilities['rail_AMP'][idx])
+
     if incremental:
         assert ref_probabilities is not None
         assert ref_paths is not None
@@ -502,22 +515,35 @@ def one_block_nested_logit_from_paths_np(
 
         ref_paths = rank_and_filter_paths(ref_paths, index_cols=index_cols, n_paths_max=n_paths_max)
         ref_paths = ref_paths.merge(group_serie, on=index_cols, how='left')
-        _, ref_mode_utilities = rank_and_mode_utilities_np(ref_paths, ascending_modes, route_types, phi)
+        _, ref_mode_utilities = rank_and_mode_utilities_np(ref_paths, ascending_modes, route_types, phi, inf=inf)
+
+        if verbose:
+            print('ref mode utility')
+            print(ref_mode_utilities['rail_AMP'][idx])
 
         for mode in route_types:  # Delta utilitie
             ref_utility = ref_mode_utilities[mode]
-            ref_utility[np.isinf(ref_utility)] = -100
             utility = mode_utilities[mode]
             utility = utility - ref_utility
             utility[np.isnan(ref_utility)] = 0
-            utility[np.isinf(ref_utility)] = -100
             mode_utilities[mode] = utility
+
+        if verbose:
+            print('delta mode utility')
+            print(mode_utilities['rail_AMP'][idx])
 
     if symmetric:
         mode_utilities = symmetrize_utilities_np(mode_utilities, group_serie)
+        if verbose:
+            print('symmetry')
+            print(mode_utilities['rail_AMP'][idx])
 
     for key, utility in mode_utilities.items():
         mode_utilities[key] = utility.clip(-clip, clip)  # TODO was reversed...why
+
+    if verbose:
+        print('clip')
+        print(mode_utilities['rail_AMP'][idx])
 
     # propagate utilities to higher modes (bottom -> up) (leaf => root)
     for mode in ascending_modes:

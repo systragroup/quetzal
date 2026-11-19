@@ -1198,7 +1198,9 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
         symmetric=False,
         incremental=False,
         clip=np.inf,
+        inf=np.inf,
         engine='polars',
+        verbose=False,
     ):
         """Performs the nested logit : compute the probabilities per segment of the paths in self.los
         after having computed the utilities with function analysis_mode_utility.
@@ -1290,7 +1292,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 od_cols,
                 mode_nests=nests,
                 phi=nls,
-                verbose=False,
+                verbose=verbose,
                 decimals=decimals,
                 n_paths_max=n_paths_max,
                 nchunks=nchunks,
@@ -1298,6 +1300,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                 return_od_tables=keep_od_tables,
                 symmetric=symmetric,
                 clip=clip,
+                inf=inf,
                 incremental=incremental,
                 ref_paths=ref_paths,
                 ref_probabilities=ref_probabilities,
@@ -1323,6 +1326,7 @@ class TransportModel(optimalmodel.OptimalModel, parkridemodel.ParkRideModel):
                     n_paths_max=n_paths_max,
                     symmetric=symmetric,
                     clip=clip,
+                    inf=inf,
                     incremental=incremental,
                     ref_paths=ref_paths,
                     ref_probabilities=ref_probabilities,
