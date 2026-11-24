@@ -299,12 +299,20 @@ class RoadLinks:
     RoadLinks object for mapmatching
     """
 
-    def __init__(self, links, n_neighbors_centroid=10, radius_search=250, on_centroid=False, precompute_routing=False):
+    def __init__(
+        self,
+        links,
+        n_neighbors_centroid=10,
+        radius_search=250,
+        on_centroid=False,
+        precompute_routing=False,
+        allow_u_turns=False,
+    ):
         self.links = links
         assert self.links.crs != None, 'road_links crs must be set (crs in meter, NOT 3857)'
         assert self.links.crs != 3857, 'CRS error. crs 3857 is not supported. use a local projection in meters.'
         assert self.links.crs != 4326, 'CRS error, crs 4326 is not supported, use a crs in meter (NOT 3857)'
-
+        self.allow_u_turns = allow_u_turns
         self.crs = links.crs
         self.n_neighbors_centroid = n_neighbors_centroid
         self.n_neighbors_centroid = min(self.n_neighbors_centroid, len(links))
@@ -320,7 +328,7 @@ class RoadLinks:
             self.links = self.links.reset_index()
         self.index_node = self.links['index'].to_dict()
 
-        self.get_sparse_matrix()
+        self.get_sparse_matrix(self.allow_u_turns)
 
         if precompute_routing:
             # todo: 1 precompute not to inf. 2) save as csr matrix
@@ -338,8 +346,10 @@ class RoadLinks:
         else:
             self.fit_nearest_model()
 
-    def get_sparse_matrix(self):
-        expanded_links = links_to_expanded_links(self.links.set_index('index')[['a', 'b', 'length']], u_turns=False)
+    def get_sparse_matrix(self, allow_u_turns):
+        expanded_links = links_to_expanded_links(
+            self.links.set_index('index')[['a', 'b', 'length']], u_turns=allow_u_turns
+        )
         self.node_index = {v: k for k, v in self.index_node.items()}
         self.mat, _ = sparse_matrix(expanded_links[['from_link', 'to_link', 'length']].values, index=self.node_index)
         self.expanded_links = expanded_links

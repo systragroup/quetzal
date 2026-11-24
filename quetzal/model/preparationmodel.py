@@ -570,6 +570,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         remove_duplicated_links_per_trips: bool = True,
         simplify=100,
         precompute_routing=True,
+        allow_u_turns=False,
         num_cores=1,
         **kwargs,
     ):
@@ -635,6 +636,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
             radius_search=radius_search,
             on_centroid=on_centroid,
             precompute_routing=precompute_routing,
+            allow_u_turns=allow_u_turns,
         )
         gps_tracks = get_gps_tracks(self.links, by=by, sequence=sequence, simplify=simplify)
         matched_links, links_mat, _ = Parallel_Mapmatching(
@@ -776,8 +778,7 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         if remove_duplicated_links_per_trips:
             self.links['road_link_list'] = remove_duplicated_links(self.links, by)
 
-    @track_args
-    def preparation_car_nodes_on_road_nodes(
+    def preparation_pt_nodes_on_road_nodes(
         self,
         by='trip_id',
         sequence='link_sequence',
@@ -785,20 +786,92 @@ class PreparationModel(model.Model, cubemodel.cubeModel):
         linestring_length=True,
         min_nodes=True,
         remove_duplicated_links_per_trips=False,
+        overwrite_geom=False,
         num_workers=1,
+        **kwargs,
     ):
 
         nodes_list = get_nodes_list(self.links, by=by, sequence=sequence)
         road_network = RoadNetwork(
             self.road_links, self.road_nodes, n_neighbors=n_neighbors, linestring_length=linestring_length
         )
-        matched_nodes = viterbi_mapmatching(nodes_list, road_network, num_workers=num_workers)
+        matched_nodes = viterbi_mapmatching(nodes_list, road_network, num_workers=num_workers, **kwargs)
         matched_nodes = route_between_points(matched_nodes, road_network, by=by, min_nodes=min_nodes)
         road_node_dict = matched_nodes.set_index('link_index')['road_node_list']
         road_link_dict = matched_nodes.set_index('link_index')['road_link_list']
 
         self.links['road_node_list'] = self.links.index.map(road_node_dict.get)
-        self.links['road_link_list'] = self.links.index.map(road_link_dict.get)
+
+        self.links['road_link_list'] = self.links['road_link_list'].apply(lambda x: x if isinstance(x, list) else [])
+        self.links['road_node_list'] = self.links['road_node_list'].apply(lambda x: x if isinstance(x, list) else [])
+        length_dict = road_network.road_links['length'].to_dict()
+        # we exclude last link in road_link_list and add offset_b
+        self.links['length'] = self.links['road_link_list'].apply(lambda ls: sum([*map(length_dict.get, ls)]))
+
+        if overwrite_geom:
+            # def overwrite_nodes(self):
+            nodes_a = self.links[['a', 'road_node_list']].rename(columns={'a': 'node'})
+            nodes_a['rnode'] = nodes_a['road_node_list'].apply(lambda ls: ls[0])
+            nodes_b = self.links[['b', 'road_node_list']].rename(columns={'b': 'node'})
+            nodes_b['rnode'] = nodes_b['road_node_list'].apply(lambda ls: ls[-1])
+            nodes = pd.concat([nodes_a.drop(columns=['road_node_list']), nodes_b.drop(columns=['road_node_list'])])
+
+            # get duplicates nodes (same node, different road_node mapmatched)
+            nodes['rank'] = nodes.groupby(['node'])['rnode'].rank(method='dense').astype(int) - 1
+            nodes['new_name'] = nodes['node'] + '-' + nodes['rank'].astype(str)
+            nodes['new_name'] = np.where(nodes['rank'] > 0, nodes['new_name'], nodes['node'])
+
+            new_nodes = nodes[nodes['rank'] > 0]
+            print(len(new_nodes), 'new_nodes')
+
+            new_index_dict = new_nodes.reset_index().set_index(['index', 'node'])['new_name'].to_dict()
+            # add new node in links
+            self.links['new_b'] = self.links.reset_index().set_index(['index', 'b']).index.map(new_index_dict.get)
+            self.links['new_a'] = self.links.reset_index().set_index(['index', 'a']).index.map(new_index_dict.get)
+            self.links['a'] = self.links['new_a'].combine_first(self.links['a'])
+            self.links['b'] = self.links['new_b'].combine_first(self.links['b'])
+            self.links = self.links.drop(columns=['new_a', 'new_b'])
+
+            # add new nodes to self.nodes
+            new_nodes = new_nodes.drop_duplicates('new_name').set_index('node')[['new_name']]
+            new_nodes = new_nodes.merge(self.nodes, left_index=True, right_index=True)
+            new_nodes = new_nodes.set_index('new_name')
+            self.nodes = pd.concat([self.nodes, new_nodes])
+            # cahnge geom for road geom
+            nodes = nodes.drop_duplicates('new_name')
+            geom_dict = self.road_nodes['geometry']
+            nodes['geometry'] = nodes['rnode'].map(geom_dict)
+            geom_dict = nodes.drop_duplicates('new_name').set_index('new_name')['geometry'].to_dict()
+            self.nodes['new_geometry'] = self.nodes.index.map(geom_dict)
+            self.nodes['geometry'] = self.nodes['new_geometry'].combine_first(self.nodes['geometry'])
+            self.nodes = self.nodes.drop(columns=['new_geometry'])
+
+            # rewirte links geometry
+            links_geom_dict = self.road_links['geometry'].to_dict()
+            nodes_geom_dict = self.road_nodes['geometry'].to_dict()
+
+            def get_geom_from_roads(ls: list[str], geom_dict: dict[str, LineString]):
+                if len(ls) == 0:
+                    return None
+                geoms = [*map(geom_dict.get, ls)]
+                if len(geoms) == 1:
+                    return geoms[0]
+                points = [c for c in geoms[0].coords]
+                for line in geoms[1:]:
+                    points.extend(line.coords[1:])
+                return LineString(points)
+
+            self.links['new_geometry'] = self.links['road_link_list'].apply(
+                lambda x: get_geom_from_roads(x, links_geom_dict)
+            )
+            # when there is no road_links. return the rnode-rnode geometry. we want to overwrite those geometry too.
+            mask = self.links['road_link_list'].apply(len) == 0
+            self.links.loc[mask, 'new_geometry'] = self.links.loc[mask, 'road_node_list'].apply(
+                lambda ls: LineString([nodes_geom_dict[ls[0]], nodes_geom_dict[ls[-1]]])
+            )
+            self.links['geometry'] = self.links['new_geometry'].combine_first(self.links['geometry'])
+            self.links.drop(columns=['new_geometry'], inplace=True)
+
         if remove_duplicated_links_per_trips:
             self.links['road_link_list'] = remove_duplicated_links(self.links, by)
 

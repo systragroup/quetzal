@@ -288,7 +288,7 @@ def batch_viterbi(emissions: pd.DataFrame, transitions: pd.DataFrame, by='trip_i
 
 
 def parallel_batch_viterbi(emissions: pd.DataFrame, transitions: pd.DataFrame, by='trip_id', num_workers=1):
-    trips = emissions['trip_id'].unique()
+    trips = emissions[by].unique()
     chunks = np.array_split(trips, num_workers)
     emissions_batch = [emissions[emissions[by].isin(ls)] for ls in chunks]
     transitions_batch = [transitions[transitions[by].isin(ls)] for ls in chunks]

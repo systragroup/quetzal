@@ -1,3 +1,7 @@
+## [FUTURE] (2026-11-24)
+## Changes 
+* preparation_pt_nodes_on_road_nodes: renamed (typo preparation_road_nodes_on_road_nodes)
+* preparation_pt_nodes_on_road_nodes: add overwrite_geom option
 ## [3.12.1] (2026-11-16)
 
 ## Changes
