@@ -9,6 +9,7 @@ from quetzal.engine.msa_trackers.tracker_utils import (
     TrackedWeight,
     apply_biconjugated_frank_wolfe,
     sparse_mat_to_df,
+    tracked_od_to_matrix,
 )
 
 
@@ -54,21 +55,7 @@ class LinksTracker(Tracker):
         self.tracked_mat.append(TrackedVolume(it, seg, sparse_mat))
 
     def add_od(self, od_is_used: np.ndarray, odv: np.ndarray, origins: np.ndarray, seg: str, it):
-        index_zone = {i: k for i, k in enumerate(origins)}
-        rows, cols, data = [], [], []
-        for i, is_used in enumerate(od_is_used):
-            filtered = odv[is_used]
-            origins_index = filtered[:, 0]
-            sparse_destinations = filtered[:, 1].astype(np.int32)
-            volumes = filtered[:, 2]
-            sparse_origins = [*map(index_zone.get, origins_index)]
-            od = [*zip(sparse_origins, sparse_destinations)]
-            index = [*map(self.sparse_od_dict.get, od)]
-            rows.extend(index)
-            cols.extend([i] * len(index))
-            data.extend(volumes)
-
-        sparse_mat = csr_matrix((data, (rows, cols)), shape=(len(self.sparse_od_dict), len(od_is_used)))
+        sparse_mat = tracked_od_to_matrix(od_is_used, odv, origins, self.sparse_od_dict)
         self.tracked_od.append(TrackedVolume(it, seg, sparse_mat))
 
     def add_weights(self, phi, beta, it):
@@ -82,31 +69,18 @@ class LinksTracker(Tracker):
         if od:
             row_labels = self.od_list
             col_labels = self.track_links_list
-            mats = _merge(self.tracked_od, self.weights)
+            mats = apply_biconjugated_frank_wolfe(self.tracked_od, self.weights)
             for seg, mat in mats.items():
                 output[seg] = sparse_mat_to_df(mat, row_labels, col_labels)
         else:
             ab_keys = [k for k in self.ab_volumes.keys()]
             row_labels = [*map(self.sparse_to_links.get, ab_keys)]
             col_labels = self.track_links_list
-            mats = _merge(self.tracked_mat, self.weights)
+            mats = apply_biconjugated_frank_wolfe(self.tracked_mat, self.weights)
             for seg, mat in mats.items():
                 output[seg] = sparse_mat_to_df(mat, row_labels, col_labels)
 
         return output
-
-
-def _merge(mat_datas: list[TrackedVolume], weights):
-    # read info [iteration,segment,file]
-    segments = {el.seg for el in mat_datas}
-    # read weights [phi,beta]
-    phi_dict = {w.iteration: w.phi for w in weights}
-    beta_dict = {w.iteration: w.beta for w in weights}
-    res = {}
-    for seg in segments:
-        filtered = [mat for mat in mat_datas if mat.seg == seg]
-        res[seg] = apply_biconjugated_frank_wolfe(filtered, phi_dict, beta_dict)
-    return res
 
 
 # for standard msa (not expanded)

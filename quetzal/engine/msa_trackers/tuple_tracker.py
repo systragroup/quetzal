@@ -5,10 +5,16 @@ from quetzal.engine.pathfinder_utils import get_node_path
 from scipy.sparse import csc_matrix
 from quetzal.engine.msa_trackers.tracker import Tracker
 from collections import namedtuple
+from quetzal.engine.msa_trackers.tracker_utils import (
+    TrackedVolume,
+    TrackedWeight,
+    tracked_od_to_matrix,
+    apply_biconjugated_frank_wolfe,
+    sparse_mat_to_df,
+)
 
 # need to name the class the same as the namedTuple name for pickle.
 TrackedArrays = namedtuple('TrackedArrays', 'iteration seg volumes')
-TrackedWeight = namedtuple('TrackedWeight', 'iteration phi beta')
 
 
 class TupleTracker(Tracker):
@@ -18,11 +24,13 @@ class TupleTracker(Tracker):
         self.track_links_list = track_links_list
         self.weights = []
         self.tracked_mat: list[TrackedArrays] = []
+        self.tracked_od: list[TrackedVolume] = []
 
     def init(
         self,
         links_sparse_index: list[int] | list[tuple[int, int]],
         links_to_sparse: dict[str, int] | dict[str, tuple[int, int]],
+        volumes: pd.DataFrame,
         *args,
         **kwargs,
     ):
@@ -31,61 +39,42 @@ class TupleTracker(Tracker):
         self.sparse_to_links = {v: k for k, v in links_to_sparse.items()}
         self.tracked_links_set = set(np.concatenate(self.sparse_links_list))
 
+        volumes = volumes.reset_index(drop=True).reset_index()  # make sure index are 0 to len
+        self.sparse_od_dict = volumes.set_index(['origin_sparse', 'destination_sparse'])['index'].to_dict()
+        self.od_list = [*zip(volumes['origin'], volumes['destination'])]
+
     def __call__(self) -> bool:  # when calling the instance. check if we track links or no.
         return len(self.track_links_list) > 0
 
-    def assign(self, odv, pred, seg, it, *args, **kwargs):
-
+    def assign(self, odv, pred, origins, seg, it, *args, **kwargs):
         mat = get_paths_matrix(odv, pred, self.n_cols, self.tracked_links_set)
         od_indexes_list = get_od_indexes(mat, self.sparse_links_list)
         volumes = []
         for od_indexes in od_indexes_list:
             volumes.append(odv[od_indexes, 2].sum())
-
         self.tracked_mat.append(TrackedArrays(it, seg, np.array(volumes)))
+        self.add_od(od_indexes_list, odv, origins, seg, it)
 
     def add_weights(self, phi, beta, it):
         self.weights.append(TrackedWeight(iteration=it, phi=phi, beta=beta))
 
-    def merge(self) -> pd.DataFrame:
+    def merge(self, od=False) -> pd.DataFrame | dict[str, pd.DataFrame]:
         # apply frank wolfe for each iteration on each segments
-        merged = _merge(self.tracked_mat, self.weights)
-        return pd.DataFrame(merged, index=self.track_links_list)
-
-
-def _merge(mat_datas, weights):
-    # read info [iteration,segment,file]
-    segments = segments = set([el.seg for el in mat_datas])
-    # read weights [phi,beta]
-    phi_dict = {w.iteration: w.phi for w in weights}
-    beta_dict = {w.iteration: w.beta for w in weights}
-    res = {}
-    for seg in segments:
-        filtered = [mat for mat in mat_datas if mat.seg == seg]
-        res[seg] = apply_biconjugated_frank_wolfe(filtered, phi_dict, beta_dict)
-    return res
-
-
-def apply_biconjugated_frank_wolfe(mat_datas, phi_dict, beta_dict):
-    flow = pd.DataFrame()
-    sk_1 = pd.DataFrame()
-    sk_2 = pd.DataFrame()
-    for mat_data in mat_datas:
-        it = mat_data.iteration
-        phi = phi_dict.get(it)
-        beta = beta_dict.get(it)
-        aux_flow = mat_data.volumes
-        if it > 2:
-            aux_flow = beta[0] * aux_flow + beta[1] * sk_1 + beta[2] * sk_2
-
-        sk_2 = sk_1.copy()
-        sk_1 = aux_flow.copy()
-
-        if it == 0:
-            flow = aux_flow.copy()
+        if od:
+            output = {}
+            row_labels = self.od_list
+            col_labels = self.track_links_list
+            mats = apply_biconjugated_frank_wolfe(self.tracked_od, self.weights)
+            for seg, mat in mats.items():
+                output[seg] = sparse_mat_to_df(mat, row_labels, col_labels)
+            return output
         else:
-            flow = (1 - phi) * flow + phi * aux_flow
-    return flow
+            merged = apply_biconjugated_frank_wolfe(self.tracked_mat, self.weights)
+            return pd.DataFrame(merged, index=self.track_links_list)
+
+    def add_od(self, od_is_used: list[list[int]], odv: np.ndarray, origins: np.ndarray, seg: str, it):
+        sparse_mat = tracked_od_to_matrix(od_is_used, odv, origins, self.sparse_od_dict)
+        self.tracked_od.append(TrackedVolume(it, seg, sparse_mat))
 
 
 @nb.njit(locals={'predecessors': nb.int32[:, ::1]})

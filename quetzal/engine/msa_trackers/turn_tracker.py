@@ -35,7 +35,7 @@ class TurnTracker(Tracker):
 
     def merge(self) -> pd.DataFrame:
         # apply frank wolfe for each iteration on each segments
-        mats = _merge(self.tracked_mat, self.weights)
+        mats = apply_biconjugated_frank_wolfe(self.tracked_mat, self.weights)
         row_labels = np.array(self.track_links_list)
         col_labels = np.array(self.links_list)
         output = pd.DataFrame(columns=['from', 'to'])
@@ -44,19 +44,6 @@ class TurnTracker(Tracker):
             df = pd.DataFrame({'from': row_labels[rows], 'to': col_labels[cols], seg: mat.data})
             output = pd.merge(output, df, on=['from', 'to'], how='outer')
         return output
-
-
-def _merge(mat_datas: list[TrackedVolume], weights: list[TrackedWeight]) -> dict[str, csr_matrix]:
-    # read info [iteration,segment,file]
-    segments = set([el.seg for el in mat_datas])
-    # read weights [phi,beta]
-    phi_dict = {w.iteration: w.phi for w in weights}
-    beta_dict = {w.iteration: w.beta for w in weights}
-    output = {}
-    for seg in segments:
-        filtered = [mat for mat in mat_datas if mat.seg == seg]
-        output[seg] = apply_biconjugated_frank_wolfe(filtered, phi_dict, beta_dict)
-    return output
 
 
 @nb.njit(locals={'predecessors': nb.int32[:, ::1]})  # parallel=> not thread safe. do not!

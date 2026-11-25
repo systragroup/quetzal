@@ -1,7 +1,12 @@
-## [FUTURE] (2026-11-24)
+## [3.12.2] (2026-11-25)
+
+## Features
+* road_pathfinder: tuple_tracker now also track od using the selected tuple. use self.merge(od=True) to return the tracked OD.
+* road_pathfinder: path_tracker added to tracke every paths used at each iteration
 ## Changes 
 * preparation_pt_nodes_on_road_nodes: renamed (typo preparation_road_nodes_on_road_nodes)
 * preparation_pt_nodes_on_road_nodes: add overwrite_geom option
+
 ## [3.12.1] (2026-11-16)
 
 ## Changes
