@@ -279,8 +279,9 @@ def _preparation(mode_nests: dict[str, list[str]], phi: dict[str, float] | None)
 
 
 def one_block_nested_logit_from_paths(*args, **kwargs):
+    if kwargs['engine'] == 'old':
+        return one_block_nested_logit_from_paths_df(*args, **kwargs)
     return one_block_nested_logit_from_paths_np(*args, **kwargs)
-    # return one_block_nested_logit_from_paths_pl(*args, **kwargs)
 
 
 def one_block_nested_logit_from_paths_df(
@@ -346,10 +347,9 @@ def one_block_nested_logit_from_paths_df(
 
     if symmetric:
         mode_utilities = symmetrize_utilities(mode_utilities)
-
     mode_utilities = mode_utilities.clip(clip, -clip)
 
-    # propagate utilities to higher modes (bottom -> up) (leaf => root)
+    # propagate ut ilities to higher modes (bottom -> up) (leaf => root)
     for mode in ascending_modes:
         children = neighbors.get(mode, [])
         if len(children):
@@ -377,7 +377,6 @@ def one_block_nested_logit_from_paths_df(
                 partial = nest_probabilities(utilities=mode_utilities[children].values, phi=phi[mode])
             mode_probabilities[children] = mode_probabilities[[mode]].values * partial
     mode_probabilities = mode_probabilities[descending_modes].fillna(0)
-
     #
     # stack probabilities and merge on back on paths
     #
@@ -386,7 +385,6 @@ def one_block_nested_logit_from_paths_df(
     for mode in route_types:
         print('path probabilities', mode, phi[mode], '->', mode) if verbose else None
         rank_probabilities[mode] = nest_probabilities(rank_utilities[mode].values, phi[mode])
-
     if decimals is not None:
         rank_probabilities = np.round(rank_probabilities, decimals)
     rank_probabilities = rank_probabilities.replace(0, np.nan)
@@ -411,7 +409,7 @@ def one_block_nested_logit_from_paths_df(
     paths['index'] = paths.index
     paths = pd.merge(
         paths.drop('probability', axis=1, errors='ignore'),
-        merged[[*merge_columns, 'probability']],
+        merged[[*merge_columns, 'probability', 'assignment_share', 'modal_split_share']],
         on=merge_columns,
         suffixes=['_old', ''],
         how='left',
@@ -454,10 +452,10 @@ def rank_and_mode_utilities_np(
 
     for mode in route_types:
         mat = np.full((n_groups, n_ranks), -inf, dtype=np.float64)
-        df = df[df['route_type'] == mode]
-        rows = df['_group'].to_numpy()
-        cols = df['rank'].to_numpy() - 1
-        data = df['utility'].to_numpy()
+        mode_path = df[df['route_type'] == mode]
+        rows = mode_path['_group'].to_numpy()
+        cols = mode_path['rank'].to_numpy() - 1
+        data = mode_path['utility'].to_numpy()
         mat[rows, cols] = data
         rank_utilities_dict[mode] = mat
         mode_utilities_dict[mode] = nest_utility(mat, phi[mode])
@@ -500,11 +498,9 @@ def one_block_nested_logit_from_paths_np(
     paths = rank_and_filter_paths(paths, index_cols=index_cols, n_paths_max=n_paths_max, engine=engine)
     paths, group_serie = get_paths_groups(paths, index_cols=index_cols, engine=engine)
 
-    rank_utilities_dict, mode_utilities = rank_and_mode_utilities_np(paths, ascending_modes, route_types, phi, inf=inf)
-    if verbose:
-        print('mode utility')
-        idx = group_serie.loc[('52', '152', 'Non-Business')]
-        print(mode_utilities['rail_AMP'][idx])
+    rank_utilities_dict, mode_utilities = rank_and_mode_utilities_np(
+        paths, ascending_modes, route_types, phi, inf=np.inf
+    )
 
     if incremental:
         assert ref_probabilities is not None
@@ -514,36 +510,23 @@ def one_block_nested_logit_from_paths_np(
         ref_probabilities = ref_probabilities.sort_values('_group')
 
         ref_paths = rank_and_filter_paths(ref_paths, index_cols=index_cols, n_paths_max=n_paths_max)
-        ref_paths = ref_paths.merge(group_serie, on=index_cols, how='left')
+        ref_paths = ref_paths.merge(group_serie, on=index_cols, how='left')  # add _group
         _, ref_mode_utilities = rank_and_mode_utilities_np(ref_paths, ascending_modes, route_types, phi, inf=inf)
-
-        if verbose:
-            print('ref mode utility')
-            print(ref_mode_utilities['rail_AMP'][idx])
 
         for mode in route_types:  # Delta utilitie
             ref_utility = ref_mode_utilities[mode]
             utility = mode_utilities[mode]
             utility = utility - ref_utility
-            utility[np.isnan(ref_utility)] = 0
+            # TODO:
+            utility[np.isinf(utility)] = -inf
+            utility[np.isnan(utility)] = 0
             mode_utilities[mode] = utility
-
-        if verbose:
-            print('delta mode utility')
-            print(mode_utilities['rail_AMP'][idx])
 
     if symmetric:
         mode_utilities = symmetrize_utilities_np(mode_utilities, group_serie)
-        if verbose:
-            print('symmetry')
-            print(mode_utilities['rail_AMP'][idx])
 
     for key, utility in mode_utilities.items():
-        mode_utilities[key] = utility.clip(-clip, clip)  # TODO was reversed...why
-
-    if verbose:
-        print('clip')
-        print(mode_utilities['rail_AMP'][idx])
+        mode_utilities[key] = utility.clip(clip, -clip)
 
     # propagate utilities to higher modes (bottom -> up) (leaf => root)
     for mode in ascending_modes:
@@ -551,6 +534,7 @@ def one_block_nested_logit_from_paths_np(
         if len(children):
             print('mode utilities', children, phi[mode], '->', mode) if verbose else None
             utilities = np.hstack([mode_utilities[ch] for ch in children])
+            utilities[np.isinf(utilities)] = -inf  # TODO: this change a lot with inf = -100 or -np.inf
             if incremental:
                 assert ref_probabilities is not None
                 mode_utilities[mode] = incremental_nest_utility_np(utilities, ref_probabilities[children].to_numpy())
@@ -562,7 +546,6 @@ def one_block_nested_logit_from_paths_np(
     #
     #  propagate probabilities
     n_groups = paths['_group'].max() + 1
-
     arr = np.full((n_groups, 1), 1)
     mode_probabilities = {mode: arr for mode in descending_modes}
     for mode in descending_modes:
@@ -570,6 +553,7 @@ def one_block_nested_logit_from_paths_np(
         if len(children):
             print('mode probabilities', mode, phi[mode], '->', children) if verbose else None
             utilities = np.hstack([mode_utilities[ch] for ch in children if ch in mode_utilities])
+            utilities[np.isinf(utilities)] = -inf  # TODO: this change a lot with inf = -100 or -np.inf
             if incremental:
                 assert ref_probabilities is not None
                 partial = incremental_nest_probability_np(utilities, ref_probabilities[children].to_numpy())
@@ -607,8 +591,8 @@ def one_block_nested_logit_from_paths_np(
             paths.loc[mask, '_group'].to_numpy(),
             paths.loc[mask, '_rank'].to_numpy(),
         ]
-
     stacked_probabilities = np.stack([mode_probabilities[mode] for mode in route_types_dict])
+    # return stacked_probabilities, paths, group_serie, to_df(group_serie, mode_probabilities, descending_modes)
     # Retrieve probabilities for each row
     paths['modal_split_share'] = stacked_probabilities[
         paths['_mode'].to_numpy(),
@@ -616,7 +600,7 @@ def one_block_nested_logit_from_paths_np(
     ]
 
     paths['probability'] = paths['assignment_share'] * paths['modal_split_share']
-    paths = paths.drop(columns=['_group', '_mode', '_rank', 'assignment_share', 'modal_split_share'])
+    paths = paths.drop(columns=['_group', '_mode', '_rank'])
     if return_od_tables:
         utility_df = group_serie.index.to_frame(index=False)
         probability_df = utility_df.copy()
@@ -627,3 +611,11 @@ def one_block_nested_logit_from_paths_np(
         return paths, utility_df, probability_df
     else:
         return paths, pd.DataFrame(), pd.DataFrame()
+
+
+def to_df(group_serie, mode_utilities, modes):
+    utility_df = group_serie.index.to_frame(index=False)
+    order = group_serie.to_numpy()
+    for mode in modes:
+        utility_df[mode] = mode_utilities[mode][order]
+    return utility_df
