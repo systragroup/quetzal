@@ -282,6 +282,15 @@ from multiprocessing import Process, Queue, Manager, Pipe
 import numpy as np
 
 
+def parallel_kwargs_to_worker_kwargs(parallel_kwargs):
+    keys = list(parallel_kwargs.keys())
+    n_chunks = len(parallel_kwargs[keys[0]])
+    batchs_kwargs_list = []
+    for i in range(n_chunks):
+        batchs_kwargs_list.append({key: chunks[i] for key, chunks in parallel_kwargs.items()})
+    return batchs_kwargs_list
+
+
 def parallel_executor(function, method='pool', num_workers: int = 1, parallel_kwargs: dict = {}, **kwargs):
     """
     function:
@@ -332,7 +341,7 @@ def parallel_executor(function, method='pool', num_workers: int = 1, parallel_kw
 
 
 def process_pool_executor(function, num_workers=1, parallel_kwargs={}, **kwargs):
-    batchs_kwargs_list = [{key: chunk} for key, chunks in parallel_kwargs.items() for chunk in chunks]
+    batchs_kwargs_list = parallel_kwargs_to_worker_kwargs(parallel_kwargs)
     results = []
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
         for batch_kwargs in batchs_kwargs_list:
@@ -343,7 +352,7 @@ def process_pool_executor(function, num_workers=1, parallel_kwargs={}, **kwargs)
 
 
 def thread_pool_executor(function, num_workers=1, parallel_kwargs={}, **kwargs):
-    batchs_kwargs_list = [{key: chunk} for key, chunks in parallel_kwargs.items() for chunk in chunks]
+    batchs_kwargs_list = parallel_kwargs_to_worker_kwargs(parallel_kwargs)
     futures = []
     with ThreadPoolExecutor(max_workers=num_workers) as executor:
         for batch_kwargs in batchs_kwargs_list:

@@ -338,15 +338,13 @@ def one_block_nested_logit_from_paths_df(
         )
 
         for mode in route_types:
-            mode_utilities[mode] = (
-                mode_utilities[mode].sub(ref_mode_utilities[mode].replace([-np.inf], -100)).fillna(0.0)
-            )  # Delta utilitie
-            mode_utilities[mode] = mode_utilities[mode].replace([-np.inf], -100)
+            mode_utilities[mode] = mode_utilities[mode].sub(ref_mode_utilities[mode]).fillna(0.0)  # Delta utilitie
 
         ref_probabilities.set_index(mode_probabilities.index.names, inplace=True)
 
     if symmetric:
         mode_utilities = symmetrize_utilities(mode_utilities)
+        mode_utilities = mode_utilities.loc[rank_utilities.index]
 
     mode_utilities = mode_utilities.clip(clip, -clip)
 
@@ -443,6 +441,7 @@ def rank_and_mode_utilities_np(
     phi: dict[str, float],
     inf: float = np.inf,
 ):
+
     n_groups = df['_group'].max() + 1
     n_ranks = df['rank'].max()
 
@@ -487,6 +486,11 @@ def one_block_nested_logit_from_paths_np(
 
     if mode_nests is None:
         mode_nests = {'root': list(set(paths['route_type']))}
+
+    if clip > 0:
+        clip = -clip
+    if inf < 0:
+        inf = -inf
 
     ascending_modes, phi, neighbors = _preparation(mode_nests, phi)
     descending_modes = list(reversed(ascending_modes))
